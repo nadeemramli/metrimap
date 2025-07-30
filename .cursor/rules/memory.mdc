@@ -1,0 +1,73 @@
+---
+description: This rule defines how the AI should manage and utilize memory to improve coding consistency.
+globs: *
+alwaysApply: false
+---
+
+# AI Memory Rule
+
+This rule defines how the AI should manage and utilize its "memory" regarding this specific project, including user preferences, learned facts, and project-specific conventions.
+
+## Purpose
+
+The AI's memory helps maintain consistency and adapt to specific project needs. **It combines foundational knowledge from the project's PRD with learned preferences to ensure all contributions align with the project's core vision.**
+
+**## Core Project Documents**
+
+**The single source of truth for the project's goals, features, user personas, and overall vision is the `prd.md` file located in the root directory. The AI must treat this document as the foundational context for all tasks.**
+
+## Storage
+
+All newly learned project-specific knowledge and preferences should be stored and referenced in the `learned-memories.mdc` file located in `.cursor/rules`. This file complements, but does not override, the `prd.md`.
+
+## Updating Memory
+
+When new information relevant to the project's conventions, user preferences, or specific technical details is learned, the AI should:
+
+1.  **Identify Key Information:** Determine the core piece of knowledge to be stored.
+2.  **Check Existing Memory:** Review `learned-memories.mdc` to see if this information contradicts or updates existing entries.
+3.  **Propose Update:** Suggest an edit to `learned-memories.mdc` to add or modify the relevant information.
+
+## Using Memory
+
+**Before proposing solutions, code changes, or answering questions, the AI must first consult the `prd.md` to understand the high-level goal. It should then consult `learned-memories.mdc` to ensure the response aligns with any subsequent decisions and conventions.**
+
+## Example Scenario
+
+**User:** "We've decided to use Tailwind v4 for this project, not v3."
+
+**AI Action:**
+
+1.  Recognize this as a project-specific technical decision.
+2.  Check `learned-memories.mdc` for existing Tailwind version information.
+3.  Propose adding or updating an entry in `learned-memories.mdc`:
+    ```markdown
+    ## Technical Decisions
+
+    * **CSS Framework:** Tailwind v4 is used. Ensure usage aligns with v4 documentation and practices, noting differences from v3.
+    ```
+4.  In subsequent interactions involving Tailwind, the AI will refer to this entry and consult v4 documentation if necessary.
+
+## Memory File (`.cursor/rules/learned-memories.mdc`)
+
+The basic structure:
+
+```markdown
+# Project Memory
+
+This file stores project-specific knowledge, conventions, and user preferences learned by the AI assistant. It is secondary to the main project goals outlined in `prd.md`.
+
+## User Preferences
+
+-   [Preference 1]
+-   [Preference 2]
+
+## Technical Decisions
+
+-   [Decision 1]
+-   [Decision 2]
+
+## Project Conventions
+
+-   [Convention 1]
+-   [Convention 2]

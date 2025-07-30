@@ -1,0 +1,95 @@
+# Project Memory
+
+This file stores project-specific knowledge, conventions, and user preferences learned by the AI assistant. It is secondary to the main project goals outlined in `prd.md`.
+
+## Project Understanding
+
+### Core Purpose
+Metrimap is a visual-first business intelligence tool that transforms abstract business concepts into structured, analyzable metric trees. The goal is to make an organization's "fundamental formula" (how inputs become value) visible and tractable through interactive canvas-based modeling.
+
+### Key Product Principles
+- **Canvas-Centric**: The React Flow canvas is the primary workspace where business models are built
+- **Evidence-Based**: Relationships between metrics must be supported by attached evidence (experiments, analyses)
+- **Progressive Rigor**: Tool guides users from correlation to causation through structured workflows
+- **Live Models**: Canvas state is persistent and auto-saved, creating "living documents" that evolve with the business
+
+## Technical Architecture
+
+### Core Tech Stack
+- **Frontend**: React + TypeScript + Vite
+- **Canvas Engine**: React Flow with Dagre auto-layout
+- **UI Framework**: Shadcn + Tailwind CSS + Recharts
+- **State Management**: Zustand
+- **Database**: Supabase with supabase-js client
+- **Client Computation**: Web Workers (with comlink) + math.js + simple-statistics
+- **Deployment**: Vercel
+
+### Key Components
+1. **Metric Cards (Nodes)**: 5 category system (Core/Value, Data/Metric, Work/Action, Ideas/Hypothesis, Metadata)
+2. **Relationships (Edges)**: 4 types (Deterministic, Probabilistic, Causal, Compositional)
+3. **Evidence System**: Attach supporting artifacts to validate relationships
+4. **Grouping/Subflows**: Visual organization that powers dashboard generation
+
+## Application Structure
+
+### Beyond Canvas (Navigation)
+- **Homepage**: Project management and canvas gallery
+- **Dashboard**: Auto-generated from canvas subflows
+- **Assets**: Centralized repository (Metrics, Relationships, Repo tabs)
+- **Source**: Data governance and instrumentation tracking
+- **Settings**: Project metadata and immutable changelog
+
+### Within Canvas (Core Functionality)
+- **Interactive Canvas**: Pan/zoom, multi-select, auto-save
+- **Dynamic Cards**: Category-based views with rich data display
+- **Relationship Management**: Visual confidence levels and evidence repositories
+- **Global Controls**: Date range picker affects all metric cards simultaneously
+
+## User Experience Philosophy
+
+### Business Model Focus
+The tool is designed to help teams build coherent business models where:
+- Every metric card represents a component of the business system
+- Every relationship explicitly defines logical connections
+- Evidence validates or challenges assumed relationships
+- Dashboards reflect the actual structure of the business model
+
+### Knowledge Management
+- Relationships serve as "knowledge hubs" storing institutional learning
+- Evidence items (experiments, analyses) attach to specific connections
+- Changelog provides full audit trail of model evolution
+- Correlation analysis suggests new relationships to investigate
+
+## Development Conventions
+
+### File Organization
+- Canvas components use React Flow patterns
+- State management through Zustand stores
+- Supabase integration for persistence
+- Web Workers for heavy computation (correlations, formula calculations)
+
+### Infrastructure Setup
+- **Supabase Access**: MCP (Model Context Protocol) access to Supabase project already configured
+- **Database**: Supabase project already created and ready for schema development
+- **UI Components**: Shadcn UI components available - should be used creatively throughout the app
+- **Component Strategy**: Leverage Shadcn's flexibility for custom business-specific UI patterns
+
+## User Preferences
+
+### Development Approach
+- Utilize existing Supabase project with MCP integration
+- Creative use of Shadcn components for sophisticated business intelligence UI
+- Incremental development starting with Phase 1: Core Foundation & Architecture
+
+## Progress Completed
+
+### Phase 1: Core Foundation (IN PROGRESS)
+- ✅ **React Router Setup**: Full routing structure implemented with nested routes
+  - HomePage (`/`) - Project gallery with canvas cards
+  - CanvasLayout (`/canvas/:id`) - Sidebar layout for canvas views
+  - CanvasPage, DashboardPage, AssetsPage, SourcePage, CanvasSettingsPage
+- ✅ **Shadcn UI Components**: All essential components available and working
+- ✅ **Project Structure**: Clean organization with pages/, components/layout/, lib/ directories
+- ✅ **Mock Data & UI**: Functional pages with realistic business intelligence interfaces
+- ✅ **Basic Tests**: Vitest setup with passing tests for pre-commit hooks
+- 🔄 **Next**: Zustand stores for state management
