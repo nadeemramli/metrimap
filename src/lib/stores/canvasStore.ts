@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { CanvasState, CanvasProject, MetricCard, Relationship, GroupNode } from '../types';
+import type { CanvasState, CanvasProject, MetricCard, Relationship, GroupNode, CanvasSettings } from '../types';
 
 interface CanvasStoreState extends CanvasState {
   // Canvas management
@@ -38,6 +38,7 @@ interface CanvasStoreState extends CanvasState {
   setDateRange: (start: string, end: string) => void;
   toggleMiniMap: () => void;
   toggleControls: () => void;
+  updateCanvasSettings: (settings: Partial<CanvasSettings>) => void;
 
   // Utility functions
   getNodeById: (nodeId: string) => MetricCard | undefined;
@@ -261,6 +262,17 @@ export const useCanvasStore = create<CanvasStoreState>()(
     setDateRange: (start: string, end: string) => set({ dateRange: { start, end } }),
     toggleMiniMap: () => set((state) => ({ showMiniMap: !state.showMiniMap })),
     toggleControls: () => set((state) => ({ showControls: !state.showControls })),
+    
+    updateCanvasSettings: (settings: Partial<CanvasSettings>) =>
+      set((state) => ({
+        canvas: state.canvas
+          ? {
+              ...state.canvas,
+              settings: { ...state.canvas.settings, ...settings },
+              updatedAt: new Date().toISOString(),
+            }
+          : undefined,
+      })),
 
     // Utility functions
     getNodeById: (nodeId: string) => {

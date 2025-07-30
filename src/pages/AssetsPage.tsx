@@ -1,327 +1,614 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Search,
+  Filter,
+  ExternalLink,
+  Plus,
+  Download,
+  Eye,
+  Edit,
+  Trash2,
+  MoreVertical,
+  ArrowUpDown,
+  BarChart3,
+  Network,
+  FileText,
+  Calendar,
+  Users,
+  Star,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+} from "lucide-react";
+import { useCanvasStore, useProjectsStore } from "@/lib/stores";
 
 type TabType = "metrics" | "relationships" | "repo";
+type SortField = "name" | "category" | "updated" | "connections" | "confidence" | "type";
+type SortOrder = "asc" | "desc";
 
-// Mock data
-const mockMetrics = [
+// Mock repository data with templates and components
+const generateRepoData = () => [
   {
     id: "1",
-    title: "Monthly Recurring Revenue",
-    category: "Data/Metric",
-    subCategory: "North Star Metric",
-    owner: "John Doe",
-    createdDate: "2024-01-10",
-    lastUpdated: "2024-01-15",
-    connections: 5,
-    tags: ["Revenue", "Core"]
-  },
-  {
-    id: "2", 
-    title: "Customer Acquisition Cost",
-    category: "Data/Metric",
-    subCategory: "Leading KPI",
-    owner: "Sarah Kim",
-    createdDate: "2024-01-08",
-    lastUpdated: "2024-01-14",
-    connections: 3,
-    tags: ["Marketing", "CAC"]
-  }
-];
-
-const mockRelationships = [
-  {
-    id: "1",
-    source: "Ad Spend",
-    target: "New User Signups", 
-    type: "Causal",
-    confidence: "High",
-    weight: 0.75,
-    evidenceCount: 3
-  },
-  {
-    id: "2",
-    source: "New User Signups",
-    target: "Monthly Recurring Revenue",
-    type: "Probabilistic", 
-    confidence: "Medium",
-    weight: 0.62,
-    evidenceCount: 2
-  }
-];
-
-const mockRepo = [
-  {
-    id: "1",
-    title: "Q3 Ad Creative A/B Test",
-    type: "Experiment",
+    title: "SaaS Growth Model Template",
+    type: "Template",
     date: "2024-01-10",
-    owner: "Sarah Kim",
-    associatedItem: "Ad Spend → New User Signups",
-    link: "https://example.com/experiment"
+    owner: "Product Team",
+    description: "Complete growth model for SaaS companies",
+    associatedItems: ["MRR", "CAC", "LTV", "Churn Rate"],
+    tags: ["SaaS", "Growth", "Template"],
+    downloads: 15,
+    starred: true,
   },
   {
     id: "2",
-    title: "User Churn Analysis",
-    type: "Analysis", 
-    date: "2024-01-08",
-    owner: "Mike Chen",
-    associatedItem: "User Retention Rate",
-    link: "https://example.com/analysis"
-  }
+    title: "User Retention Analysis",
+    type: "Analysis",
+    date: "2024-01-08", 
+    owner: "Data Team",
+    description: "Cohort-based retention analysis methodology",
+    associatedItems: ["User Retention Rate", "Churn Rate"],
+    tags: ["Retention", "Analysis", "Cohorts"],
+    downloads: 8,
+    starred: false,
+  },
+  {
+    id: "3",
+    title: "Marketing Attribution Model",
+    type: "Component",
+    date: "2024-01-05",
+    owner: "Marketing Team",
+    description: "Multi-touch attribution analysis component",
+    associatedItems: ["CAC", "Ad Spend", "Conversion Rate"],
+    tags: ["Marketing", "Attribution", "Component"],
+    downloads: 12,
+    starred: true,
+  },
+  {
+    id: "4",
+    title: "Financial Planning Framework",
+    type: "Framework",
+    date: "2024-01-03",
+    owner: "Finance Team", 
+    description: "Strategic financial planning and forecasting",
+    associatedItems: ["Revenue", "Expenses", "Cash Flow"],
+    tags: ["Finance", "Planning", "Framework"],
+    downloads: 6,
+    starred: false,
+  },
 ];
 
 export default function AssetsPage() {
   const { canvasId } = useParams();
+  const { canvas } = useCanvasStore();
+  const { getProjectById } = useProjectsStore();
+  
   const [activeTab, setActiveTab] = useState<TabType>("metrics");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<SortField>("updated");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const project = canvasId ? getProjectById(canvasId) : null;
+  const metrics = project?.nodes || [];
+  const relationships = project?.edges || [];
+  const repoData = generateRepoData();
+
+  // Enhanced filtering and sorting
+  const filteredMetrics = useMemo(() => {
+    let filtered = metrics.filter(metric => 
+      metric.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      metric.category.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter(metric => metric.category === categoryFilter);
+    }
+
+    return filtered.sort((a, b) => {
+      const multiplier = sortOrder === "asc" ? 1 : -1;
+      switch (sortField) {
+        case "name":
+          return a.title.localeCompare(b.title) * multiplier;
+        case "category":
+          return a.category.localeCompare(b.category) * multiplier;
+        case "updated":
+          return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * multiplier;
+        default:
+          return 0;
+      }
+    });
+  }, [metrics, searchQuery, categoryFilter, sortField, sortOrder]);
+
+  const filteredRelationships = useMemo(() => {
+    return relationships.filter(rel => {
+      const sourceNode = metrics.find(m => m.id === rel.sourceId);
+      const targetNode = metrics.find(m => m.id === rel.targetId);
+      return (
+        sourceNode?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        targetNode?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        rel.type.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    });
+  }, [relationships, metrics, searchQuery]);
+
+  const filteredRepo = useMemo(() => {
+    return repoData.filter(item =>
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [repoData, searchQuery]);
+
+  const metricCategories = useMemo(() => {
+    const cats = new Set(metrics.map(m => m.category));
+    return Array.from(cats);
+  }, [metrics]);
+
+  const getNodeById = (id: string) => metrics.find(node => node.id === id);
 
   const tabs = [
-    { id: "metrics" as const, label: "Metrics", count: mockMetrics.length },
-    { id: "relationships" as const, label: "Relationships", count: mockRelationships.length },
-    { id: "repo" as const, label: "Repo", count: mockRepo.length }
+    { id: "metrics" as const, label: "Metrics", count: filteredMetrics.length },
+    { id: "relationships" as const, label: "Relationships", count: filteredRelationships.length },
+    { id: "repo" as const, label: "Repo", count: filteredRepo.length }
   ];
 
   return (
-    <div className="h-full bg-background">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="h-14 border-b border-border bg-card px-6 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-card-foreground">Assets</h2>
-          <p className="text-sm text-muted-foreground">Knowledge repository</p>
+          <h1 className="text-3xl font-bold">Assets</h1>
+          <p className="text-muted-foreground mt-1">
+            Comprehensive repository of metrics, relationships, and templates
+          </p>
         </div>
-        <div className="text-sm text-muted-foreground">
-          Canvas {canvasId}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Asset
+          </Button>
         </div>
       </div>
 
-      <div className="h-[calc(100%-3.5rem)] flex flex-col">
-        {/* Tabs */}
-        <div className="border-b border-border bg-card">
-          <div className="px-6">
-            <div className="flex space-x-8">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === tab.id
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {tab.label} ({tab.count})
-                </button>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Metrics</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Across {metricCategories.length} categories
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Relationships</CardTitle>
+            <Network className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{relationships.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {relationships.filter(r => r.confidence === "High").length} high confidence
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Repository Items</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{repoData.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {repoData.filter(r => r.starred).length} starred templates
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex space-x-1 bg-muted p-1 rounded-lg w-fit">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab.label} ({tab.count})
+          </button>
+        ))}
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={`Search ${activeTab}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        
+        {activeTab === "metrics" && (
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {metricCategories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
               ))}
-            </div>
-          </div>
-        </div>
+            </SelectContent>
+          </Select>
+        )}
 
-        {/* Search and Filter Bar */}
-        <div className="px-6 py-4 border-b border-border bg-card">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder={`Search ${activeTab}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-border rounded-md bg-background"
-              />
-            </div>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Filter className="h-4 w-4" />
-              Filter
-            </Button>
-          </div>
-        </div>
+        <Select value={`${sortField}-${sortOrder}`} onValueChange={(value) => {
+          const [field, order] = value.split('-');
+          setSortField(field as SortField);
+          setSortOrder(order as SortOrder);
+        }}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="updated-desc">Latest First</SelectItem>
+            <SelectItem value="updated-asc">Oldest First</SelectItem>
+            <SelectItem value="name-asc">Name A-Z</SelectItem>
+            <SelectItem value="name-desc">Name Z-A</SelectItem>
+            {activeTab === "metrics" && (
+              <SelectItem value="category-asc">Category A-Z</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
-          {activeTab === "metrics" && (
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Card Title
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Owner
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Connections
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Tags
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Last Updated
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-card divide-y divide-border">
-                  {mockMetrics.map((metric) => (
-                    <tr key={metric.id} className="hover:bg-muted/50 cursor-pointer">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-card-foreground">{metric.title}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-muted-foreground">
-                          {metric.category} → {metric.subCategory}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {metric.owner}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {metric.connections}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex gap-1">
-                          {metric.tags.map((tag) => (
-                            <span key={tag} className="px-2 py-1 text-xs bg-secondary rounded">
-                              {tag}
+      {/* Content */}
+      <div className="space-y-4">
+        {activeTab === "metrics" && (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Metric
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Category
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Value
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Connections
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Updated
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredMetrics.map((metric) => (
+                      <tr key={metric.id} className="hover:bg-muted/25">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center">
+                              <BarChart3 className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-foreground">{metric.title}</div>
+                              <div className="text-sm text-muted-foreground">{metric.description}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant="outline">{metric.category}</Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium">
+                            {metric.currentValue ? `${metric.currentValue.value} ${metric.currentValue.unit || ''}` : 'No data'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {metric.currentValue ? `Target: ${metric.targetValue || 'Not set'}` : ''}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1">
+                            <Network className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm">
+                              {relationships.filter(r => r.sourceId === metric.id || r.targetId === metric.id).length}
                             </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {metric.lastUpdated}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(metric.updatedAt).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Metric
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          {activeTab === "relationships" && (
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Source → Target
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Confidence
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Weight
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Evidence
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-card divide-y divide-border">
-                  {mockRelationships.map((rel) => (
-                    <tr key={rel.id} className="hover:bg-muted/50 cursor-pointer">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-card-foreground">
-                          {rel.source} → {rel.target}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded">
-                          {rel.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded ${
-                          rel.confidence === "High" ? "bg-green-100 text-green-800" :
-                          rel.confidence === "Medium" ? "bg-yellow-100 text-yellow-800" :
-                          "bg-red-100 text-red-800"
-                        }`}>
-                          {rel.confidence}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {rel.weight}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {rel.evidenceCount} items
-                      </td>
+        {activeTab === "relationships" && (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Relationship
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Confidence
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Evidence
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Updated
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredRelationships.map((rel) => {
+                      const sourceNode = getNodeById(rel.sourceId);
+                      const targetNode = getNodeById(rel.targetId);
+                      return (
+                        <tr key={rel.id} className="hover:bg-muted/25">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-medium">
+                                {sourceNode?.title || 'Unknown'} 
+                              </div>
+                              <div className="text-muted-foreground">→</div>
+                              <div className="text-sm font-medium">
+                                {targetNode?.title || 'Unknown'}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Badge variant={
+                              rel.type === "Deterministic" ? "default" :
+                              rel.type === "Causal" ? "destructive" : 
+                              rel.type === "Probabilistic" ? "secondary" : "outline"
+                            }>
+                              {rel.type}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              {rel.confidence === "High" && <CheckCircle className="h-4 w-4 text-green-500" />}
+                              {rel.confidence === "Medium" && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
+                              {rel.confidence === "Low" && <Clock className="h-4 w-4 text-red-500" />}
+                              <span className="text-sm">{rel.confidence}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-1">
+                              <FileText className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm">{rel.evidence.length} items</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(rel.updatedAt).toLocaleDateString()}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Evidence
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Relationship
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          {activeTab === "repo" && (
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Title
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Owner
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Associated Item
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Link
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-card divide-y divide-border">
-                  {mockRepo.map((item) => (
-                    <tr key={item.id} className="hover:bg-muted/50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-card-foreground">{item.title}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
-                          {item.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {item.date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+        {activeTab === "repo" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredRepo.map((item) => (
+              <Card key={item.id} className="group hover:shadow-lg transition-all duration-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center">
+                        {item.type === "Template" && <FileText className="h-4 w-4 text-primary" />}
+                        {item.type === "Analysis" && <BarChart3 className="h-4 w-4 text-primary" />}
+                        {item.type === "Component" && <Network className="h-4 w-4 text-primary" />}
+                        {item.type === "Framework" && <Grid3X3 className="h-4 w-4 text-primary" />}
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">{item.title}</CardTitle>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline">{item.type}</Badge>
+                          {item.starred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
+                        </div>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Star className="mr-2 h-4 w-4" />
+                          {item.starred ? "Remove Star" : "Add Star"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <CardDescription className="text-sm">
+                      {item.description}
+                    </CardDescription>
+                    
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
                         {item.owner}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                        {item.associatedItem}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <a 
-                          href={item.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:text-primary/80 flex items-center gap-1"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          View
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(item.date).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Download className="h-3 w-3" />
+                        {item.downloads}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1">
+                      {item.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+
+                    <div className="pt-2 border-t">
+                      <div className="text-xs text-muted-foreground mb-1">Associated with:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {item.associatedItems.map((assoc) => (
+                          <Badge key={assoc} variant="outline" className="text-xs">
+                            {assoc}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

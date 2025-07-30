@@ -21,53 +21,66 @@ import {
   MetricCard,
   AddNodeButton,
   CardSettingsSheet,
+  CanvasControls,
+  NodeToolbar,
+  DynamicEdge,
+  RelationshipSheet,
 } from "@/components/canvas";
 
-// Convert MetricCard to ReactFlow Node with onOpenSettings callback
+// Convert MetricCard to ReactFlow Node with callbacks
 const convertToNode = (
   card: MetricCardType,
-  onOpenSettings: (cardId: string) => void
+  onOpenSettings: (cardId: string) => void,
+  onNodeClick: (cardId: string, position: { x: number; y: number }) => void,
+  selectedNodeIds: string[] = []
 ): Node => ({
   id: card.id,
   position: card.position,
   data: {
     card: card, // Store full card data for our custom component
-    onOpenSettings, // Pass the callback
+    onOpenSettings, // Pass the settings callback
+    onNodeClick, // Pass the click callback
   },
   type: "metricCard", // Use our custom node type
+  selected: selectedNodeIds.includes(card.id),
 });
 
-// Convert Relationship to ReactFlow Edge
-const convertToEdge = (relationship: Relationship): Edge => ({
+// Convert Relationship to ReactFlow Edge with DynamicEdge
+const convertToEdge = (
+  relationship: Relationship,
+  onOpenRelationshipSheet: (relationshipId: string) => void
+): Edge => ({
   id: relationship.id,
   source: relationship.sourceId,
   target: relationship.targetId,
-  type: "smoothstep",
-  data: { relationship }, // Store full relationship data
-  style: {
-    strokeWidth:
-      relationship.confidence === "High"
-        ? 3
-        : relationship.confidence === "Medium"
-          ? 2
-          : 1,
-    strokeDasharray:
-      relationship.confidence === "High"
-        ? "0"
-        : relationship.confidence === "Medium"
-          ? "5,5"
-          : "2,2",
+  type: "dynamicEdge",
+  data: {
+    relationship,
+    onOpenRelationshipSheet,
+  },
+  markerEnd: {
+    type: "arrowclosed",
+    color: "#64748b",
   },
 });
 
-// Define custom node types
+// Define custom node and edge types
 const nodeTypes = {
   metricCard: MetricCard,
+};
+
+const edgeTypes = {
+  dynamicEdge: DynamicEdge,
 };
 
 export default function CanvasPage() {
   const { canvasId } = useParams();
   const [settingsCardId, setSettingsCardId] = useState<string | undefined>();
+  const [toolbarNodeId, setToolbarNodeId] = useState<string | undefined>();
+  const [toolbarPosition, setToolbarPosition] = useState({ x: 0, y: 0 });
+  const [relationshipSheetId, setRelationshipSheetId] = useState<
+    string | undefined
+  >();
 
   // Zustand stores
   const {
@@ -75,6 +88,7 @@ export default function CanvasPage() {
     loadCanvas,
     updateNode,
     addEdge: addCanvasEdge,
+    selectedNodeIds,
   } = useCanvasStore();
   const { getProjectById } = useProjectsStore();
   const { currentCanvasId } = useAppStore();
@@ -84,16 +98,55 @@ export default function CanvasPage() {
     setSettingsCardId(cardId);
   }, []);
 
+  // Handle node click for toolbar
+  const handleNodeClick = useCallback(
+    (cardId: string, position: { x: number; y: number }) => {
+      setToolbarNodeId(cardId);
+      setToolbarPosition({
+        x: position.x + 160, // Center of MetricCard (width: 320px)
+        y: position.y,
+      });
+    },
+    []
+  );
+
+  // Handle opening relationship sheet
+  const handleOpenRelationshipSheet = useCallback((relationshipId: string) => {
+    setRelationshipSheetId(relationshipId);
+  }, []);
+
+  // Handle auto-layout from controls
+  const handleNodesChange = useCallback(
+    (newNodes: Node[]) => {
+      newNodes.forEach((node) => {
+        const card = canvas?.nodes.find((n) => n.id === node.id);
+        if (card && node.position) {
+          updateNode(node.id, { position: node.position });
+        }
+      });
+    },
+    [canvas?.nodes, updateNode]
+  );
+
   // Convert canvas data to ReactFlow format
   const nodes = useMemo(
     () =>
-      canvas?.nodes.map((card) => convertToNode(card, handleOpenSettings)) ||
-      [],
-    [canvas?.nodes, handleOpenSettings]
+      canvas?.nodes.map((card) =>
+        convertToNode(
+          card,
+          handleOpenSettings,
+          handleNodeClick,
+          selectedNodeIds
+        )
+      ) || [],
+    [canvas?.nodes, handleOpenSettings, handleNodeClick, selectedNodeIds]
   );
   const edges = useMemo(
-    () => canvas?.edges.map(convertToEdge) || [],
-    [canvas?.edges]
+    () =>
+      canvas?.edges.map((edge) =>
+        convertToEdge(edge, handleOpenRelationshipSheet)
+      ) || [],
+    [canvas?.edges, handleOpenRelationshipSheet]
   );
 
   // Load canvas when component mounts or canvasId changes
@@ -115,9 +168,22 @@ export default function CanvasPage() {
             updateNode(change.id, { position: change.position });
           }
         }
+        // Handle selection changes for toolbar
+        if (change.type === "select" && change.selected) {
+          const node = nodes.find((n) => n.id === change.id);
+          if (node) {
+            setToolbarNodeId(change.id);
+            setToolbarPosition({
+              x: node.position.x + 160, // Center of MetricCard (width: 320px)
+              y: node.position.y,
+            });
+          }
+        } else if (change.type === "select" && !change.selected) {
+          setToolbarNodeId(undefined);
+        }
       });
     },
-    [canvas, updateNode]
+    [canvas, updateNode, nodes]
   );
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
@@ -182,6 +248,7 @@ export default function CanvasPage() {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
@@ -194,6 +261,23 @@ export default function CanvasPage() {
             className="bg-card border border-border"
             maskColor="rgb(0, 0, 0, 0.1)"
           />
+
+          {/* Canvas Controls */}
+          <CanvasControls
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={handleNodesChange}
+          />
+
+          {/* Node Toolbar */}
+          {toolbarNodeId && (
+            <NodeToolbar
+              nodeId={toolbarNodeId}
+              position={toolbarPosition}
+              isVisible={!!toolbarNodeId}
+              onOpenSettings={handleOpenSettings}
+            />
+          )}
         </ReactFlow>
       </div>
 
@@ -202,6 +286,13 @@ export default function CanvasPage() {
         isOpen={!!settingsCardId}
         onClose={() => setSettingsCardId(undefined)}
         cardId={settingsCardId}
+      />
+
+      {/* Relationship Sheet */}
+      <RelationshipSheet
+        isOpen={!!relationshipSheetId}
+        onClose={() => setRelationshipSheetId(undefined)}
+        relationshipId={relationshipSheetId}
       />
     </div>
   );

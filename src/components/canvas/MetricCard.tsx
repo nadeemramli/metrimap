@@ -21,6 +21,7 @@ import type { MetricCard as MetricCardType, MetricValue } from "@/lib/types";
 interface MetricCardNodeData {
   card: MetricCardType;
   onOpenSettings?: (cardId: string) => void;
+  onNodeClick?: (cardId: string, position: { x: number; y: number }) => void;
 }
 
 // Category icons mapping
@@ -93,7 +94,7 @@ export default function MetricCard({
   data,
   selected,
 }: NodeProps<MetricCardNodeData>) {
-  const { card, onOpenSettings } = data;
+  const { card, onOpenSettings, onNodeClick } = data;
   const [isExpanded, setIsExpanded] = useState(true);
 
   const isDataMetric = card.category === "Data/Metric";
@@ -116,13 +117,21 @@ export default function MetricCard({
     console.log("Add tag to:", card.id);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onNodeClick) {
+      onNodeClick(card.id, card.position);
+    }
+  };
+
   return (
     <div
       className={cn(
-        "bg-card border-2 rounded-lg shadow-lg min-w-[280px] max-w-[320px]",
+        "bg-card border-2 rounded-lg shadow-lg min-w-[280px] max-w-[320px] cursor-pointer",
         selected ? "border-primary shadow-xl" : "border-border",
         categoryColor
       )}
+      onClick={handleCardClick}
     >
       {/* Handles for connections */}
       <Handle type="target" position={Position.Top} className="w-3 h-3" />

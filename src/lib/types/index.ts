@@ -104,6 +104,21 @@ export interface EvidenceItem {
   impactOnConfidence?: string;
 }
 
+export interface CanvasSettings {
+  dateRange?: {
+    from: string;
+    to: string;
+  };
+  autoLayout?: {
+    algorithm: "TB" | "BT" | "LR" | "RL";
+    enabled: boolean;
+  };
+  viewport?: {
+    zoom: number;
+    center: { x: number; y: number };
+  };
+}
+
 export interface CanvasProject {
   id: string;
   name: string;
@@ -115,6 +130,9 @@ export interface CanvasProject {
   nodes: MetricCard[];
   edges: Relationship[];
   groups: GroupNode[];
+  
+  // Canvas settings
+  settings?: CanvasSettings;
   
   // Metadata
   createdAt: string;

@@ -73,6 +73,7 @@ The tool is designed to help teams build coherent business models where:
 - **Database**: Supabase project already created and ready for schema development
 - **UI Components**: Shadcn UI components available - should be used creatively throughout the app
 - **Component Strategy**: Leverage Shadcn's flexibility for custom business-specific UI patterns
+- **CSS Configuration**: PostCSS and Tailwind config properly set up and working - do not modify
 
 ## User Preferences
 
@@ -80,6 +81,7 @@ The tool is designed to help teams build coherent business models where:
 - Utilize existing Supabase project with MCP integration
 - Creative use of Shadcn components for sophisticated business intelligence UI
 - Incremental development starting with Phase 1: Core Foundation & Architecture
+- **Component Strategy**: Check existing Shadcn components in src/components/ui/ before installing new ones
 
 ## Progress Completed
 
@@ -92,6 +94,7 @@ The tool is designed to help teams build coherent business models where:
 - ✅ **Project Structure**: Clean organization with pages/, components/layout/, lib/ directories
 - ✅ **Mock Data & UI**: Functional pages with realistic business intelligence interfaces
 - ✅ **Basic Tests**: Vitest setup with passing tests for pre-commit hooks
+- ✅ **CSS Configuration**: PostCSS and Tailwind properly configured and working
 - ✅ **Zustand State Management**: Complete store architecture implemented
   - `appStore`: Global app state, user preferences, current canvas
   - `canvasStore`: Canvas state, nodes, edges, groups, viewport management
@@ -116,4 +119,81 @@ The tool is designed to help teams build coherent business models where:
   - Full form management with real-time updates
   - Category-based sub-category selection
   - Dimensions and causal factors configuration
-- 🔄 **Next**: Canvas controls (zoom, pan, date range picker, auto-layout)
+- ✅ **Canvas Controls**: Full-featured canvas navigation and layout system
+  - Date range picker with calendar and quick presets (7d, 30d, 90d, 1y)
+  - Auto-layout algorithms (Top-Bottom, Bottom-Top, Left-Right, Right-Left)
+  - Dagre integration for hierarchical node positioning
+  - Zoom controls with presets (25%-200%) and fit-to-view
+  - Reset canvas and pan controls
+  - Responsive overlay design with backdrop blur
+  - Real-time filter indicators and settings persistence
+- ✅ **Node Toolbar**: Contextual action toolbar for metric cards
+  - Quick actions: Settings, Duplicate, Link Creation, Select/Deselect
+  - More actions dropdown: Quick View, Collapse/Expand, Delete
+  - Node info badge showing category and connection count
+  - Positioned above selected nodes with smooth transitions
+  - Click-based activation with visual feedback
+  - Integration with card settings and node management
+
+### Phase 2: Canvas & Metric Cards ✅ COMPLETE
+Phase 2 is now fully implemented with all core canvas functionality working together.
+
+### Phase 3: Relationship Management (IN PROGRESS)
+- ✅ **Dynamic Edge Components**: Advanced relationship visualization
+  - 4 relationship types with distinct icons and colors (Deterministic, Probabilistic, Causal, Compositional)
+  - Confidence level visual indicators (High/Medium/Low with different stroke styles)
+  - Interactive edge labels with type and confidence badges
+  - Evidence count display and quick actions (Edit, View, Delete)
+  - Hover and selection states with smooth transitions
+  - Popover action menu with contextual controls
+- ✅ **Relationship Sheet (Knowledge Hub)**: Comprehensive evidence management
+  - 4-tab interface: Details, Evidence, Analysis, Settings
+  - Relationship type selection with descriptions and workflows
+  - Confidence level configuration with visual feedback
+  - Relationship strength slider (0-100%)
+  - Evidence repository with multiple evidence types
+  - Evidence forms: title, type, date, owner, summary, links
+  - Evidence management (add, remove, view external links)
+  - Node context display (source → target)
+  - Metadata tracking and relationship analytics placeholder
+- ✅ **Relationship Type Workflows**: Specialized workflow templates for each relationship type
+  - **Deterministic**: Mathematical formula validation with constraints and input/output ranges
+  - **Probabilistic**: Statistical analysis with correlation coefficients, sample sizes, and p-values
+  - **Causal**: Experimental design validation with treatment/control groups and effect sizes
+  - **Compositional**: Hierarchy definition with aggregation rules and parent-child relationships
+  - Auto-validation and confidence suggestion based on workflow completion
+  - Type-specific evidence generation and validation checklists
+  - Confidence level guidelines and criteria mapping
+
+### Phase 3: Relationship Management ✅ COMPLETE
+Phase 3 is now fully implemented with comprehensive relationship modeling capabilities.
+
+## Development Strategy
+
+### Build-First, Optimize-Later Approach
+- **Decision**: Continue building complete feature set before optimization
+- **Rationale**: Strong foundation with clean architecture, TypeScript safety, and no technical debt
+- **Current Code Quality**: All tests passing, no linting errors, consistent patterns
+- **Architecture**: React Flow + Zustand + Shadcn scales well for remaining features
+- **Optimization Plan**: Focused sprint after Phase 4 completion
+
+### Development Path
+```
+✅ Phase 1: Core Foundation & Architecture  
+✅ Phase 2: Canvas & Metric Cards
+✅ Phase 3: Relationship Management
+🔄 Phase 4: Beyond Canvas Pages (Homepage, Sidebar, Dashboard, Assets, Source, Settings)
+🔄 Optimization Sprint (Performance, Testing, Supabase Integration)
+🔄 Phase 5: Advanced Features (Web Workers, Formula Engine, Correlations)
+```
+
+### Phase 4: Beyond Canvas Pages (IN PROGRESS)
+Focus on completing the application's navigation and page ecosystem to provide a complete user experience.
+
+#### Completed Features ✅
+- **Enhanced Homepage**: Advanced project gallery with tabs (All/Recent/Starred), search/filter, sorting, grid/list views, project management operations
+- **Professional Sidebar Navigation**: Icon-based navigation with tooltips, project context display, breadcrumbs, status indicators, enhanced UX
+- **Sophisticated Dashboard**: 4-tab interface (Overview/Metrics/Insights/Health), KPI cards with trends, AI-powered insights, system health monitoring, time range filtering
+
+#### Current Work 🔄
+- **Assets Page**: Building comprehensive asset management with 3 tabs (Metrics, Relationships, Repo) and table views

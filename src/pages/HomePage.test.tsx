@@ -13,7 +13,7 @@ describe("HomePage", () => {
 
     expect(screen.getByText("Metrimap")).toBeDefined();
     expect(
-      screen.getByText("Visual business architecture & metric mapping")
+      screen.getByText("Visual business architecture mapping")
     ).toBeDefined();
   });
 
