@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
   ReactFlow,
@@ -15,48 +15,118 @@ import {
   MiniMap,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { useCanvasStore, useProjectsStore, useAppStore } from "@/lib/stores";
+import type { MetricCard as MetricCardType, Relationship } from "@/lib/types";
+import { MetricCard, AddNodeButton, CardSettingsSheet } from "@/components/canvas";
 
-type NodeData = {
-  label: string;
+// Convert MetricCard to ReactFlow Node
+const convertToNode = (card: MetricCardType): Node => ({
+  id: card.id,
+  position: card.position,
+  data: {
+    card: card, // Store full card data for our custom component
+  },
+  type: "metricCard", // Use our custom node type
+});
+
+// Convert Relationship to ReactFlow Edge
+const convertToEdge = (relationship: Relationship): Edge => ({
+  id: relationship.id,
+  source: relationship.sourceId,
+  target: relationship.targetId,
+  type: "smoothstep",
+  data: { relationship }, // Store full relationship data
+  style: {
+    strokeWidth:
+      relationship.confidence === "High"
+        ? 3
+        : relationship.confidence === "Medium"
+          ? 2
+          : 1,
+    strokeDasharray:
+      relationship.confidence === "High"
+        ? "0"
+        : relationship.confidence === "Medium"
+          ? "5,5"
+          : "2,2",
+  },
+});
+
+// Define custom node types
+const nodeTypes = {
+  metricCard: MetricCard,
 };
-
-const initialNodes: Node<NodeData>[] = [
-  { id: "n1", position: { x: 100, y: 100 }, data: { label: "Revenue" } },
-  { id: "n2", position: { x: 300, y: 200 }, data: { label: "Customer Acquisition" } },
-  { id: "n3", position: { x: 500, y: 100 }, data: { label: "Ad Spend" } },
-];
-
-const initialEdges: Edge[] = [
-  { id: "n3-n2", source: "n3", target: "n2", type: "smoothstep" },
-  { id: "n2-n1", source: "n2", target: "n1", type: "smoothstep" },
-];
 
 export default function CanvasPage() {
   const { canvasId } = useParams();
-  const [nodes, setNodes] = useState<Node<NodeData>[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+
+  // Zustand stores
+  const {
+    canvas,
+    loadCanvas,
+    updateNode,
+    addEdge: addCanvasEdge,
+  } = useCanvasStore();
+  const { getProjectById } = useProjectsStore();
+  const { currentCanvasId } = useAppStore();
+
+  // Convert canvas data to ReactFlow format
+  const nodes = useMemo(
+    () => canvas?.nodes.map(convertToNode) || [],
+    [canvas?.nodes]
+  );
+  const edges = useMemo(
+    () => canvas?.edges.map(convertToEdge) || [],
+    [canvas?.edges]
+  );
+
+  // Load canvas when component mounts or canvasId changes
+  useEffect(() => {
+    if (canvasId) {
+      const project = getProjectById(canvasId);
+      if (project) {
+        loadCanvas(project);
+      }
+    }
+  }, [canvasId, getProjectById, loadCanvas]);
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) =>
-      setNodes(
-        (nodesSnapshot) =>
-          applyNodeChanges(changes, nodesSnapshot) as Node<NodeData>[]
-      ),
-    []
+    (changes: NodeChange[]) => {
+      changes.forEach((change) => {
+        if (change.type === "position" && change.position && canvas) {
+          const node = canvas.nodes.find((n) => n.id === change.id);
+          if (node) {
+            updateNode(change.id, { position: change.position });
+          }
+        }
+      });
+    },
+    [canvas, updateNode]
   );
 
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) =>
-      setEdges(
-        (edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot) as Edge[]
-      ),
-    []
-  );
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+    // Handle edge changes
+    // For now, we'll implement basic edge deletion
+    console.log("Edge changes:", changes);
+  }, []);
 
   const onConnect = useCallback(
-    (params: Connection) =>
-      setEdges((edgesSnapshot) => addEdge(params, edgesSnapshot)),
-    []
+    (params: Connection) => {
+      if (params.source && params.target) {
+        const newRelationship: Relationship = {
+          id: `${params.source}-${params.target}-${Date.now()}`,
+          sourceId: params.source,
+          targetId: params.target,
+          type: "Probabilistic", // Default type
+          confidence: "Low", // Default confidence
+          evidence: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        addCanvasEdge(newRelationship);
+      }
+    },
+    [addCanvasEdge]
   );
 
   return (
@@ -65,18 +135,28 @@ export default function CanvasPage() {
       <div className="h-14 border-b border-border bg-card px-6 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-card-foreground">
-            Canvas {canvasId}
+            {canvas?.name || `Canvas ${canvasId}`}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Visual business architecture workspace
+            {canvas?.description || "Visual business architecture workspace"}
           </p>
         </div>
-        
-        {/* Canvas Controls will go here */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            Auto-saved • {new Date().toLocaleTimeString()}
-          </span>
+
+        {/* Canvas Controls */}
+        <div className="flex items-center gap-4">
+          <AddNodeButton />
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {canvas?.nodes.length || 0} nodes • {canvas?.edges.length || 0}{" "}
+              edges
+            </span>
+            <span className="text-sm text-muted-foreground">
+              Auto-saved •{" "}
+              {canvas?.updatedAt
+                ? new Date(canvas.updatedAt).toLocaleTimeString()
+                : new Date().toLocaleTimeString()}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -85,6 +165,7 @@ export default function CanvasPage() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
@@ -93,7 +174,7 @@ export default function CanvasPage() {
         >
           <Background />
           <Controls className="bg-card border border-border" />
-          <MiniMap 
+          <MiniMap
             className="bg-card border border-border"
             maskColor="rgb(0, 0, 0, 0.1)"
           />

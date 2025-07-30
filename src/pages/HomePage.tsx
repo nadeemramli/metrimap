@@ -1,57 +1,55 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus, Search } from "lucide-react";
-
-interface CanvasProject {
-  id: string;
-  name: string;
-  description: string;
-  lastModified: string;
-  tags: string[];
-  collaborators: string[];
-}
-
-// Mock data for now - will be replaced with Supabase data
-const mockProjects: CanvasProject[] = [
-  {
-    id: "1",
-    name: "SaaSCo Q3 Growth Model",
-    description: "Customer acquisition and revenue optimization analysis",
-    lastModified: "2024-01-15",
-    tags: ["Marketing", "Finance", "In Progress"],
-    collaborators: ["JD", "SK", "AM"]
-  },
-  {
-    id: "2", 
-    name: "User Retention Analytics",
-    description: "Comprehensive user behavior and retention mapping",
-    lastModified: "2024-01-10",
-    tags: ["Product", "Analytics", "Complete"],
-    collaborators: ["AM", "RP"]
-  }
-];
+import { useProjectsStore, useAppStore } from "@/lib/stores";
+import type { CanvasProject } from "@/lib/types";
 
 export default function HomePage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  const filteredProjects = mockProjects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTags = selectedTags.length === 0 || 
-                       selectedTags.some(tag => project.tags.includes(tag));
-    return matchesSearch && matchesTags;
-  });
+  // Use Zustand stores
+  const { projects, addProject } = useProjectsStore();
+  const { setCurrentCanvas } = useAppStore();
+
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      const matchesSearch =
+        project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesTags =
+        selectedTags.length === 0 ||
+        selectedTags.some((tag) => project.tags.includes(tag));
+      return matchesSearch && matchesTags;
+    });
+  }, [projects, searchQuery, selectedTags]);
 
   const handleCreateCanvas = () => {
-    // Generate new canvas ID and navigate
+    // Create new canvas project
     const newId = Date.now().toString();
+    const newProject: CanvasProject = {
+      id: newId,
+      name: "New Canvas",
+      description: "New business model canvas",
+      tags: ["New"],
+      collaborators: [],
+      nodes: [],
+      edges: [],
+      groups: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastModifiedBy: "Current User", // TODO: Get from user store
+    };
+
+    addProject(newProject);
+    setCurrentCanvas(newId);
     navigate(`/canvas/${newId}`);
   };
 
   const handleOpenCanvas = (canvasId: string) => {
+    setCurrentCanvas(canvasId);
     navigate(`/canvas/${canvasId}`);
   };
 
@@ -61,7 +59,9 @@ export default function HomePage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Metrimap</h1>
+            <h1 className="text-4xl font-bold text-foreground mb-2">
+              Metrimap
+            </h1>
             <p className="text-lg text-muted-foreground">
               Visual business architecture & metric mapping
             </p>
@@ -123,7 +123,7 @@ export default function HomePage() {
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-2 border-t border-border">
                   <span className="text-xs text-muted-foreground">
-                    Modified {project.lastModified}
+                    Modified {new Date(project.updatedAt).toLocaleDateString()}
                   </span>
                   <div className="flex -space-x-1">
                     {project.collaborators.map((collaborator, index) => (
@@ -148,11 +148,15 @@ export default function HomePage() {
               No canvases found
             </h3>
             <p className="text-muted-foreground mb-6">
-              {searchQuery || selectedTags.length > 0 
-                ? "Try adjusting your search or filters" 
+              {searchQuery || selectedTags.length > 0
+                ? "Try adjusting your search or filters"
                 : "Create your first canvas to get started"}
             </p>
-            <Button onClick={handleCreateCanvas} variant="outline" className="gap-2">
+            <Button
+              onClick={handleCreateCanvas}
+              variant="outline"
+              className="gap-2"
+            >
               <Plus className="h-4 w-4" />
               Create Canvas
             </Button>
