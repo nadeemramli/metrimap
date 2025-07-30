@@ -108,4 +108,12 @@ The tool is designed to help teams build coherent business models where:
   - Custom React Flow node integration
 - ✅ **Add Node Functionality**: Dropdown menu for creating different card types
 - ✅ **Canvas Integration**: MetricCard components render live project data
-- 🔄 **Next**: Card Settings sheet with tabbed interface
+- ✅ **Card Settings Sheet**: Comprehensive 8-tab configuration panel
+  - Details tab with chart options and identification
+  - Data tab for spreadsheet-like data management
+  - Source tab with calculated/manual/random data options
+  - Events, Key Results, Correlations, Comments, Settings tabs
+  - Full form management with real-time updates
+  - Category-based sub-category selection
+  - Dimensions and causal factors configuration
+- 🔄 **Next**: Canvas controls (zoom, pan, date range picker, auto-layout)

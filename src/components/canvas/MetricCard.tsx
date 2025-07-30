@@ -20,6 +20,7 @@ import type { MetricCard as MetricCardType, MetricValue } from "@/lib/types";
 
 interface MetricCardNodeData {
   card: MetricCardType;
+  onOpenSettings?: (cardId: string) => void;
 }
 
 // Category icons mapping
@@ -88,16 +89,11 @@ const formatValue = (value: number): string => {
   return value.toLocaleString();
 };
 
-interface MetricCardProps extends NodeProps<MetricCardNodeData> {
-  onOpenSettings?: (cardId: string) => void;
-}
-
 export default function MetricCard({
   data,
   selected,
-  onOpenSettings,
-}: MetricCardProps) {
-  const { card } = data;
+}: NodeProps<MetricCardNodeData>) {
+  const { card, onOpenSettings } = data;
   const [isExpanded, setIsExpanded] = useState(true);
 
   const isDataMetric = card.category === "Data/Metric";

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   ReactFlow,
@@ -17,14 +17,22 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore, useProjectsStore, useAppStore } from "@/lib/stores";
 import type { MetricCard as MetricCardType, Relationship } from "@/lib/types";
-import { MetricCard, AddNodeButton, CardSettingsSheet } from "@/components/canvas";
+import {
+  MetricCard,
+  AddNodeButton,
+  CardSettingsSheet,
+} from "@/components/canvas";
 
-// Convert MetricCard to ReactFlow Node
-const convertToNode = (card: MetricCardType): Node => ({
+// Convert MetricCard to ReactFlow Node with onOpenSettings callback
+const convertToNode = (
+  card: MetricCardType,
+  onOpenSettings: (cardId: string) => void
+): Node => ({
   id: card.id,
   position: card.position,
   data: {
     card: card, // Store full card data for our custom component
+    onOpenSettings, // Pass the callback
   },
   type: "metricCard", // Use our custom node type
 });
@@ -59,6 +67,7 @@ const nodeTypes = {
 
 export default function CanvasPage() {
   const { canvasId } = useParams();
+  const [settingsCardId, setSettingsCardId] = useState<string | undefined>();
 
   // Zustand stores
   const {
@@ -70,10 +79,17 @@ export default function CanvasPage() {
   const { getProjectById } = useProjectsStore();
   const { currentCanvasId } = useAppStore();
 
+  // Handle opening settings sheet
+  const handleOpenSettings = useCallback((cardId: string) => {
+    setSettingsCardId(cardId);
+  }, []);
+
   // Convert canvas data to ReactFlow format
   const nodes = useMemo(
-    () => canvas?.nodes.map(convertToNode) || [],
-    [canvas?.nodes]
+    () =>
+      canvas?.nodes.map((card) => convertToNode(card, handleOpenSettings)) ||
+      [],
+    [canvas?.nodes, handleOpenSettings]
   );
   const edges = useMemo(
     () => canvas?.edges.map(convertToEdge) || [],
@@ -180,6 +196,13 @@ export default function CanvasPage() {
           />
         </ReactFlow>
       </div>
+
+      {/* Card Settings Sheet */}
+      <CardSettingsSheet
+        isOpen={!!settingsCardId}
+        onClose={() => setSettingsCardId(undefined)}
+        cardId={settingsCardId}
+      />
     </div>
   );
 }
