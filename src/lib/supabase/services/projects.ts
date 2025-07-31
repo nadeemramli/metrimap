@@ -10,9 +10,10 @@ export type MetricCard = Tables<'metric_cards'>;
 export type Relationship = Tables<'relationships'>;
 export type Group = Tables<'groups'>;
 
-// Fetch all projects for a user
+// Fetch all projects for a user (fixed to eliminate RLS circular dependencies)
 export async function getUserProjects(userId: string) {
-  const { data, error } = await supabase
+  // Step 1: Get projects owned by user (RLS handles this)
+  const { data: ownedProjects, error: ownedError } = await supabase
     .from('projects')
     .select(`
       *,
@@ -22,15 +23,59 @@ export async function getUserProjects(userId: string) {
         users(id, name, email, avatar_url)
       )
     `)
-    .or('created_by.eq.' + userId + ',project_collaborators.user_id.eq.' + userId)
+    .eq('created_by', userId)
     .order('updated_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching user projects:', error);
-    throw error;
+  if (ownedError) {
+    console.error('Error fetching owned projects:', ownedError);
+    throw ownedError;
   }
 
-  return data;
+  // Step 2: Get project IDs where user is a collaborator
+  const { data: collaborations, error: collabError } = await supabase
+    .from('project_collaborators')
+    .select('project_id')
+    .eq('user_id', userId);
+
+  if (collabError) {
+    console.error('Error fetching collaborations:', collabError);
+    throw collabError;
+  }
+
+  // Step 3: Get collaborated projects (if any)
+  let collaboratedProjects: any[] = [];
+  if (collaborations && collaborations.length > 0) {
+    const projectIds = collaborations.map(c => c.project_id).filter(id => id !== null);
+    
+    if (projectIds.length > 0) {
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          project_collaborators(
+            role,
+            permissions,
+            users(id, name, email, avatar_url)
+          )
+        `)
+        .in('id', projectIds)
+        .neq('created_by', userId) // Avoid duplicates with owned projects
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching collaborated projects:', error);
+        throw error;
+      }
+
+      collaboratedProjects = data || [];
+    }
+  }
+
+  // Step 4: Combine and sort all projects
+  const allProjects = [...(ownedProjects || []), ...collaboratedProjects]
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+  return allProjects;
 }
 
 // Fetch a single project with all its data

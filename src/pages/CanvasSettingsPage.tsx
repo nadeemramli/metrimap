@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -160,23 +160,40 @@ const generateTeamMembers = () => [
 export default function CanvasSettingsPage() {
   const { canvasId } = useParams();
   const navigate = useNavigate();
-  const { getProjectById, updateProject, deleteProject } = useProjectsStore();
+  const { projects, updateProject, deleteProject } = useProjectsStore();
 
   const [activeTab, setActiveTab] = useState<TabType>("general");
   const [searchQuery, setSearchQuery] = useState("");
   const [changelogFilter, setChangelogFilter] = useState("all");
 
-  const project = canvasId ? getProjectById(canvasId) : null;
+  const [loading, setLoading] = useState(true);
+
+  // Find project from store instead of calling async function
+  const currentProject = canvasId
+    ? projects.find((p) => p.id === canvasId)
+    : null;
+
   const changelog = generateChangelog();
   const teamMembers = generateTeamMembers();
 
-  const [canvasName, setCanvasName] = useState(project?.name || "");
-  const [canvasDescription, setCanvasDescription] = useState(
-    project?.description || ""
-  );
-  const [canvasLabels, setCanvasLabels] = useState(
-    project?.tags.join(", ") || ""
-  );
+  const [canvasName, setCanvasName] = useState("");
+  const [canvasDescription, setCanvasDescription] = useState("");
+  const [canvasLabels, setCanvasLabels] = useState("");
+
+  // Load project data when available
+  useEffect(() => {
+    if (currentProject) {
+      setCanvasName(currentProject.name || "");
+      setCanvasDescription(currentProject.description || "");
+      setCanvasLabels(currentProject.tags?.join(", ") || "");
+      setLoading(false);
+    } else if (canvasId) {
+      // If we have an ID but no project, it might still be loading
+      setLoading(true);
+    } else {
+      setLoading(false);
+    }
+  }, [currentProject, canvasId]);
 
   // Filter data based on search and filters
   const filteredChangelog = useMemo(() => {
@@ -192,17 +209,21 @@ export default function CanvasSettingsPage() {
   }, [changelog, searchQuery, changelogFilter]);
 
   const filteredMetrics = useMemo(() => {
-    if (!project) return [];
-    return project.nodes.filter(
+    if (!currentProject) return [];
+    return currentProject.nodes.filter(
       (node) =>
         node.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         node.category.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [project, searchQuery]);
+  }, [currentProject, searchQuery]);
 
   const tabs = [
     { id: "general" as const, label: "General", count: null },
-    { id: "data" as const, label: "Data", count: project?.nodes.length || 0 },
+    {
+      id: "data" as const,
+      label: "Data",
+      count: currentProject?.nodes.length || 0,
+    },
     { id: "team" as const, label: "Team", count: teamMembers.length },
     {
       id: "changelog" as const,
@@ -212,7 +233,7 @@ export default function CanvasSettingsPage() {
     { id: "settings" as const, label: "Settings", count: null },
   ];
 
-  const getActionIcon = (action: string, severity: string = "info") => {
+  const getActionIcon = (action: string) => {
     const baseClasses = "w-8 h-8 rounded-full flex items-center justify-center";
     switch (action) {
       case "created":
@@ -261,23 +282,25 @@ export default function CanvasSettingsPage() {
   };
 
   const handleSave = async () => {
-    if (!project) return;
+    if (!currentProject) return;
 
+    // Only include database-valid fields for the projects table
     const updatedProject = {
-      ...project,
       name: canvasName,
       description: canvasDescription,
       tags: canvasLabels
         .split(",")
         .map((tag) => tag.trim())
         .filter(Boolean),
-      updatedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      last_modified_by: currentProject.lastModifiedBy, // Ensure we have a valid user ID
     };
 
     try {
-      await updateProject(project.id, updatedProject);
+      await updateProject(currentProject.id, updatedProject);
       // Show success message or handle success
       console.log("Canvas updated successfully");
+      alert("Canvas updated successfully!");
     } catch (error) {
       console.error("Failed to update canvas:", error);
       alert("Failed to update canvas. Please try again.");
@@ -285,7 +308,7 @@ export default function CanvasSettingsPage() {
   };
 
   const handleDeleteCanvas = async () => {
-    if (!project) return;
+    if (!currentProject) return;
 
     if (
       confirm(
@@ -293,7 +316,7 @@ export default function CanvasSettingsPage() {
       )
     ) {
       try {
-        await deleteProject(project.id);
+        await deleteProject(currentProject.id);
         // Navigate back to home after successful deletion
         navigate("/");
       } catch (error) {
@@ -314,7 +337,19 @@ export default function CanvasSettingsPage() {
     return `${days}d ago`;
   };
 
-  if (!project) {
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-muted-foreground">
+            Loading canvas...
+          </h3>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentProject) {
     return (
       <div className="p-6">
         <div className="text-center">
@@ -360,9 +395,11 @@ export default function CanvasSettingsPage() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{project.nodes.length}</div>
+            <div className="text-2xl font-bold">
+              {currentProject.nodes.length}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Across {new Set(project.nodes.map((n) => n.category)).size}{" "}
+              Across {new Set(currentProject.nodes.map((n) => n.category)).size}{" "}
               categories
             </p>
           </CardContent>
@@ -374,10 +411,15 @@ export default function CanvasSettingsPage() {
             <Network className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{project.edges.length}</div>
+            <div className="text-2xl font-bold">
+              {currentProject.edges.length}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {project.edges.filter((e) => e.confidence === "High").length} high
-              confidence
+              {
+                currentProject.edges.filter((e) => e.confidence === "High")
+                  .length
+              }{" "}
+              high confidence
             </p>
           </CardContent>
         </Card>
@@ -406,10 +448,10 @@ export default function CanvasSettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {getTimeAgo(project.updatedAt)}
+              {getTimeAgo(currentProject.updatedAt)}
             </div>
             <p className="text-xs text-muted-foreground">
-              By {project.lastModifiedBy}
+              By {currentProject.lastModifiedBy}
             </p>
           </CardContent>
         </Card>
@@ -525,7 +567,7 @@ export default function CanvasSettingsPage() {
                       Created
                     </label>
                     <div className="text-sm text-muted-foreground">
-                      {new Date(project.createdAt).toLocaleDateString()}
+                      {new Date(currentProject.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   <div>
@@ -533,7 +575,7 @@ export default function CanvasSettingsPage() {
                       Last Modified
                     </label>
                     <div className="text-sm text-muted-foreground">
-                      {getTimeAgo(project.updatedAt)}
+                      {getTimeAgo(currentProject.updatedAt)}
                     </div>
                   </div>
                 </div>
@@ -541,7 +583,7 @@ export default function CanvasSettingsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-2">Tags</label>
                   <div className="flex flex-wrap gap-2">
-                    {project.tags.map((tag) => (
+                    {currentProject.tags.map((tag) => (
                       <Badge key={tag} variant="secondary">
                         {tag}
                       </Badge>
@@ -757,7 +799,7 @@ export default function CanvasSettingsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
-                      {getActionIcon(entry.action, entry.severity)}
+                      {getActionIcon(entry.action)}
                     </div>
 
                     <div className="flex-1 min-w-0">
