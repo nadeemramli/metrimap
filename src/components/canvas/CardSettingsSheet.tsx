@@ -123,7 +123,13 @@ export default function CardSettingsSheet({
   onClose,
   cardId,
 }: CardSettingsSheetProps) {
-  const { getNodeById, updateNode, deleteNode } = useCanvasStore();
+  const {
+    getNodeById,
+    updateNode,
+    deleteNode,
+    persistNodeUpdate,
+    persistNodeDelete,
+  } = useCanvasStore();
   const card = cardId ? getNodeById(cardId) : null;
 
   const [activeTab, setActiveTab] = useState("details");
@@ -169,18 +175,23 @@ export default function CardSettingsSheet({
     handleFieldChange("dimensions", updated);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (card && cardId) {
-      updateNode(cardId, {
-        ...formData,
-        updatedAt: new Date().toISOString(),
-      });
-      setIsModified(false);
-      onClose();
+      try {
+        await persistNodeUpdate(cardId, {
+          ...formData,
+          updatedAt: new Date().toISOString(),
+        });
+        setIsModified(false);
+        onClose();
+      } catch (error) {
+        console.error("Failed to save card:", error);
+        alert("Failed to save card. Please try again.");
+      }
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (
       card &&
       cardId &&
@@ -188,8 +199,13 @@ export default function CardSettingsSheet({
         "Are you sure you want to delete this card? This action cannot be undone."
       )
     ) {
-      deleteNode(cardId);
-      onClose();
+      try {
+        await persistNodeDelete(cardId);
+        onClose();
+      } catch (error) {
+        console.error("Failed to delete card:", error);
+        alert("Failed to delete card. Please try again.");
+      }
     }
   };
 
@@ -199,7 +215,7 @@ export default function CardSettingsSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[600px] sm:max-w-[600px] overflow-y-auto">
+      <SheetContent className="w-[600px] sm:max-w-[600px] overflow-y-auto bg-background border-border z-[100]">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />

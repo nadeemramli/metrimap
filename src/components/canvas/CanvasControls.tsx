@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { addDays, format } from "date-fns";
 import dagre from "dagre";
 import {
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useReactFlow, Node, Edge } from "@xyflow/react";
 import { useCanvasStore } from "@/lib/stores";
@@ -79,10 +80,15 @@ export default function CanvasControls({
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   // Layout state
-  const [layoutDirection, setLayoutDirection] = useState<string>("TB");
+  const [layoutDirection, setLayoutDirection] = useState<string>(
+    canvas?.settings?.autoLayout?.algorithm || "TB"
+  );
   const [isApplyingLayout, setIsApplyingLayout] = useState(false);
+  const [autoLayoutEnabled, setAutoLayoutEnabled] = useState(
+    canvas?.settings?.autoLayout?.enabled || false
+  );
 
-  // Auto-layout function using Dagre
+  // Auto-layout function using Dagre (define before useEffect hooks that use it)
   const applyAutoLayout = useCallback(
     async (direction: string = layoutDirection) => {
       if (!nodes.length) return;
@@ -137,6 +143,57 @@ export default function CanvasControls({
       }, 100);
     },
     [nodes, edges, onNodesChange, fitView, layoutDirection]
+  );
+
+  // Initialize settings from canvas when available
+  useEffect(() => {
+    if (canvas?.settings?.autoLayout) {
+      setLayoutDirection(canvas.settings.autoLayout.algorithm || "TB");
+      setAutoLayoutEnabled(canvas.settings.autoLayout.enabled || false);
+    }
+  }, [canvas?.settings?.autoLayout]);
+
+  // Auto-apply layout when nodes change and auto-layout is enabled
+  useEffect(() => {
+    if (autoLayoutEnabled && nodes.length > 0 && !isApplyingLayout) {
+      const timeoutId = setTimeout(() => {
+        applyAutoLayout();
+      }, 500); // Debounce to avoid too frequent auto-layouts
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [nodes.length, autoLayoutEnabled, applyAutoLayout, isApplyingLayout]);
+
+  // Save auto-layout settings when they change
+  const handleLayoutDirectionChange = useCallback(
+    (direction: string) => {
+      setLayoutDirection(direction);
+      updateCanvasSettings({
+        autoLayout: {
+          algorithm: direction as "TB" | "BT" | "LR" | "RL",
+          enabled: autoLayoutEnabled,
+        },
+      });
+    },
+    [autoLayoutEnabled, updateCanvasSettings]
+  );
+
+  const handleAutoLayoutToggle = useCallback(
+    (enabled: boolean) => {
+      setAutoLayoutEnabled(enabled);
+      updateCanvasSettings({
+        autoLayout: {
+          algorithm: layoutDirection as "TB" | "BT" | "LR" | "RL",
+          enabled,
+        },
+      });
+
+      // If enabling auto-layout, apply it immediately
+      if (enabled && nodes.length > 0) {
+        applyAutoLayout();
+      }
+    },
+    [layoutDirection, nodes.length, applyAutoLayout, updateCanvasSettings]
   );
 
   // Date range formatting
@@ -281,9 +338,18 @@ export default function CanvasControls({
           {/* Layout Controls */}
           <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg">
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <Switch
+                  checked={autoLayoutEnabled}
+                  onCheckedChange={handleAutoLayoutToggle}
+                  className="scale-75"
+                />
+                <span className="text-xs text-muted-foreground">Auto</span>
+              </div>
+
               <Select
                 value={layoutDirection}
-                onValueChange={setLayoutDirection}
+                onValueChange={handleLayoutDirectionChange}
               >
                 <SelectTrigger className="h-8 w-[140px] text-xs">
                   <LayoutGrid className="mr-1 h-3 w-3" />
@@ -305,7 +371,7 @@ export default function CanvasControls({
                 disabled={isApplyingLayout || nodes.length === 0}
                 className="text-xs"
               >
-                {isApplyingLayout ? "Applying..." : "Auto Layout"}
+                {isApplyingLayout ? "Applying..." : "Apply Layout"}
               </Button>
             </div>
           </div>

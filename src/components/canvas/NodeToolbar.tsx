@@ -42,6 +42,7 @@ export default function NodeToolbar({
     getNodeById,
     duplicateNode,
     deleteNode,
+    persistNodeDelete,
     getConnectedNodes,
     selectedNodeIds,
     selectNode,
@@ -57,15 +58,20 @@ export default function NodeToolbar({
     duplicateNode(nodeId);
   }, [nodeId, duplicateNode]);
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (
       confirm(
         "Are you sure you want to delete this card? This action cannot be undone."
       )
     ) {
-      deleteNode(nodeId);
+      try {
+        await persistNodeDelete(nodeId);
+      } catch (error) {
+        console.error("Failed to delete node:", error);
+        alert("Failed to delete card. Please try again.");
+      }
     }
-  }, [nodeId, deleteNode]);
+  }, [nodeId, persistNodeDelete]);
 
   const handleSettings = useCallback(() => {
     onOpenSettings(nodeId);

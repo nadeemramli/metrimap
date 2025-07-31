@@ -55,11 +55,10 @@ const categoryTemplates: Array<{
 ];
 
 export default function AddNodeButton({ position }: AddNodeButtonProps) {
-  const { addNode } = useCanvasStore();
+  const { addNode, createNode } = useCanvasStore();
 
-  const handleAddNode = (category: CardCategory) => {
-    const newNode: MetricCard = {
-      id: `node_${Date.now()}`,
+  const handleAddNode = async (category: CardCategory) => {
+    const newNodeData = {
       title: `New ${category.split("/")[1] || category}`,
       description: `A new ${category.toLowerCase()} card`,
       category,
@@ -68,13 +67,12 @@ export default function AddNodeButton({ position }: AddNodeButtonProps) {
       dimensions: [],
       position: position || { x: Math.random() * 400, y: Math.random() * 400 },
       assignees: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
     // Add sample data for Data/Metric cards
+    let nodeWithData = { ...newNodeData };
     if (category === "Data/Metric") {
-      newNode.data = [
+      nodeWithData.data = [
         {
           period: "Past 7 days",
           value: Math.floor(Math.random() * 10000) + 1000,
@@ -96,7 +94,12 @@ export default function AddNodeButton({ position }: AddNodeButtonProps) {
       ];
     }
 
-    addNode(newNode);
+    try {
+      await createNode(nodeWithData);
+    } catch (error) {
+      console.error("Failed to create node:", error);
+      alert("Failed to create card. Please try again.");
+    }
   };
 
   return (

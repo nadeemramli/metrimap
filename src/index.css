@@ -158,3 +158,55 @@
 .text-gray-900 {
   color: rgb(17 24 39);
 }
+
+/* Fix for transparency issues with sheets and dialogs over ReactFlow canvas */
+/* Ensure proper z-index and backdrop styling */
+[data-sonner-toaster] {
+  z-index: 9999 !important;
+}
+
+/* Sheet component fixes */
+[data-radix-portal] > [data-sonner-toast] {
+  z-index: 9999 !important;
+}
+
+/* Dialog and Sheet overlays */
+[data-radix-portal] [data-state="open"][data-side] {
+  z-index: 100 !important;
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  opacity: 1 !important;
+}
+
+/* Sheet content specific fixes */
+[data-radix-portal] [role="dialog"] {
+  z-index: 100 !important;
+  background: hsl(var(--background)) !important;
+  opacity: 1 !important;
+}
+
+/* Backdrop overlay fixes */
+[data-radix-portal] [data-state="open"][role="presentation"] {
+  z-index: 99 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Ensure ReactFlow canvas doesn't interfere */
+.react-flow {
+  z-index: 1 !important;
+}
+
+.react-flow__node {
+  z-index: 2 !important;
+}
+
+.react-flow__edge {
+  z-index: 1 !important;
+}
+
+/* Custom React Flow styles */
+.react-flow__node-metric {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}

@@ -325,7 +325,7 @@ export default function BulkOperationsToolbar({
 
       {/* Bulk Update Dialog */}
       <Dialog open={showUpdateDialog} onOpenChange={setShowUpdateDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] bg-background border-border z-[100]">
           <DialogHeader>
             <DialogTitle>Bulk Update</DialogTitle>
             <DialogDescription>
@@ -513,7 +513,7 @@ export default function BulkOperationsToolbar({
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent>
+        <DialogContent className="bg-background border-border z-[100]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />

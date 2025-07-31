@@ -131,7 +131,14 @@ export default function RelationshipSheet({
   onClose,
   relationshipId,
 }: RelationshipSheetProps) {
-  const { getEdgeById, updateEdge, deleteEdge, getNodeById } = useCanvasStore();
+  const {
+    getEdgeById,
+    updateEdge,
+    deleteEdge,
+    persistEdgeUpdate,
+    persistEdgeDelete,
+    getNodeById,
+  } = useCanvasStore();
   const relationship = relationshipId ? getEdgeById(relationshipId) : null;
 
   const [activeTab, setActiveTab] = useState("details");
@@ -202,18 +209,24 @@ export default function RelationshipSheet({
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (relationship && relationshipId) {
-      updateEdge(relationshipId, {
-        ...formData,
-        updatedAt: new Date().toISOString(),
-      });
-      setIsModified(false);
-      onClose();
+      try {
+        await persistEdgeUpdate(relationshipId, {
+          ...formData,
+          updatedAt: new Date().toISOString(),
+        });
+        setIsModified(false);
+        onClose();
+      } catch (error) {
+        console.error("Failed to save relationship:", error);
+        // Show error to user - you might want to add toast notification here
+        alert("Failed to save relationship. Please try again.");
+      }
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (
       relationship &&
       relationshipId &&
@@ -221,8 +234,13 @@ export default function RelationshipSheet({
         "Are you sure you want to delete this relationship? This action cannot be undone."
       )
     ) {
-      deleteEdge(relationshipId);
-      onClose();
+      try {
+        await persistEdgeDelete(relationshipId);
+        onClose();
+      } catch (error) {
+        console.error("Failed to delete relationship:", error);
+        alert("Failed to delete relationship. Please try again.");
+      }
     }
   };
 
@@ -239,7 +257,7 @@ export default function RelationshipSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[700px] sm:max-w-[700px] overflow-y-auto">
+      <SheetContent className="w-[700px] sm:max-w-[700px] overflow-y-auto bg-background border-border z-[100]">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Network className="h-5 w-5" />

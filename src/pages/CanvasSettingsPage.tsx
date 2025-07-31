@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -164,6 +164,7 @@ const generateTeamMembers = () => [
 
 export default function CanvasSettingsPage() {
   const { canvasId } = useParams();
+  const navigate = useNavigate();
   const { canvas } = useCanvasStore();
   const { getProjectById, updateProject, deleteProject } = useProjectsStore();
 
@@ -265,7 +266,7 @@ export default function CanvasSettingsPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!project) return;
 
     const updatedProject = {
@@ -279,10 +280,17 @@ export default function CanvasSettingsPage() {
       updatedAt: new Date().toISOString(),
     };
 
-    updateProject(project.id, updatedProject);
+    try {
+      await updateProject(project.id, updatedProject);
+      // Show success message or handle success
+      console.log("Canvas updated successfully");
+    } catch (error) {
+      console.error("Failed to update canvas:", error);
+      alert("Failed to update canvas. Please try again.");
+    }
   };
 
-  const handleDeleteCanvas = () => {
+  const handleDeleteCanvas = async () => {
     if (!project) return;
 
     if (
@@ -290,8 +298,14 @@ export default function CanvasSettingsPage() {
         "Are you sure you want to delete this canvas? This action cannot be undone."
       )
     ) {
-      deleteProject(project.id);
-      // TODO: Navigate back to home
+      try {
+        await deleteProject(project.id);
+        // Navigate back to home after successful deletion
+        navigate("/");
+      } catch (error) {
+        console.error("Failed to delete canvas:", error);
+        alert("Failed to delete canvas. Please try again.");
+      }
     }
   };
 
