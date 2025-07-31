@@ -107,6 +107,82 @@ class WorkerManager {
     }
   }
 
+  private async fallbackCalculateCorrelationAnalysis(data1: number[], data2: number[]): Promise<{
+    correlation: number;
+    pValue: number;
+    confidenceInterval: [number, number];
+    sampleSize: number;
+    isSignificant: boolean;
+    effectSize: 'small' | 'medium' | 'large';
+    powerAnalysis: {
+      power: number;
+      requiredSampleSize: number;
+    };
+  }> {
+    if (data1.length !== data2.length || data1.length < 3) {
+      throw new Error('Data arrays must have the same length and at least 3 points');
+    }
+
+    const n = data1.length;
+    const correlation = ss.sampleCorrelation(data1, data2);
+    
+    // Simplified fallback calculations
+    const tStat = correlation * Math.sqrt((n - 2) / (1 - correlation * correlation));
+    
+    // Simple p-value approximation
+    const absT = Math.abs(tStat);
+    let pValue = 0.2;
+    if (absT > 3.5) pValue = 0.0001;
+    else if (absT > 2.58) pValue = 0.01;
+    else if (absT > 1.96) pValue = 0.05;
+    else if (absT > 1.645) pValue = 0.1;
+    
+    // Confidence interval using Fisher transformation
+    const fisherZ = 0.5 * Math.log((1 + correlation) / (1 - correlation));
+    const se = 1 / Math.sqrt(n - 3);
+    const zCritical = 1.96;
+    
+    const lowerZ = fisherZ - zCritical * se;
+    const upperZ = fisherZ + zCritical * se;
+    
+    const lowerCI = (Math.exp(2 * lowerZ) - 1) / (Math.exp(2 * lowerZ) + 1);
+    const upperCI = (Math.exp(2 * upperZ) - 1) / (Math.exp(2 * upperZ) + 1);
+    
+    // Effect size
+    const absCorr = Math.abs(correlation);
+    let effectSize: 'small' | 'medium' | 'large';
+    if (absCorr < 0.3) effectSize = 'small';
+    else if (absCorr < 0.5) effectSize = 'medium';
+    else effectSize = 'large';
+    
+    // Power analysis (simplified)
+    const effectSizeForPower = Math.abs(correlation);
+    const z = Math.sqrt(n - 3) * 0.5 * Math.log((1 + effectSizeForPower) / (1 - effectSizeForPower));
+    let power = 0.2;
+    if (z > 2.8) power = 0.95;
+    else if (z > 2.3) power = 0.8;
+    else if (z > 1.96) power = 0.5;
+    
+    let requiredSampleSize = 100;
+    if (effectSizeForPower < 0.1) requiredSampleSize = 500;
+    else if (effectSizeForPower < 0.3) requiredSampleSize = 100;
+    else if (effectSizeForPower < 0.5) requiredSampleSize = 30;
+    else requiredSampleSize = 15;
+    
+    return {
+      correlation,
+      pValue,
+      confidenceInterval: [lowerCI, upperCI],
+      sampleSize: n,
+      isSignificant: pValue < 0.05,
+      effectSize,
+      powerAnalysis: {
+        power,
+        requiredSampleSize
+      }
+    };
+  }
+
   private async fallbackCalculateStatistics(data: number[]): Promise<{
     mean: number;
     median: number;
@@ -156,6 +232,26 @@ class WorkerManager {
       return this.fallbackCalculateCorrelation(data1, data2);
     }
     return this.computeApi.calculateCorrelation(data1, data2);
+  }
+
+  async calculateCorrelationAnalysis(data1: number[], data2: number[]): Promise<{
+    correlation: number;
+    pValue: number;
+    confidenceInterval: [number, number];
+    sampleSize: number;
+    isSignificant: boolean;
+    effectSize: 'small' | 'medium' | 'large';
+    powerAnalysis: {
+      power: number;
+      requiredSampleSize: number;
+    };
+  }> {
+    await this.ensureInitialized();
+    if (!this.computeApi) {
+      // Fallback to main thread - simplified implementation
+      return this.fallbackCalculateCorrelationAnalysis(data1, data2);
+    }
+    return this.computeApi.calculateCorrelationAnalysis(data1, data2);
   }
 
   async calculateRegression(data: Array<[number, number]>): Promise<{ slope: number; intercept: number; r2: number }> {
@@ -312,6 +408,10 @@ export const validateFormula = async (formula: string): Promise<{ valid: boolean
 
 export const computeCorrelation = async (data1: number[], data2: number[]): Promise<number> => {
   return workerManager.calculateCorrelation(data1, data2);
+};
+
+export const analyzeCorrelation = async (data1: number[], data2: number[]) => {
+  return workerManager.calculateCorrelationAnalysis(data1, data2);
 };
 
 export const computeStatistics = async (data: number[]) => {

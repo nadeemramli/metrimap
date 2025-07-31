@@ -60,6 +60,7 @@ export interface MetricCard {
   tags: string[];
   causalFactors: CausalFactor[];
   dimensions: Dimension[];
+  segments?: Segment[];
   
   // Position on canvas
   position: { x: number; y: number };
@@ -76,6 +77,25 @@ export interface MetricCard {
   updatedAt: string;
 }
 
+export interface Segment {
+  id: string;
+  name: string;
+  dimension: string;
+  value: string;
+  percentage?: number;
+  filters?: SegmentFilter[];
+  color?: string;
+  isActive: boolean;
+  description?: string;
+  createdAt: string;
+}
+
+export interface SegmentFilter {
+  field: string;
+  operator: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'between';
+  value: string | number | [number, number];
+}
+
 export interface Relationship {
   id: string;
   sourceId: string;
@@ -87,9 +107,23 @@ export interface Relationship {
   // Evidence and knowledge
   evidence: EvidenceItem[];
   
+  // History for influence drift analysis
+  history?: RelationshipHistoryEntry[];
+  
   // Metadata
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RelationshipHistoryEntry {
+  id: string;
+  timestamp: string;
+  changeType: "strength" | "confidence" | "type" | "evidence";
+  oldValue: any;
+  newValue: any;
+  description: string;
+  userId?: string;
+  annotation?: string; // User can add context for the change
 }
 
 export interface EvidenceItem {
@@ -102,6 +136,10 @@ export interface EvidenceItem {
   hypothesis?: string;
   summary: string;
   impactOnConfidence?: string;
+  createdAt?: string;
+  createdBy?: string;
+  tags?: string[];
+  category?: string;
 }
 
 export interface CanvasSettings {

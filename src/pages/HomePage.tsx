@@ -25,6 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import {
   Plus,
   Search,
@@ -45,12 +47,62 @@ import {
   SortAsc,
   SortDesc,
   Folder,
+  FileText,
+  User,
+  LogOut,
 } from "lucide-react";
 import { useProjectsStore, useAppStore } from "@/lib/stores";
 import type { CanvasProject } from "@/lib/types";
 
 type SortOption = "name" | "updated" | "created" | "nodes" | "edges";
 type ViewMode = "grid" | "list";
+
+// User Menu Component
+function UserMenu() {
+  const { user, signOut } = useAppStore();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth/login");
+  };
+
+  if (!user) return null;
+
+  const initials = user.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <div className="flex items-center justify-start gap-2 p-2">
+          <div className="flex flex-col space-y-1 leading-none">
+            <p className="font-medium">{user.name}</p>
+            <p className="w-[200px] truncate text-sm text-muted-foreground">
+              {user.email}
+            </p>
+          </div>
+        </div>
+        <Separator />
+        <DropdownMenuItem onClick={handleSignOut}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -335,10 +387,21 @@ export default function HomePage() {
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/evidence")}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Evidence Repository
+              </Button>
               <Button onClick={handleCreateCanvas} className="gap-2">
                 <Plus className="h-4 w-4" />
                 New Canvas
               </Button>
+
+              {/* User Menu */}
+              <UserMenu />
             </div>
           </div>
         </div>

@@ -16,6 +16,18 @@ interface UseWorkerResult extends UseWorkerState {
   
   // Statistical operations
   calculateCorrelation: (data1: number[], data2: number[]) => Promise<number | null>;
+  analyzeCorrelation: (data1: number[], data2: number[]) => Promise<{
+    correlation: number;
+    pValue: number;
+    confidenceInterval: [number, number];
+    sampleSize: number;
+    isSignificant: boolean;
+    effectSize: 'small' | 'medium' | 'large';
+    powerAnalysis: {
+      power: number;
+      requiredSampleSize: number;
+    };
+  } | null>;
   calculateStatistics: (data: number[]) => Promise<any | null>;
   
   // Metric analysis
@@ -94,6 +106,24 @@ export const useWorker = (): UseWorkerResult => {
     return handleAsyncOperation(() => workerManager.calculateCorrelation(data1, data2));
   }, [handleAsyncOperation]);
 
+  const analyzeCorrelation = useCallback(async (
+    data1: number[], 
+    data2: number[]
+  ): Promise<{
+    correlation: number;
+    pValue: number;
+    confidenceInterval: [number, number];
+    sampleSize: number;
+    isSignificant: boolean;
+    effectSize: 'small' | 'medium' | 'large';
+    powerAnalysis: {
+      power: number;
+      requiredSampleSize: number;
+    };
+  } | null> => {
+    return handleAsyncOperation(() => workerManager.calculateCorrelationAnalysis(data1, data2));
+  }, [handleAsyncOperation]);
+
   const calculateStatistics = useCallback(async (
     data: number[]
   ): Promise<any | null> => {
@@ -126,6 +156,7 @@ export const useWorker = (): UseWorkerResult => {
     evaluateFormula,
     validateFormula,
     calculateCorrelation,
+    analyzeCorrelation,
     calculateStatistics,
     analyzeMetrics,
     analyzeRelationships,

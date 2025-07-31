@@ -1,20 +1,35 @@
 import { Outlet, useParams, useLocation, useNavigate } from "react-router-dom";
-import { 
-  Home, 
-  Grid3X3, 
-  BarChart3, 
-  Database, 
-  Server, 
+import {
+  Home,
+  Grid3X3,
+  BarChart3,
+  Database,
+  FileText,
+  Server,
   Settings,
   ArrowLeft,
   Users,
   Calendar,
-  Dot
+  Dot,
+  User,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useProjectsStore, useAppStore } from "@/lib/stores";
 
@@ -23,36 +38,88 @@ const sidebarItems = [
     icon: Home,
     label: "Home",
     path: "/",
-    isHome: true
+    isHome: true,
   },
   {
     icon: Grid3X3,
     label: "Canvas",
     path: "",
-    isDefault: true
+    isDefault: true,
   },
   {
     icon: BarChart3,
-    label: "Dashboard", 
-    path: "/dashboard"
+    label: "Dashboard",
+    path: "/dashboard",
   },
   {
     icon: Database,
     label: "Assets",
-    path: "/assets"
+    path: "/assets",
+  },
+  {
+    icon: FileText,
+    label: "Evidence",
+    path: "/evidence",
   },
   {
     icon: Server,
     label: "Source",
-    path: "/source"
+    path: "/source",
   },
   {
     icon: Settings,
     label: "Settings",
     path: "/settings",
-    isBottom: true
-  }
+    isBottom: true,
+  },
 ];
+
+// User Menu Component
+function UserMenu() {
+  const { user, signOut } = useAppStore();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth/login");
+  };
+
+  if (!user) return null;
+
+  const initials = user.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <div className="flex items-center justify-start gap-2 p-2">
+          <div className="flex flex-col space-y-1 leading-none">
+            <p className="font-medium">{user.name}</p>
+            <p className="w-[200px] truncate text-sm text-muted-foreground">
+              {user.email}
+            </p>
+          </div>
+        </div>
+        <Separator />
+        <DropdownMenuItem onClick={handleSignOut}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export default function CanvasLayout() {
   const { canvasId } = useParams();
@@ -63,7 +130,7 @@ export default function CanvasLayout() {
 
   const project = canvasId ? getProjectById(canvasId) : null;
 
-  const handleNavigation = (item: typeof sidebarItems[0]) => {
+  const handleNavigation = (item: (typeof sidebarItems)[0]) => {
     if (item.isHome) {
       navigate("/");
     } else if (item.isDefault) {
@@ -73,9 +140,9 @@ export default function CanvasLayout() {
     }
   };
 
-  const isActiveRoute = (item: typeof sidebarItems[0]) => {
+  const isActiveRoute = (item: (typeof sidebarItems)[0]) => {
     if (item.isHome) return false; // Home is never active in canvas layout
-    
+
     const currentPath = location.pathname;
     if (item.isDefault) {
       return currentPath === `/canvas/${canvasId}`;
@@ -85,11 +152,12 @@ export default function CanvasLayout() {
 
   const getPageTitle = () => {
     const currentPath = location.pathname;
-    if (currentPath.includes('/dashboard')) return 'Dashboard';
-    if (currentPath.includes('/assets')) return 'Assets';
-    if (currentPath.includes('/source')) return 'Source';
-    if (currentPath.includes('/settings')) return 'Settings';
-    return 'Canvas';
+    if (currentPath.includes("/dashboard")) return "Dashboard";
+    if (currentPath.includes("/assets")) return "Assets";
+    if (currentPath.includes("/evidence")) return "Evidence";
+    if (currentPath.includes("/source")) return "Source";
+    if (currentPath.includes("/settings")) return "Settings";
+    return "Canvas";
   };
 
   return (
@@ -126,7 +194,9 @@ export default function CanvasLayout() {
                   <TooltipContent side="right">
                     <div className="text-sm">
                       <div className="font-medium">{project.name}</div>
-                      <div className="text-muted-foreground">{project.description}</div>
+                      <div className="text-muted-foreground">
+                        {project.description}
+                      </div>
                       <Separator className="my-2" />
                       <div className="flex items-center gap-4 text-xs">
                         <div className="flex items-center gap-1">
@@ -151,44 +221,47 @@ export default function CanvasLayout() {
 
           {/* Navigation Items */}
           <div className="flex flex-col gap-1 px-2 py-3 flex-1">
-            {sidebarItems.filter(item => !item.isBottom && !item.isHome).map((item) => {
-              const Icon = item.icon;
-              const isActive = isActiveRoute(item);
-              
-              return (
-                <Tooltip key={item.label}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={isActive ? "default" : "ghost"}
-                      size="sm"
-                      className={cn(
-                        "w-12 h-12 p-0 rounded-lg transition-all duration-200",
-                        isActive 
-                          ? "bg-primary text-primary-foreground shadow-md scale-105" 
-                          : "hover:bg-accent hover:scale-105"
-                      )}
-                      onClick={() => handleNavigation(item)}
-                    >
-                      <Icon className="h-5 w-5" />
-                      {isActive && (
-                        <div className="absolute -right-0.5 top-1/2 w-1 h-6 bg-primary rounded-l-sm transform -translate-y-1/2" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <div className="text-sm">
-                      <div className="font-medium">{item.label}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.label === 'Canvas' && 'Visual metric mapping'}
-                        {item.label === 'Dashboard' && 'Analytics overview'}
-                        {item.label === 'Assets' && 'Metrics & relationships'}
-                        {item.label === 'Source' && 'Data governance'}
+            {sidebarItems
+              .filter((item) => !item.isBottom && !item.isHome)
+              .map((item) => {
+                const Icon = item.icon;
+                const isActive = isActiveRoute(item);
+
+                return (
+                  <Tooltip key={item.label}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={isActive ? "default" : "ghost"}
+                        size="sm"
+                        className={cn(
+                          "w-12 h-12 p-0 rounded-lg transition-all duration-200",
+                          isActive
+                            ? "bg-primary text-primary-foreground shadow-md scale-105"
+                            : "hover:bg-accent hover:scale-105"
+                        )}
+                        onClick={() => handleNavigation(item)}
+                      >
+                        <Icon className="h-5 w-5" />
+                        {isActive && (
+                          <div className="absolute -right-0.5 top-1/2 w-1 h-6 bg-primary rounded-l-sm transform -translate-y-1/2" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <div className="text-sm">
+                        <div className="font-medium">{item.label}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.label === "Canvas" && "Visual metric mapping"}
+                          {item.label === "Dashboard" && "Analytics overview"}
+                          {item.label === "Assets" && "Metrics & relationships"}
+                          {item.label === "Evidence" && "Research repository"}
+                          {item.label === "Source" && "Data governance"}
+                        </div>
                       </div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
           </div>
 
           {/* Status Indicator */}
@@ -203,7 +276,9 @@ export default function CanvasLayout() {
                 <TooltipContent side="right">
                   <div className="text-sm">
                     <div className="text-green-500 font-medium">Online</div>
-                    <div className="text-xs text-muted-foreground">Auto-saving enabled</div>
+                    <div className="text-xs text-muted-foreground">
+                      Auto-saving enabled
+                    </div>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -212,36 +287,40 @@ export default function CanvasLayout() {
 
           {/* Settings */}
           <div className="px-2 py-3">
-            {sidebarItems.filter(item => item.isBottom).map((item) => {
-              const Icon = item.icon;
-              const isActive = isActiveRoute(item);
-              
-              return (
-                <Tooltip key={item.label}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={isActive ? "default" : "ghost"}
-                      size="sm"
-                      className={cn(
-                        "w-12 h-12 p-0 rounded-lg transition-all duration-200",
-                        isActive 
-                          ? "bg-primary text-primary-foreground" 
-                          : "hover:bg-accent hover:scale-105"
-                      )}
-                      onClick={() => handleNavigation(item)}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <div className="text-sm">
-                      <div className="font-medium">{item.label}</div>
-                      <div className="text-xs text-muted-foreground">Canvas configuration</div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+            {sidebarItems
+              .filter((item) => item.isBottom)
+              .map((item) => {
+                const Icon = item.icon;
+                const isActive = isActiveRoute(item);
+
+                return (
+                  <Tooltip key={item.label}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={isActive ? "default" : "ghost"}
+                        size="sm"
+                        className={cn(
+                          "w-12 h-12 p-0 rounded-lg transition-all duration-200",
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-accent hover:scale-105"
+                        )}
+                        onClick={() => handleNavigation(item)}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <div className="text-sm">
+                        <div className="font-medium">{item.label}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Canvas configuration
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
           </div>
         </div>
 
@@ -262,20 +341,26 @@ export default function CanvasLayout() {
                 <span className="text-muted-foreground">/</span>
                 {project && (
                   <>
-                    <span className="text-muted-foreground">{project.name}</span>
+                    <span className="text-muted-foreground">
+                      {project.name}
+                    </span>
                     <span className="text-muted-foreground">/</span>
                   </>
                 )}
-                <span className="font-medium text-foreground">{getPageTitle()}</span>
+                <span className="font-medium text-foreground">
+                  {getPageTitle()}
+                </span>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               {project && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    <span>Updated {new Date(project.updatedAt).toLocaleDateString()}</span>
+                    <span>
+                      Updated {new Date(project.updatedAt).toLocaleDateString()}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
@@ -286,6 +371,9 @@ export default function CanvasLayout() {
               <Badge variant="outline" className="text-xs">
                 Auto-saved
               </Badge>
+
+              {/* User Menu */}
+              <UserMenu />
             </div>
           </div>
 

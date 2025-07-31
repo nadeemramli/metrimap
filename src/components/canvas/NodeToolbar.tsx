@@ -4,7 +4,6 @@ import {
   Settings,
   Trash2,
   Minimize2,
-  Maximize2,
   Link,
   Eye,
   EyeOff,
@@ -22,7 +21,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useCanvasStore } from "@/lib/stores";
-import type { MetricCard } from "@/lib/types";
 import { DimensionSliceModal } from "./index";
 
 interface NodeToolbarProps {
@@ -101,17 +99,28 @@ export default function NodeToolbar({
   }, []);
 
   const handleSlice = useCallback(
-    async (dimensions: string[], historyOption: "manual" | "forfeit") => {
+    async (
+      dimensions: string[],
+      historyOption: "manual" | "proportional" | "forfeit",
+      percentages?: number[]
+    ) => {
       try {
         const newCardIds = await sliceMetricByDimensions(
           nodeId,
           dimensions,
-          historyOption
+          historyOption,
+          percentages
         );
         console.log("Created dimension cards:", newCardIds);
         setIsDimensionSliceOpen(false);
       } catch (error) {
         console.error("Error slicing metric:", error);
+        // You might want to show this error to the user
+        alert(
+          error instanceof Error
+            ? error.message
+            : "An error occurred while slicing the metric"
+        );
       }
     },
     [nodeId, sliceMetricByDimensions]

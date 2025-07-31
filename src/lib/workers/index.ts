@@ -5,6 +5,7 @@ export {
   computeFormula,
   validateFormula,
   computeCorrelation,
+  analyzeCorrelation,
   computeStatistics,
   analyzeMetrics,
   analyzeRelationships

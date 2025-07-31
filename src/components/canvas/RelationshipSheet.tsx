@@ -45,6 +45,7 @@ import {
   Workflow,
 } from "lucide-react";
 import RelationshipWorkflows from "./RelationshipWorkflows";
+import CorrelationAnalysisPanel from "./CorrelationAnalysisPanel";
 import { useCanvasStore } from "@/lib/stores";
 import type {
   Relationship,
@@ -255,7 +256,7 @@ export default function RelationshipSheet({
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsList className="grid w-full grid-cols-6 mb-6">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="workflow" className="gap-1">
                 <Workflow className="h-3 w-3" />
@@ -263,6 +264,10 @@ export default function RelationshipSheet({
               </TabsTrigger>
               <TabsTrigger value="evidence">
                 Evidence ({formData.evidence?.length || 0})
+              </TabsTrigger>
+              <TabsTrigger value="history" className="gap-1">
+                <Clock className="h-3 w-3" />
+                History ({relationship?.history?.length || 0})
               </TabsTrigger>
               <TabsTrigger value="analysis">Analysis</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -396,6 +401,7 @@ export default function RelationshipSheet({
                     evidence,
                   ])
                 }
+                onTypeUpgrade={(newType) => handleFieldChange("type", newType)}
                 currentEvidence={formData.evidence || []}
               />
             </TabsContent>
@@ -591,18 +597,205 @@ export default function RelationshipSheet({
               </div>
             </TabsContent>
 
+            {/* History Tab */}
+            <TabsContent value="history" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Influence Drift Analysis
+                  </CardTitle>
+                  <CardDescription>
+                    Track how this relationship's strength and confidence have
+                    changed over time
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {relationship?.history && relationship.history.length > 0 ? (
+                    <div className="space-y-4">
+                      {/* Timeline visualization */}
+                      <div className="relative">
+                        {relationship.history
+                          .sort(
+                            (a, b) =>
+                              new Date(b.timestamp).getTime() -
+                              new Date(a.timestamp).getTime()
+                          )
+                          .map((entry, index) => {
+                            const isLast =
+                              index === relationship.history!.length - 1;
+                            const getChangeIcon = (changeType: string) => {
+                              switch (changeType) {
+                                case "strength":
+                                  return <TrendingUp className="h-4 w-4" />;
+                                case "confidence":
+                                  return <CheckCircle className="h-4 w-4" />;
+                                case "type":
+                                  return <Network className="h-4 w-4" />;
+                                case "evidence":
+                                  return <FileText className="h-4 w-4" />;
+                                default:
+                                  return <Clock className="h-4 w-4" />;
+                              }
+                            };
+
+                            const getChangeColor = (changeType: string) => {
+                              switch (changeType) {
+                                case "strength":
+                                  return "text-blue-600 bg-blue-50 border-blue-200";
+                                case "confidence":
+                                  return "text-green-600 bg-green-50 border-green-200";
+                                case "type":
+                                  return "text-purple-600 bg-purple-50 border-purple-200";
+                                case "evidence":
+                                  return "text-orange-600 bg-orange-50 border-orange-200";
+                                default:
+                                  return "text-gray-600 bg-gray-50 border-gray-200";
+                              }
+                            };
+
+                            return (
+                              <div key={entry.id} className="relative">
+                                {/* Timeline line */}
+                                {!isLast && (
+                                  <div className="absolute left-6 top-8 w-0.5 h-16 bg-border" />
+                                )}
+
+                                {/* Timeline entry */}
+                                <div className="flex items-start gap-4">
+                                  <div
+                                    className={`p-2 rounded-full border ${getChangeColor(entry.changeType)}`}
+                                  >
+                                    {getChangeIcon(entry.changeType)}
+                                  </div>
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <h4 className="text-sm font-medium capitalize">
+                                        {entry.changeType} Change
+                                      </h4>
+                                      <time className="text-xs text-muted-foreground">
+                                        {new Date(
+                                          entry.timestamp
+                                        ).toLocaleString()}
+                                      </time>
+                                    </div>
+
+                                    <p className="text-sm text-muted-foreground mb-2">
+                                      {entry.description}
+                                    </p>
+
+                                    {/* Show value changes */}
+                                    {entry.changeType !== "evidence" && (
+                                      <div className="text-xs bg-muted/50 p-2 rounded">
+                                        <span className="text-destructive">
+                                          {entry.oldValue}
+                                        </span>
+                                        <span className="mx-2">→</span>
+                                        <span className="text-green-600">
+                                          {entry.newValue}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {/* User annotation if exists */}
+                                    {entry.annotation && (
+                                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                                        <strong>Note:</strong>{" "}
+                                        {entry.annotation}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+
+                      {/* Summary statistics */}
+                      <div className="mt-6 pt-6 border-t">
+                        <h4 className="text-sm font-medium mb-3">
+                          Change Summary
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">
+                              Total Changes:
+                            </span>
+                            <span className="ml-2 font-medium">
+                              {relationship.history.length}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">
+                              Most Recent:
+                            </span>
+                            <span className="ml-2 font-medium">
+                              {new Date(
+                                relationship.history[0]?.timestamp
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">
+                              Change Types:
+                            </span>
+                            <span className="ml-2 font-medium">
+                              {
+                                [
+                                  ...new Set(
+                                    relationship.history.map(
+                                      (h) => h.changeType
+                                    )
+                                  ),
+                                ].length
+                              }
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">
+                              Created:
+                            </span>
+                            <span className="ml-2 font-medium">
+                              {new Date(
+                                relationship.createdAt
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No changes recorded yet</p>
+                      <p className="text-sm">
+                        Changes to this relationship will appear here over time
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             {/* Analysis Tab */}
             <TabsContent value="analysis" className="space-y-6">
-              <div className="text-center py-8">
-                <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                  Statistical Analysis
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Correlation analysis and statistical validation
-                </p>
-                <Button variant="outline">Run Analysis</Button>
-              </div>
+              {sourceNode && targetNode ? (
+                <CorrelationAnalysisPanel
+                  sourceCard={sourceNode}
+                  targetCard={targetNode}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                    Statistical Analysis
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Unable to load metric data for analysis
+                  </p>
+                </div>
+              )}
             </TabsContent>
 
             {/* Settings Tab */}

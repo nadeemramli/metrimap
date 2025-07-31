@@ -57,7 +57,8 @@ interface CanvasStoreState extends CanvasState {
   sliceMetricByDimensions: (
     parentCardId: string, 
     dimensions: string[], 
-    historyOption: 'manual' | 'forfeit'
+    historyOption: 'manual' | 'proportional' | 'forfeit',
+    percentages?: number[]
   ) => Promise<string[]>;
 
   // Canvas view
@@ -353,19 +354,87 @@ export const useCanvasStore = create<CanvasStoreState>()(
       })),
 
     updateEdge: (edgeId: string, updates: Partial<Relationship>) =>
-      set((state) => ({
-        canvas: state.canvas
-          ? {
-              ...state.canvas,
-              edges: state.canvas.edges.map((edge) =>
-                edge.id === edgeId
-                  ? { ...edge, ...updates, updatedAt: new Date().toISOString() }
-                  : edge
-              ),
-              updatedAt: new Date().toISOString(),
-            }
-          : undefined,
-      })),
+      set((state) => {
+        if (!state.canvas) return state;
+        
+        const existingEdge = state.canvas.edges.find(edge => edge.id === edgeId);
+        if (!existingEdge) return state;
+
+        // Create history entries for changes
+        const historyEntries: any[] = [];
+        const timestamp = new Date().toISOString();
+
+        // Track different types of changes
+        if (updates.weight !== undefined && updates.weight !== existingEdge.weight) {
+          historyEntries.push({
+            id: `history_${edgeId}_${Date.now()}_weight`,
+            timestamp,
+            changeType: "strength",
+            oldValue: existingEdge.weight,
+            newValue: updates.weight,
+            description: `Relationship strength changed from ${existingEdge.weight}% to ${updates.weight}%`,
+            userId: "current-user", // TODO: Get from auth context
+          });
+        }
+
+        if (updates.confidence && updates.confidence !== existingEdge.confidence) {
+          historyEntries.push({
+            id: `history_${edgeId}_${Date.now()}_confidence`,
+            timestamp,
+            changeType: "confidence",
+            oldValue: existingEdge.confidence,
+            newValue: updates.confidence,
+            description: `Confidence level changed from ${existingEdge.confidence} to ${updates.confidence}`,
+            userId: "current-user",
+          });
+        }
+
+        if (updates.type && updates.type !== existingEdge.type) {
+          historyEntries.push({
+            id: `history_${edgeId}_${Date.now()}_type`,
+            timestamp,
+            changeType: "type",
+            oldValue: existingEdge.type,
+            newValue: updates.type,
+            description: `Relationship type changed from ${existingEdge.type} to ${updates.type}`,
+            userId: "current-user",
+          });
+        }
+
+        if (updates.evidence && JSON.stringify(updates.evidence) !== JSON.stringify(existingEdge.evidence)) {
+          const oldCount = existingEdge.evidence?.length || 0;
+          const newCount = updates.evidence?.length || 0;
+          historyEntries.push({
+            id: `history_${edgeId}_${Date.now()}_evidence`,
+            timestamp,
+            changeType: "evidence",
+            oldValue: oldCount,
+            newValue: newCount,
+            description: `Evidence updated: ${oldCount} → ${newCount} items`,
+            userId: "current-user",
+          });
+        }
+
+        // Merge new history with existing
+        const updatedHistory = [...(existingEdge.history || []), ...historyEntries];
+
+        return {
+          canvas: {
+            ...state.canvas,
+            edges: state.canvas.edges.map((edge) =>
+              edge.id === edgeId
+                ? { 
+                    ...edge, 
+                    ...updates, 
+                    history: updatedHistory,
+                    updatedAt: timestamp 
+                  }
+                : edge
+            ),
+            updatedAt: timestamp,
+          }
+        };
+      }),
 
     deleteEdge: (edgeId: string) =>
       set((state) => ({
@@ -450,13 +519,41 @@ export const useCanvasStore = create<CanvasStoreState>()(
       })),
 
     // Dimension slice implementation
-    sliceMetricByDimensions: async (parentCardId: string, dimensions: string[], historyOption: 'manual' | 'forfeit') => {
+    sliceMetricByDimensions: async (
+      parentCardId: string, 
+      dimensions: string[], 
+      historyOption: 'manual' | 'proportional' | 'forfeit',
+      percentages?: number[]
+    ) => {
       const state = get();
       const { canvas } = state;
       if (!canvas) return [];
 
       const parentCard = canvas.nodes.find(node => node.id === parentCardId);
       if (!parentCard) return [];
+
+      // Validate percentages for proportional split
+      if (historyOption === 'proportional') {
+        if (!percentages || percentages.length !== dimensions.length) {
+          throw new Error('Percentages array must match dimensions array length for proportional split');
+        }
+        const total = percentages.reduce((sum, p) => sum + p, 0);
+        if (Math.abs(total - 100) > 0.001) { // Allow for floating point precision
+          throw new Error('Percentages must sum to exactly 100%');
+        }
+      }
+
+      // Helper function to calculate proportional data
+      const calculateProportionalData = (parentData: any[], percentage: number) => {
+        if (!parentData || parentData.length === 0) return [];
+        
+        return parentData.map(dataPoint => ({
+          ...dataPoint,
+          value: (dataPoint.value * percentage) / 100,
+          // Recalculate change_percent based on new values
+          change_percent: dataPoint.change_percent // Keep original for now, could be recalculated
+        }));
+      };
 
       // Create new dimension cards
       const newCardIds: string[] = [];
@@ -466,10 +563,24 @@ export const useCanvasStore = create<CanvasStoreState>()(
       dimensions.forEach((dimension, index) => {
         const newCardId = `${parentCardId}_${dimension.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}_${index}`;
         
+        // Calculate data based on history option
+        let cardData: any[] = [];
+        if (historyOption === 'manual') {
+          cardData = []; // Empty for manual entry
+        } else if (historyOption === 'proportional' && percentages && parentCard.data) {
+          cardData = calculateProportionalData(parentCard.data, percentages[index]);
+        } else if (historyOption === 'forfeit') {
+          cardData = []; // Start fresh
+        }
+        
         const newCard: MetricCard = {
           id: newCardId,
           title: `${parentCard.title} (${dimension})`,
-          description: `${dimension} component of ${parentCard.title}`,
+          description: `${dimension} component of ${parentCard.title}${
+            historyOption === 'proportional' && percentages 
+              ? ` (${percentages[index]}% of original data)`
+              : ''
+          }`,
           category: "Data/Metric",
           subCategory: parentCard.subCategory || "Input Metric",
           tags: [...parentCard.tags, dimension],
@@ -479,8 +590,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
             x: parentCard.position.x + (index - Math.floor(dimensions.length / 2)) * 350,
             y: parentCard.position.y + 200
           },
-          sourceType: "Manual",
-          data: historyOption === 'manual' ? [] : undefined,
+          sourceType: historyOption === 'proportional' ? "Manual" : "Manual", // All start as manual, can be changed later
+          data: cardData,
           assignees: parentCard.assignees,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -491,19 +602,23 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
         // Create relationship from dimension card to parent
         const relationshipId = `rel_${newCardId}_to_${parentCardId}_${Date.now()}`;
+        const evidenceSummary = historyOption === 'proportional' && percentages
+          ? `Created through dimension slice operation with proportional split (${percentages[index]}%). ${dimension} is a component of ${parentCard.title}.`
+          : `Created through dimension slice operation. ${dimension} is a component of ${parentCard.title}.`;
+
         const newRelationship: Relationship = {
           id: relationshipId,
           sourceId: newCardId,
           targetId: parentCardId,
           type: "Compositional", // As specified in PRD
           confidence: "High",
-          weight: 1,
+          weight: historyOption === 'proportional' && percentages ? percentages[index] / 100 : 1,
           evidence: [{
             id: `evidence_${relationshipId}`,
             title: "Automatic Dimension Decomposition",
             type: "Analysis",
             date: new Date().toISOString(),
-            summary: `Created through dimension slice operation. ${dimension} is a component of ${parentCard.title}.`,
+            summary: evidenceSummary,
             impact: "This relationship was automatically generated during metric decomposition.",
             createdAt: new Date().toISOString(),
             createdBy: "system", // TODO: Use actual user ID
@@ -520,13 +635,28 @@ export const useCanvasStore = create<CanvasStoreState>()(
         `[${newCardIds[index]}].value`
       ).join(' + ');
 
-      // Update parent card
+      // Update parent card data based on history option
+      let parentCardData = parentCard.data;
+      let parentDescription = `${parentCard.description} (Calculated from: ${dimensions.join(', ')})`;
+      
+      if (historyOption === 'forfeit') {
+        parentCardData = []; // Archive data, start fresh
+        parentDescription += ' - Historical data archived';
+      } else if (historyOption === 'proportional') {
+        // Keep original data as the parent maintains its complete dataset
+        parentDescription += ` - Data distributed proportionally: ${dimensions.map((d, i) => 
+          `${d}(${percentages?.[i] || 0}%)`).join(', ')}`;
+      } else {
+        // Manual - keep original data
+        parentDescription += ' - Original data maintained';
+      }
+
       const updatedParentCard: MetricCard = {
         ...parentCard,
         sourceType: "Calculated",
         formula: formulaReferences,
-        description: `${parentCard.description} (Calculated from: ${dimensions.join(', ')})`,
-        data: historyOption === 'forfeit' ? [] : parentCard.data,
+        description: parentDescription,
+        data: parentCardData,
         updatedAt: new Date().toISOString(),
       };
 

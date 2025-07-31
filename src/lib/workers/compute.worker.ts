@@ -15,6 +15,18 @@ export interface ComputationWorker {
   
   // Statistical Analysis
   calculateCorrelation: (data1: number[], data2: number[]) => Promise<number>;
+  calculateCorrelationAnalysis: (data1: number[], data2: number[]) => Promise<{
+    correlation: number;
+    pValue: number;
+    confidenceInterval: [number, number];
+    sampleSize: number;
+    isSignificant: boolean;
+    effectSize: 'small' | 'medium' | 'large';
+    powerAnalysis: {
+      power: number;
+      requiredSampleSize: number;
+    };
+  }>;
   calculateRegression: (data: Array<[number, number]>) => Promise<{ slope: number; intercept: number; r2: number }>;
   calculateMovingAverage: (data: number[], windowSize: number) => Promise<number[]>;
   calculateStatistics: (data: number[]) => Promise<{
@@ -117,6 +129,107 @@ const computationWorker: ComputationWorker = {
       console.error('Correlation calculation error:', error);
       return 0;
     }
+  },
+
+  // Enhanced correlation analysis with statistical significance
+  async calculateCorrelationAnalysis(data1: number[], data2: number[]): Promise<{
+    correlation: number;
+    pValue: number;
+    confidenceInterval: [number, number];
+    sampleSize: number;
+    isSignificant: boolean;
+    effectSize: 'small' | 'medium' | 'large';
+    powerAnalysis: {
+      power: number;
+      requiredSampleSize: number;
+    };
+  }> {
+    if (data1.length !== data2.length || data1.length < 3) {
+      throw new Error('Data arrays must have the same length and at least 3 points');
+    }
+
+    const n = data1.length;
+    const correlation = ss.sampleCorrelation(data1, data2);
+    
+    // Calculate t-statistic for correlation
+    const tStat = correlation * Math.sqrt((n - 2) / (1 - correlation * correlation));
+    
+    // Calculate p-value using t-distribution (approximate)
+    // For simplicity, using normal approximation for large samples
+    const pValue = this.calculatePValue(tStat, n - 2);
+    
+    // Calculate confidence interval using Fisher transformation
+    const fisherZ = 0.5 * Math.log((1 + correlation) / (1 - correlation));
+    const se = 1 / Math.sqrt(n - 3);
+    const zCritical = 1.96; // 95% confidence
+    
+    const lowerZ = fisherZ - zCritical * se;
+    const upperZ = fisherZ + zCritical * se;
+    
+    const lowerCI = (Math.exp(2 * lowerZ) - 1) / (Math.exp(2 * lowerZ) + 1);
+    const upperCI = (Math.exp(2 * upperZ) - 1) / (Math.exp(2 * upperZ) + 1);
+    
+    // Determine effect size (Cohen's conventions)
+    const absCorr = Math.abs(correlation);
+    let effectSize: 'small' | 'medium' | 'large';
+    if (absCorr < 0.3) effectSize = 'small';
+    else if (absCorr < 0.5) effectSize = 'medium';
+    else effectSize = 'large';
+    
+    // Statistical significance (alpha = 0.05)
+    const isSignificant = pValue < 0.05;
+    
+    // Power analysis (simplified)
+    const power = this.calculatePower(correlation, n);
+    const requiredSampleSize = this.calculateRequiredSampleSize(correlation, 0.8); // 80% power
+    
+    return {
+      correlation,
+      pValue,
+      confidenceInterval: [lowerCI, upperCI],
+      sampleSize: n,
+      isSignificant,
+      effectSize,
+      powerAnalysis: {
+        power,
+        requiredSampleSize
+      }
+    };
+  },
+
+  // Helper function to calculate p-value (simplified)
+  calculatePValue(tStat: number, df: number): number {
+    // Simplified p-value calculation using normal approximation
+    // For more accuracy, you'd want a proper t-distribution implementation
+    const absT = Math.abs(tStat);
+    
+    // Very rough approximation for demonstration
+    if (absT > 3.5) return 0.0001;
+    if (absT > 2.58) return 0.01;
+    if (absT > 1.96) return 0.05;
+    if (absT > 1.645) return 0.1;
+    return 0.2; // p > 0.1
+  },
+
+  // Simplified power calculation
+  calculatePower(correlation: number, sampleSize: number): number {
+    const effectSize = Math.abs(correlation);
+    const z = Math.sqrt(sampleSize - 3) * 0.5 * Math.log((1 + effectSize) / (1 - effectSize));
+    
+    // Simplified power calculation
+    if (z > 2.8) return 0.95;
+    if (z > 2.3) return 0.8;
+    if (z > 1.96) return 0.5;
+    return 0.2;
+  },
+
+  // Calculate required sample size for given effect and power
+  calculateRequiredSampleSize(correlation: number, desiredPower: number): number {
+    const effectSize = Math.abs(correlation);
+    if (effectSize < 0.1) return 500; // Very small effect
+    if (effectSize < 0.3) return 100; // Small effect  
+    if (effectSize < 0.5) return 30;  // Medium effect
+    return 15; // Large effect
   },
 
   async calculateRegression(data: Array<[number, number]>): Promise<{ slope: number; intercept: number; r2: number }> {

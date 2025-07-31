@@ -6,12 +6,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,19 +19,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Save, 
-  Trash2, 
+import {
+  Save,
+  Trash2,
   X,
   BarChart3,
   Calendar,
   Target,
   TrendingUp,
   MessageSquare,
-  Settings
+  Settings,
+  PieChart,
+  Plus,
 } from "lucide-react";
 import { useCanvasStore } from "@/lib/stores";
-import type { MetricCard, CardCategory, CardSubCategory, SourceType, Dimension, CausalFactor } from "@/lib/types";
+import type {
+  MetricCard,
+  CardCategory,
+  CardSubCategory,
+  SourceType,
+  Dimension,
+  CausalFactor,
+  Segment,
+} from "@/lib/types";
 
 interface CardSettingsSheetProps {
   isOpen: boolean;
@@ -52,7 +57,10 @@ const categoryOptions: Array<{ value: CardCategory; label: string }> = [
   { value: "Metadata", label: "Metadata" },
 ];
 
-const subCategoryOptions: Record<CardCategory, Array<{ value: string; label: string }>> = {
+const subCategoryOptions: Record<
+  CardCategory,
+  Array<{ value: string; label: string }>
+> = {
   "Core/Value": [
     { value: "Journey Step", label: "Journey Step" },
     { value: "Value Chain", label: "Value Chain" },
@@ -77,7 +85,7 @@ const subCategoryOptions: Record<CardCategory, Array<{ value: string; label: str
     { value: "Factor", label: "Factor" },
     { value: "Seller Solution", label: "Seller Solution" },
   ],
-  "Metadata": [
+  Metadata: [
     { value: "Group", label: "Group" },
     { value: "Subflow", label: "Subflow" },
     { value: "Reference", label: "Reference" },
@@ -110,13 +118,17 @@ const causalFactorOptions: Array<{ value: CausalFactor; label: string }> = [
   { value: "Event Shocks", label: "Event Shocks" },
 ];
 
-export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSettingsSheetProps) {
+export default function CardSettingsSheet({
+  isOpen,
+  onClose,
+  cardId,
+}: CardSettingsSheetProps) {
   const { getNodeById, updateNode, deleteNode } = useCanvasStore();
   const card = cardId ? getNodeById(cardId) : null;
-  
+
   const [activeTab, setActiveTab] = useState("details");
   const [isModified, setIsModified] = useState(false);
-  
+
   // Form state
   const [formData, setFormData] = useState<Partial<MetricCard>>(() => ({
     title: card?.title || "",
@@ -132,7 +144,7 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
   }));
 
   const handleFieldChange = (field: keyof MetricCard, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     setIsModified(true);
   };
 
@@ -143,13 +155,16 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
   };
 
   const handleTagRemove = (tagToRemove: string) => {
-    handleFieldChange("tags", formData.tags?.filter(tag => tag !== tagToRemove) || []);
+    handleFieldChange(
+      "tags",
+      formData.tags?.filter((tag) => tag !== tagToRemove) || []
+    );
   };
 
   const handleDimensionToggle = (dimension: Dimension) => {
     const current = formData.dimensions || [];
     const updated = current.includes(dimension)
-      ? current.filter(d => d !== dimension)
+      ? current.filter((d) => d !== dimension)
       : [...current, dimension];
     handleFieldChange("dimensions", updated);
   };
@@ -166,7 +181,13 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
   };
 
   const handleDelete = () => {
-    if (card && cardId && confirm("Are you sure you want to delete this card? This action cannot be undone.")) {
+    if (
+      card &&
+      cardId &&
+      confirm(
+        "Are you sure you want to delete this card? This action cannot be undone."
+      )
+    ) {
       deleteNode(cardId);
       onClose();
     }
@@ -185,12 +206,17 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
             Card Settings
           </SheetTitle>
           <SheetDescription>
-            Configure properties, data sources, and metadata for this metric card.
+            Configure properties, data sources, and metadata for this metric
+            card.
           </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 mb-6">
               <TabsTrigger value="details" className="text-xs">
                 <BarChart3 className="h-3 w-3 mr-1" />
@@ -227,7 +253,9 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
             <TabsContent value="details" className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Card Title</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Card Title
+                  </label>
                   <Input
                     value={formData.title}
                     onChange={(e) => handleFieldChange("title", e.target.value)}
@@ -236,10 +264,14 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Description</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Description
+                  </label>
                   <Textarea
                     value={formData.description}
-                    onChange={(e) => handleFieldChange("description", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("description", e.target.value)
+                    }
                     placeholder="Enter card description"
                     rows={3}
                   />
@@ -247,10 +279,14 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Category</label>
+                    <label className="text-sm font-medium mb-2 block">
+                      Category
+                    </label>
                     <Select
                       value={formData.category}
-                      onValueChange={(value: CardCategory) => handleFieldChange("category", value)}
+                      onValueChange={(value: CardCategory) =>
+                        handleFieldChange("category", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -266,27 +302,39 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Sub-Category</label>
+                    <label className="text-sm font-medium mb-2 block">
+                      Sub-Category
+                    </label>
                     <Select
                       value={formData.subCategory || ""}
-                      onValueChange={(value) => handleFieldChange("subCategory", value)}
+                      onValueChange={(value) =>
+                        handleFieldChange("subCategory", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select sub-category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {formData.category && subCategoryOptions[formData.category]?.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
+                        {formData.category &&
+                          subCategoryOptions[formData.category]?.map(
+                            (option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            )
+                          )}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Chart Options</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Chart Options
+                  </label>
                   <div className="grid grid-cols-2 gap-4">
                     <Select defaultValue="month">
                       <SelectTrigger>
@@ -308,7 +356,9 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
                       <SelectContent>
                         <SelectItem value="incremental">Incremental</SelectItem>
                         <SelectItem value="cumulative">Cumulative</SelectItem>
-                        <SelectItem value="distribution">Distribution</SelectItem>
+                        <SelectItem value="distribution">
+                          Distribution
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -321,13 +371,14 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
               <div className="space-y-4">
                 <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
                   <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium text-muted-foreground mb-2">Data Management</h3>
+                  <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                    Data Management
+                  </h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Spreadsheet-like interface for viewing and editing metric data
+                    Spreadsheet-like interface for viewing and editing metric
+                    data
                   </p>
-                  <Button variant="outline">
-                    Open Data Editor
-                  </Button>
+                  <Button variant="outline">Open Data Editor</Button>
                 </div>
               </div>
             </TabsContent>
@@ -336,10 +387,14 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
             <TabsContent value="source" className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Data Source</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Data Source
+                  </label>
                   <Select
                     value={formData.sourceType}
-                    onValueChange={(value: SourceType) => handleFieldChange("sourceType", value)}
+                    onValueChange={(value: SourceType) =>
+                      handleFieldChange("sourceType", value)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -356,10 +411,14 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
 
                 {formData.sourceType === "Calculated" && (
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Formula</label>
+                    <label className="text-sm font-medium mb-2 block">
+                      Formula
+                    </label>
                     <Textarea
                       value={formData.formula}
-                      onChange={(e) => handleFieldChange("formula", e.target.value)}
+                      onChange={(e) =>
+                        handleFieldChange("formula", e.target.value)
+                      }
                       placeholder="Enter formula (e.g., [Card_ID_1].value + [Card_ID_2].value)"
                       rows={3}
                     />
@@ -373,11 +432,15 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium mb-2 block">Standard Deviation</label>
+                        <label className="text-sm font-medium mb-2 block">
+                          Standard Deviation
+                        </label>
                         <Input type="number" defaultValue="100" />
                       </div>
                       <div>
-                        <label className="text-sm font-medium mb-2 block">Upward Move %</label>
+                        <label className="text-sm font-medium mb-2 block">
+                          Upward Move %
+                        </label>
                         <Input type="number" defaultValue="60" />
                       </div>
                     </div>
@@ -393,7 +456,9 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
             <TabsContent value="events" className="space-y-6">
               <div className="text-center py-8">
                 <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground mb-2">Events Timeline</h3>
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  Events Timeline
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Manage annotations and events for this metric
                 </p>
@@ -403,7 +468,9 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
             <TabsContent value="results" className="space-y-6">
               <div className="text-center py-8">
                 <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground mb-2">Key Results (OKRs)</h3>
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  Key Results (OKRs)
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Define targets and track progress against goals
                 </p>
@@ -413,20 +480,22 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
             <TabsContent value="correlations" className="space-y-6">
               <div className="text-center py-8">
                 <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground mb-2">Correlations Analysis</h3>
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  Correlations Analysis
+                </h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Discover statistical relationships with other metrics
                 </p>
-                <Button variant="outline">
-                  Compute Correlations
-                </Button>
+                <Button variant="outline">Compute Correlations</Button>
               </div>
             </TabsContent>
 
             <TabsContent value="comments" className="space-y-6">
               <div className="text-center py-8">
                 <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground mb-2">Comments & Discussion</h3>
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  Comments & Discussion
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Threaded discussions and notes for this metric
                 </p>
@@ -437,7 +506,9 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
             <TabsContent value="settings" className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Owner/Assignee</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Owner/Assignee
+                  </label>
                   <Input
                     value={formData.owner}
                     onChange={(e) => handleFieldChange("owner", e.target.value)}
@@ -450,7 +521,11 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-2">
                       {formData.tags?.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
+                        <Badge
+                          key={tag}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {tag}
                           <Button
                             variant="ghost"
@@ -476,14 +551,24 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Dimensions</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Dimensions
+                  </label>
                   <div className="grid grid-cols-3 gap-2">
                     {dimensionOptions.map((dimension) => (
-                      <label key={dimension.value} className="flex items-center space-x-2 text-sm">
+                      <label
+                        key={dimension.value}
+                        className="flex items-center space-x-2 text-sm"
+                      >
                         <input
                           type="checkbox"
-                          checked={formData.dimensions?.includes(dimension.value) || false}
-                          onChange={() => handleDimensionToggle(dimension.value)}
+                          checked={
+                            formData.dimensions?.includes(dimension.value) ||
+                            false
+                          }
+                          onChange={() =>
+                            handleDimensionToggle(dimension.value)
+                          }
                           className="rounded"
                         />
                         <span>{dimension.label}</span>
@@ -493,10 +578,14 @@ export default function CardSettingsSheet({ isOpen, onClose, cardId }: CardSetti
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Causal Factors</label>
+                  <label className="text-sm font-medium mb-2 block">
+                    Causal Factors
+                  </label>
                   <Select
                     value={formData.causalFactors?.[0] || ""}
-                    onValueChange={(value: CausalFactor) => handleFieldChange("causalFactors", [value])}
+                    onValueChange={(value: CausalFactor) =>
+                      handleFieldChange("causalFactors", [value])
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select causal factor" />
