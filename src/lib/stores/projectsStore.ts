@@ -70,7 +70,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
             groups: [],
             createdAt: p.created_at || new Date().toISOString(),
             updatedAt: p.updated_at || new Date().toISOString(),
-            lastModifiedBy: user.email || user.id,
+            lastModifiedBy: user.id,
           })) || [];
           
           set({ projects: canvasProjects, isLoading: false, isInitialized: true });
@@ -115,7 +115,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
               groups: [],
               createdAt: newProject.created_at || new Date().toISOString(),
               updatedAt: newProject.updated_at || new Date().toISOString(),
-              lastModifiedBy: user.email || user.id,
+              lastModifiedBy: user.id,
             };
             
             set(state => ({
@@ -239,7 +239,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
               groups: [...originalProject.groups], // Copy groups
               createdAt: newProject.created_at || new Date().toISOString(),
               updatedAt: newProject.updated_at || new Date().toISOString(),
-              lastModifiedBy: user.email || user.id,
+              lastModifiedBy: user.id,
             };
             
             set(state => ({
