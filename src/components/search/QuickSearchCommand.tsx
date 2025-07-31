@@ -174,7 +174,7 @@ export default function QuickSearchCommand({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] p-0 gap-0">
+      <DialogContent className="sm:max-w-[600px] p-0 gap-0 bg-background text-foreground border-2 border-border shadow-2xl backdrop-blur-sm">
         <div className="border-b px-4 py-3">
           <div className="flex items-center gap-3">
             <Search className="h-5 w-5 text-muted-foreground" />

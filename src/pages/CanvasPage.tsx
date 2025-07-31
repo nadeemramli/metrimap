@@ -14,7 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import "@xyflow/react/dist/style.css";
-import { useCanvasStore, useProjectsStore } from "@/lib/stores";
+import { useCanvasStore } from "@/lib/stores";
+import { getProjectById as getProjectFromDatabase } from "@/lib/supabase/services/projects";
 import type {
   MetricCard as MetricCardType,
   Relationship,
@@ -124,7 +125,6 @@ export default function CanvasPage() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
 
-  
   // Initialize auto-save functionality
   useAutoSave();
 
@@ -145,9 +145,26 @@ export default function CanvasPage() {
     addNode,
     selectNode,
     clearSelection,
-
   } = useCanvasStore();
-  const { getProjectById } = useProjectsStore();
+
+  // Function to load canvas directly from database (not from projects store)
+  const loadCanvasFromDatabase = async (projectId: string) => {
+    try {
+      const project = await getProjectFromDatabase(projectId);
+      if (project) {
+        console.log("📥 Loading canvas from database:", {
+          nodes: project.nodes.length,
+          edges: project.edges.length,
+          groups: project.groups?.length || 0,
+        });
+        loadCanvas(project);
+      } else {
+        console.error("❌ Project not found:", projectId);
+      }
+    } catch (error) {
+      console.error("❌ Failed to load canvas:", error);
+    }
+  };
 
   // Keyboard shortcuts
   const shortcuts = useMemo(
@@ -392,7 +409,7 @@ export default function CanvasPage() {
     [canvas?.groups, updateGroup]
   );
 
-  // Handle auto-layout from controls  
+  // Handle auto-layout from controls
   const handleNodesChange = useCallback(
     (newNodes: Node[]) => {
       newNodes.forEach((node) => {
@@ -451,23 +468,39 @@ export default function CanvasPage() {
   // Load canvas when component mounts or canvasId changes
   useEffect(() => {
     if (canvasId) {
-      const project = getProjectById(canvasId);
-      if (project) {
-        loadCanvas(project);
-      }
+      loadCanvasFromDatabase(canvasId);
     }
-  }, [canvasId, getProjectById, loadCanvas]);
+  }, [canvasId]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       changes.forEach((change) => {
-        if (change.type === "position" && change.position && canvas) {
-          const node = canvas.nodes.find((n) => n.id === change.id);
-          if (node) {
+        // Handle position changes - BULLETPROOF POSITION SAVING
+        if (change.type === "position" && canvas) {
+          const canvasNode = canvas.nodes.find((n) => n.id === change.id);
+          if (canvasNode && change.position) {
+            console.log(`🎯 Position change detected for ${change.id}:`, {
+              from: canvasNode.position,
+              to: change.position,
+              dragging: change.dragging,
+            });
+
+            // Update position immediately for smooth UX
             updateNodePosition(change.id, change.position);
+
+            // Add to pending changes for auto-save
             addPendingChange(change.id);
+
+            // For manual dragging, add extra logging
+            if (!change.dragging) {
+              console.log(
+                `✅ Manual drag completed for ${change.id}:`,
+                change.position
+              );
+            }
           }
         }
+
         // Handle selection changes for toolbar
         if (change.type === "select" && change.selected) {
           const node = nodes.find((n) => n.id === change.id);
@@ -492,7 +525,7 @@ export default function CanvasPage() {
     console.log("Edge changes:", changes);
   }, []);
 
-  // Connection validation function
+  // Connection validation function - Allow any node to connect to any node
   const isValidConnection = useCallback(
     (connection: any) => {
       const source = connection.source || connection.sourceNode?.id;
@@ -503,43 +536,20 @@ export default function CanvasPage() {
       // Don't allow self-connections
       if (source === target) return false;
 
-      // Find source and target nodes
-      const sourceNode = canvas.nodes.find((n) => n.id === source);
-      const targetNode = canvas.nodes.find((n) => n.id === target);
-
-      if (!sourceNode || !targetNode) return false;
-
-      // Core/Value cards can only connect to Data/Metric or Work/Action cards
-      if (sourceNode.category === "Core/Value") {
-        return (
-          targetNode.category === "Data/Metric" ||
-          targetNode.category === "Work/Action"
-        );
+      // Check if connection already exists
+      const existingEdge = canvas.edges.find(
+        (edge) => edge.sourceId === source && edge.targetId === target
+      );
+      if (existingEdge) {
+        console.log("🚫 Connection already exists between these nodes");
+        return false;
       }
 
-      // Data/Metric cards can connect to anything
-      if (sourceNode.category === "Data/Metric") {
-        return true;
-      }
-
-      // Work/Action cards can connect to Data/Metric or Ideas/Hypothesis
-      if (sourceNode.category === "Work/Action") {
-        return (
-          targetNode.category === "Data/Metric" ||
-          targetNode.category === "Ideas/Hypothesis"
-        );
-      }
-
-      // Ideas/Hypothesis can connect to Data/Metric or Work/Action
-      if (sourceNode.category === "Ideas/Hypothesis") {
-        return (
-          targetNode.category === "Data/Metric" ||
-          targetNode.category === "Work/Action"
-        );
-      }
-
-      // Default allow for other categories
-      return true;
+      console.log("✅ Connection allowed between any nodes:", {
+        source,
+        target,
+      });
+      return true; // Allow all connections except self-connections and duplicates
     },
     [canvas]
   );
@@ -554,12 +564,12 @@ export default function CanvasPage() {
           confidence: "Low" as const, // Default confidence
           evidence: [],
         };
-        
+
         try {
           await createEdge(newRelationshipData);
-          console.log('✅ Relationship created and saved to database');
+          console.log("✅ Relationship created and saved to database");
         } catch (error) {
-          console.error('❌ Failed to create relationship:', error);
+          console.error("❌ Failed to create relationship:", error);
         }
       }
     },
@@ -570,13 +580,19 @@ export default function CanvasPage() {
     <div className="w-full h-full bg-background">
       {/* Canvas Header */}
       <div className="h-14 border-b border-border bg-card px-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-card-foreground">
-            {canvas?.name || `Canvas ${canvasId}`}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {canvas?.description || "Visual business architecture workspace"}
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-card-foreground">
+              {canvas?.name || `Canvas ${canvasId}`}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {canvas?.description || "Visual business architecture workspace"}
+            </p>
+          </div>
+          {/* Auto-save indicator moved to top-left */}
+          <div className="ml-6">
+            <AutoSaveIndicator />
+          </div>
         </div>
 
         {/* Canvas Controls */}
@@ -601,7 +617,6 @@ export default function CanvasPage() {
               {canvas?.nodes.length || 0} nodes • {canvas?.edges.length || 0}{" "}
               edges • {canvas?.groups.length || 0} groups
             </span>
-                      <AutoSaveIndicator />
           </div>
         </div>
       </div>

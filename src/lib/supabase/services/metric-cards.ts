@@ -132,20 +132,24 @@ export async function getProjectMetricCards(projectId: string) {
 
 // Update metric card position
 export async function updateMetricCardPosition(id: string, position: { x: number; y: number }) {
+  console.log(`💾 Updating position for metric card ${id}:`, position);
+  
   const { data, error } = await supabase
     .from('metric_cards')
     .update({ 
       position_x: position.x, 
-      position_y: position.y 
+      position_y: position.y,
+      updated_at: new Date().toISOString(),
     })
     .eq('id', id)
     .select()
     .single();
 
   if (error) {
-    console.error('Error updating metric card position:', error);
+    console.error('❌ Error updating metric card position:', error);
     throw error;
   }
 
+  console.log(`✅ Successfully updated position for metric card ${id}`);
   return transformMetricCard(data);
 }

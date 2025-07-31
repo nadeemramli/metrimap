@@ -11,6 +11,7 @@ import {
   getCurrentUser,
 
 } from '../supabase/services';
+import { useProjectsStore } from './projectsStore';
 
 interface CanvasStoreState extends CanvasState {
   // Auto-save state
@@ -111,8 +112,14 @@ export const useCanvasStore = create<CanvasStoreState>()(
     lastSaved: undefined as string | undefined,
 
     // Canvas management
-    loadCanvas: (canvas: CanvasProject) =>
-      set({ canvas, isLoading: false, error: undefined }),
+    loadCanvas: (canvas: CanvasProject) => {
+      console.log('🎨 Canvas loaded with:', {
+        nodes: canvas.nodes.length,
+        edges: canvas.edges.length,
+        groups: canvas.groups?.length || 0
+      });
+      set({ canvas, isLoading: false, error: undefined });
+    },
 
     clearCanvas: () =>
       set({
@@ -151,6 +158,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
             : undefined,
           isLoading: false,
         }));
+        
+        console.log('✅ New metric card created and saved:', newNode.title);
       } catch (error) {
         console.error('Error creating node:', error);
         set({ error: 'Failed to create node', isLoading: false });
@@ -235,6 +244,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
             : undefined,
           isLoading: false,
         }));
+        
+        console.log('✅ New relationship created and saved:', newEdge.type);
       } catch (error) {
         console.error('Error creating edge:', error);
         set({ error: 'Failed to create relationship', isLoading: false });
@@ -360,36 +371,88 @@ export const useCanvasStore = create<CanvasStoreState>()(
       
       try {
         const promises: Promise<void>[] = [];
+        const failedNodes: string[] = [];
         
-        // Save all pending node changes
+        console.log(`🔄 Starting bulletproof save for ${state.pendingChanges.size} changes...`);
+        
+        // BULLETPROOF SAVING: Save each node individually with error handling
         for (const nodeId of state.pendingChanges) {
           const node = state.canvas?.nodes.find(n => n.id === nodeId);
           if (node) {
-            promises.push(
-              updateMetricCardInSupabase(nodeId, {
+            try {
+              console.log(`💾 Saving node ${nodeId}:`, {
                 position: node.position,
-                // Include other potential changes
+                title: node.title?.substring(0, 20) + '...'
+              });
+              
+              await updateMetricCardInSupabase(nodeId, {
+                position: node.position,
                 title: node.title,
                 description: node.description,
                 tags: node.tags,
-                // Add more fields as needed
-              })
-            );
+                category: node.category,
+                sub_category: node.subCategory,
+                causal_factors: node.causalFactors,
+                dimensions: node.dimensions,
+                data: node.data,
+                source_type: node.sourceType,
+                formula: node.formula,
+                assignees: node.assignees,
+              });
+              
+              console.log(`✅ Successfully saved node ${nodeId}`);
+            } catch (nodeError) {
+              console.error(`❌ Failed to save node ${nodeId}:`, nodeError);
+              failedNodes.push(nodeId);
+            }
+          } else {
+            console.warn(`⚠️ Node ${nodeId} not found in canvas state`);
+            failedNodes.push(nodeId);
           }
         }
 
-        await Promise.all(promises);
+        // Update state: remove successfully saved nodes, keep failed ones for retry
+        const successfulSaves = Array.from(state.pendingChanges).filter(id => !failedNodes.includes(id));
+        const remainingPendingChanges = new Set(failedNodes);
         
         set({ 
-          pendingChanges: new Set(),
-          lastSaved: new Date().toISOString(),
-          isSaving: false 
+          pendingChanges: remainingPendingChanges,
+          lastSaved: successfulSaves.length > 0 ? new Date().toISOString() : state.lastSaved,
+          isSaving: false,
+          error: failedNodes.length > 0 ? `Failed to save ${failedNodes.length} items` : undefined
         });
         
-        console.log('✅ Auto-save completed for', promises.length, 'changes');
+        console.log(`✅ Bulletproof save completed: ${successfulSaves.length} saved, ${failedNodes.length} failed`);
+        
+        // Sync with projects store if we have successful saves
+        if (successfulSaves.length > 0) {
+          const currentCanvas = get().canvas;
+          if (currentCanvas) {
+            try {
+              const projectsStore = useProjectsStore.getState();
+              projectsStore.updateProject(currentCanvas.id, {
+                updatedAt: new Date().toISOString(),
+              });
+            } catch (error) {
+              console.warn('Failed to sync with projects store:', error);
+            }
+          }
+        }
+        
+        // Schedule retry for failed nodes
+        if (failedNodes.length > 0) {
+          console.log(`🔄 Scheduling retry for ${failedNodes.length} failed saves in 5 seconds...`);
+          setTimeout(() => {
+            const currentState = get();
+            if (currentState.pendingChanges.size > 0 && !currentState.isSaving) {
+              currentState.saveAllPendingChanges();
+            }
+          }, 5000);
+        }
+        
       } catch (error) {
-        console.error('❌ Auto-save failed:', error);
-        set({ isSaving: false, error: 'Auto-save failed' });
+        console.error('❌ Bulletproof save system failed:', error);
+        set({ isSaving: false, error: 'Critical save failure' });
       }
     },
 

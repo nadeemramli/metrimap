@@ -159,10 +159,98 @@
   color: rgb(17 24 39);
 }
 
-/* Fix for transparency issues with sheets and dialogs over ReactFlow canvas */
-/* Ensure proper z-index and backdrop styling */
+/* COMPREHENSIVE DIALOG & MODAL TRANSPARENCY FIXES */
+/* ================================================ */
+/* This section completely resolves backdrop transparency issues */
 
-/* Toaster fixes */
+/* STANDARDIZED Z-INDEX HIERARCHY */
+/* ================================ */
+/* Modal overlays: z-[1000] */
+/* Modal content: z-[1001] */
+/* Dropdowns/Popovers: z-[1001] */
+/* Toasts: z-[9999] */
+
+/* All dialog overlays */
+[data-slot="dialog-overlay"],
+[data-slot="alert-dialog-overlay"],
+[data-slot="sheet-overlay"],
+[role="presentation"][data-state="open"] {
+  z-index: 1000 !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px) !important;
+  opacity: 1 !important;
+}
+
+/* All dialog content */
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"],
+[data-slot="sheet-content"],
+[role="dialog"] {
+  z-index: 1001 !important;
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  opacity: 1 !important;
+}
+
+/* All dropdown/popover content - STRONGER BACKGROUNDS */
+[data-slot="select-content"],
+[data-slot="popover-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="command"] {
+  z-index: 1001 !important;
+  background: hsl(var(--background)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  backdrop-filter: blur(4px) !important;
+  opacity: 1 !important;
+}
+
+/* Additional support for dropdown menus specifically */
+[data-slot="dropdown-menu-content"] {
+  background: hsl(var(--background)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* SHEET SPECIFIC FIXES - FORCE SOLID BACKGROUNDS */
+[data-slot="sheet-content"] {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+  opacity: 1 !important;
+}
+
+/* FORCE SHEET CHILDREN TO INHERIT PROPER COLORS */
+[data-slot="sheet-content"] * {
+  color: inherit !important;
+}
+
+[data-slot="sheet-content"] [data-slot="sheet-title"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+[data-slot="sheet-content"] [data-slot="sheet-description"] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* SEARCH DIALOG SPECIFIC FIXES */
+.quick-search-dialog [data-slot="dialog-content"] {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* COMMAND PALETTE SPECIFIC OVERRIDES */
+[data-slot="command"] {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Toaster components */
 [data-sonner-toaster] {
   z-index: 9999 !important;
 }
@@ -171,87 +259,7 @@
   z-index: 9999 !important;
 }
 
-/* Radix UI Dialog overlay fixes - target direct data-slot attributes */
-[data-slot="dialog-overlay"] {
-  z-index: 1000 !important;
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(4px) !important;
-}
-
-/* Radix UI Dialog content fixes - target direct data-slot attributes */
-[data-slot="dialog-content"] {
-  z-index: 1001 !important;
-  background: hsl(var(--background)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  opacity: 1 !important;
-}
-
-/* Radix UI Sheet overlay fixes - target direct data-slot attributes */
-[data-slot="sheet-overlay"] {
-  z-index: 1000 !important;
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(4px) !important;
-}
-
-/* Radix UI Sheet content fixes - target direct data-slot attributes */
-[data-slot="sheet-content"] {
-  z-index: 1001 !important;
-  background: hsl(var(--background)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  opacity: 1 !important;
-}
-
-/* Dropdown menu content fixes */
-[data-slot="dropdown-menu-content"] {
-  z-index: 1001 !important;
-  background: hsl(var(--popover)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  opacity: 1 !important;
-}
-
-/* Popover content fixes */
-[data-slot="popover-content"] {
-  z-index: 1001 !important;
-  background: hsl(var(--popover)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  opacity: 1 !important;
-}
-
-/* Select content fixes */
-[data-slot="select-content"] {
-  z-index: 1001 !important;
-  background: hsl(var(--popover)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  opacity: 1 !important;
-}
-
-/* Command palette specific fixes */
-[data-slot="command"] {
-  z-index: 1001 !important;
-  background: hsl(var(--popover)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  opacity: 1 !important;
-}
-
-/* Generic role-based fixes for any missed components */
-[role="dialog"] {
-  z-index: 1001 !important;
-  background: hsl(var(--background)) !important;
-  opacity: 1 !important;
-}
-
-/* Generic overlay role fixes */
-[role="presentation"][data-state="open"] {
-  z-index: 1000 !important;
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(4px) !important;
-}
-
-/* Ensure ReactFlow canvas doesn't interfere */
-.react-flow {
-  z-index: 1 !important;
-}
-
+/* ReactFlow specific styling */
 .react-flow__node {
   z-index: 2 !important;
 }
@@ -260,7 +268,7 @@
   z-index: 1 !important;
 }
 
-/* Custom React Flow styles */
+/* Custom React Flow node styles */
 .react-flow__node-metric {
   background: hsl(var(--card)) !important;
   border: 1px solid hsl(var(--border)) !important;

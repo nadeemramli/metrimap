@@ -35,7 +35,7 @@ export function useAutoSave(delay: number = 2000) {
     if (pendingChanges.size > 0 && !isSaving) {
       debouncedSave();
     }
-  }, [pendingChanges.size, isSaving, debouncedSave]);
+  }, [pendingChanges.size, isSaving]); // Removed debouncedSave from dependencies
 
   // Return auto-save status for UI feedback
   return {

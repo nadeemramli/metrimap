@@ -141,6 +141,16 @@ export default function DynamicEdge({
   const typeConfig = getRelationshipTypeConfig(relationship.type);
   const confidenceConfig = getConfidenceConfig(relationship.confidence);
 
+  // Handle double-click to open relationship sheet
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onOpenRelationshipSheet?.(relationship.id);
+      console.log("🔗 Double-clicked relationship:", relationship.id);
+    },
+    [onOpenRelationshipSheet, relationship.id]
+  );
+
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -168,7 +178,7 @@ export default function DynamicEdge({
 
   return (
     <>
-      {/* Main Edge Path */}
+      {/* Main Edge Path with Double-Click Support */}
       <BaseEdge
         path={edgePath}
         markerEnd={markerEnd}
@@ -179,9 +189,24 @@ export default function DynamicEdge({
           strokeDasharray: confidenceConfig.strokeDasharray,
           opacity: selected || isHovered ? 1 : confidenceConfig.opacity,
           transition: "all 0.2s ease-in-out",
+          cursor: "pointer",
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onDoubleClick={handleDoubleClick}
+      />
+
+      {/* Invisible Wider Path for Easier Clicking */}
+      <BaseEdge
+        path={edgePath}
+        style={{
+          stroke: "transparent",
+          strokeWidth: Math.max(12, confidenceConfig.strokeWidth + 8), // Wider invisible area
+          cursor: "pointer",
+        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onDoubleClick={handleDoubleClick}
       />
 
       {/* Edge Label and Actions */}
