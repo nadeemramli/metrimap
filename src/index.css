@@ -170,9 +170,9 @@
   z-index: 9999 !important;
 }
 
-/* Dialog and Sheet overlays */
+/* Dialog and Sheet overlays - ensuring proper layering */
 [data-radix-portal] [data-state="open"][data-side] {
-  z-index: 100 !important;
+  z-index: 150 !important;
   background: hsl(var(--background)) !important;
   border: 1px solid hsl(var(--border)) !important;
   opacity: 1 !important;
@@ -180,16 +180,40 @@
 
 /* Sheet content specific fixes */
 [data-radix-portal] [role="dialog"] {
-  z-index: 100 !important;
+  z-index: 150 !important;
+  background: hsl(var(--background)) !important;
+  opacity: 1 !important;
+}
+
+/* Dialog content (search modals, etc.) - higher than sheets */
+[data-radix-portal] [data-slot="dialog-content"] {
+  z-index: 200 !important;
   background: hsl(var(--background)) !important;
   opacity: 1 !important;
 }
 
 /* Backdrop overlay fixes */
 [data-radix-portal] [data-state="open"][role="presentation"] {
-  z-index: 99 !important;
+  z-index: 140 !important;
   background-color: rgba(0, 0, 0, 0.5) !important;
   backdrop-filter: blur(4px) !important;
+}
+
+/* Dialog overlays - higher than sheet overlays */
+[data-radix-portal] [data-slot="dialog-overlay"] {
+  z-index: 190 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Ensure all dialog portals have proper z-index hierarchy */
+[data-radix-portal] {
+  z-index: 100 !important;
+}
+
+/* Command palette / search modals should be on top of everything except toasters */
+[data-slot="dialog-content"]:has([placeholder*="Search"]) {
+  z-index: 300 !important;
 }
 
 /* Ensure ReactFlow canvas doesn't interfere */

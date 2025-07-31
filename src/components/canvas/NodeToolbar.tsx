@@ -18,6 +18,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useCanvasStore } from "@/lib/stores";
@@ -37,11 +47,11 @@ export default function NodeToolbar({
   onOpenSettings,
 }: NodeToolbarProps) {
   const [isDimensionSliceOpen, setIsDimensionSliceOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const {
     getNodeById,
     duplicateNode,
-    deleteNode,
     persistNodeDelete,
     getConnectedNodes,
     selectedNodeIds,
@@ -58,18 +68,17 @@ export default function NodeToolbar({
     duplicateNode(nodeId);
   }, [nodeId, duplicateNode]);
 
-  const handleDelete = useCallback(async () => {
-    if (
-      confirm(
-        "Are you sure you want to delete this card? This action cannot be undone."
-      )
-    ) {
-      try {
-        await persistNodeDelete(nodeId);
-      } catch (error) {
-        console.error("Failed to delete node:", error);
-        alert("Failed to delete card. Please try again.");
-      }
+  const handleDeleteClick = useCallback(() => {
+    setIsDeleteDialogOpen(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    try {
+      await persistNodeDelete(nodeId);
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to delete node:", error);
+      // Keep dialog open on error so user can try again
     }
   }, [nodeId, persistNodeDelete]);
 
@@ -251,7 +260,7 @@ export default function NodeToolbar({
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={handleDelete}
+              onClick={handleDeleteClick}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-3 w-3" />
@@ -270,6 +279,32 @@ export default function NodeToolbar({
           onSlice={handleSlice}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Card</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this card? This action cannot be
+              undone. All relationships connected to this card will also be
+              removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Card
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

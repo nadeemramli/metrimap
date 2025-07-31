@@ -170,6 +170,8 @@ export default function MetricCard({ data, selected }: NodeProps) {
       {/* Handles for connections */}
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
       <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
+      <Handle type="target" position={Position.Left} className="w-3 h-3" />
+      <Handle type="source" position={Position.Right} className="w-3 h-3" />
 
       {/* Card Header */}
       <div className="p-3 border-b border-border/50">

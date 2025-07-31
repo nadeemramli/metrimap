@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import "@xyflow/react/dist/style.css";
-import { useCanvasStore, useProjectsStore, useAppStore } from "@/lib/stores";
+import { useCanvasStore, useProjectsStore } from "@/lib/stores";
 import type {
   MetricCard as MetricCardType,
   Relationship,
@@ -482,9 +482,61 @@ export default function CanvasPage() {
     console.log("Edge changes:", changes);
   }, []);
 
+  // Connection validation function
+  const isValidConnection = useCallback(
+    (connection: any) => {
+      const source = connection.source || connection.sourceNode?.id;
+      const target = connection.target || connection.targetNode?.id;
+
+      if (!source || !target || !canvas) return false;
+
+      // Don't allow self-connections
+      if (source === target) return false;
+
+      // Find source and target nodes
+      const sourceNode = canvas.nodes.find((n) => n.id === source);
+      const targetNode = canvas.nodes.find((n) => n.id === target);
+
+      if (!sourceNode || !targetNode) return false;
+
+      // Core/Value cards can only connect to Data/Metric or Work/Action cards
+      if (sourceNode.category === "Core/Value") {
+        return (
+          targetNode.category === "Data/Metric" ||
+          targetNode.category === "Work/Action"
+        );
+      }
+
+      // Data/Metric cards can connect to anything
+      if (sourceNode.category === "Data/Metric") {
+        return true;
+      }
+
+      // Work/Action cards can connect to Data/Metric or Ideas/Hypothesis
+      if (sourceNode.category === "Work/Action") {
+        return (
+          targetNode.category === "Data/Metric" ||
+          targetNode.category === "Ideas/Hypothesis"
+        );
+      }
+
+      // Ideas/Hypothesis can connect to Data/Metric or Work/Action
+      if (sourceNode.category === "Ideas/Hypothesis") {
+        return (
+          targetNode.category === "Data/Metric" ||
+          targetNode.category === "Work/Action"
+        );
+      }
+
+      // Default allow for other categories
+      return true;
+    },
+    [canvas]
+  );
+
   const onConnect = useCallback(
     (params: Connection) => {
-      if (params.source && params.target) {
+      if (params.source && params.target && isValidConnection(params)) {
         const newRelationship: Relationship = {
           id: `${params.source}-${params.target}-${Date.now()}`,
           sourceId: params.source,
@@ -498,7 +550,7 @@ export default function CanvasPage() {
         addCanvasEdge(newRelationship);
       }
     },
-    [addCanvasEdge]
+    [addCanvasEdge, isValidConnection]
   );
 
   return (
@@ -556,6 +608,7 @@ export default function CanvasPage() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          isValidConnection={isValidConnection}
           fitView
           className="bg-background"
         >
@@ -564,6 +617,17 @@ export default function CanvasPage() {
           <MiniMap
             className="bg-card border border-border"
             maskColor="rgb(0, 0, 0, 0.1)"
+            nodeColor={(node) => {
+              switch (node.type) {
+                case "metricCard":
+                  return "#3b82f6"; // blue
+                case "groupNode":
+                  return "#10b981"; // green
+                default:
+                  return "#6b7280"; // gray
+              }
+            }}
+            ariaLabel="Canvas minimap"
           />
 
           {/* Canvas Controls */}

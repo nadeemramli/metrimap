@@ -276,9 +276,20 @@ export default function HomePage() {
     );
   };
 
-  const toggleStar = (projectId: string) => {
-    // TODO: Implement star toggle in project store
-    console.log("Toggle star for project:", projectId);
+  const toggleStar = async (projectId: string) => {
+    try {
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return;
+
+      const isStarred = project.tags.includes("starred");
+      const updatedTags = isStarred
+        ? project.tags.filter((tag) => tag !== "starred")
+        : [...project.tags, "starred"];
+
+      await updateProject(projectId, { tags: updatedTags });
+    } catch (error) {
+      console.error("Failed to toggle star:", error);
+    }
   };
 
   const renderProjectCard = (project: CanvasProject) => (
@@ -378,7 +389,7 @@ export default function HomePage() {
               {project.tags
                 .filter((tag) => tag !== "starred")
                 .map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs">
+                  <Badge key={tag} variant="secondary" className="text-xs">
                     {tag}
                   </Badge>
                 ))}
