@@ -6,7 +6,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Tag,
   Users,
   MessageSquare,
   BarChart3,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import TagsList from "./TagsList";
 import { cn } from "@/lib/utils";
 import { useAccessibility } from "@/hooks/useAccessibility";
 import type { MetricCard as MetricCardType, MetricValue } from "@/lib/types";
@@ -122,8 +122,8 @@ export default function MetricCard({ data, selected }: NodeProps) {
     onOpenSettings?.(card.id);
   };
 
-  const handleAddTag = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleAddTag = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     // TODO: Open tag input
     console.log("Add tag to:", card.id);
   };
@@ -268,19 +268,13 @@ export default function MetricCard({ data, selected }: NodeProps) {
         {/* Tags */}
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-xs text-muted-foreground">Tags:</span>
-          {card.tags.map((tag: string) => (
-            <Badge key={tag} variant="secondary" className="text-xs px-1 py-0">
-              {tag}
-            </Badge>
-          ))}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-5 w-5 p-0 ml-1"
-            onClick={handleAddTag}
-          >
-            <Tag className="h-3 w-3" />
-          </Button>
+          <TagsList
+            tags={card.tags}
+            variant="secondary"
+            onAddTag={handleAddTag}
+            showAddButton={true}
+            maxDisplayTags={2}
+          />
         </div>
 
         {/* Action Buttons Row */}

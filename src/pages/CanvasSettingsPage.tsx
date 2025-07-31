@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { TagInput } from "@/components/ui/tag-input";
+import { COMMON_PROJECT_TAGS } from "@/lib/constants/tags";
 import {
   Card,
   CardContent,
@@ -97,22 +99,43 @@ export default function CanvasSettingsPage() {
 
   const [canvasName, setCanvasName] = useState("");
   const [canvasDescription, setCanvasDescription] = useState("");
-  const [canvasLabels, setCanvasLabels] = useState("");
+  const [canvasTags, setCanvasTags] = useState<string[]>([]);
 
   // Form field change handlers that set dirty state
   const handleNameChange = (value: string) => {
     setCanvasName(value);
-    setIsDirty(value !== (currentProject?.name || ""));
+    const tagsChanged =
+      JSON.stringify(canvasTags.sort()) !==
+      JSON.stringify((currentProject?.tags || []).sort());
+    setIsDirty(
+      value !== (currentProject?.name || "") ||
+        canvasDescription !== (currentProject?.description || "") ||
+        tagsChanged
+    );
   };
 
   const handleDescriptionChange = (value: string) => {
     setCanvasDescription(value);
-    setIsDirty(value !== (currentProject?.description || ""));
+    const tagsChanged =
+      JSON.stringify(canvasTags.sort()) !==
+      JSON.stringify((currentProject?.tags || []).sort());
+    setIsDirty(
+      canvasName !== (currentProject?.name || "") ||
+        value !== (currentProject?.description || "") ||
+        tagsChanged
+    );
   };
 
-  const handleLabelsChange = (value: string) => {
-    setCanvasLabels(value);
-    setIsDirty(value !== (currentProject?.tags?.join(", ") || ""));
+  const handleTagsChange = (tags: string[]) => {
+    setCanvasTags(tags);
+    const originalTags = currentProject?.tags || [];
+    const tagsChanged =
+      JSON.stringify(tags.sort()) !== JSON.stringify(originalTags.sort());
+    setIsDirty(
+      tagsChanged ||
+        canvasName !== (currentProject?.name || "") ||
+        canvasDescription !== (currentProject?.description || "")
+    );
   };
 
   // Load project data when available
@@ -120,11 +143,11 @@ export default function CanvasSettingsPage() {
     if (currentProject) {
       const name = currentProject.name || "";
       const description = currentProject.description || "";
-      const labels = currentProject.tags?.join(", ") || "";
+      const tags = currentProject.tags || [];
 
       setCanvasName(name);
       setCanvasDescription(description);
-      setCanvasLabels(labels);
+      setCanvasTags(tags);
       setIsDirty(false); // Reset dirty state when loading fresh data
       setLoading(false);
     } else if (canvasId) {
@@ -278,10 +301,7 @@ export default function CanvasSettingsPage() {
     const updatedProject = {
       name: canvasName,
       description: canvasDescription,
-      tags: canvasLabels
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
+      tags: canvasTags,
       updated_at: new Date().toISOString(),
       last_modified_by: user.id, // Use current user's UUID, not email
     };
@@ -527,13 +547,16 @@ export default function CanvasSettingsPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-2">Tags</label>
-                  <Input
-                    value={canvasLabels}
-                    onChange={(e) => handleLabelsChange(e.target.value)}
-                    placeholder="Marketing, Finance, Q4"
+                  <TagInput
+                    tags={canvasTags}
+                    onChange={handleTagsChange}
+                    placeholder="Add a tag..."
+                    maxTags={10}
+                    variant="secondary"
+                    suggestions={COMMON_PROJECT_TAGS}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Separate tags with commas
+                    Use tags to organize and categorize your canvas
                   </p>
                 </div>
               </CardContent>
@@ -569,11 +592,17 @@ export default function CanvasSettingsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-2">Tags</label>
                   <div className="flex flex-wrap gap-2">
-                    {currentProject.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
+                    {currentProject.tags && currentProject.tags.length > 0 ? (
+                      currentProject.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary">
+                          {tag}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        No tags
+                      </span>
+                    )}
                   </div>
                 </div>
 

@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { TagInput } from "@/components/ui/tag-input";
+import { COMMON_METRIC_TAGS } from "@/lib/constants/tags";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -148,17 +149,8 @@ export default function CardSettingsSheet({
     setIsModified(true);
   };
 
-  const handleTagAdd = (tag: string) => {
-    if (tag.trim() && !formData.tags?.includes(tag.trim())) {
-      handleFieldChange("tags", [...(formData.tags || []), tag.trim()]);
-    }
-  };
-
-  const handleTagRemove = (tagToRemove: string) => {
-    handleFieldChange(
-      "tags",
-      formData.tags?.filter((tag) => tag !== tagToRemove) || []
-    );
+  const handleTagsChange = (tags: string[]) => {
+    handleFieldChange("tags", tags);
   };
 
   const handleDimensionToggle = (dimension: Dimension) => {
@@ -998,36 +990,18 @@ export default function CardSettingsSheet({
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">Tags</label>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {formData.tags?.map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="secondary"
-                          className="text-xs"
-                        >
-                          {tag}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-4 w-4 p-0 ml-1"
-                            onClick={() => handleTagRemove(tag)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <Input
-                      placeholder="Add tag (press Enter)"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleTagAdd((e.target as HTMLInputElement).value);
-                          (e.target as HTMLInputElement).value = "";
-                        }
-                      }}
-                    />
-                  </div>
+                  <TagInput
+                    tags={formData.tags || []}
+                    onChange={handleTagsChange}
+                    placeholder="Add a tag..."
+                    maxTags={15}
+                    variant="secondary"
+                    className="mt-2"
+                    suggestions={COMMON_METRIC_TAGS}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Tags help categorize and organize metrics
+                  </p>
                 </div>
 
                 <div>
