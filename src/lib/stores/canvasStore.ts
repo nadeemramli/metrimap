@@ -13,6 +13,11 @@ import {
 } from '../supabase/services';
 
 interface CanvasStoreState extends CanvasState {
+  // Auto-save state
+  pendingChanges: Set<string>;
+  isSaving: boolean;
+  lastSaved: string | undefined;
+
   // Canvas management
   loadCanvas: (canvas: CanvasProject) => void;
   clearCanvas: () => void;
@@ -27,6 +32,7 @@ interface CanvasStoreState extends CanvasState {
   // Local Node management
   addNode: (node: MetricCard) => void;
   updateNode: (nodeId: string, updates: Partial<MetricCard>) => void;
+  updateNodePosition: (nodeId: string, position: { x: number; y: number }) => Promise<void>;
   deleteNode: (nodeId: string) => void;
   duplicateNode: (nodeId: string) => void;
   selectNodes: (nodeIds: string[]) => void;
@@ -53,6 +59,12 @@ interface CanvasStoreState extends CanvasState {
   deleteGroup: (groupId: string) => void;
   addNodesToGroup: (groupId: string, nodeIds: string[]) => void;
   removeNodesFromGroup: (groupId: string, nodeIds: string[]) => void;
+
+  // Auto-save functionality
+  addPendingChange: (nodeId: string) => void;
+  removePendingChange: (nodeId: string) => void;
+  saveAllPendingChanges: () => Promise<void>;
+  setSaving: (saving: boolean) => void;
 
   // Dimension slice
   sliceMetricByDimensions: (
@@ -92,6 +104,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
       start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       end: new Date().toISOString().split('T')[0],
     },
+    
+    // Auto-save state
+    pendingChanges: new Set<string>(),
+    isSaving: false,
+    lastSaved: undefined as string | undefined,
 
     // Canvas management
     loadCanvas: (canvas: CanvasProject) =>
@@ -299,6 +316,82 @@ export const useCanvasStore = create<CanvasStoreState>()(
             }
           : undefined,
       })),
+
+    // Position-specific update that triggers auto-save
+    updateNodePosition: async (nodeId: string, position: { x: number; y: number }) => {
+      // Update local state immediately for smooth UX
+      set((state) => ({
+        canvas: state.canvas
+          ? {
+              ...state.canvas,
+              nodes: state.canvas.nodes.map((node) =>
+                node.id === nodeId
+                  ? { ...node, position, updatedAt: new Date().toISOString() }
+                  : node
+              ),
+              updatedAt: new Date().toISOString(),
+            }
+          : undefined,
+      }));
+
+      // The debounced persistence will be handled by the auto-save system
+    },
+
+    // Auto-save functionality
+    addPendingChange: (nodeId: string) =>
+      set((state) => ({
+        pendingChanges: new Set([...state.pendingChanges, nodeId]),
+      })),
+
+    removePendingChange: (nodeId: string) =>
+      set((state) => {
+        const newSet = new Set(state.pendingChanges);
+        newSet.delete(nodeId);
+        return { pendingChanges: newSet };
+      }),
+
+    setSaving: (saving: boolean) => set({ isSaving: saving }),
+
+    saveAllPendingChanges: async () => {
+      const state = get();
+      if (state.pendingChanges.size === 0 || state.isSaving) return;
+
+      set({ isSaving: true });
+      
+      try {
+        const promises: Promise<void>[] = [];
+        
+        // Save all pending node changes
+        for (const nodeId of state.pendingChanges) {
+          const node = state.canvas?.nodes.find(n => n.id === nodeId);
+          if (node) {
+            promises.push(
+              updateMetricCardInSupabase(nodeId, {
+                position: node.position,
+                // Include other potential changes
+                title: node.title,
+                description: node.description,
+                tags: node.tags,
+                // Add more fields as needed
+              })
+            );
+          }
+        }
+
+        await Promise.all(promises);
+        
+        set({ 
+          pendingChanges: new Set(),
+          lastSaved: new Date().toISOString(),
+          isSaving: false 
+        });
+        
+        console.log('✅ Auto-save completed for', promises.length, 'changes');
+      } catch (error) {
+        console.error('❌ Auto-save failed:', error);
+        set({ isSaving: false, error: 'Auto-save failed' });
+      }
+    },
 
     deleteNode: (nodeId: string) =>
       set((state) => ({

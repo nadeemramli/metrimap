@@ -41,6 +41,8 @@ import QuickSearchCommand, {
   useQuickSearch,
 } from "@/components/search/QuickSearchCommand";
 import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
+import AutoSaveIndicator from "@/components/canvas/AutoSaveIndicator";
+import useAutoSave from "@/hooks/useAutoSave";
 
 // Convert MetricCard to ReactFlow Node with callbacks
 const convertToNode = (
@@ -122,6 +124,10 @@ export default function CanvasPage() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
 
+  
+  // Initialize auto-save functionality
+  useAutoSave();
+
   // Search functionality
   const quickSearch = useQuickSearch();
 
@@ -129,15 +135,17 @@ export default function CanvasPage() {
   const {
     canvas,
     loadCanvas,
-    updateNode,
-    addEdge: addCanvasEdge,
     selectedNodeIds,
+    updateNodePosition,
+    addPendingChange,
+    createEdge,
     updateGroup,
     deleteGroup,
     deleteNode,
     addNode,
     selectNode,
     clearSelection,
+
   } = useCanvasStore();
   const { getProjectById } = useProjectsStore();
 
@@ -384,17 +392,18 @@ export default function CanvasPage() {
     [canvas?.groups, updateGroup]
   );
 
-  // Handle auto-layout from controls
+  // Handle auto-layout from controls  
   const handleNodesChange = useCallback(
     (newNodes: Node[]) => {
       newNodes.forEach((node) => {
         const card = canvas?.nodes.find((n) => n.id === node.id);
         if (card && node.position) {
-          updateNode(node.id, { position: node.position });
+          updateNodePosition(node.id, node.position);
+          addPendingChange(node.id);
         }
       });
     },
-    [canvas?.nodes, updateNode]
+    [canvas?.nodes, updateNodePosition, addPendingChange]
   );
 
   // Convert canvas data to ReactFlow format
@@ -455,7 +464,8 @@ export default function CanvasPage() {
         if (change.type === "position" && change.position && canvas) {
           const node = canvas.nodes.find((n) => n.id === change.id);
           if (node) {
-            updateNode(change.id, { position: change.position });
+            updateNodePosition(change.id, change.position);
+            addPendingChange(change.id);
           }
         }
         // Handle selection changes for toolbar
@@ -473,7 +483,7 @@ export default function CanvasPage() {
         }
       });
     },
-    [canvas, updateNode, nodes]
+    [canvas, updateNodePosition, addPendingChange, nodes]
   );
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
@@ -535,22 +545,25 @@ export default function CanvasPage() {
   );
 
   const onConnect = useCallback(
-    (params: Connection) => {
+    async (params: Connection) => {
       if (params.source && params.target && isValidConnection(params)) {
-        const newRelationship: Relationship = {
-          id: `${params.source}-${params.target}-${Date.now()}`,
+        const newRelationshipData = {
           sourceId: params.source,
           targetId: params.target,
-          type: "Probabilistic", // Default type
-          confidence: "Low", // Default confidence
+          type: "Probabilistic" as const, // Default type
+          confidence: "Low" as const, // Default confidence
           evidence: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         };
-        addCanvasEdge(newRelationship);
+        
+        try {
+          await createEdge(newRelationshipData);
+          console.log('✅ Relationship created and saved to database');
+        } catch (error) {
+          console.error('❌ Failed to create relationship:', error);
+        }
       }
     },
-    [addCanvasEdge, isValidConnection]
+    [createEdge, isValidConnection]
   );
 
   return (
@@ -588,12 +601,7 @@ export default function CanvasPage() {
               {canvas?.nodes.length || 0} nodes • {canvas?.edges.length || 0}{" "}
               edges • {canvas?.groups.length || 0} groups
             </span>
-            <span className="text-sm text-muted-foreground">
-              Auto-saved •{" "}
-              {canvas?.updatedAt
-                ? new Date(canvas.updatedAt).toLocaleTimeString()
-                : new Date().toLocaleTimeString()}
-            </span>
+                      <AutoSaveIndicator />
           </div>
         </div>
       </div>
