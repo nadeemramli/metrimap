@@ -170,7 +170,51 @@
   z-index: 9999 !important;
 }
 
-/* Dialog and Sheet overlays */
+/* Radix UI Sheet overlay fixes using data-slot attributes */
+[data-radix-portal] [data-slot="sheet-overlay"] {
+  z-index: 99 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Radix UI Sheet content fixes using data-slot attributes */
+[data-radix-portal] [data-slot="sheet-content"] {
+  z-index: 100 !important;
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  opacity: 1 !important;
+}
+
+/* Radix UI Dialog overlay fixes using data-slot attributes */
+[data-radix-portal] [data-slot="dialog-overlay"] {
+  z-index: 99 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Radix UI Dialog content fixes using data-slot attributes */
+[data-radix-portal] [data-slot="dialog-content"] {
+  z-index: 100 !important;
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  opacity: 1 !important;
+}
+
+/* Generic dialog role fixes for any missed components */
+[data-radix-portal] [role="dialog"] {
+  z-index: 100 !important;
+  background: hsl(var(--background)) !important;
+  opacity: 1 !important;
+}
+
+/* Generic overlay role fixes */
+[data-radix-portal] [role="presentation"] {
+  z-index: 99 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Additional fixes for data-state attributes */
 [data-radix-portal] [data-state="open"][data-side] {
   z-index: 100 !important;
   background: hsl(var(--background)) !important;
@@ -178,18 +222,20 @@
   opacity: 1 !important;
 }
 
-/* Sheet content specific fixes */
-[data-radix-portal] [role="dialog"] {
-  z-index: 100 !important;
-  background: hsl(var(--background)) !important;
+/* Command palette specific fixes */
+[data-radix-portal] [data-slot="command"] {
+  background: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
   opacity: 1 !important;
 }
 
-/* Backdrop overlay fixes */
-[data-radix-portal] [data-state="open"][role="presentation"] {
+/* Additional fixes for any missed portal content */
+[data-radix-portal] > div {
   z-index: 99 !important;
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(4px) !important;
+}
+
+[data-radix-portal] > div > div {
+  z-index: 100 !important;
 }
 
 /* Ensure ReactFlow canvas doesn't interfere */

@@ -9,7 +9,6 @@ import {
   Network,
   FileText,
   Clock,
-  TrendingUp,
   ArrowRight,
   Command,
 } from "lucide-react";
