@@ -11,7 +11,6 @@ import {
   Users,
   Calendar,
   Dot,
-  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { cn } from "@/lib/utils";
-import { useProjectsStore, useAppStore } from "@/lib/stores";
+import { useProjectsStore } from "@/lib/stores";
 import { UserMenu } from "@/components/layout/UserMenu";
 
 const sidebarItems = [
@@ -73,7 +72,6 @@ export default function CanvasLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { getProjectById } = useProjectsStore();
-  const { currentCanvasId } = useAppStore();
 
   const project = canvasId ? getProjectById(canvasId) : null;
 

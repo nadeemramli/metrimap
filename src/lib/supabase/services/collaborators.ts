@@ -26,7 +26,7 @@ export async function getProjectCollaborators(projectId: string): Promise<Collab
     throw error;
   }
 
-  return data || [];
+  return (data?.filter(item => item.users !== null) || []) as Collaborator[];
 }
 
 // Add a collaborator to a project

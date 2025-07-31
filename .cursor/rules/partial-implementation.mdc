@@ -1,0 +1,58 @@
+---
+name: Partial Implementation
+description: This rule identifies code that was commented out to resolve linter errors for deployment.
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: true
+---
+
+# Log of Partially Implemented Features
+
+This file contains a log of code that was commented out to resolve linter errors for deployment. Each entry represents a placeholder for a feature that is incomplete or planned for the future. Review this file to see what development work can be resumed.
+
+---
+
+## Purpose
+
+When TypeScript linter errors prevent deployment due to unused variables, imports, or functions, this file tracks the original code and its intended purpose. This ensures that no development context is lost and provides a roadmap for completing features later.
+
+## How to Use This File
+
+1. **Review entries** when planning new development work
+2. **Search for "PARTIAL-IMPL:"** in the codebase to find commented code
+3. **Update entries** when features are completed or requirements change
+4. **Add new entries** whenever code is commented out for linting purposes
+
+---
+
+## Entry Template
+
+### `[File Path]` (Updated on `YYYY-MM-DD`)
+
+- **Inferred Intent:** [A brief description of the feature or purpose of the code.]
+- **Removed Code:**
+  ```typescript
+  // The original, uncommented code snippet.
+  ```
+- **Status:** [PENDING | IN_PROGRESS | COMPLETED | CANCELLED]
+- **Notes:** [Any additional context, blockers, or next steps]
+
+---
+
+## Current Entries
+
+_No entries yet. This file will be populated as development progresses and linter issues are resolved._
+
+---
+
+## Search Patterns
+
+When looking for partially implemented code in the codebase, search for:
+
+- `// PARTIAL-IMPL:`
+- `// TODO:`
+- `// FIXME:`
+- `// FUTURE:`
+
+---

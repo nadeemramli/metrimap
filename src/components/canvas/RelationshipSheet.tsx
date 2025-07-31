@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -32,14 +32,11 @@ import {
   Plus,
   FileText,
   ExternalLink,
-  Calendar,
-  User,
   BarChart3,
   Zap,
   TrendingUp,
   Network,
   Layers,
-  AlertCircle,
   CheckCircle,
   Clock,
   Workflow,
@@ -131,14 +128,8 @@ export default function RelationshipSheet({
   onClose,
   relationshipId,
 }: RelationshipSheetProps) {
-  const {
-    getEdgeById,
-    updateEdge,
-    deleteEdge,
-    persistEdgeUpdate,
-    persistEdgeDelete,
-    getNodeById,
-  } = useCanvasStore();
+  const { getEdgeById, persistEdgeUpdate, persistEdgeDelete, getNodeById } =
+    useCanvasStore();
   const relationship = relationshipId ? getEdgeById(relationshipId) : null;
 
   const [activeTab, setActiveTab] = useState("details");
@@ -250,9 +241,6 @@ export default function RelationshipSheet({
 
   const selectedTypeConfig = relationshipTypeOptions.find(
     (opt) => opt.value === formData.type
-  );
-  const selectedConfidenceConfig = confidenceOptions.find(
-    (opt) => opt.value === formData.confidence
   );
 
   return (

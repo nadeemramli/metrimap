@@ -1,8 +1,8 @@
 // Web Worker for heavy computations using Comlink
 import * as Comlink from 'comlink';
-import { evaluate, create, all } from 'mathjs';
+import { create, all } from 'mathjs';
 import * as ss from 'simple-statistics';
-import type { MetricValue, MetricCard, Relationship } from '../types';
+import type { MetricCard, Relationship } from '../types';
 
 // Configure math.js for safe evaluation
 const math = create(all);
@@ -44,6 +44,11 @@ export interface ComputationWorker {
   
   // Large Dataset Operations
   processLargeDataset: (data: any[], operation: string) => Promise<any>;
+  
+  // Helper functions
+  calculatePValue: (tStat: number) => number;
+  calculatePower: (correlation: number, sampleSize: number) => number;
+  calculateRequiredSampleSize: (correlation: number) => number;
 }
 
 export interface ProcessedMetricData {
@@ -156,7 +161,7 @@ const computationWorker: ComputationWorker = {
     
     // Calculate p-value using t-distribution (approximate)
     // For simplicity, using normal approximation for large samples
-    const pValue = this.calculatePValue(tStat, n - 2);
+    const pValue = this.calculatePValue(tStat);
     
     // Calculate confidence interval using Fisher transformation
     const fisherZ = 0.5 * Math.log((1 + correlation) / (1 - correlation));
@@ -181,7 +186,7 @@ const computationWorker: ComputationWorker = {
     
     // Power analysis (simplified)
     const power = this.calculatePower(correlation, n);
-    const requiredSampleSize = this.calculateRequiredSampleSize(correlation, 0.8); // 80% power
+    const requiredSampleSize = this.calculateRequiredSampleSize(correlation); // 80% power
     
     return {
       correlation,
@@ -198,7 +203,7 @@ const computationWorker: ComputationWorker = {
   },
 
   // Helper function to calculate p-value (simplified)
-  calculatePValue(tStat: number, df: number): number {
+  calculatePValue(tStat: number): number {
     // Simplified p-value calculation using normal approximation
     // For more accuracy, you'd want a proper t-distribution implementation
     const absT = Math.abs(tStat);
@@ -224,7 +229,7 @@ const computationWorker: ComputationWorker = {
   },
 
   // Calculate required sample size for given effect and power
-  calculateRequiredSampleSize(correlation: number, desiredPower: number): number {
+  calculateRequiredSampleSize(correlation: number): number {
     const effectSize = Math.abs(correlation);
     if (effectSize < 0.1) return 500; // Very small effect
     if (effectSize < 0.3) return 100; // Small effect  
@@ -239,7 +244,7 @@ const computationWorker: ComputationWorker = {
     
     try {
       const regression = ss.linearRegression(data);
-      const r2 = ss.rSquared(data, regression);
+      const r2 = ss.rSquared(data, (x: number) => regression.m * x + regression.b);
       
       return {
         slope: regression.m,

@@ -1,0 +1,133 @@
+---
+description: This rule governs how the AI assistant cleans up TypeScript code by addressing linter issues (like unused variables or modules) while preserving the context of incomplete or future features.
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: true
+---
+
+# TypeScript Cleanup & Future-Proofing Rule
+
+This rule governs how the AI assistant cleans up TypeScript code by addressing linter issues (like unused variables or modules) while preserving the context of incomplete or future features.
+
+---
+
+## Purpose
+
+To enable clean, deployable code by resolving linter errors without losing the valuable context of partially implemented features. Often, unused variables or imports are placeholders for future development. This rule ensures that while the code is cleaned for deployment, the intent behind these placeholders is captured and documented for easy continuation later.
+
+---
+
+## Core Principle
+
+**No context is ever lost.** When code is commented out or removed to satisfy the linter, its original purpose and form must be documented in the `partial-implementation.mdc` file. This file serves as a "to-do" list and a roadmap for completing features.
+
+---
+
+## Rule Trigger
+
+This rule is activated when the user requests a cleanup of TypeScript files, specifically mentioning actions like:
+
+- "Fix linter errors."
+- "Remove/clean up unused variables/imports."
+- "Get the code ready for deployment."
+
+---
+
+## AI Action Protocol
+
+When the rule is triggered, the AI must perform the following steps:
+
+1.  **Identify Unused Code:** Scan the target file(s) for unused variables, functions, imports, or other entities flagged by the TypeScript linter.
+2.  **Infer Intent:** Before taking action, analyze the name of the variable/function and any surrounding comments to infer its intended purpose (e.g., `const futureAnalyticsService` implies an analytics feature is planned).
+3.  **Propose Code Change:** Comment out the unused code instead of deleting it. Prefix the commented line with a standardized token like `// PARTIAL-IMPL:` to make it easily searchable.
+4.  **Document the Change:** Propose an update to the `partial-implementation.mdc` file. This update must log the change, including the file path, the original code, and its inferred purpose.
+
+---
+
+## Example Scenario
+
+**User:** "The build is failing because of an unused variable in `src/features/payments/service.ts`. Can you fix it so we can deploy?"
+
+**AI Action:**
+
+1.  **Identify:** The AI finds the following unused code in `src/features/payments/service.ts`:
+
+    ```typescript
+    import { processRefunds } from "./refunds"; // Unused import
+    // ...
+    const handleComplexRefunds = (paymentId: string) => {
+      // Unused function
+      // TODO: Awaiting new API spec from finance team
+      return processRefunds(paymentId, { type: "complex" });
+    };
+    ```
+
+2.  **Infer Intent:** The code and comments indicate a "complex refund" feature is planned but not yet complete.
+
+3.  **Propose Code Change:** The AI suggests commenting out the code in `src/features/payments/service.ts`:
+
+    ```typescript
+    // PARTIAL-IMPL: Feature for complex refunds is awaiting a new API spec.
+    // import { processRefunds } from './refunds';
+    // ...
+    // PARTIAL-IMPL: Function to handle complex refunds.
+    // const handleComplexRefunds = (paymentId: string) => {
+    //     // TODO: Awaiting new API spec from finance team
+    //     return processRefunds(paymentId, { type: 'complex' });
+    // };
+    ```
+
+4.  **Document in `partial-implementation.mdc`:** The AI proposes adding the following entry:
+
+    ````markdown
+    ### `src/features/payments/service.ts` (Updated on 2025-07-31)
+
+    - **Inferred Intent:** A feature to handle complex refunds is partially implemented but was commented out to pass linting for deployment. It appears to be waiting on a new API specification from the finance team.
+    - **Removed Code:**
+
+      ```typescript
+      import { processRefunds } from "./refunds";
+
+      const handleComplexRefunds = (paymentId: string) => {
+        // TODO: Awaiting new API spec from finance team
+        return processRefunds(paymentId, { type: "complex" });
+      };
+      ```
+    ````
+
+---
+
+## Documentation File (`.cursor/rules/partial-implementation.mdc`)
+
+This file should be structured as follows to maintain a clear log.
+
+````markdown
+# Log of Partially Implemented Features
+
+This file contains a log of code that was commented out to resolve linter errors for deployment. Each entry represents a placeholder for a feature that is incomplete or planned for the future. Review this file to see what development work can be resumed.
+
+---
+
+### `[File Path]` (Updated on `YYYY-MM-DD`)
+
+- **Inferred Intent:** [A brief description of the feature or purpose of the code.]
+- **Removed Code:**
+  ```typescript
+  // The original, uncommented code snippet.
+  ```
+
+---
+
+### `[Another File Path]` (Updated on `YYYY-MM-DD`)
+
+- **Inferred Intent:** [Description for the next item.]
+- **Removed Code:**
+  ```typescript
+  // ...
+  ```
+````
+
+```
+
+```

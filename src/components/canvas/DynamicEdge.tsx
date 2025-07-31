@@ -34,6 +34,7 @@ import type {
 interface DynamicEdgeData {
   relationship: Relationship;
   onOpenRelationshipSheet?: (relationshipId: string) => void;
+  [key: string]: unknown;
 }
 
 interface DynamicEdgeProps extends EdgeProps {

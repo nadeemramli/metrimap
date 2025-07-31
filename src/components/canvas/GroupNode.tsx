@@ -29,11 +29,7 @@ interface GroupNodeData {
   onToggleCollapse?: (groupId: string) => void;
 }
 
-export default function GroupNode({
-  id,
-  data,
-  selected,
-}: NodeProps<GroupNodeData>) {
+export default function GroupNode({ id, data, selected }: NodeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const {
     group,
@@ -41,7 +37,7 @@ export default function GroupNode({
     onEditGroup,
     onDeleteGroup,
     onToggleCollapse,
-  } = data;
+  } = data as unknown as GroupNodeData;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();

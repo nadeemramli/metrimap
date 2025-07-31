@@ -41,8 +41,9 @@ import {
   CheckCircle,
   AlertTriangle,
   Clock,
+  Grid3X3,
 } from "lucide-react";
-import { useCanvasStore, useProjectsStore } from "@/lib/stores";
+import { useProjectsStore } from "@/lib/stores";
 
 type TabType = "metrics" | "relationships" | "repo";
 type SortField =
@@ -379,13 +380,13 @@ export default function AssetsPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium">
-                            {metric.currentValue
-                              ? `${metric.currentValue.value} ${metric.currentValue.unit || ""}`
+                            {metric.data && metric.data.length > 0
+                              ? `${metric.data[0].value}`
                               : "No data"}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {metric.currentValue
-                              ? `Target: ${metric.targetValue || "Not set"}`
+                            {metric.data && metric.data.length > 0
+                              ? `Period: ${metric.data[0].period}`
                               : ""}
                           </div>
                         </td>

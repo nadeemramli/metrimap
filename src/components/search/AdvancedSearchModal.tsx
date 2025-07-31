@@ -16,8 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Label } from "@/components/ui/label";
 import {
   Accordion,
   AccordionContent,
@@ -26,15 +24,10 @@ import {
 } from "@/components/ui/accordion";
 import {
   Search,
-  Filter,
-  X,
   BarChart3,
   Network,
   FileText,
-  Calendar,
-  Users,
   Tag,
-  Target,
   SlidersHorizontal,
   ChevronRight,
 } from "lucide-react";
@@ -44,8 +37,6 @@ import type {
   MetricCard,
   Relationship,
   EvidenceItem,
-  CardCategory,
-  RelationshipType,
   ConfidenceLevel,
 } from "@/lib/types";
 
@@ -548,7 +539,7 @@ export default function AdvancedSearchModal({
                   </h3>
                 </div>
 
-                {searchResults.map((result, index) => (
+                {searchResults.map((result) => (
                   <div
                     key={result.id}
                     className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"

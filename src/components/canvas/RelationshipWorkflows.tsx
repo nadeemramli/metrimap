@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -31,7 +30,6 @@ import {
   Calculator,
   FlaskConical,
   Target,
-  Puzzle,
 } from "lucide-react";
 import type {
   RelationshipType,
@@ -427,7 +425,6 @@ export default function RelationshipWorkflows({
 }: RelationshipWorkflowProps) {
   const config = getWorkflowConfig(type);
   const [workflowData, setWorkflowData] = useState<any>({});
-  const [currentStep, setCurrentStep] = useState(0);
 
   if (!config) return null;
 

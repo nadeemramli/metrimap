@@ -33,7 +33,7 @@ import {
   Zap,
   Network,
 } from "lucide-react";
-import { useCanvasStore, useProjectsStore } from "@/lib/stores";
+import { useCanvasStore } from "@/lib/stores";
 import type { MetricCard } from "@/lib/types";
 import { GroupHelpModal } from "@/components/canvas";
 import {
@@ -54,7 +54,7 @@ const generateMockMetrics = (cards: MetricCard[]) => {
       healthScore: 85,
       lastUpdated: new Date().toISOString(),
     },
-    kpis: cards.slice(0, 6).map((card, index) => ({
+    kpis: cards.slice(0, 6).map((card) => ({
       id: card.id,
       name: card.title,
       value: Math.floor(Math.random() * 1000) + 100,

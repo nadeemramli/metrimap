@@ -370,7 +370,6 @@ export const useCanvasStore = create<CanvasStoreState>()(
       set({ isSaving: true });
       
       try {
-        const promises: Promise<void>[] = [];
         const failedNodes: string[] = [];
         
         console.log(`🔄 Starting bulletproof save for ${state.pendingChanges.size} changes...`);
@@ -391,11 +390,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
                 description: node.description,
                 tags: node.tags,
                 category: node.category,
-                sub_category: node.subCategory,
-                causal_factors: node.causalFactors,
+                subCategory: node.subCategory,
+                causalFactors: node.causalFactors,
                 dimensions: node.dimensions,
                 data: node.data,
-                source_type: node.sourceType,
+                sourceType: node.sourceType,
                 formula: node.formula,
                 assignees: node.assignees,
               });
@@ -776,6 +775,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             title: "Automatic Dimension Decomposition",
             type: "Analysis",
             date: new Date().toISOString(),
+            owner: "system", // TODO: Use actual user ID
             summary: evidenceSummary,
             impactOnConfidence: "This relationship was automatically generated during metric decomposition.",
             createdAt: new Date().toISOString(),

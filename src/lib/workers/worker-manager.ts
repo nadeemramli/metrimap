@@ -1,7 +1,7 @@
 // Worker Manager for handling Web Worker lifecycle and communication
 import * as Comlink from 'comlink';
 import type { ComputationWorker } from './compute.worker';
-import { evaluate, create, all } from 'mathjs';
+import { create, all } from 'mathjs';
 import * as ss from 'simple-statistics';
 
 // Configure math.js for fallback mode
@@ -264,7 +264,7 @@ class WorkerManager {
       
       try {
         const regression = ss.linearRegression(data);
-        const r2 = ss.rSquared(data, regression);
+        const r2 = ss.rSquared(data, (x: number) => regression.m * x + regression.b);
         
         return {
           slope: regression.m,

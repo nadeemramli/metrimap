@@ -32,9 +32,9 @@ import { useReactFlow } from "@xyflow/react";
 import type { Node, Edge } from "@xyflow/react";
 import { useCanvasStore } from "@/lib/stores";
 
-interface DateRange {
+interface CanvasDateRange {
   from: Date | undefined;
-  to: Date | undefined;
+  to?: Date | undefined;
 }
 
 interface CanvasControlsProps {
@@ -71,7 +71,7 @@ export default function CanvasControls({
   const { canvas, updateCanvasSettings } = useCanvasStore();
 
   // Date range state
-  const [dateRange, setDateRange] = useState<DateRange>({
+  const [dateRange, setDateRange] = useState<CanvasDateRange>({
     from: addDays(new Date(), -30),
     to: new Date(),
   });

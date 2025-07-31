@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,14 +76,16 @@ export function RelationshipView({
       <CardHeader className={compact ? "pb-2" : "pb-3"}>
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <CardTitle className={cn(
-              "text-base font-medium flex items-center gap-2",
-              compact && "text-sm"
-            )}>
+            <CardTitle
+              className={cn(
+                "text-base font-medium flex items-center gap-2",
+                compact && "text-sm"
+              )}
+            >
               <Link className="h-4 w-4 text-muted-foreground" />
               {relationship.type} Relationship
             </CardTitle>
-            
+
             {/* Node Connection */}
             <div className="flex items-center gap-2 mt-2 text-sm">
               {sourceNode && (
@@ -100,7 +101,7 @@ export function RelationshipView({
               )}
             </div>
           </div>
-          
+
           {showActions && (
             <div className="flex items-center gap-1 ml-2">
               <Button
@@ -140,40 +141,48 @@ export function RelationshipView({
 
       <CardContent className={compact ? "pt-0" : "pt-2"}>
         {/* Description */}
-        {relationship.description && !compact && (
-          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-            {relationship.description}
-          </p>
-        )}
+        {relationship.evidence &&
+          relationship.evidence.length > 0 &&
+          !compact && (
+            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+              {relationship.evidence[0].summary}
+            </p>
+          )}
 
         {/* Evidence Count */}
         {relationship.evidence && relationship.evidence.length > 0 && (
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
-              {relationship.evidence.length} evidence item{relationship.evidence.length !== 1 ? 's' : ''}
+              {relationship.evidence.length} evidence item
+              {relationship.evidence.length !== 1 ? "s" : ""}
             </span>
           </div>
         )}
 
         {/* Evidence Preview (non-compact) */}
-        {!compact && relationship.evidence && relationship.evidence.length > 0 && (
-          <div className="space-y-2 mb-3">
-            {relationship.evidence.slice(0, 2).map((evidence, index) => (
-              <div key={evidence.id || index} className="text-xs bg-muted/50 rounded p-2">
-                <div className="font-medium">{evidence.title}</div>
-                <div className="text-muted-foreground truncate">
-                  {evidence.summary}
+        {!compact &&
+          relationship.evidence &&
+          relationship.evidence.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {relationship.evidence.slice(0, 2).map((evidence, index) => (
+                <div
+                  key={evidence.id || index}
+                  className="text-xs bg-muted/50 rounded p-2"
+                >
+                  <div className="font-medium">{evidence.title}</div>
+                  <div className="text-muted-foreground truncate">
+                    {evidence.summary}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {relationship.evidence.length > 2 && (
-              <div className="text-xs text-muted-foreground">
-                +{relationship.evidence.length - 2} more evidence items
-              </div>
-            )}
-          </div>
-        )}
+              ))}
+              {relationship.evidence.length > 2 && (
+                <div className="text-xs text-muted-foreground">
+                  +{relationship.evidence.length - 2} more evidence items
+                </div>
+              )}
+            </div>
+          )}
 
         {/* Metadata */}
         {!compact && (

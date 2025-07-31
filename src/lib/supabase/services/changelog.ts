@@ -26,7 +26,7 @@ export async function getProjectChangelog(projectId: string): Promise<ChangelogE
     throw error;
   }
 
-  return data || [];
+  return (data?.filter(item => item.users !== null) || []) as ChangelogEntry[];
 }
 
 // Create a changelog entry

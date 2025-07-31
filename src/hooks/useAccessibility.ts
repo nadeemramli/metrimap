@@ -38,7 +38,7 @@ export const useAccessibility = (options: AccessibilityOptions = {}) => {
       document.body.appendChild(announcement);
       announcementRef.current = announcement;
     } else {
-      announcementRef.current = existingAnnouncement;
+      announcementRef.current = existingAnnouncement as HTMLDivElement;
     }
 
     // Only remove if this hook created it and no other instances exist

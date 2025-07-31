@@ -5,8 +5,6 @@ import type {
   MetricCard,
   Relationship,
   EvidenceItem,
-  CardCategory,
-  RelationshipType,
   ConfidenceLevel,
 } from '@/lib/types';
 

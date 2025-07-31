@@ -1,4 +1,4 @@
-import type { CanvasProject, GroupNode, MetricCard } from '../types';
+import type { CanvasProject, MetricCard } from '../types';
 
 export interface DashboardConfig {
   id: string;
@@ -91,7 +91,6 @@ export function calculateDashboardInsights(metrics: MetricCard[]) {
 
   // Calculate health score based on positive vs negative trends
   const positiveTrends = trendsData.filter(t => t.trend === "up").length;
-  const negativeTrends = trendsData.filter(t => t.trend === "down").length;
   const totalTrends = trendsData.length;
   
   const healthScore = totalTrends > 0 
@@ -123,7 +122,7 @@ export function generateKPICards(metrics: MetricCard[]) {
   return metrics
     .filter(m => m.category === "Data/Metric" && m.data && m.data.length > 0)
     .slice(0, 6) // Limit to 6 KPIs for clean layout
-    .map((metric, index) => {
+    .map((metric) => {
       const latestData = metric.data![0];
       return {
         id: `kpi_${metric.id}`,

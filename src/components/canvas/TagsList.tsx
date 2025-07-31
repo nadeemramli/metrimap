@@ -1,7 +1,7 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tag, Plus } from "lucide-react";
+import { Tag } from "lucide-react";
 
 interface TagsListProps {
   tags: string[];

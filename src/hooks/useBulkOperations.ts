@@ -59,8 +59,7 @@ export const useBulkOperations = () => {
   // Bulk update metrics
   const bulkUpdateMetrics = useCallback(async (
     updateData: BulkUpdateData,
-    targetIds?: string[],
-    options: BulkOperationOptions = {}
+    targetIds?: string[]
   ): Promise<BulkOperationResult> => {
     setIsProcessing(true);
     
@@ -121,8 +120,7 @@ export const useBulkOperations = () => {
   // Bulk update relationships
   const bulkUpdateRelationships = useCallback(async (
     updateData: BulkUpdateData,
-    targetIds?: string[],
-    options: BulkOperationOptions = {}
+    targetIds?: string[]
   ): Promise<BulkOperationResult> => {
     setIsProcessing(true);
     
@@ -181,8 +179,7 @@ export const useBulkOperations = () => {
 
   // Bulk delete
   const bulkDelete = useCallback(async (
-    targetIds?: string[],
-    options: BulkOperationOptions = {}
+    targetIds?: string[]
   ): Promise<BulkOperationResult> => {
     setIsProcessing(true);
     
@@ -247,8 +244,7 @@ export const useBulkOperations = () => {
 
   // Bulk duplicate
   const bulkDuplicate = useCallback(async (
-    targetIds?: string[],
-    options: BulkOperationOptions = {}
+    targetIds?: string[]
   ): Promise<BulkOperationResult> => {
     setIsProcessing(true);
     
