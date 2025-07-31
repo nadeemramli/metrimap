@@ -47,7 +47,6 @@ import type {
   MetricCard as MetricCardType,
   MetricValue,
   CardCategory,
-  CardSubCategory,
 } from "@/lib/types";
 
 interface MetricCardNodeData {
@@ -369,8 +368,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
     <div
       ref={cardRef}
       className={cn(
-        "bg-card border-2 rounded-lg shadow-lg min-w-[280px] max-w-[320px] cursor-pointer",
-        selected ? "border-primary shadow-xl" : "border-border",
+        "bg-card border-2 rounded-lg shadow-lg min-w-[280px] max-w-[320px] cursor-pointer transition-all duration-200",
+        selected
+          ? "border-primary shadow-xl shadow-primary/25 ring-2 ring-primary/20 scale-[1.02] bg-card/95"
+          : "border-border hover:shadow-xl hover:scale-[1.01]",
         categoryColor
       )}
       onClick={handleCardClick}

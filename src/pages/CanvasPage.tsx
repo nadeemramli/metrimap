@@ -367,7 +367,7 @@ export default function CanvasPage() {
     (cardId: string, position: { x: number; y: number }) => {
       setToolbarNodeId(cardId);
       setToolbarPosition({
-        x: position.x + 160, // Center of MetricCard (width: 320px)
+        x: position.x, // Will be centered in NodeToolbar component
         y: position.y,
       });
     },
@@ -507,7 +507,7 @@ export default function CanvasPage() {
           if (node) {
             setToolbarNodeId(change.id);
             setToolbarPosition({
-              x: node.position.x + 160, // Center of MetricCard (width: 320px)
+              x: node.position.x, // Will be centered in NodeToolbar component
               y: node.position.y,
             });
           }
@@ -666,7 +666,6 @@ export default function CanvasPage() {
               nodeId={toolbarNodeId}
               position={toolbarPosition}
               isVisible={!!toolbarNodeId}
-              onOpenSettings={handleOpenSettings}
             />
           )}
         </ReactFlow>
