@@ -48,7 +48,6 @@ import {
   SortDesc,
   Folder,
   FileText,
-  User,
   LogOut,
 } from "lucide-react";
 import { useProjectsStore, useAppStore } from "@/lib/stores";
@@ -250,11 +249,14 @@ export default function HomePage() {
     navigate(`/canvas/${canvasId}`);
   };
 
-  const handleDuplicateProject = (projectId: string) => {
-    const duplicatedProject = duplicateProject(projectId);
-    if (duplicatedProject) {
-      setCurrentCanvas(duplicatedProject.id);
-      navigate(`/canvas/${duplicatedProject.id}`);
+  const handleDuplicateProject = async (projectId: string) => {
+    try {
+      const duplicatedProjectId = await duplicateProject(projectId);
+      setCurrentCanvas(duplicatedProjectId);
+      navigate(`/canvas/${duplicatedProjectId}`);
+    } catch (error) {
+      console.error("Failed to duplicate project:", error);
+      alert("Failed to duplicate project. Please try again.");
     }
   };
 

@@ -9,7 +9,7 @@ import {
   updateRelationship as updateRelationshipInSupabase,
   deleteRelationship as deleteRelationshipInSupabase,
   getCurrentUser,
-  supabase
+
 } from '../supabase/services';
 
 interface CanvasStoreState extends CanvasState {
@@ -32,6 +32,7 @@ interface CanvasStoreState extends CanvasState {
   selectNodes: (nodeIds: string[]) => void;
   selectNode: (nodeId: string) => void;
   deselectNodes: () => void;
+  clearSelection: () => void;
 
   // Async Edge management (Supabase)
   createEdge: (edge: Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -620,7 +621,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             type: "Analysis",
             date: new Date().toISOString(),
             summary: evidenceSummary,
-            impact: "This relationship was automatically generated during metric decomposition.",
+            impactOnConfidence: "This relationship was automatically generated during metric decomposition.",
             createdAt: new Date().toISOString(),
             createdBy: "system", // TODO: Use actual user ID
           }],

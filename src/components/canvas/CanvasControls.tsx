@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from "react";
 import { addDays, format } from "date-fns";
 import dagre from "dagre";
 import {
-  Calendar,
   CalendarDays,
   LayoutGrid,
   ZoomIn,
@@ -10,7 +9,6 @@ import {
   Maximize2,
   RotateCcw,
   Filter,
-  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -30,9 +28,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { useReactFlow, Node, Edge } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
+import type { Node, Edge } from "@xyflow/react";
 import { useCanvasStore } from "@/lib/stores";
-import type { MetricCard } from "@/lib/types";
 
 interface DateRange {
   from: Date | undefined;

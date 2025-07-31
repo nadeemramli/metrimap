@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NodeProps, Handle, Position } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import {
   Edit3,
   Settings,

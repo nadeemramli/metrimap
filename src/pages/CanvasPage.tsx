@@ -2,9 +2,6 @@ import { useEffect, useCallback, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ReactFlow,
-  applyNodeChanges,
-  applyEdgeChanges,
-  addEdge,
   type Node,
   type Edge,
   type NodeChange,
@@ -76,10 +73,6 @@ const convertToEdge = (
     relationship,
     onOpenRelationshipSheet,
   },
-  markerEnd: {
-    type: "arrowclosed",
-    color: "#64748b",
-  },
 });
 
 // Convert GroupNode to ReactFlow Node
@@ -147,7 +140,6 @@ export default function CanvasPage() {
     clearSelection,
   } = useCanvasStore();
   const { getProjectById } = useProjectsStore();
-  const { currentCanvasId } = useAppStore();
 
   // Keyboard shortcuts
   const shortcuts = useMemo(
@@ -559,7 +551,7 @@ export default function CanvasPage() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          nodeTypes={nodeTypes}
+          nodeTypes={nodeTypes as any}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}

@@ -49,14 +49,7 @@ export default function GroupControls({
   const [groupSheetOpen, setGroupSheetOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
 
-  const {
-    canvas,
-    addGroup,
-    updateGroup,
-    deleteGroup,
-    addNodesToGroup,
-    removeNodesFromGroup,
-  } = useCanvasStore();
+  const { canvas, addGroup, deleteGroup } = useCanvasStore();
 
   const groups = canvas?.groups || [];
   const nodes = canvas?.nodes || [];

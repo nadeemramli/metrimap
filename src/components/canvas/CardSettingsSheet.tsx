@@ -36,7 +36,6 @@ import { useCanvasStore } from "@/lib/stores";
 import type {
   MetricCard,
   CardCategory,
-  CardSubCategory,
   SourceType,
   Dimension,
   CausalFactor,
@@ -123,13 +122,8 @@ export default function CardSettingsSheet({
   onClose,
   cardId,
 }: CardSettingsSheetProps) {
-  const {
-    getNodeById,
-    updateNode,
-    deleteNode,
-    persistNodeUpdate,
-    persistNodeDelete,
-  } = useCanvasStore();
+  const { getNodeById, persistNodeUpdate, persistNodeDelete } =
+    useCanvasStore();
   const card = cardId ? getNodeById(cardId) : null;
 
   const [activeTab, setActiveTab] = useState("details");

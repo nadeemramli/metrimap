@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { useParams } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -22,32 +21,27 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
-  Target,
   Clock,
   Users,
   AlertTriangle,
   CheckCircle,
   Plus,
-  Filter,
   Download,
   RefreshCw,
   Eye,
   Grid3X3,
   Zap,
   Network,
-  Calendar,
 } from "lucide-react";
 import { useCanvasStore, useProjectsStore } from "@/lib/stores";
 import type { MetricCard } from "@/lib/types";
 import { GroupHelpModal } from "@/components/canvas";
 import {
   generateDashboardsFromGroups,
-  generateDashboardSection,
   calculateDashboardInsights,
   generateKPICards,
   canGenerateDashboards,
   getDefaultDashboard,
-  type DashboardConfig,
 } from "@/lib/utils/dashboardGenerator";
 
 // Mock dashboard data - in real app this would come from analytics service
@@ -100,17 +94,13 @@ const generateMockMetrics = (cards: MetricCard[]) => {
 };
 
 export default function DashboardPage() {
-  const { canvasId } = useParams();
   const { canvas } = useCanvasStore();
-  const { getProjectById } = useProjectsStore();
 
   const [timeRange, setTimeRange] = useState("30d");
   const [viewMode, setViewMode] = useState("overview");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedDashboard, setSelectedDashboard] = useState<string>("");
   const [isGroupHelpOpen, setIsGroupHelpOpen] = useState(false);
-
-  const project = canvasId ? getProjectById(canvasId) : null;
 
   // Generate dashboards from canvas groups
   const availableDashboards = useMemo(() => {
@@ -290,7 +280,10 @@ export default function DashboardPage() {
                     {dashboardData.overview.totalMetrics}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {dashboardData.overview.activeMetrics} active
+                    {"dataMetrics" in dashboardData.overview
+                      ? dashboardData.overview.dataMetrics
+                      : dashboardData.overview.totalMetrics}{" "}
+                    active
                   </p>
                 </CardContent>
               </Card>
@@ -304,7 +297,9 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {dashboardData.overview.totalRelationships}
+                    {"totalRelationships" in dashboardData.overview
+                      ? dashboardData.overview.totalRelationships
+                      : dashboardData.overview.totalMetrics}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Across all metrics
@@ -446,7 +441,9 @@ export default function DashboardPage() {
                 <Card key={kpi.id}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{kpi.name}</CardTitle>
+                      <CardTitle className="text-base">
+                        {"name" in kpi ? kpi.name : kpi.title}
+                      </CardTitle>
                       <Badge variant="outline">{kpi.category}</Badge>
                     </div>
                   </CardHeader>
@@ -469,19 +466,29 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="text-sm text-muted-foreground">
-                        Target: {kpi.target.toLocaleString()} (
-                        {((kpi.value / kpi.target) * 100).toFixed(0)}%)
+                        {"target" in kpi ? (
+                          <>
+                            Target: {kpi.target.toLocaleString()} (
+                            {((kpi.value / kpi.target) * 100).toFixed(0)}%)
+                          </>
+                        ) : (
+                          `Value: ${kpi.value.toLocaleString()}`
+                        )}
                       </div>
 
                       {/* Simple trend visualization */}
                       <div className="h-12 flex items-end gap-1">
-                        {kpi.trend.map((value, index) => (
-                          <div
-                            key={index}
-                            className="bg-primary/20 rounded-sm flex-1"
-                            style={{ height: `${(value / 100) * 100}%` }}
-                          />
-                        ))}
+                        {Array.isArray(kpi.trend) ? (
+                          kpi.trend.map((value, index) => (
+                            <div
+                              key={index}
+                              className="bg-primary/20 rounded-sm flex-1"
+                              style={{ height: `${(value / 100) * 100}%` }}
+                            />
+                          ))
+                        ) : (
+                          <div className="w-full h-8 bg-primary/20 rounded-sm" />
+                        )}
                       </div>
                     </div>
                   </CardContent>

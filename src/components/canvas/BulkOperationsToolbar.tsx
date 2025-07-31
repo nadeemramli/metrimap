@@ -29,32 +29,24 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
 import {
   MoreVertical,
   Trash2,
   Copy,
   Edit3,
   Tag,
-  User,
   Download,
   X,
   Check,
   AlertTriangle,
-  Settings,
   FileText,
-  Link,
 } from "lucide-react";
 import {
   useBulkOperations,
   type BulkUpdateData,
 } from "@/hooks/useBulkOperations";
 import { useAccessibility } from "@/hooks/useAccessibility";
-import type {
-  CardCategory,
-  RelationshipType,
-  ConfidenceLevel,
-} from "@/lib/types";
 
 interface BulkOperationsToolbarProps {
   className?: string;
@@ -74,7 +66,7 @@ export default function BulkOperationsToolbar({
   const {
     hasSelection,
     selectionCount,
-    isMultiSelect,
+
     selectedMetrics,
     selectedRelationships,
     isProcessing,
@@ -84,7 +76,7 @@ export default function BulkOperationsToolbar({
     bulkDelete,
     bulkDuplicate,
     bulkAddTags,
-    bulkRemoveTags,
+
     exportSelection,
     clearLastResult,
   } = useBulkOperations();

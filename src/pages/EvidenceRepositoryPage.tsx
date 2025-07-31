@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Card,
   CardContent,
@@ -47,14 +46,10 @@ import {
   Edit,
   Trash2,
   Copy,
-  Tag,
   Globe,
   FlaskConical,
   BookOpen,
   Users,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
   ArrowLeft,
 } from "lucide-react";
 import { useCanvasStore } from "@/lib/stores";

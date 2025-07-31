@@ -68,8 +68,8 @@ export const useProjectsStore = create<ProjectsStoreState>()(
             nodes: [],
             edges: [],
             groups: [],
-            createdAt: p.created_at,
-            updatedAt: p.updated_at,
+            createdAt: p.created_at || new Date().toISOString(),
+            updatedAt: p.updated_at || new Date().toISOString(),
             lastModifiedBy: user.email || user.id,
           })) || [];
           
@@ -93,9 +93,10 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           
           const projectToCreate = {
             ...projectData,
-            user_id: user.id,
+            created_by: user.id,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            settings: projectData.settings ? JSON.parse(JSON.stringify(projectData.settings)) : undefined,
           };
           
           const newProject = await createProjectInSupabase(projectToCreate);
@@ -110,8 +111,8 @@ export const useProjectsStore = create<ProjectsStoreState>()(
               nodes: [],
               edges: [],
               groups: [],
-              createdAt: newProject.created_at,
-              updatedAt: newProject.updated_at,
+              createdAt: newProject.created_at || new Date().toISOString(),
+              updatedAt: newProject.updated_at || new Date().toISOString(),
               lastModifiedBy: user.email || user.id,
             };
             
@@ -143,6 +144,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           const updatedProject = await updateProjectInSupabase(projectId, {
             ...updates,
             updated_at: new Date().toISOString(),
+            settings: updates.settings ? JSON.parse(JSON.stringify(updates.settings)) : undefined,
           });
           
           if (updatedProject) {
@@ -152,7 +154,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
                   ? { 
                       ...p, 
                       ...updates, 
-                      updatedAt: updatedProject.updated_at 
+                      updatedAt: updatedProject.updated_at || new Date().toISOString() 
                     }
                   : p
               ),
@@ -207,7 +209,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           const duplicatedProject = {
             ...originalProject,
             name: `${originalProject.name} (Copy)`,
-            user_id: user.id,
+            created_by: user.id,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
@@ -215,7 +217,13 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           // Remove the ID so Supabase generates a new one
           const { id, createdAt, updatedAt, lastModifiedBy, ...projectData } = duplicatedProject;
           
-          const newProject = await createProjectInSupabase(projectData);
+          // Convert settings to Json type
+          const projectDataWithSettings = {
+            ...projectData,
+            settings: projectData.settings ? JSON.parse(JSON.stringify(projectData.settings)) : undefined,
+          };
+          
+          const newProject = await createProjectInSupabase(projectDataWithSettings);
           
           if (newProject) {
             const canvasProject: CanvasProject = {
@@ -227,8 +235,8 @@ export const useProjectsStore = create<ProjectsStoreState>()(
               nodes: [...originalProject.nodes], // Copy nodes
               edges: [...originalProject.edges], // Copy edges
               groups: [...originalProject.groups], // Copy groups
-              createdAt: newProject.created_at,
-              updatedAt: newProject.updated_at,
+              createdAt: newProject.created_at || new Date().toISOString(),
+              updatedAt: newProject.updated_at || new Date().toISOString(),
               lastModifiedBy: user.email || user.id,
             };
             

@@ -20,7 +20,7 @@ interface AppStoreState extends AppState {
 
 export const useAppStore = create<AppStoreState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // Initial state
       currentCanvasId: undefined,
       user: undefined,

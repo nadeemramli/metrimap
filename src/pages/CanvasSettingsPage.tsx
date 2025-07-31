@@ -29,7 +29,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Save,
   Trash2,
-  Edit3,
   Clock,
   Plus,
   Download,
@@ -42,19 +41,15 @@ import {
   Settings,
   MoreVertical,
   Search,
-  Filter,
   Share,
   Copy,
   FileText,
   Zap,
-  Link,
   BarChart3,
   Network,
-  AlertTriangle,
-  CheckCircle,
   User,
 } from "lucide-react";
-import { useCanvasStore, useProjectsStore } from "@/lib/stores";
+import { useProjectsStore } from "@/lib/stores";
 
 type TabType = "general" | "data" | "changelog" | "team" | "settings";
 
@@ -165,7 +160,6 @@ const generateTeamMembers = () => [
 export default function CanvasSettingsPage() {
   const { canvasId } = useParams();
   const navigate = useNavigate();
-  const { canvas } = useCanvasStore();
   const { getProjectById, updateProject, deleteProject } = useProjectsStore();
 
   const [activeTab, setActiveTab] = useState<TabType>("general");
@@ -639,15 +633,9 @@ export default function CanvasSettingsPage() {
                           <Badge variant="outline">{metric.category}</Badge>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium">
-                            {metric.currentValue
-                              ? `${metric.currentValue.value} ${metric.currentValue.unit || ""}`
-                              : "No data"}
-                          </div>
+                          <div className="text-sm font-medium">No data</div>
                           <div className="text-xs text-muted-foreground">
-                            {metric.currentValue
-                              ? `Target: ${metric.targetValue || "Not set"}`
-                              : ""}
+                            Target: Not set
                           </div>
                         </td>
                         <td className="px-6 py-4">

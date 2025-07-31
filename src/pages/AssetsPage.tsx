@@ -26,15 +26,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Search,
-  Filter,
-  ExternalLink,
   Plus,
   Download,
   Eye,
   Edit,
   Trash2,
   MoreVertical,
-  ArrowUpDown,
   BarChart3,
   Network,
   FileText,
@@ -48,7 +45,13 @@ import {
 import { useCanvasStore, useProjectsStore } from "@/lib/stores";
 
 type TabType = "metrics" | "relationships" | "repo";
-type SortField = "name" | "category" | "updated" | "connections" | "confidence" | "type";
+type SortField =
+  | "name"
+  | "category"
+  | "updated"
+  | "connections"
+  | "confidence"
+  | "type";
 type SortOrder = "asc" | "desc";
 
 // Mock repository data with templates and components
@@ -69,7 +72,7 @@ const generateRepoData = () => [
     id: "2",
     title: "User Retention Analysis",
     type: "Analysis",
-    date: "2024-01-08", 
+    date: "2024-01-08",
     owner: "Data Team",
     description: "Cohort-based retention analysis methodology",
     associatedItems: ["User Retention Rate", "Churn Rate"],
@@ -94,7 +97,7 @@ const generateRepoData = () => [
     title: "Financial Planning Framework",
     type: "Framework",
     date: "2024-01-03",
-    owner: "Finance Team", 
+    owner: "Finance Team",
     description: "Strategic financial planning and forecasting",
     associatedItems: ["Revenue", "Expenses", "Cash Flow"],
     tags: ["Finance", "Planning", "Framework"],
@@ -105,9 +108,8 @@ const generateRepoData = () => [
 
 export default function AssetsPage() {
   const { canvasId } = useParams();
-  const { canvas } = useCanvasStore();
   const { getProjectById } = useProjectsStore();
-  
+
   const [activeTab, setActiveTab] = useState<TabType>("metrics");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("updated");
@@ -121,13 +123,16 @@ export default function AssetsPage() {
 
   // Enhanced filtering and sorting
   const filteredMetrics = useMemo(() => {
-    let filtered = metrics.filter(metric => 
-      metric.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      metric.category.toLowerCase().includes(searchQuery.toLowerCase())
+    let filtered = metrics.filter(
+      (metric) =>
+        metric.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        metric.category.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     if (categoryFilter !== "all") {
-      filtered = filtered.filter(metric => metric.category === categoryFilter);
+      filtered = filtered.filter(
+        (metric) => metric.category === categoryFilter
+      );
     }
 
     return filtered.sort((a, b) => {
@@ -138,7 +143,11 @@ export default function AssetsPage() {
         case "category":
           return a.category.localeCompare(b.category) * multiplier;
         case "updated":
-          return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * multiplier;
+          return (
+            (new Date(a.updatedAt).getTime() -
+              new Date(b.updatedAt).getTime()) *
+            multiplier
+          );
         default:
           return 0;
       }
@@ -146,9 +155,9 @@ export default function AssetsPage() {
   }, [metrics, searchQuery, categoryFilter, sortField, sortOrder]);
 
   const filteredRelationships = useMemo(() => {
-    return relationships.filter(rel => {
-      const sourceNode = metrics.find(m => m.id === rel.sourceId);
-      const targetNode = metrics.find(m => m.id === rel.targetId);
+    return relationships.filter((rel) => {
+      const sourceNode = metrics.find((m) => m.id === rel.sourceId);
+      const targetNode = metrics.find((m) => m.id === rel.targetId);
       return (
         sourceNode?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         targetNode?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -158,24 +167,29 @@ export default function AssetsPage() {
   }, [relationships, metrics, searchQuery]);
 
   const filteredRepo = useMemo(() => {
-    return repoData.filter(item =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase())
+    return repoData.filter(
+      (item) =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [repoData, searchQuery]);
 
   const metricCategories = useMemo(() => {
-    const cats = new Set(metrics.map(m => m.category));
+    const cats = new Set(metrics.map((m) => m.category));
     return Array.from(cats);
   }, [metrics]);
 
-  const getNodeById = (id: string) => metrics.find(node => node.id === id);
+  const getNodeById = (id: string) => metrics.find((node) => node.id === id);
 
   const tabs = [
     { id: "metrics" as const, label: "Metrics", count: filteredMetrics.length },
-    { id: "relationships" as const, label: "Relationships", count: filteredRelationships.length },
-    { id: "repo" as const, label: "Repo", count: filteredRepo.length }
+    {
+      id: "relationships" as const,
+      label: "Relationships",
+      count: filteredRelationships.length,
+    },
+    { id: "repo" as const, label: "Repo", count: filteredRepo.length },
   ];
 
   return (
@@ -223,20 +237,23 @@ export default function AssetsPage() {
           <CardContent>
             <div className="text-2xl font-bold">{relationships.length}</div>
             <p className="text-xs text-muted-foreground">
-              {relationships.filter(r => r.confidence === "High").length} high confidence
+              {relationships.filter((r) => r.confidence === "High").length} high
+              confidence
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Repository Items</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Repository Items
+            </CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{repoData.length}</div>
             <p className="text-xs text-muted-foreground">
-              {repoData.filter(r => r.starred).length} starred templates
+              {repoData.filter((r) => r.starred).length} starred templates
             </p>
           </CardContent>
         </Card>
@@ -270,7 +287,7 @@ export default function AssetsPage() {
             className="pl-10"
           />
         </div>
-        
+
         {activeTab === "metrics" && (
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-[200px]">
@@ -287,11 +304,14 @@ export default function AssetsPage() {
           </Select>
         )}
 
-        <Select value={`${sortField}-${sortOrder}`} onValueChange={(value) => {
-          const [field, order] = value.split('-');
-          setSortField(field as SortField);
-          setSortOrder(order as SortOrder);
-        }}>
+        <Select
+          value={`${sortField}-${sortOrder}`}
+          onValueChange={(value) => {
+            const [field, order] = value.split("-");
+            setSortField(field as SortField);
+            setSortOrder(order as SortOrder);
+          }}
+        >
           <SelectTrigger className="w-[160px]">
             <SelectValue />
           </SelectTrigger>
@@ -345,8 +365,12 @@ export default function AssetsPage() {
                               <BarChart3 className="h-4 w-4 text-primary" />
                             </div>
                             <div>
-                              <div className="font-medium text-foreground">{metric.title}</div>
-                              <div className="text-sm text-muted-foreground">{metric.description}</div>
+                              <div className="font-medium text-foreground">
+                                {metric.title}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {metric.description}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -355,17 +379,27 @@ export default function AssetsPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium">
-                            {metric.currentValue ? `${metric.currentValue.value} ${metric.currentValue.unit || ''}` : 'No data'}
+                            {metric.currentValue
+                              ? `${metric.currentValue.value} ${metric.currentValue.unit || ""}`
+                              : "No data"}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {metric.currentValue ? `Target: ${metric.targetValue || 'Not set'}` : ''}
+                            {metric.currentValue
+                              ? `Target: ${metric.targetValue || "Not set"}`
+                              : ""}
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">
                             <Network className="h-3 w-3 text-muted-foreground" />
                             <span className="text-sm">
-                              {relationships.filter(r => r.sourceId === metric.id || r.targetId === metric.id).length}
+                              {
+                                relationships.filter(
+                                  (r) =>
+                                    r.sourceId === metric.id ||
+                                    r.targetId === metric.id
+                                ).length
+                              }
                             </span>
                           </div>
                         </td>
@@ -444,35 +478,49 @@ export default function AssetsPage() {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                               <div className="text-sm font-medium">
-                                {sourceNode?.title || 'Unknown'} 
+                                {sourceNode?.title || "Unknown"}
                               </div>
                               <div className="text-muted-foreground">→</div>
                               <div className="text-sm font-medium">
-                                {targetNode?.title || 'Unknown'}
+                                {targetNode?.title || "Unknown"}
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <Badge variant={
-                              rel.type === "Deterministic" ? "default" :
-                              rel.type === "Causal" ? "destructive" : 
-                              rel.type === "Probabilistic" ? "secondary" : "outline"
-                            }>
+                            <Badge
+                              variant={
+                                rel.type === "Deterministic"
+                                  ? "default"
+                                  : rel.type === "Causal"
+                                    ? "destructive"
+                                    : rel.type === "Probabilistic"
+                                      ? "secondary"
+                                      : "outline"
+                              }
+                            >
                               {rel.type}
                             </Badge>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
-                              {rel.confidence === "High" && <CheckCircle className="h-4 w-4 text-green-500" />}
-                              {rel.confidence === "Medium" && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
-                              {rel.confidence === "Low" && <Clock className="h-4 w-4 text-red-500" />}
+                              {rel.confidence === "High" && (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              {rel.confidence === "Medium" && (
+                                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                              )}
+                              {rel.confidence === "Low" && (
+                                <Clock className="h-4 w-4 text-red-500" />
+                              )}
                               <span className="text-sm">{rel.confidence}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-1">
                               <FileText className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm">{rel.evidence.length} items</span>
+                              <span className="text-sm">
+                                {rel.evidence.length} items
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -518,27 +566,46 @@ export default function AssetsPage() {
         {activeTab === "repo" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredRepo.map((item) => (
-              <Card key={item.id} className="group hover:shadow-lg transition-all duration-200">
+              <Card
+                key={item.id}
+                className="group hover:shadow-lg transition-all duration-200"
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center">
-                        {item.type === "Template" && <FileText className="h-4 w-4 text-primary" />}
-                        {item.type === "Analysis" && <BarChart3 className="h-4 w-4 text-primary" />}
-                        {item.type === "Component" && <Network className="h-4 w-4 text-primary" />}
-                        {item.type === "Framework" && <Grid3X3 className="h-4 w-4 text-primary" />}
+                        {item.type === "Template" && (
+                          <FileText className="h-4 w-4 text-primary" />
+                        )}
+                        {item.type === "Analysis" && (
+                          <BarChart3 className="h-4 w-4 text-primary" />
+                        )}
+                        {item.type === "Component" && (
+                          <Network className="h-4 w-4 text-primary" />
+                        )}
+                        {item.type === "Framework" && (
+                          <Grid3X3 className="h-4 w-4 text-primary" />
+                        )}
                       </div>
                       <div>
-                        <CardTitle className="text-base">{item.title}</CardTitle>
+                        <CardTitle className="text-base">
+                          {item.title}
+                        </CardTitle>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="outline">{item.type}</Badge>
-                          {item.starred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
+                          {item.starred && (
+                            <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                          )}
                         </div>
                       </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -569,7 +636,7 @@ export default function AssetsPage() {
                     <CardDescription className="text-sm">
                       {item.description}
                     </CardDescription>
-                    
+
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
@@ -587,17 +654,27 @@ export default function AssetsPage() {
 
                     <div className="flex flex-wrap gap-1">
                       {item.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
+                        <Badge
+                          key={tag}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {tag}
                         </Badge>
                       ))}
                     </div>
 
                     <div className="pt-2 border-t">
-                      <div className="text-xs text-muted-foreground mb-1">Associated with:</div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Associated with:
+                      </div>
                       <div className="flex flex-wrap gap-1">
                         {item.associatedItems.map((assoc) => (
-                          <Badge key={assoc} variant="outline" className="text-xs">
+                          <Badge
+                            key={assoc}
+                            variant="outline"
+                            className="text-xs"
+                          >
                             {assoc}
                           </Badge>
                         ))}

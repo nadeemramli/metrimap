@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCanvasStore } from "@/lib/stores";
-import type { MetricCard, CardCategory } from "@/lib/types";
+import type { CardCategory } from "@/lib/types";
 
 interface AddNodeButtonProps {
   position?: { x: number; y: number };
@@ -55,10 +54,10 @@ const categoryTemplates: Array<{
 ];
 
 export default function AddNodeButton({ position }: AddNodeButtonProps) {
-  const { addNode, createNode } = useCanvasStore();
+  const { createNode } = useCanvasStore();
 
   const handleAddNode = async (category: CardCategory) => {
-    const newNodeData = {
+    const baseNodeData = {
       title: `New ${category.split("/")[1] || category}`,
       description: `A new ${category.toLowerCase()} card`,
       category,
@@ -70,29 +69,31 @@ export default function AddNodeButton({ position }: AddNodeButtonProps) {
     };
 
     // Add sample data for Data/Metric cards
-    let nodeWithData = { ...newNodeData };
-    if (category === "Data/Metric") {
-      nodeWithData.data = [
-        {
-          period: "Past 7 days",
-          value: Math.floor(Math.random() * 10000) + 1000,
-          change_percent: (Math.random() - 0.5) * 20,
-          trend: Math.random() > 0.5 ? "up" : "down",
-        },
-        {
-          period: "Past 30 days",
-          value: Math.floor(Math.random() * 50000) + 5000,
-          change_percent: (Math.random() - 0.5) * 20,
-          trend: Math.random() > 0.5 ? "up" : "down",
-        },
-        {
-          period: "Past 90 days",
-          value: Math.floor(Math.random() * 200000) + 20000,
-          change_percent: (Math.random() - 0.5) * 20,
-          trend: Math.random() > 0.5 ? "up" : "down",
-        },
-      ];
-    }
+    const nodeWithData = {
+      ...baseNodeData,
+      ...(category === "Data/Metric" && {
+        data: [
+          {
+            period: "Past 7 days",
+            value: Math.floor(Math.random() * 10000) + 1000,
+            change_percent: (Math.random() - 0.5) * 20,
+            trend: Math.random() > 0.5 ? ("up" as const) : ("down" as const),
+          },
+          {
+            period: "Past 30 days",
+            value: Math.floor(Math.random() * 50000) + 5000,
+            change_percent: (Math.random() - 0.5) * 20,
+            trend: Math.random() > 0.5 ? ("up" as const) : ("down" as const),
+          },
+          {
+            period: "Past 90 days",
+            value: Math.floor(Math.random() * 200000) + 20000,
+            change_percent: (Math.random() - 0.5) * 20,
+            trend: Math.random() > 0.5 ? ("up" as const) : ("down" as const),
+          },
+        ],
+      }),
+    };
 
     try {
       await createNode(nodeWithData);
