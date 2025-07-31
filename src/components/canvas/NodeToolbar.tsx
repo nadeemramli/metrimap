@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import {
   Copy,
   Settings,
@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   MoreHorizontal,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useCanvasStore } from "@/lib/stores";
 import type { MetricCard } from "@/lib/types";
+import { DimensionSliceModal } from "./index";
 
 interface NodeToolbarProps {
   nodeId: string;
@@ -36,6 +38,8 @@ export default function NodeToolbar({
   isVisible,
   onOpenSettings,
 }: NodeToolbarProps) {
+  const [isDimensionSliceOpen, setIsDimensionSliceOpen] = useState(false);
+
   const {
     getNodeById,
     duplicateNode,
@@ -44,6 +48,7 @@ export default function NodeToolbar({
     selectedNodeIds,
     selectNode,
     deselectNodes,
+    sliceMetricByDimensions,
   } = useCanvasStore();
 
   const node = getNodeById(nodeId);
@@ -90,6 +95,27 @@ export default function NodeToolbar({
     // TODO: Implement quick view details
     console.log("View details for node:", nodeId);
   }, [nodeId]);
+
+  const handleDimensionSlice = useCallback(() => {
+    setIsDimensionSliceOpen(true);
+  }, []);
+
+  const handleSlice = useCallback(
+    async (dimensions: string[], historyOption: "manual" | "forfeit") => {
+      try {
+        const newCardIds = await sliceMetricByDimensions(
+          nodeId,
+          dimensions,
+          historyOption
+        );
+        console.log("Created dimension cards:", newCardIds);
+        setIsDimensionSliceOpen(false);
+      } catch (error) {
+        console.error("Error slicing metric:", error);
+      }
+    },
+    [nodeId, sliceMetricByDimensions]
+  );
 
   if (!node || !isVisible) {
     return null;
@@ -198,6 +224,12 @@ export default function NodeToolbar({
               <Link className="mr-2 h-3 w-3" />
               Create Relationship
             </DropdownMenuItem>
+            {node.category === "Data/Metric" && (
+              <DropdownMenuItem onClick={handleDimensionSlice}>
+                <Layers className="mr-2 h-3 w-3" />
+                Slice by Dimension
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={handleCopy}>
               <Copy className="mr-2 h-3 w-3" />
               Duplicate Card
@@ -213,6 +245,16 @@ export default function NodeToolbar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Dimension Slice Modal */}
+      {node.category === "Data/Metric" && (
+        <DimensionSliceModal
+          isOpen={isDimensionSliceOpen}
+          onClose={() => setIsDimensionSliceOpen(false)}
+          parentCard={node}
+          onSlice={handleSlice}
+        />
+      )}
     </div>
   );
 }

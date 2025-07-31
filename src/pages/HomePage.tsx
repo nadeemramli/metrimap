@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,8 +54,13 @@ type ViewMode = "grid" | "list";
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { projects, addProject, duplicateProject, deleteProject } =
-    useProjectsStore();
+  const {
+    projects,
+    addProject,
+    duplicateProject,
+    deleteProject,
+    initializeProjects,
+  } = useProjectsStore();
   const { setCurrentCanvas } = useAppStore();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,6 +69,11 @@ export default function HomePage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [activeTab, setActiveTab] = useState("all");
+
+  // Initialize projects store on component mount
+  useEffect(() => {
+    initializeProjects();
+  }, [initializeProjects]);
 
   // Filter and sort projects
   const filteredAndSortedProjects = useMemo(() => {

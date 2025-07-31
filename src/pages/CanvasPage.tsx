@@ -16,7 +16,11 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore, useProjectsStore, useAppStore } from "@/lib/stores";
-import type { MetricCard as MetricCardType, Relationship } from "@/lib/types";
+import type {
+  MetricCard as MetricCardType,
+  Relationship,
+  GroupNode as GroupNodeType,
+} from "@/lib/types";
 import {
   MetricCard,
   AddNodeButton,
@@ -25,6 +29,8 @@ import {
   NodeToolbar,
   DynamicEdge,
   RelationshipSheet,
+  GroupNode,
+  GroupControls,
 } from "@/components/canvas";
 
 // Convert MetricCard to ReactFlow Node with callbacks
@@ -64,9 +70,35 @@ const convertToEdge = (
   },
 });
 
+// Convert GroupNode to ReactFlow Node
+const convertToGroupNode = (
+  group: GroupNodeType,
+  onEditGroup: (groupId: string) => void,
+  onDeleteGroup: (groupId: string) => void,
+  onToggleCollapse: (groupId: string) => void
+): Node => ({
+  id: group.id,
+  position: group.position,
+  data: {
+    group,
+    onEditGroup,
+    onDeleteGroup,
+    onToggleCollapse,
+  },
+  type: "groupNode",
+  style: {
+    width: group.size.width,
+    height: group.size.height,
+  },
+  draggable: true,
+  selectable: true,
+  zIndex: -1, // Groups should be behind other nodes
+});
+
 // Define custom node and edge types
 const nodeTypes = {
   metricCard: MetricCard,
+  groupNode: GroupNode,
 };
 
 const edgeTypes = {
@@ -89,6 +121,8 @@ export default function CanvasPage() {
     updateNode,
     addEdge: addCanvasEdge,
     selectedNodeIds,
+    updateGroup,
+    deleteGroup,
   } = useCanvasStore();
   const { getProjectById } = useProjectsStore();
   const { currentCanvasId } = useAppStore();
@@ -115,6 +149,36 @@ export default function CanvasPage() {
     setRelationshipSheetId(relationshipId);
   }, []);
 
+  // Handle group operations
+  const handleEditGroup = useCallback((groupId: string) => {
+    // TODO: Open group settings sheet
+    console.log("Edit group:", groupId);
+  }, []);
+
+  const handleDeleteGroup = useCallback(
+    (groupId: string) => {
+      deleteGroup(groupId);
+    },
+    [deleteGroup]
+  );
+
+  const handleToggleCollapse = useCallback(
+    (groupId: string) => {
+      const group = canvas?.groups.find((g) => g.id === groupId);
+      if (group) {
+        // Toggle collapsed state - you could add this to GroupNode interface
+        updateGroup(groupId, {
+          // Add collapsed property to GroupNode type if needed
+          size:
+            group.size.height < 100
+              ? { ...group.size, height: 200 }
+              : { ...group.size, height: 60 },
+        });
+      }
+    },
+    [canvas?.groups, updateGroup]
+  );
+
   // Handle auto-layout from controls
   const handleNodesChange = useCallback(
     (newNodes: Node[]) => {
@@ -129,8 +193,8 @@ export default function CanvasPage() {
   );
 
   // Convert canvas data to ReactFlow format
-  const nodes = useMemo(
-    () =>
+  const nodes = useMemo(() => {
+    const metricNodes =
       canvas?.nodes.map((card) =>
         convertToNode(
           card,
@@ -138,9 +202,30 @@ export default function CanvasPage() {
           handleNodeClick,
           selectedNodeIds
         )
-      ) || [],
-    [canvas?.nodes, handleOpenSettings, handleNodeClick, selectedNodeIds]
-  );
+      ) || [];
+
+    const groupNodes =
+      canvas?.groups.map((group) =>
+        convertToGroupNode(
+          group,
+          handleEditGroup,
+          handleDeleteGroup,
+          handleToggleCollapse
+        )
+      ) || [];
+
+    // Groups should be rendered first (behind other nodes)
+    return [...groupNodes, ...metricNodes];
+  }, [
+    canvas?.nodes,
+    canvas?.groups,
+    handleOpenSettings,
+    handleNodeClick,
+    selectedNodeIds,
+    handleEditGroup,
+    handleDeleteGroup,
+    handleToggleCollapse,
+  ]);
   const edges = useMemo(
     () =>
       canvas?.edges.map((edge) =>
@@ -227,10 +312,14 @@ export default function CanvasPage() {
         {/* Canvas Controls */}
         <div className="flex items-center gap-4">
           <AddNodeButton />
+          <GroupControls
+            selectedNodeIds={selectedNodeIds}
+            onGroupCreated={(groupId) => console.log("Group created:", groupId)}
+          />
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
               {canvas?.nodes.length || 0} nodes • {canvas?.edges.length || 0}{" "}
-              edges
+              edges • {canvas?.groups.length || 0} groups
             </span>
             <span className="text-sm text-muted-foreground">
               Auto-saved •{" "}

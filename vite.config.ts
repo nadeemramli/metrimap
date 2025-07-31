@@ -10,6 +10,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  worker: {
+    format: 'es',
+    plugins: () => [react()]
+  },
+  optimizeDeps: {
+    exclude: ['@/lib/workers/compute.worker.ts']
+  },
   test: {
     globals: true,
     environment: 'jsdom',
