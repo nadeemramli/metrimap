@@ -173,9 +173,16 @@
 /* All dialog overlays */
 [data-slot="dialog-overlay"],
 [data-slot="alert-dialog-overlay"],
-[data-slot="sheet-overlay"],
 [role="presentation"][data-state="open"] {
   z-index: 1000 !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px) !important;
+  opacity: 1 !important;
+}
+
+/* Sheet overlay - LOWER z-index than content */
+[data-slot="sheet-overlay"] {
+  z-index: 999 !important;
   background-color: rgba(0, 0, 0, 0.8) !important;
   backdrop-filter: blur(4px) !important;
   opacity: 1 !important;
@@ -216,6 +223,7 @@
 
 /* SHEET SPECIFIC FIXES - FORCE SOLID BACKGROUNDS */
 [data-slot="sheet-content"] {
+  z-index: 1002 !important;
   background: hsl(var(--background)) !important;
   color: hsl(var(--foreground)) !important;
   border: 2px solid hsl(var(--border)) !important;

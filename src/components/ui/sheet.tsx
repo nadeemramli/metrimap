@@ -52,11 +52,10 @@ function SheetContent({
 }) {
   return (
     <SheetPortal>
-      <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "bg-background text-foreground border-2 border-border data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-[1001] flex flex-col gap-4 shadow-2xl backdrop-blur-sm transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+          "bg-background text-foreground border-2 border-border data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-[1002] flex flex-col gap-4 shadow-2xl backdrop-blur-sm transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
           side === "right" &&
             "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
           side === "left" &&

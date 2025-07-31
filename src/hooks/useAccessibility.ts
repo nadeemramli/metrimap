@@ -17,12 +17,16 @@ export const useAccessibility = (options: AccessibilityOptions = {}) => {
 
   const announcementRef = useRef<HTMLDivElement | null>(null);
 
-  // Create announcement region for screen readers
+  // Create announcement region for screen readers (singleton pattern)
   useEffect(() => {
     if (!announceChanges || !enableScreenReaderSupport) return;
 
-    if (!announcementRef.current) {
+    // Check if global announcement region already exists
+    let existingAnnouncement = document.getElementById('global-aria-announcer');
+    
+    if (!existingAnnouncement) {
       const announcement = document.createElement('div');
+      announcement.id = 'global-aria-announcer';
       announcement.setAttribute('aria-live', 'polite');
       announcement.setAttribute('aria-atomic', 'true');
       announcement.setAttribute('role', 'status');
@@ -33,11 +37,19 @@ export const useAccessibility = (options: AccessibilityOptions = {}) => {
       announcement.style.overflow = 'hidden';
       document.body.appendChild(announcement);
       announcementRef.current = announcement;
+    } else {
+      announcementRef.current = existingAnnouncement;
     }
 
+    // Only remove if this hook created it and no other instances exist
     return () => {
-      if (announcementRef.current) {
-        document.body.removeChild(announcementRef.current);
+      // Don't auto-remove - let it persist for other hook instances
+      if (announcementRef.current && announcementRef.current.id === 'global-aria-announcer') {
+        // Check if any other components might be using it
+        const otherHookInstances = document.querySelectorAll('[data-accessibility-hook="true"]');
+        if (otherHookInstances.length === 0) {
+          document.body.removeChild(announcementRef.current);
+        }
         announcementRef.current = null;
       }
     };
