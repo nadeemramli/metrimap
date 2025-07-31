@@ -41,17 +41,10 @@ export const useAccessibility = (options: AccessibilityOptions = {}) => {
       announcementRef.current = existingAnnouncement as HTMLDivElement;
     }
 
-    // Only remove if this hook created it and no other instances exist
+    // Don't remove the announcement element on cleanup - let it persist
+    // This prevents the DOM manipulation error when multiple components use the hook
     return () => {
-      // Don't auto-remove - let it persist for other hook instances
-      if (announcementRef.current && announcementRef.current.id === 'global-aria-announcer') {
-        // Check if any other components might be using it
-        const otherHookInstances = document.querySelectorAll('[data-accessibility-hook="true"]');
-        if (otherHookInstances.length === 0) {
-          document.body.removeChild(announcementRef.current);
-        }
-        announcementRef.current = null;
-      }
+      announcementRef.current = null;
     };
   }, [announceChanges, enableScreenReaderSupport]);
 
@@ -59,15 +52,20 @@ export const useAccessibility = (options: AccessibilityOptions = {}) => {
   const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
     if (!announceChanges || !enableScreenReaderSupport || !announcementRef.current) return;
 
-    announcementRef.current.setAttribute('aria-live', priority);
-    announcementRef.current.textContent = message;
+    try {
+      announcementRef.current.setAttribute('aria-live', priority);
+      announcementRef.current.textContent = message;
 
-    // Clear the message after a delay to ensure it can be announced again
-    setTimeout(() => {
-      if (announcementRef.current) {
-        announcementRef.current.textContent = '';
-      }
-    }, 1000);
+      // Clear the message after a delay to ensure it can be announced again
+      setTimeout(() => {
+        if (announcementRef.current && document.body.contains(announcementRef.current)) {
+          announcementRef.current.textContent = '';
+        }
+      }, 1000);
+    } catch (error) {
+      // Silently handle DOM manipulation errors
+      console.warn('Accessibility announcement failed:', error);
+    }
   }, [announceChanges, enableScreenReaderSupport]);
 
   // Focus management utilities

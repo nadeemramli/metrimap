@@ -2,7 +2,8 @@
 export { default as MetricCard } from './MetricCard';
 export { default as AddNodeButton } from './AddNodeButton';
 export { default as CardSettingsSheet } from './CardSettingsSheet';
-export { default as CanvasControls } from './CanvasControls';
+// Note: CanvasControls, MinimalControls, and BottomRightControls are deprecated
+// in favor of React Flow's native Controls component with ControlButton extensions
 export { default as NodeToolbar } from './NodeToolbar';
 export { default as DynamicEdge } from './DynamicEdge';
 export { default as RelationshipSheet } from './RelationshipSheet';

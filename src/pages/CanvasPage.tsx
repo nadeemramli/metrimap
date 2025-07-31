@@ -9,13 +9,25 @@ import {
   type Connection,
   Background,
   Controls,
-  MiniMap,
+  ControlButton,
 } from "@xyflow/react";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import {
+  Users,
+  Keyboard,
+  Search,
+  Save,
+  Clock,
+  Check,
+  AlertCircle,
+} from "lucide-react";
+
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore } from "@/lib/stores";
 import { getProjectById as getProjectFromDatabase } from "@/lib/supabase/services/projects";
+import { useCanvasHeader } from "@/contexts/CanvasHeaderContext";
+import AutoLayoutControls from "@/components/canvas/AutoLayoutControls";
+import FilterControls from "@/components/canvas/FilterControls";
 import type {
   MetricCard as MetricCardType,
   Relationship,
@@ -25,7 +37,6 @@ import {
   MetricCard,
   AddNodeButton,
   CardSettingsSheet,
-  CanvasControls,
   NodeToolbar,
   DynamicEdge,
   RelationshipSheet,
@@ -131,6 +142,9 @@ export default function CanvasPage() {
   // Search functionality
   const quickSearch = useQuickSearch();
 
+  // Canvas header context
+  const { setHeaderInfo } = useCanvasHeader();
+
   // Zustand stores
   const {
     canvas,
@@ -145,7 +159,109 @@ export default function CanvasPage() {
     addNode,
     selectNode,
     clearSelection,
+    updateCanvasSettings,
+    pendingChanges,
+    isSaving,
+    lastSaved,
   } = useCanvasStore();
+
+  // Beautiful auto-save status with enhanced UX
+  const getAutoSaveStatus = useCallback(() => {
+    if (isSaving) {
+      return {
+        text: "Saving...",
+        icon: Save,
+        className: "text-blue-600 animate-pulse",
+        bgClassName: "bg-blue-50 border-blue-200",
+        dotClassName: "bg-blue-500 animate-ping",
+      };
+    }
+
+    if (pendingChanges.size > 0) {
+      return {
+        text: `${pendingChanges.size} unsaved change${pendingChanges.size > 1 ? "s" : ""}`,
+        icon: Clock,
+        className: "text-amber-600",
+        bgClassName: "bg-amber-50 border-amber-200",
+        dotClassName: "bg-amber-500",
+      };
+    }
+
+    if (lastSaved) {
+      const savedTime = new Date(lastSaved);
+      const now = new Date();
+      const diffMinutes = Math.floor(
+        (now.getTime() - savedTime.getTime()) / (1000 * 60)
+      );
+
+      if (diffMinutes < 1) {
+        return {
+          text: "Saved just now",
+          icon: Check,
+          className: "text-emerald-600",
+          bgClassName: "bg-emerald-50 border-emerald-200",
+          dotClassName: "bg-emerald-500",
+        };
+      } else if (diffMinutes < 5) {
+        return {
+          text: `Saved ${diffMinutes}m ago`,
+          icon: Check,
+          className: "text-emerald-600",
+          bgClassName: "bg-emerald-50 border-emerald-200",
+          dotClassName: "bg-emerald-500",
+        };
+      } else if (diffMinutes < 60) {
+        return {
+          text: `Saved ${diffMinutes}m ago`,
+          icon: Check,
+          className: "text-green-600",
+          bgClassName: "bg-green-50 border-green-200",
+          dotClassName: "bg-green-500",
+        };
+      } else {
+        const diffHours = Math.floor(diffMinutes / 60);
+        return {
+          text: `Saved ${diffHours}h ago`,
+          icon: AlertCircle,
+          className: "text-gray-600",
+          bgClassName: "bg-gray-50 border-gray-200",
+          dotClassName: "bg-gray-400",
+        };
+      }
+    }
+
+    return {
+      text: "Auto-save enabled",
+      icon: Save,
+      className: "text-gray-500",
+      bgClassName: "bg-gray-50 border-gray-200",
+      dotClassName: "bg-gray-400",
+    };
+  }, [isSaving, pendingChanges, lastSaved]);
+
+  // Update header information when canvas or auto-save status changes
+  useEffect(() => {
+    if (canvas) {
+      const autoSaveStatus = getAutoSaveStatus();
+      setHeaderInfo({
+        title: canvas.name || "Untitled Canvas",
+        description: canvas.description,
+        autoSaveStatus,
+      });
+    }
+  }, [
+    canvas,
+    isSaving,
+    pendingChanges,
+    lastSaved,
+    setHeaderInfo,
+    getAutoSaveStatus,
+  ]);
+
+  // Cleanup header on unmount
+  useEffect(() => {
+    return () => setHeaderInfo(null);
+  }, [setHeaderInfo]);
 
   // Function to load canvas directly from database (not from projects store)
   const loadCanvasFromDatabase = async (projectId: string) => {
@@ -194,6 +310,12 @@ export default function CanvasPage() {
         "Navigation"
       ),
       createShortcut.cmd("h", () => navigate("/"), "Go to home", "Navigation"),
+      createShortcut.cmd(
+        "f",
+        () => quickSearch.open(),
+        "Open search",
+        "Navigation"
+      ),
 
       // Canvas operations
       createShortcut.cmd(
@@ -578,51 +700,8 @@ export default function CanvasPage() {
 
   return (
     <div className="w-full h-full bg-background">
-      {/* Canvas Header */}
-      <div className="h-14 border-b border-border bg-card px-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div>
-            <h2 className="text-lg font-semibold text-card-foreground">
-              {canvas?.name || `Canvas ${canvasId}`}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {canvas?.description || "Visual business architecture workspace"}
-            </p>
-          </div>
-          {/* Auto-save indicator moved to top-left */}
-          <div className="ml-6">
-            <AutoSaveIndicator />
-          </div>
-        </div>
-
-        {/* Canvas Controls */}
-        <div className="flex items-center gap-4">
-          <AddNodeButton />
-          <GroupControls
-            selectedNodeIds={selectedNodeIds}
-            onGroupCreated={(groupId) => console.log("Group created:", groupId)}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={quickSearch.open}
-            className="gap-2"
-          >
-            <Search className="h-4 w-4" />
-            Search
-          </Button>
-          <KeyboardShortcutsHelp shortcuts={enabledShortcuts} />
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {canvas?.nodes.length || 0} nodes • {canvas?.edges.length || 0}{" "}
-              edges • {canvas?.groups.length || 0} groups
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* React Flow Canvas */}
-      <div className="h-[calc(100%-3.5rem)]">
+      <div className="h-full">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -636,29 +715,58 @@ export default function CanvasPage() {
           className="bg-background"
         >
           <Background />
-          <Controls className="bg-card border border-border" />
-          <MiniMap
-            className="bg-card border border-border"
-            maskColor="rgb(0, 0, 0, 0.1)"
-            nodeColor={(node) => {
-              switch (node.type) {
-                case "metricCard":
-                  return "#3b82f6"; // blue
-                case "groupNode":
-                  return "#10b981"; // green
-                default:
-                  return "#6b7280"; // gray
-              }
-            }}
-            ariaLabel="Canvas minimap"
-          />
 
-          {/* Canvas Controls */}
-          <CanvasControls
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={handleNodesChange}
-          />
+          {/* Left Bottom Panel - Core Functions */}
+          <Controls className="bg-card border border-border">
+            {/* Comprehensive Add Node Button */}
+            <AddNodeButton
+              position={{ x: 100, y: 100 }}
+              asControlButton={true}
+            />
+
+            {/* Group Controls Button */}
+            <ControlButton
+              onClick={() => {
+                // Handle group functionality
+                console.log("Group controls");
+              }}
+              title="Group Controls"
+            >
+              <Users className="h-4 w-4" />
+            </ControlButton>
+
+            {/* Search Button */}
+            <ControlButton
+              onClick={() => quickSearch.open()}
+              title="Search (Cmd+F)"
+            >
+              <Search className="h-4 w-4" />
+            </ControlButton>
+
+            {/* Keyboard Shortcuts Button */}
+            <ControlButton
+              onClick={() => setShowShortcutsHelp(true)}
+              title="Keyboard Shortcuts"
+            >
+              <Keyboard className="h-4 w-4" />
+            </ControlButton>
+          </Controls>
+
+          {/* Right Bottom Panel - View Settings */}
+          <Controls
+            className="bg-card border border-border"
+            position="bottom-right"
+          >
+            {/* Comprehensive Auto Layout */}
+            <AutoLayoutControls
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={handleNodesChange}
+            />
+
+            {/* Comprehensive Filter & Date */}
+            <FilterControls />
+          </Controls>
 
           {/* Node Toolbar */}
           {toolbarNodeId && (
@@ -669,6 +777,9 @@ export default function CanvasPage() {
             />
           )}
         </ReactFlow>
+
+        {/* Bulk Operations Toolbar */}
+        <BulkOperationsToolbar />
       </div>
 
       {/* Card Settings Sheet */}
@@ -746,9 +857,6 @@ export default function CanvasPage() {
           }
         }}
       />
-
-      {/* Bulk Operations Toolbar */}
-      <BulkOperationsToolbar />
     </div>
   );
 }

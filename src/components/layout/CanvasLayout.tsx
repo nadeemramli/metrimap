@@ -8,23 +8,14 @@ import {
   Server,
   Settings,
   ArrowLeft,
-  Users,
-  Calendar,
-  Dot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 import { cn } from "@/lib/utils";
 import { useProjectsStore } from "@/lib/stores";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { useCanvasHeader } from "@/contexts/CanvasHeaderContext";
 
 const sidebarItems = [
   {
@@ -72,6 +63,7 @@ export default function CanvasLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { getProjectById } = useProjectsStore();
+  const { headerInfo } = useCanvasHeader();
 
   const project = canvasId ? getProjectById(canvasId) : null;
 
@@ -107,227 +99,163 @@ export default function CanvasLayout() {
 
   return (
     <div className="flex h-screen bg-background">
-      <TooltipProvider>
-        {/* Sidebar */}
-        <div className="w-16 bg-card border-r border-border flex flex-col">
-          {/* Logo/Brand */}
-          <div className="h-16 flex items-center justify-center border-b border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-10 h-10 p-0 rounded-lg"
-              onClick={() => navigate("/")}
-              title="Back to Home"
-            >
-              <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </div>
-
-          {/* Project Context */}
-          {project && (
-            <div className="px-2 py-3 border-b border-border">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center mb-2 mx-auto">
-                <Grid3X3 className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-center">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="text-xs font-medium text-foreground truncate w-12 mx-auto">
-                      {project.name}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <div className="text-sm">
-                      <div className="font-medium">{project.name}</div>
-                      <div className="text-muted-foreground">
-                        {project.description}
-                      </div>
-                      <Separator className="my-2" />
-                      <div className="flex items-center gap-4 text-xs">
-                        <div className="flex items-center gap-1">
-                          <BarChart3 className="h-3 w-3" />
-                          {project.nodes.length} metrics
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Database className="h-3 w-3" />
-                          {project.edges.length} relationships
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                        <Users className="h-3 w-3" />
-                        {project.collaborators.length} collaborators
-                      </div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation Items */}
-          <div className="flex flex-col gap-1 px-2 py-3 flex-1">
-            {sidebarItems
-              .filter((item) => !item.isBottom && !item.isHome)
-              .map((item) => {
-                const Icon = item.icon;
-                const isActive = isActiveRoute(item);
-
-                return (
-                  <Tooltip key={item.label}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant={isActive ? "default" : "ghost"}
-                        size="sm"
-                        className={cn(
-                          "w-12 h-12 p-0 rounded-lg transition-all duration-200",
-                          isActive
-                            ? "bg-primary text-primary-foreground shadow-md scale-105"
-                            : "hover:bg-accent hover:scale-105"
-                        )}
-                        onClick={() => handleNavigation(item)}
-                      >
-                        <Icon className="h-5 w-5" />
-                        {isActive && (
-                          <div className="absolute -right-0.5 top-1/2 w-1 h-6 bg-primary rounded-l-sm transform -translate-y-1/2" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <div className="text-sm">
-                        <div className="font-medium">{item.label}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {item.label === "Canvas" && "Visual metric mapping"}
-                          {item.label === "Dashboard" && "Analytics overview"}
-                          {item.label === "Assets" && "Metrics & relationships"}
-                          {item.label === "Evidence" && "Research repository"}
-                          {item.label === "Source" && "Data governance"}
-                        </div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-          </div>
-
-          {/* Status Indicator */}
-          <div className="px-2 py-2 border-t border-border">
-            <div className="flex items-center justify-center">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1">
-                    <Dot className="h-4 w-4 text-green-500 animate-pulse" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <div className="text-sm">
-                    <div className="text-green-500 font-medium">Online</div>
-                    <div className="text-xs text-muted-foreground">
-                      Auto-saving enabled
-                    </div>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-
-          {/* Settings */}
-          <div className="px-2 py-3">
-            {sidebarItems
-              .filter((item) => item.isBottom)
-              .map((item) => {
-                const Icon = item.icon;
-                const isActive = isActiveRoute(item);
-
-                return (
-                  <Tooltip key={item.label}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant={isActive ? "default" : "ghost"}
-                        size="sm"
-                        className={cn(
-                          "w-12 h-12 p-0 rounded-lg transition-all duration-200",
-                          isActive
-                            ? "bg-primary text-primary-foreground"
-                            : "hover:bg-accent hover:scale-105"
-                        )}
-                        onClick={() => handleNavigation(item)}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <div className="text-sm">
-                        <div className="font-medium">{item.label}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Canvas configuration
-                        </div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-          </div>
+      {/* Sidebar */}
+      <div className="w-12 bg-background border-r border-border flex flex-col">
+        {/* Logo/Brand */}
+        <div className="h-12 flex items-center justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-8 h-8 p-0 rounded-md hover:bg-accent/50"
+            onClick={() => navigate("/")}
+            title="Back to Home"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top Bar with Breadcrumb */}
-          <div className="h-14 bg-card/50 backdrop-blur-sm border-b border-border flex items-center justify-between px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm">
+        {/* Navigation Items */}
+        <div className="flex flex-col gap-0.5 px-1.5 py-2 flex-1">
+          {sidebarItems
+            .filter((item) => !item.isBottom && !item.isHome)
+            .map((item) => {
+              const Icon = item.icon;
+              const isActive = isActiveRoute(item);
+
+              return (
                 <Button
+                  key={item.label}
                   variant="ghost"
                   size="sm"
-                  className="p-0 h-auto text-muted-foreground hover:text-foreground"
-                  onClick={() => navigate("/")}
+                  className={cn(
+                    "w-9 h-9 p-0 rounded-md transition-all duration-150",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "hover:bg-accent/50 text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => handleNavigation(item)}
                 >
-                  Metrimap
+                  <Icon className="h-4 w-4" />
                 </Button>
-                <span className="text-muted-foreground">/</span>
-                {project && (
+              );
+            })}
+        </div>
+
+        {/* Settings */}
+        <div className="px-1.5 py-2">
+          {sidebarItems
+            .filter((item) => item.isBottom)
+            .map((item) => {
+              const Icon = item.icon;
+              const isActive = isActiveRoute(item);
+
+              return (
+                <Button
+                  key={item.label}
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "w-9 h-9 p-0 rounded-md transition-all duration-150",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "hover:bg-accent/50 text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => handleNavigation(item)}
+                >
+                  <Icon className="h-4 w-4" />
+                </Button>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Bar */}
+        <div className="h-10 bg-background border-b border-border flex items-center justify-between px-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {headerInfo ? (
+              <>
+                {/* Canvas Title */}
+                <span className="text-sm font-medium text-foreground truncate">
+                  {headerInfo.title}
+                </span>
+
+                {/* Canvas Description */}
+                {headerInfo.description && (
                   <>
-                    <span className="text-muted-foreground">
-                      {project.name}
+                    <span className="text-muted-foreground text-xs">•</span>
+                    <span className="text-xs text-muted-foreground truncate max-w-48">
+                      {headerInfo.description}
                     </span>
-                    <span className="text-muted-foreground">/</span>
                   </>
                 )}
-                <span className="font-medium text-foreground">
+              </>
+            ) : (
+              <>
+                {/* Fallback to generic page title */}
+                <span className="text-sm font-medium text-foreground">
                   {getPageTitle()}
                 </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {project && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>
-                      Updated {new Date(project.updatedAt).toLocaleDateString()}
+                {project && (
+                  <>
+                    <span className="text-muted-foreground text-xs">•</span>
+                    <span className="text-xs text-muted-foreground truncate max-w-32">
+                      {project.name}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    <span>{project.collaborators.length} collaborators</span>
-                  </div>
-                </div>
-              )}
-              <Badge variant="outline" className="text-xs">
-                Auto-saved
-              </Badge>
-
-              {/* User Menu */}
-              <UserMenu />
-            </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
 
-          {/* Page Content */}
-          <div className="flex-1 overflow-hidden">
-            <Outlet />
+          <div className="flex items-center gap-3">
+            {/* Beautiful Auto-save Status */}
+            {headerInfo?.autoSaveStatus && (
+              <div
+                className={cn(
+                  "flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium transition-all duration-200",
+                  headerInfo.autoSaveStatus.bgClassName,
+                  headerInfo.autoSaveStatus.className
+                )}
+              >
+                {/* Status Dot */}
+                <div className="relative flex items-center">
+                  <div
+                    className={cn(
+                      "w-1.5 h-1.5 rounded-full",
+                      headerInfo.autoSaveStatus.dotClassName
+                    )}
+                  />
+                  {headerInfo.autoSaveStatus.className.includes(
+                    "animate-ping"
+                  ) && (
+                    <div
+                      className={cn(
+                        "absolute w-1.5 h-1.5 rounded-full",
+                        headerInfo.autoSaveStatus.dotClassName
+                      )}
+                    />
+                  )}
+                </div>
+
+                {/* Status Icon */}
+                <headerInfo.autoSaveStatus.icon className="h-3 w-3" />
+
+                {/* Status Text */}
+                <span>{headerInfo.autoSaveStatus.text}</span>
+              </div>
+            )}
+
+            <UserMenu />
           </div>
         </div>
-      </TooltipProvider>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-hidden">
+          <Outlet />
+        </div>
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AuthProvider from "./components/auth/AuthProvider";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { ErrorBoundary } from "./components/error/ErrorBoundary";
+import { CanvasHeaderProvider } from "./contexts/CanvasHeaderContext";
 
 // Pages
 import HomePage from "./pages/HomePage";
@@ -69,7 +70,9 @@ export default function App() {
                 path="/canvas/:canvasId"
                 element={
                   <ProtectedRoute>
-                    <CanvasLayout />
+                    <CanvasHeaderProvider>
+                      <CanvasLayout />
+                    </CanvasHeaderProvider>
                   </ProtectedRoute>
                 }
               >

@@ -8,11 +8,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ControlButton } from "@xyflow/react";
 import { useCanvasStore } from "@/lib/stores";
 import type { CardCategory } from "@/lib/types";
 
 interface AddNodeButtonProps {
   position?: { x: number; y: number };
+  asControlButton?: boolean;
 }
 
 const categoryTemplates: Array<{
@@ -53,7 +55,10 @@ const categoryTemplates: Array<{
   },
 ];
 
-export default function AddNodeButton({ position }: AddNodeButtonProps) {
+export default function AddNodeButton({
+  position,
+  asControlButton = false,
+}: AddNodeButtonProps) {
   const { createNode } = useCanvasStore();
 
   const handleAddNode = async (category: CardCategory) => {
@@ -103,13 +108,21 @@ export default function AddNodeButton({ position }: AddNodeButtonProps) {
     }
   };
 
+  const TriggerButton = asControlButton ? ControlButton : Button;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Card
-        </Button>
+        {asControlButton ? (
+          <ControlButton title="Add Node">
+            <Plus className="h-4 w-4" />
+          </ControlButton>
+        ) : (
+          <Button size="sm" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Card
+          </Button>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-64" align="start">
         <DropdownMenuLabel>Select Card Type</DropdownMenuLabel>
