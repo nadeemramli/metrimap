@@ -161,81 +161,90 @@
 
 /* Fix for transparency issues with sheets and dialogs over ReactFlow canvas */
 /* Ensure proper z-index and backdrop styling */
+
+/* Toaster fixes */
 [data-sonner-toaster] {
   z-index: 9999 !important;
 }
 
-/* Sheet component fixes */
-[data-radix-portal] > [data-sonner-toast] {
+[data-sonner-toast] {
   z-index: 9999 !important;
 }
 
-/* Radix UI Sheet overlay fixes using data-slot attributes */
-[data-radix-portal] [data-slot="sheet-overlay"] {
-  z-index: 99 !important;
+/* Radix UI Dialog overlay fixes - target direct data-slot attributes */
+[data-slot="dialog-overlay"] {
+  z-index: 1000 !important;
   background-color: rgba(0, 0, 0, 0.5) !important;
   backdrop-filter: blur(4px) !important;
 }
 
-/* Radix UI Sheet content fixes using data-slot attributes */
-[data-radix-portal] [data-slot="sheet-content"] {
-  z-index: 100 !important;
+/* Radix UI Dialog content fixes - target direct data-slot attributes */
+[data-slot="dialog-content"] {
+  z-index: 1001 !important;
   background: hsl(var(--background)) !important;
   border: 1px solid hsl(var(--border)) !important;
   opacity: 1 !important;
 }
 
-/* Radix UI Dialog overlay fixes using data-slot attributes */
-[data-radix-portal] [data-slot="dialog-overlay"] {
-  z-index: 99 !important;
+/* Radix UI Sheet overlay fixes - target direct data-slot attributes */
+[data-slot="sheet-overlay"] {
+  z-index: 1000 !important;
   background-color: rgba(0, 0, 0, 0.5) !important;
   backdrop-filter: blur(4px) !important;
 }
 
-/* Radix UI Dialog content fixes using data-slot attributes */
-[data-radix-portal] [data-slot="dialog-content"] {
-  z-index: 100 !important;
+/* Radix UI Sheet content fixes - target direct data-slot attributes */
+[data-slot="sheet-content"] {
+  z-index: 1001 !important;
   background: hsl(var(--background)) !important;
   border: 1px solid hsl(var(--border)) !important;
   opacity: 1 !important;
 }
 
-/* Generic dialog role fixes for any missed components */
-[data-radix-portal] [role="dialog"] {
-  z-index: 100 !important;
-  background: hsl(var(--background)) !important;
-  opacity: 1 !important;
-}
-
-/* Generic overlay role fixes */
-[data-radix-portal] [role="presentation"] {
-  z-index: 99 !important;
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(4px) !important;
-}
-
-/* Additional fixes for data-state attributes */
-[data-radix-portal] [data-state="open"][data-side] {
-  z-index: 100 !important;
-  background: hsl(var(--background)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  opacity: 1 !important;
-}
-
-/* Command palette specific fixes */
-[data-radix-portal] [data-slot="command"] {
+/* Dropdown menu content fixes */
+[data-slot="dropdown-menu-content"] {
+  z-index: 1001 !important;
   background: hsl(var(--popover)) !important;
   border: 1px solid hsl(var(--border)) !important;
   opacity: 1 !important;
 }
 
-/* Additional fixes for any missed portal content */
-[data-radix-portal] > div {
-  z-index: 99 !important;
+/* Popover content fixes */
+[data-slot="popover-content"] {
+  z-index: 1001 !important;
+  background: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  opacity: 1 !important;
 }
 
-[data-radix-portal] > div > div {
-  z-index: 100 !important;
+/* Select content fixes */
+[data-slot="select-content"] {
+  z-index: 1001 !important;
+  background: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  opacity: 1 !important;
+}
+
+/* Command palette specific fixes */
+[data-slot="command"] {
+  z-index: 1001 !important;
+  background: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  opacity: 1 !important;
+}
+
+/* Generic role-based fixes for any missed components */
+[role="dialog"] {
+  z-index: 1001 !important;
+  background: hsl(var(--background)) !important;
+  opacity: 1 !important;
+}
+
+/* Generic overlay role fixes */
+[role="presentation"][data-state="open"] {
+  z-index: 1000 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
 }
 
 /* Ensure ReactFlow canvas doesn't interfere */

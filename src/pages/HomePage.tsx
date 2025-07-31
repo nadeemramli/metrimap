@@ -25,8 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
+
 import {
   Plus,
   Search,
@@ -48,7 +47,6 @@ import {
   SortDesc,
   Folder,
   FileText,
-  LogOut,
 } from "lucide-react";
 import { useProjectsStore, useAppStore } from "@/lib/stores";
 import type { CanvasProject } from "@/lib/types";
@@ -60,56 +58,10 @@ import {
   useKeyboardShortcuts,
   createShortcut,
 } from "@/hooks/useKeyboardShortcuts";
+import { UserMenu } from "@/components/layout/UserMenu";
 
 type SortOption = "name" | "updated" | "created" | "nodes" | "edges";
 type ViewMode = "grid" | "list";
-
-// User Menu Component
-function UserMenu() {
-  const { user, signOut } = useAppStore();
-  const navigate = useNavigate();
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/auth/login");
-  };
-
-  if (!user) return null;
-
-  const initials = user.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <div className="flex items-center justify-start gap-2 p-2">
-          <div className="flex flex-col space-y-1 leading-none">
-            <p className="font-medium">{user.name}</p>
-            <p className="w-[200px] truncate text-sm text-muted-foreground">
-              {user.email}
-            </p>
-          </div>
-        </div>
-        <Separator />
-        <DropdownMenuItem onClick={handleSignOut}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -129,6 +81,7 @@ export default function HomePage() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [activeTab, setActiveTab] = useState("all");
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [isCreatingCanvas, setIsCreatingCanvas] = useState(false);
 
   // Search functionality
   const quickSearch = useQuickSearch();
@@ -223,25 +176,31 @@ export default function HomePage() {
   const recentProjects = projects.filter(isRecentProject);
   const starredProjects = projects.filter((p) => p.tags.includes("starred"));
 
-  const handleCreateCanvas = () => {
-    const newId = Date.now().toString();
-    const newProject: CanvasProject = {
-      id: newId,
-      name: "New Canvas",
-      description: "New business model canvas",
-      tags: ["New"],
-      collaborators: [],
-      nodes: [],
-      edges: [],
-      groups: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastModifiedBy: "Current User",
-    };
+  const handleCreateCanvas = async () => {
+    if (isCreatingCanvas) return; // Prevent multiple clicks
 
-    addProject(newProject);
-    setCurrentCanvas(newId);
-    navigate(`/canvas/${newId}`);
+    setIsCreatingCanvas(true);
+    try {
+      const newProjectData = {
+        name: "New Canvas",
+        description: "New business model canvas",
+        tags: ["New"],
+        last_modified_by: "Current User",
+      };
+
+      const newProjectId = await addProject(newProjectData);
+      setCurrentCanvas(newProjectId);
+      navigate(`/canvas/${newProjectId}`);
+    } catch (error) {
+      console.error("Failed to create canvas:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "An unexpected error occurred";
+      alert(
+        `Failed to create canvas: ${errorMessage}\n\nPlease make sure you're logged in and try again.`
+      );
+    } finally {
+      setIsCreatingCanvas(false);
+    }
   };
 
   const handleOpenCanvas = (canvasId: string) => {
@@ -441,9 +400,13 @@ export default function HomePage() {
                 <FileText className="h-4 w-4 mr-2" />
                 Evidence Repository
               </Button>
-              <Button onClick={handleCreateCanvas} className="gap-2">
+              <Button
+                onClick={handleCreateCanvas}
+                className="gap-2"
+                disabled={isCreatingCanvas}
+              >
                 <Plus className="h-4 w-4" />
-                New Canvas
+                {isCreatingCanvas ? "Creating..." : "New Canvas"}
               </Button>
 
               {/* User Menu */}
@@ -590,9 +553,15 @@ export default function HomePage() {
                     : "Try adjusting your search terms or filters"}
                 </p>
                 {projects.length === 0 && (
-                  <Button onClick={handleCreateCanvas} className="gap-2">
+                  <Button
+                    onClick={handleCreateCanvas}
+                    className="gap-2"
+                    disabled={isCreatingCanvas}
+                  >
                     <Plus className="h-4 w-4" />
-                    Create Your First Canvas
+                    {isCreatingCanvas
+                      ? "Creating..."
+                      : "Create Your First Canvas"}
                   </Button>
                 )}
               </div>

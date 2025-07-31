@@ -16,7 +16,7 @@ export async function getUserProjects(userId: string) {
     .from('projects')
     .select(`
       *,
-      project_collaborators!inner(
+      project_collaborators(
         role,
         permissions,
         users(id, name, email, avatar_url)
