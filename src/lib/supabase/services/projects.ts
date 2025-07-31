@@ -22,7 +22,7 @@ export async function getUserProjects(userId: string) {
         users(id, name, email, avatar_url)
       )
     `)
-    .or(`created_by.eq.${userId},project_collaborators.user_id.eq.${userId}`)
+    .or('created_by.eq.' + userId + ',project_collaborators.user_id.eq.' + userId)
     .order('updated_at', { ascending: false });
 
   if (error) {

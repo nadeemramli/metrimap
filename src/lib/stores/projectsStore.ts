@@ -91,11 +91,13 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           
           set({ isLoading: true, error: undefined });
           
+          const { collaborators, nodes, edges, groups, lastModifiedBy, ...dbProjectData } = projectData;
           const projectToCreate = {
-            ...projectData,
+            ...dbProjectData,
             created_by: user.id,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            last_modified_by: user.id,
             settings: projectData.settings ? JSON.parse(JSON.stringify(projectData.settings)) : undefined,
           };
           
