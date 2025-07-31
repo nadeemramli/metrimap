@@ -70,6 +70,7 @@ export default function HomePage() {
     addProject,
     duplicateProject,
     deleteProject,
+    updateProject,
     initializeProjects,
   } = useProjectsStore();
   const { setCurrentCanvas } = useAppStore();
@@ -185,7 +186,12 @@ export default function HomePage() {
         name: "New Canvas",
         description: "New business model canvas",
         tags: ["New"],
-        last_modified_by: "Current User",
+        collaborators: [],
+        nodes: [],
+        edges: [],
+        groups: [],
+        settings: {},
+        lastModifiedBy: "Current User",
       };
 
       const newProjectId = await addProject(newProjectData);
