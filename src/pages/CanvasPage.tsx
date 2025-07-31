@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ReactFlow,
   applyNodeChanges,
@@ -14,6 +14,8 @@ import {
   Controls,
   MiniMap,
 } from "@xyflow/react";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore, useProjectsStore, useAppStore } from "@/lib/stores";
 import type {
@@ -32,6 +34,16 @@ import {
   GroupNode,
   GroupControls,
 } from "@/components/canvas";
+import BulkOperationsToolbar from "@/components/canvas/BulkOperationsToolbar";
+import {
+  useKeyboardShortcuts,
+  createShortcut,
+} from "@/hooks/useKeyboardShortcuts";
+import KeyboardShortcutsHelp from "@/components/ui/KeyboardShortcutsHelp";
+import QuickSearchCommand, {
+  useQuickSearch,
+} from "@/components/search/QuickSearchCommand";
+import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
 
 // Convert MetricCard to ReactFlow Node with callbacks
 const convertToNode = (
@@ -107,12 +119,18 @@ const edgeTypes = {
 
 export default function CanvasPage() {
   const { canvasId } = useParams();
+  const navigate = useNavigate();
   const [settingsCardId, setSettingsCardId] = useState<string | undefined>();
   const [toolbarNodeId, setToolbarNodeId] = useState<string | undefined>();
   const [toolbarPosition, setToolbarPosition] = useState({ x: 0, y: 0 });
   const [relationshipSheetId, setRelationshipSheetId] = useState<
     string | undefined
   >();
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+
+  // Search functionality
+  const quickSearch = useQuickSearch();
 
   // Zustand stores
   const {
@@ -123,9 +141,204 @@ export default function CanvasPage() {
     selectedNodeIds,
     updateGroup,
     deleteGroup,
+    deleteNode,
+    addNode,
+    selectNode,
+    clearSelection,
   } = useCanvasStore();
   const { getProjectById } = useProjectsStore();
   const { currentCanvasId } = useAppStore();
+
+  // Keyboard shortcuts
+  const shortcuts = useMemo(
+    () => [
+      // Navigation shortcuts
+      createShortcut.cmd(
+        "k",
+        () => setShowShortcutsHelp(true),
+        "Show keyboard shortcuts",
+        "Navigation"
+      ),
+      createShortcut.key(
+        "?",
+        () => setShowShortcutsHelp(true),
+        "Show keyboard shortcuts",
+        "Navigation"
+      ),
+      createShortcut.key(
+        "Escape",
+        () => {
+          setToolbarNodeId(undefined);
+          setSettingsCardId(undefined);
+          setRelationshipSheetId(undefined);
+          clearSelection();
+        },
+        "Close dialogs and clear selection",
+        "Navigation"
+      ),
+      createShortcut.cmd("h", () => navigate("/"), "Go to home", "Navigation"),
+
+      // Canvas operations
+      createShortcut.cmd(
+        "n",
+        () => {
+          const newCard = {
+            id: `card_${Date.now()}`,
+            title: "New Metric Card",
+            description: "",
+            category: "Data/Metric" as const,
+            tags: [],
+            causalFactors: [],
+            dimensions: [],
+            position: { x: 100, y: 100 },
+            sourceType: "Manual" as const,
+            assignees: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          addNode(newCard);
+        },
+        "Create new metric card",
+        "Canvas"
+      ),
+
+      createShortcut.cmd(
+        "d",
+        () => {
+          if (selectedNodeIds.length > 0) {
+            selectedNodeIds.forEach((nodeId) => deleteNode(nodeId));
+            clearSelection();
+          }
+        },
+        "Delete selected nodes",
+        "Canvas"
+      ),
+
+      createShortcut.cmd(
+        "a",
+        () => {
+          if (canvas?.nodes) {
+            canvas.nodes.forEach((node) => selectNode(node.id));
+          }
+        },
+        "Select all nodes",
+        "Canvas"
+      ),
+
+      createShortcut.cmd(
+        "Enter",
+        () => {
+          if (selectedNodeIds.length === 1) {
+            setSettingsCardId(selectedNodeIds[0]);
+          }
+        },
+        "Open settings for selected node",
+        "Canvas"
+      ),
+
+      // View shortcuts
+      createShortcut.key(
+        "1",
+        () => {
+          // TODO: Zoom to fit
+          console.log("Zoom to fit");
+        },
+        "Zoom to fit",
+        "View"
+      ),
+
+      createShortcut.key(
+        "2",
+        () => {
+          // TODO: Zoom to 100%
+          console.log("Zoom to 100%");
+        },
+        "Zoom to 100%",
+        "View"
+      ),
+
+      // Quick actions
+      createShortcut.cmd(
+        "s",
+        () => {
+          // TODO: Save canvas
+          console.log("Save canvas");
+        },
+        "Save canvas",
+        "Actions"
+      ),
+
+      createShortcut.cmd(
+        "z",
+        () => {
+          // TODO: Undo
+          console.log("Undo");
+        },
+        "Undo",
+        "Actions"
+      ),
+
+      createShortcut.cmd(
+        "y",
+        () => {
+          // TODO: Redo
+          console.log("Redo");
+        },
+        "Redo",
+        "Actions"
+      ),
+
+      // Application shortcuts
+      createShortcut.cmd(
+        "e",
+        () => navigate("/evidence"),
+        "Open Evidence Repository",
+        "Application"
+      ),
+      createShortcut.cmd(
+        ",",
+        () => {
+          // TODO: Open preferences
+          console.log("Open preferences");
+        },
+        "Open preferences",
+        "Application"
+      ),
+
+      // Search and filter
+      createShortcut.cmd(
+        "f",
+        () => {
+          quickSearch.open();
+        },
+        "Quick search",
+        "Search"
+      ),
+
+      createShortcut.shift(
+        "f",
+        () => {
+          setShowAdvancedSearch(true);
+        },
+        "Advanced search",
+        "Search"
+      ),
+    ],
+    [
+      navigate,
+      selectedNodeIds,
+      canvas?.nodes,
+      addNode,
+      deleteNode,
+      clearSelection,
+      selectNode,
+    ]
+  );
+
+  // Enable keyboard shortcuts
+  const { shortcuts: enabledShortcuts } = useKeyboardShortcuts(shortcuts, {
+    enabled: true,
+  });
 
   // Handle opening settings sheet
   const handleOpenSettings = useCallback((cardId: string) => {
@@ -316,6 +529,16 @@ export default function CanvasPage() {
             selectedNodeIds={selectedNodeIds}
             onGroupCreated={(groupId) => console.log("Group created:", groupId)}
           />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={quickSearch.open}
+            className="gap-2"
+          >
+            <Search className="h-4 w-4" />
+            Search
+          </Button>
+          <KeyboardShortcutsHelp shortcuts={enabledShortcuts} />
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
               {canvas?.nodes.length || 0} nodes • {canvas?.edges.length || 0}{" "}
@@ -383,6 +606,71 @@ export default function CanvasPage() {
         onClose={() => setRelationshipSheetId(undefined)}
         relationshipId={relationshipSheetId}
       />
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        shortcuts={enabledShortcuts}
+        trigger={showShortcutsHelp ? <div style={{ display: "none" }} /> : null}
+      />
+      {showShortcutsHelp && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+          onClick={() => setShowShortcutsHelp(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <KeyboardShortcutsHelp
+              shortcuts={enabledShortcuts}
+              trigger={null}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Quick Search */}
+      <QuickSearchCommand
+        isOpen={quickSearch.isOpen}
+        onClose={quickSearch.close}
+        onResultSelect={(result) => {
+          // Handle search result selection
+          switch (result.type) {
+            case "metric":
+              setSettingsCardId(result.id);
+              break;
+            case "relationship":
+              setRelationshipSheetId(result.id);
+              break;
+            case "evidence":
+              navigate("/evidence");
+              break;
+          }
+        }}
+      />
+
+      {/* Advanced Search */}
+      <AdvancedSearchModal
+        isOpen={showAdvancedSearch}
+        onClose={() => setShowAdvancedSearch(false)}
+        onResultSelect={(result) => {
+          // Handle advanced search result selection
+          switch (result.type) {
+            case "metric":
+              setSettingsCardId(result.id);
+              break;
+            case "relationship":
+              setRelationshipSheetId(result.id);
+              break;
+            case "evidence":
+              navigate("/evidence");
+              break;
+          }
+        }}
+      />
+
+      {/* Bulk Operations Toolbar */}
+      <BulkOperationsToolbar />
     </div>
   );
 }

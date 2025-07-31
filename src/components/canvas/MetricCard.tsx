@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import { useState, useRef, useEffect } from "react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import {
   Copy,
   Settings,
@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useAccessibility } from "@/hooks/useAccessibility";
 import type { MetricCard as MetricCardType, MetricValue } from "@/lib/types";
 
 interface MetricCardNodeData {
@@ -90,15 +91,25 @@ const formatValue = (value: number): string => {
   return value.toLocaleString();
 };
 
-export default function MetricCard({
-  data,
-  selected,
-}: NodeProps<MetricCardNodeData>) {
-  const { card, onOpenSettings, onNodeClick } = data;
-  const [isExpanded, setIsExpanded] = useState(true);
+export default function MetricCard({ data, selected }: NodeProps) {
+  const { card, onOpenSettings, onNodeClick } =
+    data as unknown as MetricCardNodeData;
+  const [isExpanded] = useState(true);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const isDataMetric = card.category === "Data/Metric";
   const categoryColor = getCategoryColor(card.category);
+
+  // Accessibility hooks
+  const { announce, getARIAProps, createKeyboardNavigationHandler } =
+    useAccessibility();
+
+  // Announce card selection changes
+  useEffect(() => {
+    if (selected) {
+      announce(`Selected ${card.title} metric card`);
+    }
+  }, [selected, card.title, announce]);
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -124,14 +135,37 @@ export default function MetricCard({
     }
   };
 
+  const handleCardActivate = () => {
+    if (onNodeClick) {
+      onNodeClick(card.id, card.position);
+    }
+  };
+
   return (
     <div
+      ref={cardRef}
       className={cn(
         "bg-card border-2 rounded-lg shadow-lg min-w-[280px] max-w-[320px] cursor-pointer",
         selected ? "border-primary shadow-xl" : "border-border",
         categoryColor
       )}
       onClick={handleCardClick}
+      onKeyDown={createKeyboardNavigationHandler(
+        handleCardActivate,
+        handleCardActivate,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        () => cardRef.current?.blur()
+      )}
+      {...getARIAProps({
+        label: `${card.title} metric card. Category: ${card.category}. ${card.description ? `Description: ${card.description}` : ""}`,
+        role: "button",
+        selected: !!selected,
+        pressed: !!selected,
+      })}
+      tabIndex={0}
     >
       {/* Handles for connections */}
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
@@ -187,7 +221,7 @@ export default function MetricCard({
       {isDataMetric && card.data && isExpanded && (
         <div className="p-3 border-b border-border/50 bg-background/50">
           <div className="space-y-2">
-            {card.data.slice(0, 3).map((metric, index) => (
+            {card.data.slice(0, 3).map((metric: MetricValue, index: number) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground font-medium">
                   {metric.period}
@@ -232,7 +266,7 @@ export default function MetricCard({
         {/* Tags */}
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-xs text-muted-foreground">Tags:</span>
-          {card.tags.map((tag) => (
+          {card.tags.map((tag: string) => (
             <Badge key={tag} variant="secondary" className="text-xs px-1 py-0">
               {tag}
             </Badge>

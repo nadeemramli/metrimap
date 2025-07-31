@@ -53,6 +53,14 @@ import {
 } from "lucide-react";
 import { useProjectsStore, useAppStore } from "@/lib/stores";
 import type { CanvasProject } from "@/lib/types";
+import QuickSearchCommand, {
+  useQuickSearch,
+} from "@/components/search/QuickSearchCommand";
+import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
+import {
+  useKeyboardShortcuts,
+  createShortcut,
+} from "@/hooks/useKeyboardShortcuts";
 
 type SortOption = "name" | "updated" | "created" | "nodes" | "edges";
 type ViewMode = "grid" | "list";
@@ -121,6 +129,27 @@ export default function HomePage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [activeTab, setActiveTab] = useState("all");
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+
+  // Search functionality
+  const quickSearch = useQuickSearch();
+
+  // Global keyboard shortcuts
+  const shortcuts = useMemo(
+    () => [
+      createShortcut.cmd("k", quickSearch.open, "Open quick search", "Search"),
+      createShortcut.key("?", quickSearch.open, "Open quick search", "Search"),
+      createShortcut.shift(
+        "f",
+        () => setShowAdvancedSearch(true),
+        "Open advanced search",
+        "Search"
+      ),
+    ],
+    [quickSearch.open]
+  );
+
+  useKeyboardShortcuts(shortcuts, { enabled: true });
 
   // Initialize projects store on component mount
   useEffect(() => {
@@ -387,6 +416,10 @@ export default function HomePage() {
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </Button>
+              <Button variant="outline" size="sm" onClick={quickSearch.open}>
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -588,6 +621,48 @@ export default function HomePage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Quick Search */}
+      <QuickSearchCommand
+        isOpen={quickSearch.isOpen}
+        onClose={quickSearch.close}
+        onResultSelect={(result) => {
+          // Handle search result selection
+          switch (result.type) {
+            case "metric":
+              // Navigate to canvas containing the metric
+              navigate(`/canvas/1`); // TODO: Get actual canvas ID
+              break;
+            case "relationship":
+              // Navigate to canvas containing the relationship
+              navigate(`/canvas/1`); // TODO: Get actual canvas ID
+              break;
+            case "evidence":
+              navigate("/evidence");
+              break;
+          }
+        }}
+      />
+
+      {/* Advanced Search */}
+      <AdvancedSearchModal
+        isOpen={showAdvancedSearch}
+        onClose={() => setShowAdvancedSearch(false)}
+        onResultSelect={(result) => {
+          // Handle advanced search result selection
+          switch (result.type) {
+            case "metric":
+              navigate(`/canvas/1`); // TODO: Get actual canvas ID
+              break;
+            case "relationship":
+              navigate(`/canvas/1`); // TODO: Get actual canvas ID
+              break;
+            case "evidence":
+              navigate("/evidence");
+              break;
+          }
+        }}
+      />
     </div>
   );
 }

@@ -217,7 +217,7 @@ export default function CardSettingsSheet({
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 mb-6">
+            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9 mb-6">
               <TabsTrigger value="details" className="text-xs">
                 <BarChart3 className="h-3 w-3 mr-1" />
                 Details
@@ -239,6 +239,10 @@ export default function CardSettingsSheet({
               <TabsTrigger value="correlations" className="text-xs">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 Correlations
+              </TabsTrigger>
+              <TabsTrigger value="segments" className="text-xs">
+                <PieChart className="h-3 w-3 mr-1" />
+                Segments
               </TabsTrigger>
               <TabsTrigger value="comments" className="text-xs">
                 <MessageSquare className="h-3 w-3 mr-1" />
@@ -487,6 +491,472 @@ export default function CardSettingsSheet({
                   Discover statistical relationships with other metrics
                 </p>
                 <Button variant="outline">Compute Correlations</Button>
+              </div>
+            </TabsContent>
+
+            {/* Segments Tab */}
+            <TabsContent value="segments" className="space-y-6">
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium">Metric Segments</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Decompose this metric by dimensions and criteria
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      const newSegment: Segment = {
+                        id: `segment_${Date.now()}`,
+                        name: "New Segment",
+                        dimension: formData.dimensions?.[0] || "Region",
+                        value: "",
+                        percentage: 0,
+                        filters: [],
+                        color: "#3B82F6",
+                        isActive: true,
+                        description: "",
+                        createdAt: new Date().toISOString(),
+                      };
+                      handleFieldChange("segments", [
+                        ...(formData.segments || []),
+                        newSegment,
+                      ]);
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Segment
+                  </Button>
+                </div>
+
+                {/* Segments List */}
+                {formData.segments && formData.segments.length > 0 ? (
+                  <div className="space-y-4">
+                    {formData.segments.map((segment, index) => (
+                      <div
+                        key={segment.id}
+                        className="border rounded-lg p-4 space-y-4"
+                      >
+                        {/* Segment Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-4 h-4 rounded"
+                              style={{ backgroundColor: segment.color }}
+                            />
+                            <div className="flex-1">
+                              <Input
+                                value={segment.name}
+                                onChange={(e) => {
+                                  const updated = [
+                                    ...(formData.segments || []),
+                                  ];
+                                  updated[index] = {
+                                    ...segment,
+                                    name: e.target.value,
+                                  };
+                                  handleFieldChange("segments", updated);
+                                }}
+                                className="font-medium"
+                                placeholder="Segment name"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const updated = [...(formData.segments || [])];
+                                updated[index] = {
+                                  ...segment,
+                                  isActive: !segment.isActive,
+                                };
+                                handleFieldChange("segments", updated);
+                              }}
+                            >
+                              {segment.isActive ? "Active" : "Inactive"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const updated =
+                                  formData.segments?.filter(
+                                    (_, i) => i !== index
+                                  ) || [];
+                                handleFieldChange("segments", updated);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Segment Configuration */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">
+                              Dimension
+                            </label>
+                            <Select
+                              value={segment.dimension}
+                              onValueChange={(value) => {
+                                const updated = [...(formData.segments || [])];
+                                updated[index] = {
+                                  ...segment,
+                                  dimension: value,
+                                };
+                                handleFieldChange("segments", updated);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {formData.dimensions?.map((dim) => (
+                                  <SelectItem key={dim} value={dim}>
+                                    {dim}
+                                  </SelectItem>
+                                ))}
+                                <SelectItem value="Region">Region</SelectItem>
+                                <SelectItem value="Product">Product</SelectItem>
+                                <SelectItem value="Channel">Channel</SelectItem>
+                                <SelectItem value="Customer">
+                                  Customer
+                                </SelectItem>
+                                <SelectItem value="Time">Time</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">
+                              Segment Value
+                            </label>
+                            <Input
+                              value={segment.value}
+                              onChange={(e) => {
+                                const updated = [...(formData.segments || [])];
+                                updated[index] = {
+                                  ...segment,
+                                  value: e.target.value,
+                                };
+                                handleFieldChange("segments", updated);
+                              }}
+                              placeholder="e.g., North America, Mobile"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">
+                              Percentage (%)
+                            </label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={segment.percentage || 0}
+                              onChange={(e) => {
+                                const updated = [...(formData.segments || [])];
+                                updated[index] = {
+                                  ...segment,
+                                  percentage: parseInt(e.target.value) || 0,
+                                };
+                                handleFieldChange("segments", updated);
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-2 block">
+                              Color
+                            </label>
+                            <Input
+                              type="color"
+                              value={segment.color}
+                              onChange={(e) => {
+                                const updated = [...(formData.segments || [])];
+                                updated[index] = {
+                                  ...segment,
+                                  color: e.target.value,
+                                };
+                                handleFieldChange("segments", updated);
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">
+                            Description
+                          </label>
+                          <Textarea
+                            value={segment.description}
+                            onChange={(e) => {
+                              const updated = [...(formData.segments || [])];
+                              updated[index] = {
+                                ...segment,
+                                description: e.target.value,
+                              };
+                              handleFieldChange("segments", updated);
+                            }}
+                            placeholder="Describe this segment's criteria and purpose"
+                            rows={2}
+                          />
+                        </div>
+
+                        {/* Filters */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium">
+                              Filters ({segment.filters?.length || 0})
+                            </label>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const newFilter = {
+                                  field: "value",
+                                  operator: "greater_than" as const,
+                                  value: 0,
+                                };
+                                const updated = [...(formData.segments || [])];
+                                updated[index] = {
+                                  ...segment,
+                                  filters: [
+                                    ...(segment.filters || []),
+                                    newFilter,
+                                  ],
+                                };
+                                handleFieldChange("segments", updated);
+                              }}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add Filter
+                            </Button>
+                          </div>
+
+                          {segment.filters && segment.filters.length > 0 && (
+                            <div className="space-y-2 p-3 bg-muted/30 rounded">
+                              {segment.filters.map((filter, filterIndex) => (
+                                <div
+                                  key={filterIndex}
+                                  className="flex items-center gap-2 text-xs"
+                                >
+                                  <Select
+                                    value={filter.field}
+                                    onValueChange={(value) => {
+                                      const updated = [
+                                        ...(formData.segments || []),
+                                      ];
+                                      const updatedFilters = [
+                                        ...(segment.filters || []),
+                                      ];
+                                      updatedFilters[filterIndex] = {
+                                        ...filter,
+                                        field: value,
+                                      };
+                                      updated[index] = {
+                                        ...segment,
+                                        filters: updatedFilters,
+                                      };
+                                      handleFieldChange("segments", updated);
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="value">
+                                        Value
+                                      </SelectItem>
+                                      <SelectItem value="date">Date</SelectItem>
+                                      <SelectItem value="category">
+                                        Category
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+
+                                  <Select
+                                    value={filter.operator}
+                                    onValueChange={(value: any) => {
+                                      const updated = [
+                                        ...(formData.segments || []),
+                                      ];
+                                      const updatedFilters = [
+                                        ...(segment.filters || []),
+                                      ];
+                                      updatedFilters[filterIndex] = {
+                                        ...filter,
+                                        operator: value,
+                                      };
+                                      updated[index] = {
+                                        ...segment,
+                                        filters: updatedFilters,
+                                      };
+                                      handleFieldChange("segments", updated);
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-8">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="equals">
+                                        Equals
+                                      </SelectItem>
+                                      <SelectItem value="contains">
+                                        Contains
+                                      </SelectItem>
+                                      <SelectItem value="greater_than">
+                                        Greater than
+                                      </SelectItem>
+                                      <SelectItem value="less_than">
+                                        Less than
+                                      </SelectItem>
+                                      <SelectItem value="between">
+                                        Between
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+
+                                  <Input
+                                    className="h-8 flex-1"
+                                    value={filter.value.toString()}
+                                    onChange={(e) => {
+                                      const updated = [
+                                        ...(formData.segments || []),
+                                      ];
+                                      const updatedFilters = [
+                                        ...(segment.filters || []),
+                                      ];
+                                      updatedFilters[filterIndex] = {
+                                        ...filter,
+                                        value: isNaN(Number(e.target.value))
+                                          ? e.target.value
+                                          : Number(e.target.value),
+                                      };
+                                      updated[index] = {
+                                        ...segment,
+                                        filters: updatedFilters,
+                                      };
+                                      handleFieldChange("segments", updated);
+                                    }}
+                                    placeholder="Filter value"
+                                  />
+
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const updated = [
+                                        ...(formData.segments || []),
+                                      ];
+                                      const updatedFilters =
+                                        segment.filters?.filter(
+                                          (_, i) => i !== filterIndex
+                                        ) || [];
+                                      updated[index] = {
+                                        ...segment,
+                                        filters: updatedFilters,
+                                      };
+                                      handleFieldChange("segments", updated);
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Segments Summary */}
+                    <div className="border rounded-lg p-4 bg-muted/20">
+                      <h4 className="font-medium mb-2">Segments Summary</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Total Segments:</span>
+                          <span className="font-medium">
+                            {formData.segments.length}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Active Segments:</span>
+                          <span className="font-medium">
+                            {formData.segments.filter((s) => s.isActive).length}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Total Percentage:</span>
+                          <span
+                            className={`font-medium ${
+                              formData.segments.reduce(
+                                (sum, s) => sum + (s.percentage || 0),
+                                0
+                              ) === 100
+                                ? "text-green-600"
+                                : "text-orange-600"
+                            }`}
+                          >
+                            {formData.segments.reduce(
+                              (sum, s) => sum + (s.percentage || 0),
+                              0
+                            )}
+                            %
+                          </span>
+                        </div>
+                      </div>
+
+                      {formData.segments.reduce(
+                        (sum, s) => sum + (s.percentage || 0),
+                        0
+                      ) !== 100 && (
+                        <div className="mt-3 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
+                          ⚠️ Segment percentages should sum to 100% for accurate
+                          decomposition
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
+                    <PieChart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                      No Segments Defined
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Create segments to decompose this metric by dimensions
+                      like region, product, or customer type
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const newSegment: Segment = {
+                          id: `segment_${Date.now()}`,
+                          name: "Default Segment",
+                          dimension: "Region",
+                          value: "",
+                          percentage: 100,
+                          filters: [],
+                          color: "#3B82F6",
+                          isActive: true,
+                          description: "",
+                          createdAt: new Date().toISOString(),
+                        };
+                        handleFieldChange("segments", [newSegment]);
+                      }}
+                    >
+                      Create First Segment
+                    </Button>
+                  </div>
+                )}
               </div>
             </TabsContent>
 

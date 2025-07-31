@@ -340,6 +340,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     selectNodes: (nodeIds: string[]) => set({ selectedNodeIds: nodeIds }),
     selectNode: (nodeId: string) => set({ selectedNodeIds: [nodeId] }),
     deselectNodes: () => set({ selectedNodeIds: [] }),
+    clearSelection: () => set({ selectedNodeIds: [] }),
 
     // Edge management
     addEdge: (edge: Relationship) =>
