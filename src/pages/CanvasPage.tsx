@@ -2,6 +2,12 @@ import { useEffect, useCallback, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+  getIncomers,
+  getOutgoers,
+  getConnectedEdges,
+  NodeToolbar as ReactFlowNodeToolbar,
   type Node,
   type Edge,
   type NodeChange,
@@ -20,6 +26,10 @@ import {
   Clock,
   Check,
   AlertCircle,
+  Minimize2,
+  Link,
+  Eye,
+  MoreHorizontal,
 } from "lucide-react";
 
 import "@xyflow/react/dist/style.css";
@@ -48,6 +58,7 @@ import {
   useKeyboardShortcuts,
   createShortcut,
 } from "@/hooks/useKeyboardShortcuts";
+import { useAccessibility } from "@/hooks/useAccessibility";
 import KeyboardShortcutsHelp from "@/components/ui/KeyboardShortcutsHelp";
 import QuickSearchCommand, {
   useQuickSearch,
@@ -124,12 +135,11 @@ const edgeTypes = {
   dynamicEdge: DynamicEdge,
 };
 
-export default function CanvasPage() {
+function CanvasPageInner() {
   const { canvasId } = useParams();
   const navigate = useNavigate();
   const [settingsCardId, setSettingsCardId] = useState<string | undefined>();
   const [toolbarNodeId, setToolbarNodeId] = useState<string | undefined>();
-  const [toolbarPosition, setToolbarPosition] = useState({ x: 0, y: 0 });
   const [relationshipSheetId, setRelationshipSheetId] = useState<
     string | undefined
   >();
@@ -144,6 +154,12 @@ export default function CanvasPage() {
 
   // Canvas header context
   const { setHeaderInfo } = useCanvasHeader();
+
+  // React Flow hooks
+  const { screenToFlowPosition } = useReactFlow();
+
+  // Accessibility hook
+  const { announce } = useAccessibility();
 
   // Zustand stores
   const {
@@ -488,10 +504,6 @@ export default function CanvasPage() {
   const handleNodeClick = useCallback(
     (cardId: string, position: { x: number; y: number }) => {
       setToolbarNodeId(cardId);
-      setToolbarPosition({
-        x: position.x, // Will be centered in NodeToolbar component
-        y: position.y,
-      });
     },
     []
   );
@@ -587,6 +599,75 @@ export default function CanvasPage() {
     [canvas?.edges, handleOpenRelationshipSheet]
   );
 
+  // Proximity Connect - Check if nodes are close enough to auto-connect
+  const checkProximityAndConnect = useCallback(
+    async (draggedNode: Node, newPosition: { x: number; y: number }) => {
+      const PROXIMITY_THRESHOLD = 80; // pixels
+      const NODE_SIZE = { width: 320, height: 200 }; // MetricCard dimensions
+
+      // Calculate the center of the dragged node
+      const draggedCenter = {
+        x: newPosition.x + NODE_SIZE.width / 2,
+        y: newPosition.y + NODE_SIZE.height / 2,
+      };
+
+      // Find nearby nodes
+      const nearbyNodes = nodes.filter((node) => {
+        if (node.id === draggedNode.id) return false; // Skip self
+
+        const nodeCenter = {
+          x: node.position.x + NODE_SIZE.width / 2,
+          y: node.position.y + NODE_SIZE.height / 2,
+        };
+
+        const distance = Math.sqrt(
+          Math.pow(draggedCenter.x - nodeCenter.x, 2) +
+            Math.pow(draggedCenter.y - nodeCenter.y, 2)
+        );
+
+        return distance <= PROXIMITY_THRESHOLD;
+      });
+
+      // Auto-connect to nearby nodes
+      for (const nearbyNode of nearbyNodes) {
+        // Check if connection doesn't already exist
+        const connectionExists = edges.some(
+          (edge) =>
+            (edge.source === draggedNode.id && edge.target === nearbyNode.id) ||
+            (edge.source === nearbyNode.id && edge.target === draggedNode.id)
+        );
+
+        if (!connectionExists) {
+          const newRelationshipData = {
+            sourceId: draggedNode.id,
+            targetId: nearbyNode.id,
+            type: "Probabilistic" as const,
+            confidence: "Low" as const, // Lower confidence for auto-proximity connections
+            evidence: [],
+          };
+
+          try {
+            await createEdge(newRelationshipData);
+            console.log(
+              `🔗 Proximity auto-connect: ${draggedNode.id} → ${nearbyNode.id}`
+            );
+
+            // Visual feedback could be added here
+            announce(
+              `Connected to nearby node: ${nearbyNode.data?.title || nearbyNode.id}`
+            );
+          } catch (error) {
+            console.error(
+              `❌ Failed proximity auto-connect ${draggedNode.id} → ${nearbyNode.id}:`,
+              error
+            );
+          }
+        }
+      }
+    },
+    [nodes, edges, createEdge, announce]
+  );
+
   // Load canvas when component mounts or canvasId changes
   useEffect(() => {
     if (canvasId) {
@@ -613,6 +694,14 @@ export default function CanvasPage() {
             // Add to pending changes for auto-save
             addPendingChange(change.id);
 
+            // Proximity Connect - Check for nearby nodes during drag completion
+            if (!change.dragging && change.position) {
+              const currentNode = nodes.find((n) => n.id === change.id);
+              if (currentNode) {
+                checkProximityAndConnect(currentNode, change.position);
+              }
+            }
+
             // For manual dragging, add extra logging
             if (!change.dragging) {
               console.log(
@@ -625,14 +714,7 @@ export default function CanvasPage() {
 
         // Handle selection changes for toolbar
         if (change.type === "select" && change.selected) {
-          const node = nodes.find((n) => n.id === change.id);
-          if (node) {
-            setToolbarNodeId(change.id);
-            setToolbarPosition({
-              x: node.position.x, // Will be centered in NodeToolbar component
-              y: node.position.y,
-            });
-          }
+          setToolbarNodeId(change.id);
         } else if (change.type === "select" && !change.selected) {
           setToolbarNodeId(undefined);
         }
@@ -647,16 +729,82 @@ export default function CanvasPage() {
     console.log("Edge changes:", changes);
   }, []);
 
-  // Connection validation function - Allow any node to connect to any node
+  // Delete Middle Node - automatically reconnect edges when intermediate nodes are deleted
+  const onNodesDelete = useCallback(
+    async (deletedNodes: Node[]) => {
+      for (const node of deletedNodes) {
+        // Get all incoming and outgoing edges for the deleted node
+        const incomers = getIncomers(node, nodes, edges);
+        const outgoers = getOutgoers(node, nodes, edges);
+        const connectedEdges = getConnectedEdges([node], edges);
+
+        console.log(`🗑️ Deleting node ${node.id}:`, {
+          incomers: incomers.map((n) => n.id),
+          outgoers: outgoers.map((n) => n.id),
+          connectedEdges: connectedEdges.length,
+        });
+
+        // Create new connections between all incomers and outgoers
+        // This maintains the flow structure when removing intermediate nodes
+        for (const incomer of incomers) {
+          for (const outgoer of outgoers) {
+            // Don't create duplicate connections
+            const connectionExists = edges.some(
+              (edge) => edge.source === incomer.id && edge.target === outgoer.id
+            );
+
+            if (!connectionExists && incomer.id !== outgoer.id) {
+              const newRelationshipData = {
+                sourceId: incomer.id,
+                targetId: outgoer.id,
+                type: "Probabilistic" as const, // Default type for auto-reconnected edges
+                confidence: "Low" as const, // Lower confidence for auto-connections
+                evidence: [],
+              };
+
+              try {
+                await createEdge(newRelationshipData);
+                console.log(
+                  `✅ Auto-reconnected: ${incomer.id} → ${outgoer.id}`
+                );
+              } catch (error) {
+                console.error(
+                  `❌ Failed to auto-reconnect ${incomer.id} → ${outgoer.id}:`,
+                  error
+                );
+              }
+            }
+          }
+        }
+
+        // Delete the node from our canvas store
+        try {
+          await deleteNode(node.id);
+          console.log(`✅ Node ${node.id} deleted successfully`);
+        } catch (error) {
+          console.error(`❌ Failed to delete node ${node.id}:`, error);
+        }
+      }
+    },
+    [nodes, edges, createEdge, deleteNode]
+  );
+
+  // Enhanced connection validation with better feedback
   const isValidConnection = useCallback(
     (connection: any) => {
       const source = connection.source || connection.sourceNode?.id;
       const target = connection.target || connection.targetNode?.id;
 
-      if (!source || !target || !canvas) return false;
+      if (!source || !target || !canvas) {
+        console.log("🚫 Invalid connection: Missing source, target, or canvas");
+        return false;
+      }
 
       // Don't allow self-connections
-      if (source === target) return false;
+      if (source === target) {
+        console.log("🚫 Self-connections not allowed");
+        return false;
+      }
 
       // Check if connection already exists
       const existingEdge = canvas.edges.find(
@@ -667,10 +815,17 @@ export default function CanvasPage() {
         return false;
       }
 
-      console.log("✅ Connection allowed between any nodes:", {
+      // Get node details for better feedback
+      const sourceNode = canvas.nodes.find((n) => n.id === source);
+      const targetNode = canvas.nodes.find((n) => n.id === target);
+
+      console.log("✅ Valid connection:", {
+        from: `${sourceNode?.title || source} (${sourceNode?.category || "Unknown"})`,
+        to: `${targetNode?.title || target} (${targetNode?.category || "Unknown"})`,
         source,
         target,
       });
+
       return true; // Allow all connections except self-connections and duplicates
     },
     [canvas]
@@ -698,6 +853,75 @@ export default function CanvasPage() {
     [createEdge, isValidConnection]
   );
 
+  // Add Node on Edge Drop - create node when connection line is dropped on canvas
+  const onConnectEnd = useCallback(
+    async (event: any, connectionState: any) => {
+      // Only create a node if the connection is not valid (dropped on empty canvas)
+      if (!connectionState.isValid && connectionState.fromNode) {
+        const { clientX, clientY } =
+          "changedTouches" in event ? event.changedTouches[0] : event;
+
+        // Convert screen coordinates to flow coordinates
+        const position = screenToFlowPosition({
+          x: clientX,
+          y: clientY,
+        });
+
+        // Create a new comprehensive MetricCard (matching our AddNodeButton pattern)
+        const now = new Date().toISOString();
+        const newCardId = `card_${Date.now()}`;
+
+        const newCard: MetricCardType = {
+          id: newCardId,
+          title: "New Metric Card",
+          description: "",
+          category: "Data/Metric",
+          subCategory: "Input Metric",
+          tags: [],
+          causalFactors: [],
+          dimensions: ["Quantitative"],
+          segments: [],
+          position,
+          data: [
+            {
+              period: new Date().toISOString().split("T")[0],
+              value: 0,
+              change_percent: 0,
+              trend: "neutral",
+            },
+          ],
+          sourceType: "Manual",
+          formula: "",
+          owner: "",
+          assignees: [],
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        try {
+          // Add the new node to the canvas
+          await addNode(newCard);
+
+          // Create the connection between the source node and the new node
+          const newRelationshipData = {
+            sourceId: connectionState.fromNode.id,
+            targetId: newCardId,
+            type: "Probabilistic" as const,
+            confidence: "Low" as const,
+            evidence: [],
+          };
+
+          await createEdge(newRelationshipData);
+
+          console.log("✅ New node created and connected via edge drop");
+        } catch (error) {
+          console.error("❌ Failed to create node on edge drop:", error);
+        }
+      }
+    },
+    [screenToFlowPosition, addNode, createEdge]
+  );
+
   return (
     <div className="w-full h-full bg-background">
       {/* React Flow Canvas */}
@@ -709,8 +933,58 @@ export default function CanvasPage() {
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodesDelete={onNodesDelete}
           onConnect={onConnect}
+          onConnectEnd={onConnectEnd}
           isValidConnection={isValidConnection}
+          connectionLineStyle={{
+            strokeWidth: 2,
+            stroke: "#3b82f6",
+            strokeDasharray: "5,5",
+          }}
+          connectionLineComponent={({
+            fromX,
+            fromY,
+            toX,
+            toY,
+            connectionLineStyle,
+          }) => (
+            <g>
+              <defs>
+                <linearGradient
+                  id="connectionGradient"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="0%"
+                >
+                  <stop
+                    offset="0%"
+                    style={{ stopColor: "#3b82f6", stopOpacity: 1 }}
+                  />
+                  <stop
+                    offset="100%"
+                    style={{ stopColor: "#8b5cf6", stopOpacity: 0.8 }}
+                  />
+                </linearGradient>
+              </defs>
+              <path
+                d={`M${fromX},${fromY} Q${(fromX + toX) / 2},${fromY - 50} ${toX},${toY}`}
+                stroke="url(#connectionGradient)"
+                strokeWidth={2}
+                fill="none"
+                strokeDasharray="5,5"
+                className="animate-pulse"
+              />
+              <circle
+                cx={toX}
+                cy={toY}
+                r={4}
+                fill="#8b5cf6"
+                className="animate-ping"
+              />
+            </g>
+          )}
           fitView
           className="bg-background"
         >
@@ -768,13 +1042,61 @@ export default function CanvasPage() {
             <FilterControls />
           </Controls>
 
-          {/* Node Toolbar */}
+          {/* React Flow Node Toolbar - automatically positioned */}
           {toolbarNodeId && (
-            <NodeToolbar
+            <ReactFlowNodeToolbar
               nodeId={toolbarNodeId}
-              position={toolbarPosition}
               isVisible={!!toolbarNodeId}
-            />
+            >
+              <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log("Collapse/Expand node:", toolbarNodeId);
+                    }}
+                    className="h-8 w-8 p-0"
+                    title="Collapse/Expand"
+                  >
+                    <Minimize2 className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log("Create relationship from:", toolbarNodeId);
+                    }}
+                    className="h-8 w-8 p-0"
+                    title="Create Relationship"
+                  >
+                    <Link className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log("View details for:", toolbarNodeId);
+                    }}
+                    className="h-8 w-8 p-0"
+                    title="View Details"
+                  >
+                    <Eye className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log("More options for:", toolbarNodeId);
+                    }}
+                    className="h-8 w-8 p-0"
+                    title="More Options"
+                  >
+                    <MoreHorizontal className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </ReactFlowNodeToolbar>
           )}
         </ReactFlow>
 
@@ -858,5 +1180,14 @@ export default function CanvasPage() {
         }}
       />
     </div>
+  );
+}
+
+// Main export that wraps the inner component with ReactFlowProvider
+export default function CanvasPage() {
+  return (
+    <ReactFlowProvider>
+      <CanvasPageInner />
+    </ReactFlowProvider>
   );
 }

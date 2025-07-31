@@ -392,14 +392,40 @@ export default function MetricCard({ data, selected }: NodeProps) {
       })}
       tabIndex={0}
     >
-      {/* Handles for connections */}
-      <Handle type="target" position={Position.Top} className="w-3 h-3" />
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
-      <Handle type="target" position={Position.Left} className="w-3 h-3" />
-      <Handle type="source" position={Position.Right} className="w-3 h-3" />
+      {/* Enhanced Handles for Easy Connect */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="w-3 h-3 border-2 border-background bg-blue-500 hover:bg-blue-600 hover:scale-125 transition-all duration-200"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="w-3 h-3 border-2 border-background bg-green-500 hover:bg-green-600 hover:scale-125 transition-all duration-200"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="w-3 h-3 border-2 border-background bg-blue-500 hover:bg-blue-600 hover:scale-125 transition-all duration-200"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-3 h-3 border-2 border-background bg-green-500 hover:bg-green-600 hover:scale-125 transition-all duration-200"
+      />
 
-      {/* Card Header */}
-      <div className="p-3 border-b border-border/50">
+      {/* Card Header - Drag Handle Area */}
+      <div className="p-3 border-b border-border/50 dragHandle cursor-move">
+        {/* Drag Handle Indicator */}
+        <div className="flex items-center justify-center mb-2 opacity-0 group-hover:opacity-50 transition-opacity">
+          <div className="flex gap-0.5">
+            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+          </div>
+        </div>
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2 flex-1">
             <span className="text-lg">{getCategoryIcon(card.category)}</span>
@@ -410,7 +436,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 value={selectedCategory}
                 onValueChange={handleCategoryChange}
               >
-                <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground">
+                <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground nodrag">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -431,7 +457,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
                     value={selectedSubCategory || ""}
                     onValueChange={handleSubCategoryChange}
                   >
-                    <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground">
+                    <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground nodrag">
                       <SelectValue placeholder="Choose..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -451,7 +477,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 nodrag"
               onClick={handleCopy}
             >
               <Copy className="h-3 w-3" />
@@ -459,7 +485,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 nodrag"
               onClick={handleSettings}
             >
               <Settings className="h-3 w-3" />
@@ -471,7 +497,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                  className="h-6 w-6 p-0 text-destructive hover:text-destructive nodrag"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Trash2 className="h-3 w-3" />
@@ -513,13 +539,13 @@ export default function MetricCard({ data, selected }: NodeProps) {
                   if (e.key === "Enter") saveTitle();
                   if (e.key === "Escape") cancelTitleEdit();
                 }}
-                className="h-7 text-sm font-semibold"
+                className="h-7 text-sm font-semibold nodrag"
                 placeholder="Enter title..."
               />
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 w-6 p-0"
+                className="h-6 w-6 p-0 nodrag"
                 onClick={saveTitle}
               >
                 <Check className="h-3 w-3 text-green-600" />
@@ -527,7 +553,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 w-6 p-0"
+                className="h-6 w-6 p-0 nodrag"
                 onClick={cancelTitleEdit}
               >
                 <X className="h-3 w-3 text-red-600" />
@@ -541,7 +567,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity nodrag"
                 onClick={startEditingTitle}
               >
                 <Edit className="h-3 w-3" />
