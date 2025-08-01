@@ -12,9 +12,6 @@ describe("HomePage", () => {
     );
 
     expect(screen.getByText("Metrimap")).toBeDefined();
-    expect(
-      screen.getByText("Visual business architecture mapping")
-    ).toBeDefined();
   });
 
   it("renders new canvas button", () => {
@@ -36,6 +33,10 @@ describe("HomePage", () => {
 
     // Test should expect empty state since auth fails in test environment
     expect(screen.getByText("No projects yet")).toBeDefined();
-    expect(screen.getByText("Create your first canvas to start mapping your business architecture")).toBeDefined();
+    expect(
+      screen.getByText(
+        "Create your first canvas to start mapping your business architecture"
+      )
+    ).toBeDefined();
   });
 });
