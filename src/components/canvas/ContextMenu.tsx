@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Copy,
   Settings,
@@ -43,7 +42,6 @@ interface ContextMenuProps {
 }
 
 export default function ContextMenu({
-  id,
   top,
   left,
   right,

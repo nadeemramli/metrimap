@@ -53,7 +53,6 @@ import {
   Upload,
   Eye,
   Edit,
-  Users,
   Calendar,
   Activity,
   Settings,
@@ -64,7 +63,6 @@ import {
   FileText,
   Zap,
   BarChart3,
-  Network,
   User,
 } from "lucide-react";
 import { useProjectsStore } from "@/lib/stores";
@@ -226,22 +224,6 @@ export default function CanvasSettingsPage() {
     );
   }, [currentProject, searchQuery]);
 
-  const tabs = [
-    { id: "general" as const, label: "General", count: null },
-    {
-      id: "data" as const,
-      label: "Data",
-      count: currentProject?.nodes.length || 0,
-    },
-    { id: "team" as const, label: "Team", count: collaborators.length },
-    {
-      id: "changelog" as const,
-      label: "Changelog",
-      count: filteredChangelog.length,
-    },
-    { id: "settings" as const, label: "Settings", count: null },
-  ];
-
   const getActionIcon = (action: string) => {
     const baseClasses = "w-8 h-8 rounded-full flex items-center justify-center";
     switch (action) {
@@ -381,7 +363,11 @@ export default function CanvasSettingsPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as TabType)}
+        className="w-full"
+      >
         <div className="flex items-center justify-between mb-6">
           <TabsList className="bg-gray-100 rounded-lg p-[3px] shadow-sm">
             <TabsTrigger

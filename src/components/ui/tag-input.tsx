@@ -15,7 +15,6 @@ interface TagInputProps {
   allowDuplicates?: boolean;
   className?: string;
   disabled?: boolean;
-  variant?: "default" | "secondary" | "outline";
   suggestions?: string[];
 }
 
@@ -27,7 +26,6 @@ export function TagInput({
   allowDuplicates = false,
   className,
   disabled = false,
-  variant = "secondary",
   suggestions = [],
 }: TagInputProps) {
   const [inputValue, setInputValue] = useState("");

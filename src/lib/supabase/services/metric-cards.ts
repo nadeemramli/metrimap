@@ -86,6 +86,10 @@ export async function updateMetricCard(id: string, updates: Partial<MetricCard>)
   if (updates.causalFactors !== undefined) updateData.causal_factors = updates.causalFactors;
   if (updates.dimensions !== undefined) updateData.dimensions = updates.dimensions;
   if (updates.assignees !== undefined) updateData.assignees = updates.assignees;
+  if (updates.owner !== undefined) updateData.owner_id = updates.owner;
+  
+  // Always update the timestamp
+  updateData.updated_at = new Date().toISOString();
 
   const { data, error } = await supabase
     .from('metric_cards')

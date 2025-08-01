@@ -41,10 +41,6 @@ import {
   MoreVertical,
   Calendar,
   Users,
-  Eye,
-  Copy,
-  Trash2,
-  Settings,
   Clock,
   Star,
   BarChart3,
@@ -54,7 +50,6 @@ import {
   SortAsc,
   SortDesc,
   Folder,
-  FileText,
 } from "lucide-react";
 import { useProjectsStore, useAppStore } from "@/lib/stores";
 import type { CanvasProject } from "@/lib/types";

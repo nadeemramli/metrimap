@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Filter, Calendar, Search, X, RefreshCw } from "lucide-react";
+import { Filter, Calendar, Search, RefreshCw } from "lucide-react";
 import { ControlButton } from "@xyflow/react";
 import {
   Dialog,
@@ -9,13 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -65,7 +59,11 @@ export default function FilterControls() {
   ).filter(Boolean);
 
   const availableOwners = Array.from(
-    new Set(canvas?.nodes.map((node) => node.owner).filter(Boolean) || [])
+    new Set(
+      canvas?.nodes
+        .map((node) => node.owner)
+        .filter((owner): owner is string => Boolean(owner)) || []
+    )
   );
 
   const handleFilterChange = <K extends keyof FilterState>(
@@ -291,7 +289,7 @@ export default function FilterControls() {
               id="connected-only"
               checked={filters.showOnlyConnected}
               onCheckedChange={(checked) =>
-                handleFilterChange("showOnlyConnected", checked)
+                handleFilterChange("showOnlyConnected", checked === true)
               }
             />
             <Label htmlFor="connected-only" className="text-sm font-normal">

@@ -115,7 +115,7 @@ export function getHandlePositionsForDirection(direction: LayoutDirection) {
 /**
  * Smart layout that analyzes the graph structure and chooses optimal direction
  */
-export function getOptimalLayoutDirection(nodes: Node[], edges: Edge[]): LayoutDirection {
+export function getOptimalLayoutDirection(_nodes: Node[], edges: Edge[]): LayoutDirection {
   // Simple heuristic: if more edges flow horizontally, use LR, otherwise TB
   if (edges.length === 0) return 'TB';
   

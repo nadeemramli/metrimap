@@ -15,7 +15,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -115,7 +114,7 @@ export default function AutoLayoutControls({
     if (canvas?.settings?.autoLayout) {
       setLayoutOptions((prev) => ({
         ...prev,
-        direction: canvas.settings.autoLayout.algorithm || "TB",
+        direction: canvas.settings?.autoLayout?.algorithm || "TB",
       }));
     }
   }, [canvas?.settings?.autoLayout]);

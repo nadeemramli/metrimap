@@ -108,8 +108,6 @@ export default function AddNodeButton({
     }
   };
 
-  const TriggerButton = asControlButton ? ControlButton : Button;
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

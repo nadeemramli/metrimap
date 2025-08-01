@@ -220,11 +220,16 @@ function CanvasPageInner() {
 
       setContextMenu({
         id: node.id,
-        top: event.clientY < pane.height - 200 && event.clientY,
-        left: event.clientX < pane.width - 200 && event.clientX,
-        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+        top: event.clientY < pane.height - 200 ? event.clientY : undefined,
+        left: event.clientX < pane.width - 200 ? event.clientX : undefined,
+        right:
+          event.clientX >= pane.width - 200
+            ? pane.width - event.clientX
+            : undefined,
         bottom:
-          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+          event.clientY >= pane.height - 200
+            ? pane.height - event.clientY
+            : undefined,
       });
     },
     []

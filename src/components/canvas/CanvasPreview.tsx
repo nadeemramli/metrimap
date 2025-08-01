@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 interface CanvasPreviewProps {
   nodes: any[];
@@ -33,7 +33,7 @@ export function CanvasPreview({
 
   const edgeLines = useMemo(() => {
     return edges
-      .map((edge, index) => {
+      .map((edge) => {
         const sourceNode = nodePositions.find((n) => n.id === edge.source);
         const targetNode = nodePositions.find((n) => n.id === edge.target);
         if (!sourceNode || !targetNode) return null;
@@ -46,7 +46,7 @@ export function CanvasPreview({
           y2: targetNode.y + 15,
         };
       })
-      .filter(Boolean);
+      .filter((edge): edge is NonNullable<typeof edge> => edge !== null);
   }, [edges, nodePositions]);
 
   if (nodes.length === 0) {
