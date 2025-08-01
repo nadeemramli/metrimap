@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ReactFlow,
@@ -13,6 +13,7 @@ import {
   type NodeChange,
   type EdgeChange,
   type Connection,
+  type ConnectionMode,
   Background,
   Controls,
   ControlButton,
@@ -42,16 +43,15 @@ import type {
   MetricCard as MetricCardType,
   Relationship,
   GroupNode as GroupNodeType,
+  CardCategory,
 } from "@/lib/types";
 import {
   MetricCard,
   AddNodeButton,
   CardSettingsSheet,
-  NodeToolbar,
   DynamicEdge,
   RelationshipSheet,
   GroupNode,
-  GroupControls,
 } from "@/components/canvas";
 import BulkOperationsToolbar from "@/components/canvas/BulkOperationsToolbar";
 import {
@@ -64,14 +64,15 @@ import QuickSearchCommand, {
   useQuickSearch,
 } from "@/components/search/QuickSearchCommand";
 import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
-import AutoSaveIndicator from "@/components/canvas/AutoSaveIndicator";
 import useAutoSave from "@/hooks/useAutoSave";
+import { generateUUID } from "@/lib/utils/validation";
+import ContextMenu from "@/components/canvas/ContextMenu";
 
 // Convert MetricCard to ReactFlow Node with callbacks
 const convertToNode = (
   card: MetricCardType,
   onOpenSettings: (cardId: string) => void,
-  onNodeClick: (cardId: string, position: { x: number; y: number }) => void,
+  onNodeClick: (cardId: string) => void,
   selectedNodeIds: string[] = []
 ): Node => ({
   id: card.id,
@@ -145,6 +146,31 @@ function CanvasPageInner() {
   >();
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  // Add Node on Edge Drop state
+  const [pendingNodeDrop, setPendingNodeDrop] = useState<{
+    position: { x: number; y: number };
+    sourceNodeId: string;
+  } | null>(null);
+
+  // Proximity Connect state
+  const [proximityConnections, setProximityConnections] = useState<
+    Array<{
+      from: string;
+      to: string;
+      fromPosition: { x: number; y: number };
+      toPosition: { x: number; y: number };
+    }>
+  >([]);
+
+  // Context Menu state
+  const [contextMenu, setContextMenu] = useState<{
+    id: string;
+    top?: number;
+    left?: number;
+    right?: number;
+    bottom?: number;
+  } | null>(null);
+  const reactFlowRef = useRef<HTMLDivElement>(null);
 
   // Initialize auto-save functionality
   useAutoSave();
@@ -168,18 +194,85 @@ function CanvasPageInner() {
     selectedNodeIds,
     updateNodePosition,
     addPendingChange,
+    createNode,
     createEdge,
     updateGroup,
     deleteGroup,
     deleteNode,
+    persistNodeDelete,
     addNode,
     selectNode,
     clearSelection,
-    updateCanvasSettings,
     pendingChanges,
     isSaving,
     lastSaved,
   } = useCanvasStore();
+
+  // Context Menu handlers
+  const handleNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      // Prevent native context menu from showing
+      event.preventDefault();
+
+      // Calculate position of the context menu
+      const pane = reactFlowRef.current?.getBoundingClientRect();
+      if (!pane) return;
+
+      setContextMenu({
+        id: node.id,
+        top: event.clientY < pane.height - 200 && event.clientY,
+        left: event.clientX < pane.width - 200 && event.clientX,
+        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+        bottom:
+          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+      });
+    },
+    []
+  );
+
+  const handlePaneClick = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const handleContextMenuAction = useCallback(
+    (action: string, nodeId: string) => {
+      const node = canvas?.nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      switch (action) {
+        case "edit":
+          // Handle edit - could open inline editing or settings
+          console.log("Edit node:", nodeId);
+          break;
+        case "duplicate":
+          // Handle duplicate
+          console.log("Duplicate node:", nodeId);
+          break;
+        case "settings":
+          setSettingsCardId(nodeId);
+          break;
+        case "delete":
+          deleteNode(nodeId);
+          break;
+        case "comments":
+          console.log("Open comments for node:", nodeId);
+          break;
+        case "data":
+          console.log("Open data for node:", nodeId);
+          break;
+        case "tags":
+          console.log("Open tags for node:", nodeId);
+          break;
+        case "assignees":
+          console.log("Open assignees for node:", nodeId);
+          break;
+        case "dimensions":
+          console.log("Open dimensions for node:", nodeId);
+          break;
+      }
+    },
+    [canvas?.nodes, deleteNode]
+  );
 
   // Beautiful auto-save status with enhanced UX
   const getAutoSaveStatus = useCallback(() => {
@@ -336,9 +429,8 @@ function CanvasPageInner() {
       // Canvas operations
       createShortcut.cmd(
         "n",
-        () => {
+        async () => {
           const newCard = {
-            id: `card_${Date.now()}`,
             title: "New Metric Card",
             description: "",
             category: "Data/Metric" as const,
@@ -348,10 +440,8 @@ function CanvasPageInner() {
             position: { x: 100, y: 100 },
             sourceType: "Manual" as const,
             assignees: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
           };
-          addNode(newCard);
+          await createNode(newCard);
         },
         "Create new metric card",
         "Canvas"
@@ -501,12 +591,9 @@ function CanvasPageInner() {
   }, []);
 
   // Handle node click for toolbar
-  const handleNodeClick = useCallback(
-    (cardId: string, position: { x: number; y: number }) => {
-      setToolbarNodeId(cardId);
-    },
-    []
-  );
+  const handleNodeClick = useCallback((cardId: string) => {
+    setToolbarNodeId(cardId);
+  }, []);
 
   // Handle opening relationship sheet
   const handleOpenRelationshipSheet = useCallback((relationshipId: string) => {
@@ -599,10 +686,50 @@ function CanvasPageInner() {
     [canvas?.edges, handleOpenRelationshipSheet]
   );
 
-  // Proximity Connect - Check if nodes are close enough to auto-connect
+  // Proximity Connect - Show visual indicators during drag and auto-connect on completion
+  const updateProximityIndicators = useCallback(
+    (draggedNode: Node, newPosition: { x: number; y: number }) => {
+      const PROXIMITY_THRESHOLD = 100; // pixels - slightly larger for visual feedback
+      const NODE_SIZE = { width: 320, height: 200 }; // MetricCard dimensions
+
+      // Calculate the center of the dragged node
+      const draggedCenter = {
+        x: newPosition.x + NODE_SIZE.width / 2,
+        y: newPosition.y + NODE_SIZE.height / 2,
+      };
+
+      // Find nearby nodes and create visual indicators
+      const proximityIndicators = nodes
+        .filter((node) => {
+          if (node.id === draggedNode.id) return false; // Skip self
+
+          const nodeCenter = {
+            x: node.position.x + NODE_SIZE.width / 2,
+            y: node.position.y + NODE_SIZE.height / 2,
+          };
+
+          const distance = Math.sqrt(
+            Math.pow(draggedCenter.x - nodeCenter.x, 2) +
+              Math.pow(draggedCenter.y - nodeCenter.y, 2)
+          );
+
+          return distance <= PROXIMITY_THRESHOLD;
+        })
+        .map((nearbyNode) => ({
+          from: draggedNode.id,
+          to: nearbyNode.id,
+          fromPosition: newPosition,
+          toPosition: nearbyNode.position,
+        }));
+
+      setProximityConnections(proximityIndicators);
+    },
+    [nodes]
+  );
+
   const checkProximityAndConnect = useCallback(
     async (draggedNode: Node, newPosition: { x: number; y: number }) => {
-      const PROXIMITY_THRESHOLD = 80; // pixels
+      const PROXIMITY_THRESHOLD = 80; // pixels - slightly smaller for actual connection
       const NODE_SIZE = { width: 320, height: 200 }; // MetricCard dimensions
 
       // Calculate the center of the dragged node
@@ -652,7 +779,7 @@ function CanvasPageInner() {
               `🔗 Proximity auto-connect: ${draggedNode.id} → ${nearbyNode.id}`
             );
 
-            // Visual feedback could be added here
+            // Visual feedback
             announce(
               `Connected to nearby node: ${nearbyNode.data?.title || nearbyNode.id}`
             );
@@ -664,6 +791,9 @@ function CanvasPageInner() {
           }
         }
       }
+
+      // Clear proximity indicators after connection attempt
+      setProximityConnections([]);
     },
     [nodes, edges, createEdge, announce]
   );
@@ -694,11 +824,17 @@ function CanvasPageInner() {
             // Add to pending changes for auto-save
             addPendingChange(change.id);
 
-            // Proximity Connect - Check for nearby nodes during drag completion
-            if (!change.dragging && change.position) {
+            // Proximity Connect - Show indicators during drag, connect on completion
+            if (change.position) {
               const currentNode = nodes.find((n) => n.id === change.id);
               if (currentNode) {
-                checkProximityAndConnect(currentNode, change.position);
+                if (change.dragging) {
+                  // Show proximity indicators during drag
+                  updateProximityIndicators(currentNode, change.position);
+                } else {
+                  // Auto-connect when drag completes
+                  checkProximityAndConnect(currentNode, change.position);
+                }
               }
             }
 
@@ -732,61 +868,94 @@ function CanvasPageInner() {
   // Delete Middle Node - automatically reconnect edges when intermediate nodes are deleted
   const onNodesDelete = useCallback(
     async (deletedNodes: Node[]) => {
+      console.log(
+        `🗑️ onNodesDelete triggered for ${deletedNodes.length} nodes`
+      );
+
       for (const node of deletedNodes) {
         // Get all incoming and outgoing edges for the deleted node
         const incomers = getIncomers(node, nodes, edges);
         const outgoers = getOutgoers(node, nodes, edges);
         const connectedEdges = getConnectedEdges([node], edges);
 
-        console.log(`🗑️ Deleting node ${node.id}:`, {
+        console.log(`🗑️ Processing deletion for node ${node.id}:`, {
           incomers: incomers.map((n) => n.id),
           outgoers: outgoers.map((n) => n.id),
           connectedEdges: connectedEdges.length,
         });
 
-        // Create new connections between all incomers and outgoers
-        // This maintains the flow structure when removing intermediate nodes
-        for (const incomer of incomers) {
-          for (const outgoer of outgoers) {
-            // Don't create duplicate connections
-            const connectionExists = edges.some(
-              (edge) => edge.source === incomer.id && edge.target === outgoer.id
-            );
+        // Only auto-reconnect if this node has both incoming and outgoing connections
+        if (incomers.length > 0 && outgoers.length > 0) {
+          console.log(
+            `🔗 Auto-reconnecting ${incomers.length} incomers to ${outgoers.length} outgoers`
+          );
 
-            if (!connectionExists && incomer.id !== outgoer.id) {
-              const newRelationshipData = {
-                sourceId: incomer.id,
-                targetId: outgoer.id,
-                type: "Probabilistic" as const, // Default type for auto-reconnected edges
-                confidence: "Low" as const, // Lower confidence for auto-connections
-                evidence: [],
-              };
+          // Create new connections between all incomers and outgoers
+          for (const incomer of incomers) {
+            for (const outgoer of outgoers) {
+              // Check if connection already exists in current edges OR canvas.edges
+              const connectionExistsInReactFlow = edges.some(
+                (edge) =>
+                  edge.source === incomer.id && edge.target === outgoer.id
+              );
 
-              try {
-                await createEdge(newRelationshipData);
+              const connectionExistsInCanvas = canvas?.edges.some(
+                (edge) =>
+                  edge.sourceId === incomer.id && edge.targetId === outgoer.id
+              );
+
+              if (
+                !connectionExistsInReactFlow &&
+                !connectionExistsInCanvas &&
+                incomer.id !== outgoer.id
+              ) {
+                const newRelationshipData = {
+                  sourceId: incomer.id,
+                  targetId: outgoer.id,
+                  type: "Probabilistic" as const,
+                  confidence: "Low" as const,
+                  evidence: [],
+                };
+
+                try {
+                  await createEdge(newRelationshipData);
+                  console.log(
+                    `✅ Auto-reconnected: ${incomer.id} → ${outgoer.id}`
+                  );
+                } catch (error) {
+                  console.error(
+                    `❌ Failed to auto-reconnect ${incomer.id} → ${outgoer.id}:`,
+                    error
+                  );
+                }
+              } else {
                 console.log(
-                  `✅ Auto-reconnected: ${incomer.id} → ${outgoer.id}`
-                );
-              } catch (error) {
-                console.error(
-                  `❌ Failed to auto-reconnect ${incomer.id} → ${outgoer.id}:`,
-                  error
+                  `⏭️ Skipping connection ${incomer.id} → ${outgoer.id} (already exists or same node)`
                 );
               }
             }
           }
+        } else {
+          console.log(
+            `⏭️ No auto-reconnection needed for ${node.id} (incomers: ${incomers.length}, outgoers: ${outgoers.length})`
+          );
         }
 
-        // Delete the node from our canvas store
+        // Delete the node from our canvas store AND database (this should happen after auto-reconnection)
         try {
-          await deleteNode(node.id);
-          console.log(`✅ Node ${node.id} deleted successfully`);
+          // Delete from local state first (immediate UI update)
+          deleteNode(node.id);
+          console.log(`✅ Node ${node.id} deleted from canvas store`);
+
+          // Persist deletion to database
+          await persistNodeDelete(node.id);
+          console.log(`✅ Node ${node.id} deleted from database`);
         } catch (error) {
           console.error(`❌ Failed to delete node ${node.id}:`, error);
         }
       }
     },
-    [nodes, edges, createEdge, deleteNode]
+    [nodes, edges, createEdge, deleteNode, persistNodeDelete, canvas?.edges]
   );
 
   // Enhanced connection validation with better feedback
@@ -853,7 +1022,66 @@ function CanvasPageInner() {
     [createEdge, isValidConnection]
   );
 
-  // Add Node on Edge Drop - create node when connection line is dropped on canvas
+  // Handle category selection for dropped node
+  const handleCategorySelect = useCallback(
+    async (category: CardCategory) => {
+      if (!pendingNodeDrop) return;
+
+      const now = new Date().toISOString();
+      const newCardId = generateUUID();
+
+      const newCard: MetricCardType = {
+        id: newCardId,
+        title: "New Metric Card",
+        description: "",
+        category,
+        subCategory: category === "Data/Metric" ? "Input Metric" : undefined,
+        tags: [],
+        causalFactors: [],
+        dimensions: ["Quantitative"],
+        segments: [],
+        position: pendingNodeDrop.position,
+        data: [
+          {
+            period: new Date().toISOString().split("T")[0],
+            value: 0,
+            change_percent: 0,
+            trend: "neutral",
+          },
+        ],
+        sourceType: "Manual",
+        formula: "",
+        owner: "",
+        assignees: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      try {
+        // Create the new node in the database and add to canvas
+        await createNode(newCard);
+
+        // Create the connection between the source node and the new node
+        const newRelationshipData = {
+          sourceId: pendingNodeDrop.sourceNodeId,
+          targetId: newCardId,
+          type: "Probabilistic" as const,
+          confidence: "Low" as const,
+          evidence: [],
+        };
+
+        await createEdge(newRelationshipData);
+
+        console.log("✅ New node created and connected via edge drop");
+        setPendingNodeDrop(null); // Clear pending state
+      } catch (error) {
+        console.error("❌ Failed to create node on edge drop:", error);
+      }
+    },
+    [pendingNodeDrop, createNode, createEdge]
+  );
+
+  // Add Node on Edge Drop - show category selection when connection line is dropped on canvas
   const onConnectEnd = useCallback(
     async (event: any, connectionState: any) => {
       // Only create a node if the connection is not valid (dropped on empty canvas)
@@ -867,59 +1095,14 @@ function CanvasPageInner() {
           y: clientY,
         });
 
-        // Create a new comprehensive MetricCard (matching our AddNodeButton pattern)
-        const now = new Date().toISOString();
-        const newCardId = `card_${Date.now()}`;
-
-        const newCard: MetricCardType = {
-          id: newCardId,
-          title: "New Metric Card",
-          description: "",
-          category: "Data/Metric",
-          subCategory: "Input Metric",
-          tags: [],
-          causalFactors: [],
-          dimensions: ["Quantitative"],
-          segments: [],
+        // Set pending node drop state to show category selection
+        setPendingNodeDrop({
           position,
-          data: [
-            {
-              period: new Date().toISOString().split("T")[0],
-              value: 0,
-              change_percent: 0,
-              trend: "neutral",
-            },
-          ],
-          sourceType: "Manual",
-          formula: "",
-          owner: "",
-          assignees: [],
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        try {
-          // Add the new node to the canvas
-          await addNode(newCard);
-
-          // Create the connection between the source node and the new node
-          const newRelationshipData = {
-            sourceId: connectionState.fromNode.id,
-            targetId: newCardId,
-            type: "Probabilistic" as const,
-            confidence: "Low" as const,
-            evidence: [],
-          };
-
-          await createEdge(newRelationshipData);
-
-          console.log("✅ New node created and connected via edge drop");
-        } catch (error) {
-          console.error("❌ Failed to create node on edge drop:", error);
-        }
+          sourceNodeId: connectionState.fromNode.id,
+        });
       }
     },
-    [screenToFlowPosition, addNode, createEdge]
+    [screenToFlowPosition]
   );
 
   return (
@@ -927,6 +1110,7 @@ function CanvasPageInner() {
       {/* React Flow Canvas */}
       <div className="h-full">
         <ReactFlow
+          ref={reactFlowRef}
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes as any}
@@ -936,23 +1120,109 @@ function CanvasPageInner() {
           onNodesDelete={onNodesDelete}
           onConnect={onConnect}
           onConnectEnd={onConnectEnd}
+          onNodeContextMenu={handleNodeContextMenu}
+          onPaneClick={handlePaneClick}
           isValidConnection={isValidConnection}
+          connectionMode={"loose" as ConnectionMode}
+          snapToGrid={true}
+          snapGrid={[15, 15]}
           connectionLineStyle={{
-            strokeWidth: 2,
+            strokeWidth: 3,
             stroke: "#3b82f6",
-            strokeDasharray: "5,5",
           }}
           connectionLineComponent={({
             fromX,
             fromY,
             toX,
             toY,
-            connectionLineStyle,
-          }) => (
-            <g>
+            connectionStatus,
+          }) => {
+            // Dynamic styling based on connection status
+            const isValid = connectionStatus === "valid";
+            const strokeColor = isValid ? "#10b981" : "#3b82f6"; // green if valid, blue otherwise
+
+            return (
+              <g>
+                <defs>
+                  <linearGradient
+                    id="easyConnectionGradient"
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                  >
+                    <stop
+                      offset="0%"
+                      style={{ stopColor: strokeColor, stopOpacity: 0.8 }}
+                    />
+                    <stop
+                      offset="100%"
+                      style={{ stopColor: strokeColor, stopOpacity: 1 }}
+                    />
+                  </linearGradient>
+                  <filter id="connectionGlow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                    <feMerge>
+                      <feMergeNode in="coloredBlur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                {/* Connection line with smooth bezier curve */}
+                <path
+                  d={`M${fromX},${fromY} C${fromX + 50},${fromY} ${toX - 50},${toY} ${toX},${toY}`}
+                  stroke="url(#easyConnectionGradient)"
+                  strokeWidth={3}
+                  fill="none"
+                  filter="url(#connectionGlow)"
+                  className={isValid ? "animate-pulse" : ""}
+                />
+
+                {/* Connection endpoint indicator */}
+                <circle
+                  cx={toX}
+                  cy={toY}
+                  r={6}
+                  fill={strokeColor}
+                  stroke="white"
+                  strokeWidth={2}
+                  className={isValid ? "animate-bounce" : "animate-pulse"}
+                />
+
+                {/* Source point indicator */}
+                <circle
+                  cx={fromX}
+                  cy={fromY}
+                  r={4}
+                  fill={strokeColor}
+                  stroke="white"
+                  strokeWidth={1}
+                />
+              </g>
+            );
+          }}
+          fitView
+          className="bg-background"
+        >
+          <Background />
+
+          {/* Proximity Connection Indicators */}
+          {proximityConnections.length > 0 && (
+            <svg
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                pointerEvents: "none",
+                zIndex: 1000,
+              }}
+            >
               <defs>
                 <linearGradient
-                  id="connectionGradient"
+                  id="proximityGradient"
                   x1="0%"
                   y1="0%"
                   x2="100%"
@@ -960,35 +1230,57 @@ function CanvasPageInner() {
                 >
                   <stop
                     offset="0%"
-                    style={{ stopColor: "#3b82f6", stopOpacity: 1 }}
+                    style={{ stopColor: "#f59e0b", stopOpacity: 0.8 }}
                   />
                   <stop
                     offset="100%"
-                    style={{ stopColor: "#8b5cf6", stopOpacity: 0.8 }}
+                    style={{ stopColor: "#f97316", stopOpacity: 1 }}
                   />
                 </linearGradient>
               </defs>
-              <path
-                d={`M${fromX},${fromY} Q${(fromX + toX) / 2},${fromY - 50} ${toX},${toY}`}
-                stroke="url(#connectionGradient)"
-                strokeWidth={2}
-                fill="none"
-                strokeDasharray="5,5"
-                className="animate-pulse"
-              />
-              <circle
-                cx={toX}
-                cy={toY}
-                r={4}
-                fill="#8b5cf6"
-                className="animate-ping"
-              />
-            </g>
+              {proximityConnections.map((connection, index) => {
+                const fromX = connection.fromPosition.x + 160; // Center of node
+                const fromY = connection.fromPosition.y + 100;
+                const toX = connection.toPosition.x + 160;
+                const toY = connection.toPosition.y + 100;
+
+                return (
+                  <g
+                    key={`proximity-${connection.from}-${connection.to}-${index}`}
+                  >
+                    {/* Proximity connection line */}
+                    <path
+                      d={`M${fromX},${fromY} C${fromX + 50},${fromY} ${toX - 50},${toY} ${toX},${toY}`}
+                      stroke="url(#proximityGradient)"
+                      strokeWidth={2}
+                      fill="none"
+                      strokeDasharray="5,5"
+                      className="animate-pulse"
+                    />
+                    {/* Proximity indicators */}
+                    <circle
+                      cx={toX}
+                      cy={toY}
+                      r={8}
+                      fill="#f97316"
+                      stroke="white"
+                      strokeWidth={2}
+                      className="animate-ping"
+                    />
+                    <circle
+                      cx={fromX}
+                      cy={fromY}
+                      r={6}
+                      fill="#f59e0b"
+                      stroke="white"
+                      strokeWidth={1}
+                      className="animate-pulse"
+                    />
+                  </g>
+                );
+              })}
+            </svg>
           )}
-          fitView
-          className="bg-background"
-        >
-          <Background />
 
           {/* Left Bottom Panel - Core Functions */}
           <Controls className="bg-card border border-border">
@@ -1100,6 +1392,36 @@ function CanvasPageInner() {
           )}
         </ReactFlow>
 
+        {/* Context Menu */}
+        {contextMenu && (
+          <ContextMenu
+            {...contextMenu}
+            onClick={handlePaneClick}
+            onEdit={() => handleContextMenuAction("edit", contextMenu.id)}
+            onDuplicate={() =>
+              handleContextMenuAction("duplicate", contextMenu.id)
+            }
+            onSettings={() =>
+              handleContextMenuAction("settings", contextMenu.id)
+            }
+            onDelete={() => handleContextMenuAction("delete", contextMenu.id)}
+            onComments={() =>
+              handleContextMenuAction("comments", contextMenu.id)
+            }
+            onData={() => handleContextMenuAction("data", contextMenu.id)}
+            onTags={() => handleContextMenuAction("tags", contextMenu.id)}
+            onAssignees={() =>
+              handleContextMenuAction("assignees", contextMenu.id)
+            }
+            onDimensions={() =>
+              handleContextMenuAction("dimensions", contextMenu.id)
+            }
+            cardTitle={
+              canvas?.nodes.find((n) => n.id === contextMenu.id)?.title || ""
+            }
+          />
+        )}
+
         {/* Bulk Operations Toolbar */}
         <BulkOperationsToolbar />
       </div>
@@ -1136,6 +1458,75 @@ function CanvasPageInner() {
               shortcuts={enabledShortcuts}
               trigger={null}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Category Selection for Edge Drop */}
+      {pendingNodeDrop && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-card border border-border rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Select Node Type</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                {
+                  category: "Core/Value",
+                  label: "Core/Value",
+                  icon: "🎯",
+                  description: "Foundational value elements",
+                },
+                {
+                  category: "Data/Metric",
+                  label: "Data/Metric",
+                  icon: "📊",
+                  description: "Quantifiable measures",
+                },
+                {
+                  category: "Work/Action",
+                  label: "Work/Action",
+                  icon: "⚡",
+                  description: "Business activities",
+                },
+                {
+                  category: "Ideas/Hypothesis",
+                  label: "Ideas/Hypothesis",
+                  icon: "💡",
+                  description: "Assumptions & drivers",
+                },
+                {
+                  category: "Metadata",
+                  label: "Metadata",
+                  icon: "🏷️",
+                  description: "Contextual information",
+                },
+              ].map((template) => (
+                <button
+                  key={template.category}
+                  onClick={() =>
+                    handleCategorySelect(template.category as CardCategory)
+                  }
+                  className="p-4 border border-border rounded-lg hover:bg-accent hover:border-accent-foreground transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{template.icon}</span>
+                    <span className="font-medium text-sm">
+                      {template.label}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {template.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setPendingNodeDrop(null)}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       )}

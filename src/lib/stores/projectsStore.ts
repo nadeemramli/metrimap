@@ -6,6 +6,7 @@ import {
   updateProject as updateProjectInSupabase,
   deleteProject as deleteProjectInSupabase,
   getUserProjects,
+  getProjectById,
   getCurrentUser,
 } from '../supabase/services';
 
@@ -58,20 +59,33 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           const user = await requireAuth();
           
           const projects = await getUserProjects(user.id);
-          // Convert Supabase projects to CanvasProject format if needed
-          const canvasProjects: CanvasProject[] = projects?.map(p => ({
-            id: p.id,
-            name: p.name,
-            description: p.description || '',
-            tags: p.tags || [],
-            collaborators: [],  // This will be resolved from project_collaborators
-            nodes: [],
-            edges: [],
-            groups: [],
-            createdAt: p.created_at || new Date().toISOString(),
-            updatedAt: p.updated_at || new Date().toISOString(),
-            lastModifiedBy: user.id,
-          })) || [];
+          // Load full canvas data for each project
+          const canvasProjects: CanvasProject[] = [];
+          
+          for (const project of projects || []) {
+            try {
+              const fullProject = await getProjectById(project.id);
+              if (fullProject) {
+                canvasProjects.push(fullProject);
+              }
+            } catch (error) {
+              console.error(`Failed to load full data for project ${project.id}:`, error);
+              // Fallback to basic project data
+              canvasProjects.push({
+                id: project.id,
+                name: project.name,
+                description: project.description || '',
+                tags: project.tags || [],
+                collaborators: [],
+                nodes: [],
+                edges: [],
+                groups: [],
+                createdAt: project.created_at || new Date().toISOString(),
+                updatedAt: project.updated_at || new Date().toISOString(),
+                lastModifiedBy: user.id,
+              });
+            }
+          }
           
           set({ projects: canvasProjects, isLoading: false, isInitialized: true });
         } catch (error) {

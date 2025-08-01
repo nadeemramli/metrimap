@@ -12,6 +12,7 @@ import {
 
 } from '../supabase/services';
 import { useProjectsStore } from './projectsStore';
+import { generateUUID } from '../utils/validation';
 
 interface CanvasStoreState extends CanvasState {
   // Auto-save state
@@ -378,6 +379,15 @@ export const useCanvasStore = create<CanvasStoreState>()(
         for (const nodeId of state.pendingChanges) {
           const node = state.canvas?.nodes.find(n => n.id === nodeId);
           if (node) {
+            // Validate that this is a proper UUID (database-backed node)
+            const isValidId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(nodeId);
+            
+            if (!isValidId) {
+              console.warn(`⚠️ Skipping node ${nodeId} - invalid UUID format, likely a temporary local node`);
+              failedNodes.push(nodeId); // Remove from pending changes
+              continue;
+            }
+            
             try {
               console.log(`💾 Saving node ${nodeId}:`, {
                 position: node.position,
@@ -477,7 +487,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
         const newNode: MetricCard = {
           ...node,
-          id: `${node.id}_copy_${Date.now()}`,
+          id: generateUUID(),
           title: `${node.title} (Copy)`,
           position: { x: node.position.x + 50, y: node.position.y + 50 },
           createdAt: new Date().toISOString(),
@@ -718,7 +728,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       const newRelationships: Relationship[] = [];
 
       dimensions.forEach((dimension, index) => {
-        const newCardId = `${parentCardId}_${dimension.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}_${index}`;
+        const newCardId = generateUUID();
         
         // Calculate data based on history option
         let cardData: any[] = [];
@@ -758,7 +768,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         newCardIds.push(newCardId);
 
         // Create relationship from dimension card to parent
-        const relationshipId = `rel_${newCardId}_to_${parentCardId}_${Date.now()}`;
+        const relationshipId = generateUUID();
         const evidenceSummary = historyOption === 'proportional' && percentages
           ? `Created through dimension slice operation with proportional split (${percentages[index]}%). ${dimension} is a component of ${parentCard.title}.`
           : `Created through dimension slice operation. ${dimension} is a component of ${parentCard.title}.`;
@@ -771,7 +781,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
           confidence: "High",
           weight: historyOption === 'proportional' && percentages ? percentages[index] / 100 : 1,
           evidence: [{
-            id: `evidence_${relationshipId}`,
+            id: generateUUID(),
             title: "Automatic Dimension Decomposition",
             type: "Analysis",
             date: new Date().toISOString(),

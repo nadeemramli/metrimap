@@ -1,17 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, useReactFlow, type NodeProps } from "@xyflow/react";
 import {
-  Copy,
-  Settings,
   TrendingUp,
   TrendingDown,
   Minus,
   Users,
-  MessageSquare,
-  BarChart3,
-  Database,
-  Layers,
-  Trash2,
   Edit,
   Check,
   X,
@@ -27,17 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+// AlertDialog imports removed - no longer needed in card component
 import TagsList from "./TagsList";
 import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
@@ -53,6 +36,7 @@ interface MetricCardNodeData {
   card: MetricCardType;
   onOpenSettings?: (cardId: string) => void;
   onNodeClick?: (cardId: string, position: { x: number; y: number }) => void;
+  isPreview?: boolean;
 }
 
 // Sub-category options based on main category
@@ -153,7 +137,7 @@ const formatValue = (value: number): string => {
 };
 
 export default function MetricCard({ data, selected }: NodeProps) {
-  const { card, onOpenSettings, onNodeClick } =
+  const { card, onOpenSettings, onNodeClick, isPreview } =
     data as unknown as MetricCardNodeData;
   const [isExpanded] = useState(true);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -180,6 +164,8 @@ export default function MetricCard({ data, selected }: NodeProps) {
   const { updateNode, persistNodeUpdate, deleteNode, persistNodeDelete } =
     useCanvasStore();
 
+  const { deleteElements } = useReactFlow();
+
   // Accessibility hooks
   const { announce, getARIAProps, createKeyboardNavigationHandler } =
     useAccessibility();
@@ -205,29 +191,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
     }
   }, [isEditingDescription]);
 
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // TODO: Implement copy functionality
-    console.log("Copy card:", card.id);
-  };
-
-  const handleSettings = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onOpenSettings?.(card.id);
-  };
-
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      // Delete from local state first
-      deleteNode(card.id);
-      // Persist deletion to database
-      await persistNodeDelete(card.id);
-      console.log("✅ Card deleted successfully:", card.id);
-    } catch (error) {
-      console.error("❌ Failed to delete card:", error);
-    }
-  };
+  // Action handlers moved to context menu
 
   // Title editing functions
   const startEditingTitle = (e: React.MouseEvent) => {
@@ -372,7 +336,8 @@ export default function MetricCard({ data, selected }: NodeProps) {
         selected
           ? "border-primary shadow-xl shadow-primary/25 ring-2 ring-primary/20 scale-[1.02] bg-card/95"
           : "border-border hover:shadow-xl hover:scale-[1.01]",
-        categoryColor
+        categoryColor,
+        isPreview && "min-w-[200px] max-w-[240px] scale-75"
       )}
       onClick={handleCardClick}
       onKeyDown={createKeyboardNavigationHandler(
@@ -393,137 +358,123 @@ export default function MetricCard({ data, selected }: NodeProps) {
       tabIndex={0}
     >
       {/* Enhanced Handles for Easy Connect */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="w-3 h-3 border-2 border-background bg-blue-500 hover:bg-blue-600 hover:scale-125 transition-all duration-200"
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="w-3 h-3 border-2 border-background bg-green-500 hover:bg-green-600 hover:scale-125 transition-all duration-200"
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="w-3 h-3 border-2 border-background bg-blue-500 hover:bg-blue-600 hover:scale-125 transition-all duration-200"
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="w-3 h-3 border-2 border-background bg-green-500 hover:bg-green-600 hover:scale-125 transition-all duration-200"
-      />
+      {!isPreview && (
+        <>
+          <Handle
+            type="target"
+            position={Position.Top}
+            className="w-3 h-3 border-2 border-background bg-blue-500 hover:bg-blue-600 hover:scale-125 transition-all duration-200"
+          />
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            className="w-3 h-3 border-2 border-background bg-green-500 hover:bg-green-600 hover:scale-125 transition-all duration-200"
+          />
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="w-3 h-3 border-2 border-background bg-blue-500 hover:bg-blue-600 hover:scale-125 transition-all duration-200"
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            className="w-3 h-3 border-2 border-background bg-green-500 hover:bg-green-600 hover:scale-125 transition-all duration-200"
+          />
+        </>
+      )}
 
-      {/* Card Header - Drag Handle Area */}
-      <div className="p-3 border-b border-border/50 dragHandle cursor-move">
-        {/* Drag Handle Indicator */}
-        <div className="flex items-center justify-center mb-2 opacity-0 group-hover:opacity-50 transition-opacity">
-          <div className="flex gap-0.5">
-            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-            <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+      {/* Card Header */}
+      <div className="p-3 border-b border-border/50">
+        {/* Dedicated Drag Handle Section */}
+        {!isPreview && (
+          <div className="dragHandle cursor-move mb-2 flex items-center justify-center py-1 hover:bg-accent/20 rounded transition-colors">
+            <div className="flex items-center gap-1 px-2 py-1 rounded-sm text-muted-foreground hover:text-foreground transition-colors">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="rotate-90"
+              >
+                <path
+                  d="M9 3H15M9 12H15M9 21H15"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="text-xs font-medium">Drag</span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="rotate-90"
+              >
+                <path
+                  d="M9 3H15M9 12H15M9 21H15"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
           </div>
-        </div>
+        )}
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2 flex-1">
             <span className="text-lg">{getCategoryIcon(card.category)}</span>
 
             {/* Two-layer Category Selection */}
-            <div className="flex items-center gap-1 text-xs">
-              <Select
-                value={selectedCategory}
-                onValueChange={handleCategoryChange}
-              >
-                <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground nodrag">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Core/Value">Core/Value</SelectItem>
-                  <SelectItem value="Data/Metric">Data/Metric</SelectItem>
-                  <SelectItem value="Work/Action">Work/Action</SelectItem>
-                  <SelectItem value="Ideas/Hypothesis">
-                    Ideas/Hypothesis
-                  </SelectItem>
-                  <SelectItem value="Metadata">Metadata</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {getSubCategoryOptions(selectedCategory).length > 0 && (
-                <>
-                  <span className="text-muted-foreground">→</span>
-                  <Select
-                    value={selectedSubCategory || ""}
-                    onValueChange={handleSubCategoryChange}
-                  >
-                    <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground nodrag">
-                      <SelectValue placeholder="Choose..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSubCategoryOptions(selectedCategory).map((subCat) => (
-                        <SelectItem key={subCat} value={subCat}>
-                          {subCat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 nodrag"
-              onClick={handleCopy}
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 nodrag"
-              onClick={handleSettings}
-            >
-              <Settings className="h-3 w-3" />
-            </Button>
-
-            {/* Delete Button with Confirmation */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 text-destructive hover:text-destructive nodrag"
-                  onClick={(e) => e.stopPropagation()}
+            {!isPreview && (
+              <div className="flex items-center gap-1 text-xs">
+                <Select
+                  value={selectedCategory}
+                  onValueChange={handleCategoryChange}
                 >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Metric Card</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete "{card.title}"? This action
-                    cannot be undone and will also remove all connected
-                    relationships.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground nodrag">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Core/Value">Core/Value</SelectItem>
+                    <SelectItem value="Data/Metric">Data/Metric</SelectItem>
+                    <SelectItem value="Work/Action">Work/Action</SelectItem>
+                    <SelectItem value="Ideas/Hypothesis">
+                      Ideas/Hypothesis
+                    </SelectItem>
+                    <SelectItem value="Metadata">Metadata</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {getSubCategoryOptions(selectedCategory).length > 0 && (
+                  <>
+                    <span className="text-muted-foreground">→</span>
+                    <Select
+                      value={selectedSubCategory || ""}
+                      onValueChange={handleSubCategoryChange}
+                    >
+                      <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground nodrag">
+                        <SelectValue placeholder="Choose..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getSubCategoryOptions(selectedCategory).map(
+                          (subCat) => (
+                            <SelectItem key={subCat} value={subCat}>
+                              {subCat}
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Action buttons removed - now handled via context menu */}
         </div>
 
         {/* Editable Title */}
@@ -560,18 +511,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center group">
+            <div className="flex items-center">
               <h3 className="font-semibold text-card-foreground text-sm leading-tight flex-1">
                 {card.title}
               </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity nodrag"
-                onClick={startEditingTitle}
-              >
-                <Edit className="h-3 w-3" />
-              </Button>
             </div>
           )}
         </div>
@@ -672,7 +615,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <span className="text-xs text-muted-foreground">
               Causal Factor:
             </span>
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="purple" className="text-xs font-medium">
               {card.causalFactors[0]}
             </Badge>
           </div>
@@ -720,49 +663,21 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 onAddTag={handleAddTag}
                 showAddButton={true}
                 maxDisplayTags={2}
+                useColorfulTags={true}
               />
             </div>
           )}
         </div>
 
-        {/* Action Buttons Row */}
-        <div className="flex items-center justify-between pt-2 border-t border-border/30">
-          <div className="flex items-center gap-1">
-            {/* Assignee */}
-            {card.assignees && card.assignees.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Users className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
-                  {card.assignees[0]}
-                </span>
-              </div>
-            )}
+        {/* Assignee info (if available) */}
+        {card.assignees && card.assignees.length > 0 && (
+          <div className="flex items-center gap-1 pt-2 border-t border-border/30">
+            <Users className="h-3 w-3 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
+              {card.assignees[0]}
+            </span>
           </div>
-
-          <div className="flex items-center gap-1">
-            {/* Comments */}
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <MessageSquare className="h-3 w-3" />
-            </Button>
-
-            {/* Chart Type (for Data/Metric cards) */}
-            {isDataMetric && (
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                <BarChart3 className="h-3 w-3" />
-              </Button>
-            )}
-
-            {/* Data Source */}
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <Database className="h-3 w-3" />
-            </Button>
-
-            {/* Dimensions */}
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <Layers className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

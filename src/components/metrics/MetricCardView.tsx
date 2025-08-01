@@ -164,12 +164,12 @@ export function MetricCardView({
             <span className="text-xs text-muted-foreground">Factors:</span>
             <div className="flex flex-wrap gap-1">
               {card.causalFactors.slice(0, 2).map((factor) => (
-                <Badge key={factor} variant="outline" className="text-xs">
+                <Badge key={factor} variant="purple" className="text-xs font-medium">
                   {factor}
                 </Badge>
               ))}
               {card.causalFactors.length > 2 && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="gray" className="text-xs font-medium">
                   +{card.causalFactors.length - 2}
                 </Badge>
               )}
@@ -186,6 +186,7 @@ export function MetricCardView({
               variant="secondary"
               maxDisplayTags={compact ? 1 : 3}
               showAddButton={false}
+              useColorfulTags={true}
             />
           </div>
         )}

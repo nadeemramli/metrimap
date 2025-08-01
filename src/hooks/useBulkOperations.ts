@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useCanvasStore } from '@/lib/stores';
 import type { MetricCard, Relationship } from '@/lib/types';
+import { generateUUID } from '@/lib/utils/validation';
 
 export interface BulkOperationResult {
   success: boolean;
@@ -263,7 +264,7 @@ export const useBulkOperations = () => {
         try {
           const duplicatedMetric: MetricCard = {
             ...metric,
-            id: `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: generateUUID(),
             title: `${metric.title} (Copy)`,
             position: {
               x: metric.position.x + 50,

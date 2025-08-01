@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getTagColor } from "@/lib/utils/tag-colors";
 
 interface TagInputProps {
   tags: string[];
@@ -105,8 +106,8 @@ export function TagInput({
         {tags.map((tag, index) => (
           <Badge
             key={index}
-            variant={variant}
-            className="flex items-center gap-1 pr-1"
+            variant={getTagColor(tag)}
+            className="flex items-center gap-1 pr-1 font-medium px-2.5 py-1 shadow-sm"
           >
             <span>{tag}</span>
             {!disabled && (
