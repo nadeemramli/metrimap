@@ -304,8 +304,7 @@ export default function HomePage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-56 p-2 bg-white border border-gray-200 shadow-lg rounded-lg !backdrop-blur-none no-backdrop-blur"
-              style={{ backdropFilter: "none !important" }}
+              className="w-56 p-2 bg-white border border-gray-200 shadow-lg rounded-lg"
             >
               <DropdownMenuItem
                 onClick={() => handleOpenCanvas(project.id)}
@@ -555,8 +554,7 @@ export default function HomePage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="w-56 p-2 bg-white border border-gray-200 shadow-lg rounded-lg !backdrop-blur-none no-backdrop-blur"
-                    style={{ backdropFilter: "none !important" }}
+                    className="w-56 p-2 bg-white border border-gray-200 shadow-lg rounded-lg"
                   >
                     <DropdownMenuItem
                       onClick={() => handleOpenCanvas(project.id)}

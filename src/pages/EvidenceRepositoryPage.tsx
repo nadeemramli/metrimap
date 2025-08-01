@@ -50,7 +50,6 @@ import {
   FlaskConical,
   BookOpen,
   Users,
-  ArrowLeft,
 } from "lucide-react";
 import { useCanvasStore } from "@/lib/stores";
 import { useEvidenceStore } from "@/lib/stores/evidenceStore";
@@ -247,209 +246,194 @@ export default function EvidenceRepositoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold flex items-center gap-2">
-                  <FileText className="h-8 w-8" />
-                  Evidence Repository
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                  Centralized management of all evidence across relationships
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="text-sm">
-                {allEvidence.length} Evidence Items
-              </Badge>
-              <Button onClick={handleCreateEvidence} className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Evidence
-              </Button>
-            </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Evidence Repository</h1>
+            <p className="text-muted-foreground mt-1">
+              Centralized management of all evidence across relationships
+            </p>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="text-sm">
+            {allEvidence.length} Evidence Items
+          </Badge>
+          <Button onClick={handleCreateEvidence} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Evidence
+          </Button>
         </div>
       </div>
 
       {/* Filters and Search */}
-      <div className="container mx-auto px-6 py-6">
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filters & Search
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search evidence by title, summary, or owner..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filters & Search
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search evidence by title, summary, or owner..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-              <Select value={selectedType} onValueChange={setSelectedType}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {evidenceTypeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedOwner} onValueChange={setSelectedOwner}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Owners</SelectItem>
-                  {uniqueOwners.map((owner) => (
-                    <SelectItem key={owner} value={owner}>
-                      {owner}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
-          </CardContent>
-        </Card>
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {evidenceTypeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedOwner} onValueChange={setSelectedOwner}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by owner" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Owners</SelectItem>
+                {uniqueOwners.map((owner) => (
+                  <SelectItem key={owner} value={owner}>
+                    {owner}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Evidence Grid */}
-        {filteredEvidence.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEvidence.map((evidence) => {
-              const TypeIcon = getTypeIcon(evidence.type);
-              return (
-                <Card key={evidence.id} className="relative">
-                  <CardHeader className="pb-3">
+      {/* Evidence Grid */}
+      {filteredEvidence.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredEvidence.map((evidence) => {
+            const TypeIcon = getTypeIcon(evidence.type);
+            return (
+              <Card key={evidence.id} className="relative">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(evidence.type)}`}
+                    >
+                      <TypeIcon className="h-3 w-3 inline mr-1" />
+                      {evidence.type}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleEditEvidence(evidence)}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Evidence
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDuplicateEvidence(evidence)}
+                        >
+                          <Copy className="mr-2 h-4 w-4" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        {evidence.link && (
+                          <DropdownMenuItem asChild>
+                            <a
+                              href={evidence.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              Open Link
+                            </a>
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteEvidence(evidence.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <CardTitle className="text-lg">{evidence.title}</CardTitle>
+                  <CardDescription className="line-clamp-2">
+                    {evidence.summary}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {evidence.owner}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(evidence.date).toLocaleDateString()}
+                    </div>
+                  </div>
+
+                  {evidence.relationshipCount > 0 && (
                     <div className="flex items-center justify-between">
-                      <div
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(evidence.type)}`}
-                      >
-                        <TypeIcon className="h-3 w-3 inline mr-1" />
-                        {evidence.type}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleEditEvidence(evidence)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Evidence
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDuplicateEvidence(evidence)}
-                          >
-                            <Copy className="mr-2 h-4 w-4" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          {evidence.link && (
-                            <DropdownMenuItem asChild>
-                              <a
-                                href={evidence.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                Open Link
-                              </a>
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteEvidence(evidence.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <span className="text-sm text-muted-foreground">
+                        Used in {evidence.relationshipCount} relationship
+                        {evidence.relationshipCount === 1 ? "" : "s"}
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {evidence.relationshipCount} links
+                      </Badge>
                     </div>
-                    <CardTitle className="text-lg">{evidence.title}</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {evidence.summary}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {evidence.owner}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(evidence.date).toLocaleDateString()}
-                      </div>
+                  )}
+
+                  {evidence.hypothesis && (
+                    <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                      <strong>Hypothesis:</strong> {evidence.hypothesis}
                     </div>
-
-                    {evidence.relationshipCount > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">
-                          Used in {evidence.relationshipCount} relationship
-                          {evidence.relationshipCount === 1 ? "" : "s"}
-                        </span>
-                        <Badge variant="secondary" className="text-xs">
-                          {evidence.relationshipCount} links
-                        </Badge>
-                      </div>
-                    )}
-
-                    {evidence.hypothesis && (
-                      <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                        <strong>Hypothesis:</strong> {evidence.hypothesis}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-muted-foreground mb-2">
-              {allEvidence.length === 0
-                ? "No Evidence Yet"
-                : "No Evidence Found"}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {allEvidence.length === 0
-                ? "Start by creating evidence to support your relationships"
-                : "Try adjusting your search terms or filters"}
-            </p>
-            {allEvidence.length === 0 && (
-              <Button onClick={handleCreateEvidence} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create First Evidence
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium text-muted-foreground mb-2">
+            {allEvidence.length === 0 ? "No Evidence Yet" : "No Evidence Found"}
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            {allEvidence.length === 0
+              ? "Start by creating evidence to support your relationships"
+              : "Try adjusting your search terms or filters"}
+          </p>
+          {allEvidence.length === 0 && (
+            <Button onClick={handleCreateEvidence} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create First Evidence
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Create/Edit Evidence Modal */}
       <Dialog

@@ -252,7 +252,7 @@ export default function CanvasLayout() {
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto">
           <Outlet />
         </div>
       </div>

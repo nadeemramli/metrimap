@@ -69,7 +69,7 @@ import {
 } from "lucide-react";
 import { useProjectsStore } from "@/lib/stores";
 
-type TabType = "general" | "data" | "changelog" | "team" | "settings";
+type TabType = "general" | "changelog";
 
 export default function CanvasSettingsPage() {
   const { canvasId } = useParams();
@@ -375,144 +375,64 @@ export default function CanvasSettingsPage() {
         <div>
           <h1 className="text-3xl font-bold">Canvas Settings</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your canvas configuration, team, and activity
+            Manage your canvas configuration and activity
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <Share className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-        </div>
-      </div>
-
-      {/* Project Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Metrics</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {currentProject.nodes.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Across {new Set(currentProject.nodes.map((n) => n.category)).size}{" "}
-              categories
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Relationships</CardTitle>
-            <Network className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {currentProject.edges.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {
-                currentProject.edges.filter((e) => e.confidence === "High")
-                  .length
-              }{" "}
-              high confidence
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{collaborators.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {
-                collaborators.filter(
-                  (m: Collaborator) =>
-                    m.permissions?.includes("write") ||
-                    ["owner", "admin", "editor"].includes(m.role)
-                ).length
-              }{" "}
-              can edit
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Last Updated</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {getTimeAgo(currentProject.updatedAt)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              By {currentProject.lastModifiedBy}
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as TabType)}
-        className="w-full"
-      >
-        <TabsList>
-          {tabs.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id}>
-              {tab.label}
-              {tab.count !== null && ` (${tab.count})`}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex items-center justify-between mb-6">
+          <TabsList className="bg-gray-100 rounded-lg p-[3px] shadow-sm">
+            <TabsTrigger
+              value="general"
+              className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+            >
+              General
             </TabsTrigger>
-          ))}
-        </TabsList>
+            <TabsTrigger
+              value="changelog"
+              className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+            >
+              Changelog
+              <span className="inline-flex items-center justify-center rounded-full bg-gray-300 text-secondary-foreground text-xs font-medium w-5 h-5 min-w-5 min-h-5 p-0">
+                {changelog.length}
+              </span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        {/* Search Bar for relevant tabs */}
-        {(activeTab === "data" || activeTab === "changelog") && (
+        {/* Search Bar for changelog */}
+        {activeTab === "changelog" && (
           <div className="flex items-center gap-4 mt-6">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder={`Search ${activeTab}...`}
+                placeholder="Search changelog..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            {activeTab === "changelog" && (
-              <Select
-                value={changelogFilter}
-                onValueChange={setChangelogFilter}
-              >
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Actions</SelectItem>
-                  <SelectItem value="created">Created</SelectItem>
-                  <SelectItem value="updated">Updated</SelectItem>
-                  <SelectItem value="deleted">Deleted</SelectItem>
-                  <SelectItem value="shared">Shared</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+            <Select value={changelogFilter} onValueChange={setChangelogFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Actions</SelectItem>
+                <SelectItem value="created">Created</SelectItem>
+                <SelectItem value="updated">Updated</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
+                <SelectItem value="shared">Shared</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
 
-        {/* General Tab */}
+        {/* General Tab - Consolidated */}
         <TabsContent value="general" className="space-y-6">
+          {/* Basic Information */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -552,58 +472,8 @@ export default function CanvasSettingsPage() {
                     onChange={handleTagsChange}
                     placeholder="Add a tag..."
                     maxTags={10}
-                    variant="secondary"
                     suggestions={COMMON_PROJECT_TAGS}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Use tags to organize and categorize your canvas
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Status</CardTitle>
-                <CardDescription>
-                  Canvas information and metadata
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Created
-                    </label>
-                    <div className="text-sm text-muted-foreground">
-                      {new Date(currentProject.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Last Modified
-                    </label>
-                    <div className="text-sm text-muted-foreground">
-                      {getTimeAgo(currentProject.updatedAt)}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Tags</label>
-                  <div className="flex flex-wrap gap-2">
-                    {currentProject.tags && currentProject.tags.length > 0 ? (
-                      currentProject.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary">
-                          {tag}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted-foreground">
-                        No tags
-                      </span>
-                    )}
-                  </div>
                 </div>
 
                 <div className="pt-4 border-t">
@@ -623,50 +493,222 @@ export default function CanvasSettingsPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Danger Zone */}
-          <Card className="border-destructive/20">
-            <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
-              <CardDescription>
-                Irreversible actions that affect this canvas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" disabled={isDeleting}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {isDeleting ? "Deleting..." : "Delete Canvas"}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Canvas</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{currentProject?.name}"?
+            <Card>
+              <CardHeader>
+                <CardTitle>Canvas Details</CardTitle>
+                <CardDescription>
+                  View canvas metadata and manage actions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Created
+                  </label>
+                  <div className="text-sm text-muted-foreground">
+                    {new Date(currentProject.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-red-200">
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-red-700 mb-2">
+                        Danger Zone
+                      </h4>
+                      <p className="text-xs text-red-600 mb-3">
+                        Irreversible actions that affect this canvas
+                      </p>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          disabled={isDeleting}
+                          className="w-full"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {isDeleting ? "Deleting..." : "Delete Canvas"}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Canvas</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "
+                            {currentProject?.name}"? This action cannot be
+                            undone. All metrics, relationships, and history will
+                            be permanently deleted.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleDeleteCanvas}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete Canvas
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <p className="text-xs text-red-600">
                       This action cannot be undone. All metrics, relationships,
                       and history will be permanently deleted.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteCanvas}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Team Members */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Team Members</CardTitle>
+                  <CardDescription>
+                    Manage access and permissions
+                  </CardDescription>
+                </div>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Invite Member
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {loadingCollaborators ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      Loading team members...
+                    </p>
+                  </div>
+                ) : collaborators.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      No team members yet. Invite someone to collaborate!
+                    </p>
+                  </div>
+                ) : (
+                  collaborators.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
                     >
-                      Delete Canvas
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <p className="text-xs text-muted-foreground mt-2">
-                This action cannot be undone. All metrics, relationships, and
-                history will be permanently deleted.
-              </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium">
+                            {member.users?.name || member.users?.email}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {member.users?.email}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge
+                          variant={
+                            member.role === "owner" ? "default" : "secondary"
+                          }
+                        >
+                          {member.role}
+                        </Badge>
+                        <div className="text-sm text-muted-foreground">
+                          {member.joined_at
+                            ? `Joined ${getTimeAgo(member.joined_at)}`
+                            : "Invited"}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Change Role
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Settings className="mr-2 h-4 w-4" />
+                              Permissions
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Remove
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
+
+          {/* Settings */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Import & Export</CardTitle>
+                <CardDescription>Manage your canvas data</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button variant="outline" className="w-full">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import Canvas Data
+                </Button>
+                <Button variant="outline" className="w-full">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Canvas Data
+                </Button>
+                <Button variant="outline" className="w-full">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Report
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Notifications</CardTitle>
+                <CardDescription>Configure alert preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Email notifications</div>
+                    <div className="text-sm text-muted-foreground">
+                      Get notified of changes
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Configure
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Data quality alerts</div>
+                    <div className="text-sm text-muted-foreground">
+                      Alert on data issues
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Configure
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Data Tab */}
@@ -760,94 +802,6 @@ export default function CanvasSettingsPage() {
           </Card>
         </TabsContent>
 
-        {/* Team Tab */}
-        <TabsContent value="team" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">Team Members</h3>
-              <p className="text-sm text-muted-foreground">
-                Manage access and permissions
-              </p>
-            </div>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Invite Member
-            </Button>
-          </div>
-
-          <div className="grid gap-4">
-            {loadingCollaborators ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">Loading team members...</p>
-              </div>
-            ) : collaborators.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  No team members yet. Invite someone to collaborate!
-                </p>
-              </div>
-            ) : (
-              collaborators.map((member) => (
-                <Card key={member.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <User className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <div className="font-medium">
-                            {member.users?.name || member.users?.email}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {member.users?.email}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Badge
-                          variant={
-                            member.role === "owner" ? "default" : "secondary"
-                          }
-                        >
-                          {member.role}
-                        </Badge>
-                        <div className="text-sm text-muted-foreground">
-                          {member.joined_at
-                            ? `Joined ${getTimeAgo(member.joined_at)}`
-                            : "Invited"}
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Change Role
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Settings className="mr-2 h-4 w-4" />
-                              Permissions
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
-
         {/* Changelog Tab */}
         <TabsContent value="changelog" className="space-y-4">
           <div className="space-y-4">
@@ -904,63 +858,6 @@ export default function CanvasSettingsPage() {
                 </Card>
               ))
             )}
-          </div>
-        </TabsContent>
-
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Import & Export</CardTitle>
-                <CardDescription>Manage your canvas data</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button variant="outline" className="w-full">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import Canvas Data
-                </Button>
-                <Button variant="outline" className="w-full">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Canvas Data
-                </Button>
-                <Button variant="outline" className="w-full">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Generate Report
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>Configure alert preferences</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">Email notifications</div>
-                    <div className="text-sm text-muted-foreground">
-                      Get notified of changes
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">Data quality alerts</div>
-                    <div className="text-sm text-muted-foreground">
-                      Alert on data issues
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
       </Tabs>
