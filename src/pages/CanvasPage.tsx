@@ -7,7 +7,6 @@ import {
   getIncomers,
   getOutgoers,
   getConnectedEdges,
-  NodeToolbar as ReactFlowNodeToolbar,
   type Node,
   type Edge,
   type NodeChange,
@@ -27,10 +26,6 @@ import {
   Clock,
   Check,
   AlertCircle,
-  Minimize2,
-  Link,
-  Eye,
-  MoreHorizontal,
 } from "lucide-react";
 
 import "@xyflow/react/dist/style.css";
@@ -71,7 +66,7 @@ import ContextMenu from "@/components/canvas/ContextMenu";
 // Convert MetricCard to ReactFlow Node with callbacks
 const convertToNode = (
   card: MetricCardType,
-  onOpenSettings: (cardId: string) => void,
+  onOpenSettings: (cardId: string, tab?: string) => void,
   onNodeClick: (cardId: string) => void,
   selectedNodeIds: string[] = []
 ): Node => ({
@@ -140,7 +135,7 @@ function CanvasPageInner() {
   const { canvasId } = useParams();
   const navigate = useNavigate();
   const [settingsCardId, setSettingsCardId] = useState<string | undefined>();
-  const [toolbarNodeId, setToolbarNodeId] = useState<string | undefined>();
+  const [settingsInitialTab, setSettingsInitialTab] = useState<string>("data");
   const [relationshipSheetId, setRelationshipSheetId] = useState<
     string | undefined
   >();
@@ -202,6 +197,7 @@ function CanvasPageInner() {
     persistNodeDelete,
     addNode,
     selectNode,
+    deselectNodes,
     clearSelection,
     pendingChanges,
     isSaving,
@@ -237,7 +233,8 @@ function CanvasPageInner() {
 
   const handlePaneClick = useCallback(() => {
     setContextMenu(null);
-  }, []);
+    clearSelection(); // Clear node selection when clicking on empty space
+  }, [clearSelection]);
 
   const handleContextMenuAction = useCallback(
     (action: string, nodeId: string) => {
@@ -245,10 +242,6 @@ function CanvasPageInner() {
       if (!node) return;
 
       switch (action) {
-        case "edit":
-          // Handle edit - could open inline editing or settings
-          console.log("Edit node:", nodeId);
-          break;
         case "duplicate":
           // Handle duplicate
           console.log("Duplicate node:", nodeId);
@@ -260,23 +253,33 @@ function CanvasPageInner() {
           deleteNode(nodeId);
           break;
         case "comments":
-          console.log("Open comments for node:", nodeId);
+          // Open settings sheet with comments tab
+          setSettingsInitialTab("comments");
+          setSettingsCardId(nodeId);
           break;
         case "data":
-          console.log("Open data for node:", nodeId);
+          // Open settings sheet with data tab
+          setSettingsInitialTab("data");
+          setSettingsCardId(nodeId);
           break;
         case "tags":
-          console.log("Open tags for node:", nodeId);
+          // Open settings sheet with settings tab (tags are managed there)
+          setSettingsInitialTab("settings");
+          setSettingsCardId(nodeId);
           break;
         case "assignees":
-          console.log("Open assignees for node:", nodeId);
+          // Open settings sheet with settings tab (assignees are managed there)
+          setSettingsInitialTab("settings");
+          setSettingsCardId(nodeId);
           break;
         case "dimensions":
-          console.log("Open dimensions for node:", nodeId);
+          // Open settings sheet with settings tab (dimensions are managed there)
+          setSettingsInitialTab("settings");
+          setSettingsCardId(nodeId);
           break;
       }
     },
-    [canvas?.nodes, deleteNode]
+    [canvas?.nodes, deleteNode, setSettingsCardId]
   );
 
   // Beautiful auto-save status with enhanced UX
@@ -415,7 +418,7 @@ function CanvasPageInner() {
       createShortcut.key(
         "Escape",
         () => {
-          setToolbarNodeId(undefined);
+          // setToolbarNodeId(undefined); // Removed as per edit hint
           setSettingsCardId(undefined);
           setRelationshipSheetId(undefined);
           clearSelection();
@@ -591,13 +594,16 @@ function CanvasPageInner() {
   });
 
   // Handle opening settings sheet
-  const handleOpenSettings = useCallback((cardId: string) => {
+  const handleOpenSettings = useCallback((cardId: string, tab?: string) => {
+    if (tab) {
+      setSettingsInitialTab(tab);
+    }
     setSettingsCardId(cardId);
   }, []);
 
   // Handle node click for toolbar
-  const handleNodeClick = useCallback((cardId: string) => {
-    setToolbarNodeId(cardId);
+  const handleNodeClick = useCallback(() => {
+    // setToolbarNodeId(cardId); // Removed as per edit hint
   }, []);
 
   // Handle opening relationship sheet
@@ -812,6 +818,9 @@ function CanvasPageInner() {
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      // Apply changes to React Flow's internal state
+      // setNodes((nds) => applyNodeChanges(changes, nds)); // This line is removed
+
       changes.forEach((change) => {
         // Handle position changes - BULLETPROOF POSITION SAVING
         if (change.type === "position" && canvas) {
@@ -853,15 +862,36 @@ function CanvasPageInner() {
           }
         }
 
-        // Handle selection changes for toolbar
-        if (change.type === "select" && change.selected) {
-          setToolbarNodeId(change.id);
-        } else if (change.type === "select" && !change.selected) {
-          setToolbarNodeId(undefined);
+        // Handle selection changes for NodeToolbar
+        if (change.type === "select") {
+          if (change.selected) {
+            selectNode(change.id);
+          } else {
+            // For individual deselection, clear all and reselect others
+            const currentSelected = selectedNodeIds.filter(
+              (id) => id !== change.id
+            );
+            if (currentSelected.length > 0) {
+              // Clear all and reselect the remaining nodes
+              clearSelection();
+              currentSelected.forEach((id) => selectNode(id));
+            } else {
+              clearSelection();
+            }
+          }
         }
       });
     },
-    [canvas, updateNodePosition, addPendingChange, nodes]
+    [
+      canvas,
+      updateNodePosition,
+      addPendingChange,
+      nodes,
+      selectNode,
+      deselectNodes,
+      selectedNodeIds,
+      clearSelection,
+    ]
   );
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
@@ -965,9 +995,9 @@ function CanvasPageInner() {
 
   // Enhanced connection validation with better feedback
   const isValidConnection = useCallback(
-    (connection: any) => {
-      const source = connection.source || connection.sourceNode?.id;
-      const target = connection.target || connection.targetNode?.id;
+    (connection: Connection | Edge) => {
+      const source = connection.source;
+      const target = connection.target;
 
       if (!source || !target || !canvas) {
         console.log("🚫 Invalid connection: Missing source, target, or canvas");
@@ -1088,7 +1118,10 @@ function CanvasPageInner() {
 
   // Add Node on Edge Drop - show category selection when connection line is dropped on canvas
   const onConnectEnd = useCallback(
-    async (event: any, connectionState: any) => {
+    async (
+      event: MouseEvent | TouchEvent,
+      connectionState: { isValid: boolean | null; fromNode?: Node | null }
+    ) => {
       // Only create a node if the connection is not valid (dropped on empty canvas)
       if (!connectionState.isValid && connectionState.fromNode) {
         const { clientX, clientY } =
@@ -1118,7 +1151,7 @@ function CanvasPageInner() {
           ref={reactFlowRef}
           nodes={nodes}
           edges={edges}
-          nodeTypes={nodeTypes as any}
+          nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
@@ -1141,6 +1174,12 @@ function CanvasPageInner() {
             toX,
             toY,
             connectionStatus,
+          }: {
+            fromX: number;
+            fromY: number;
+            toX: number;
+            toY: number;
+            connectionStatus: string | null;
           }) => {
             // Dynamic styling based on connection status
             const isValid = connectionStatus === "valid";
@@ -1338,63 +1377,6 @@ function CanvasPageInner() {
             {/* Comprehensive Filter & Date */}
             <FilterControls />
           </Controls>
-
-          {/* React Flow Node Toolbar - automatically positioned */}
-          {toolbarNodeId && (
-            <ReactFlowNodeToolbar
-              nodeId={toolbarNodeId}
-              isVisible={!!toolbarNodeId}
-            >
-              <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg">
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      console.log("Collapse/Expand node:", toolbarNodeId);
-                    }}
-                    className="h-8 w-8 p-0"
-                    title="Collapse/Expand"
-                  >
-                    <Minimize2 className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      console.log("Create relationship from:", toolbarNodeId);
-                    }}
-                    className="h-8 w-8 p-0"
-                    title="Create Relationship"
-                  >
-                    <Link className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      console.log("View details for:", toolbarNodeId);
-                    }}
-                    className="h-8 w-8 p-0"
-                    title="View Details"
-                  >
-                    <Eye className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      console.log("More options for:", toolbarNodeId);
-                    }}
-                    className="h-8 w-8 p-0"
-                    title="More Options"
-                  >
-                    <MoreHorizontal className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            </ReactFlowNodeToolbar>
-          )}
         </ReactFlow>
 
         {/* Context Menu */}
@@ -1402,7 +1384,7 @@ function CanvasPageInner() {
           <ContextMenu
             {...contextMenu}
             onClick={handlePaneClick}
-            onEdit={() => handleContextMenuAction("edit", contextMenu.id)}
+            onEdit={() => {}} // No longer used
             onDuplicate={() =>
               handleContextMenuAction("duplicate", contextMenu.id)
             }
@@ -1436,6 +1418,7 @@ function CanvasPageInner() {
         isOpen={!!settingsCardId}
         onClose={() => setSettingsCardId(undefined)}
         cardId={settingsCardId}
+        initialTab={settingsInitialTab}
       />
 
       {/* Relationship Sheet */}

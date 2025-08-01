@@ -39,18 +39,20 @@ interface CardSettingsSheetProps {
   isOpen: boolean;
   onClose: () => void;
   cardId?: string;
+  initialTab?: string;
 }
 
 export default function CardSettingsSheet({
   isOpen,
   onClose,
   cardId,
+  initialTab = "data",
 }: CardSettingsSheetProps) {
   const { getNodeById, persistNodeUpdate, persistNodeDelete } =
     useCanvasStore();
   const card = cardId ? getNodeById(cardId) : null;
 
-  const [activeTab, setActiveTab] = useState("data");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isModified, setIsModified] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -86,6 +88,11 @@ export default function CardSettingsSheet({
       });
     }
   }, [card]);
+
+  // Update active tab when initialTab changes
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const handleFieldChange = async (field: keyof MetricCard, value: any) => {
     const newFormData = { ...formData, [field]: value };

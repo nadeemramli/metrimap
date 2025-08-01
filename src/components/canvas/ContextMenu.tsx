@@ -1,14 +1,4 @@
-import {
-  Copy,
-  Settings,
-  Trash2,
-  Edit,
-  MessageSquare,
-  BarChart3,
-  Database,
-  Layers,
-  Users,
-} from "lucide-react";
+import { Copy, Trash2, MessageSquare, BarChart3, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -47,15 +37,12 @@ export default function ContextMenu({
   right,
   bottom,
   onClick,
-  onEdit,
   onDuplicate,
   onSettings,
   onDelete,
   onComments,
   onData,
-  onTags,
-  onAssignees,
-  onDimensions,
+
   cardTitle,
 }: ContextMenuProps) {
   return (
@@ -70,35 +57,7 @@ export default function ContextMenu({
         }}
       >
         <div className="flex flex-col gap-1">
-          {/* Edit */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-start h-8 px-2 text-sm"
-            onClick={() => {
-              onEdit();
-              onClick();
-            }}
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-
-          {/* Duplicate */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-start h-8 px-2 text-sm"
-            onClick={() => {
-              onDuplicate();
-              onClick();
-            }}
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            Duplicate
-          </Button>
-
-          {/* Settings */}
+          {/* Settings - Main entry point to CardSettingsSheet */}
           <Button
             variant="ghost"
             size="sm"
@@ -108,13 +67,11 @@ export default function ContextMenu({
               onClick();
             }}
           >
-            <Settings className="h-4 w-4 mr-2" />
+            <Database className="h-4 w-4 mr-2" />
             Settings
           </Button>
 
-          <div className="h-px bg-border my-1" />
-
-          {/* Data */}
+          {/* Quick Actions that open specific tabs in CardSettingsSheet */}
           <Button
             variant="ghost"
             size="sm"
@@ -125,52 +82,9 @@ export default function ContextMenu({
             }}
           >
             <BarChart3 className="h-4 w-4 mr-2" />
-            Data
+            Data & Events
           </Button>
 
-          {/* Tags */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-start h-8 px-2 text-sm"
-            onClick={() => {
-              onTags();
-              onClick();
-            }}
-          >
-            <Layers className="h-4 w-4 mr-2" />
-            Tags
-          </Button>
-
-          {/* Assignees */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-start h-8 px-2 text-sm"
-            onClick={() => {
-              onAssignees();
-              onClick();
-            }}
-          >
-            <Users className="h-4 w-4 mr-2" />
-            Assignees
-          </Button>
-
-          {/* Dimensions */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-start h-8 px-2 text-sm"
-            onClick={() => {
-              onDimensions();
-              onClick();
-            }}
-          >
-            <Database className="h-4 w-4 mr-2" />
-            Dimensions
-          </Button>
-
-          {/* Comments */}
           <Button
             variant="ghost"
             size="sm"
@@ -186,14 +100,30 @@ export default function ContextMenu({
 
           <div className="h-px bg-border my-1" />
 
+          {/* Utility Actions */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start h-8 px-2 text-sm"
+            onClick={() => {
+              onDuplicate();
+              onClick();
+            }}
+          >
+            <Copy className="h-4 w-4 mr-2" />
+            Duplicate
+          </Button>
+
+          <div className="h-px bg-border my-1" />
+
           {/* Delete with confirmation */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="justify-start h-8 px-2 text-sm text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={(e) => e.stopPropagation()}
+                className="justify-start h-8 px-2 text-sm text-destructive hover:text-destructive"
+                onClick={(e) => e.preventDefault()}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
@@ -201,11 +131,10 @@ export default function ContextMenu({
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Metric Card</AlertDialogTitle>
+                <AlertDialogTitle>Delete Card</AlertDialogTitle>
                 <AlertDialogDescription>
                   Are you sure you want to delete "{cardTitle}"? This action
-                  cannot be undone and will also remove all connected
-                  relationships.
+                  cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

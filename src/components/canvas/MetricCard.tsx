@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Handle, Position, useReactFlow, type NodeProps } from "@xyflow/react";
+import { Handle, Position, NodeToolbar, type NodeProps } from "@xyflow/react";
 import {
   TrendingUp,
   TrendingDown,
@@ -8,9 +8,19 @@ import {
   Edit,
   Check,
   X,
+  Eye,
+  Link,
+  Minimize2,
+  Copy,
+  MessageSquare,
+  BarChart3,
+  Database,
+  Layers,
+  Trash2,
+  GripVertical,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -20,12 +30,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-// AlertDialog imports removed - no longer needed in card component
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import TagsList from "./TagsList";
 import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
 import { useAccessibility } from "@/hooks/useAccessibility";
 import { useCanvasStore } from "@/lib/stores/canvasStore";
+import { DimensionSliceModal } from "./index";
 import type {
   MetricCard as MetricCardType,
   MetricValue,
@@ -34,7 +55,7 @@ import type {
 
 interface MetricCardNodeData {
   card: MetricCardType;
-  onOpenSettings?: (cardId: string) => void;
+  onOpenSettings?: (cardId: string, tab?: string) => void;
   onNodeClick?: (cardId: string, position: { x: number; y: number }) => void;
   isPreview?: boolean;
 }
@@ -140,35 +161,156 @@ export default function MetricCard({ data, selected }: NodeProps) {
   const { card, onOpenSettings, onNodeClick, isPreview } =
     data as unknown as MetricCardNodeData;
   const [isExpanded] = useState(true);
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [isEditingTags, setIsEditingTags] = useState(false);
+
+  // Inline editing state
+  const [isEditing, setIsEditing] = useState(false);
   const [tempTitle, setTempTitle] = useState(card.title);
-  const [tempDescription, setTempDescription] = useState(card.description);
-  const [tempTags, setTempTags] = useState<string[]>(card.tags);
-  const [selectedCategory, setSelectedCategory] = useState<CardCategory>(
-    card.category
+  const [tempDescription, setTempDescription] = useState(
+    card.description || ""
   );
-  const [selectedSubCategory, setSelectedSubCategory] = useState<
-    string | undefined
-  >(card.subCategory);
+  const [tempCategory, setTempCategory] = useState<CardCategory>(card.category);
+  const [tempSubCategory, setTempSubCategory] = useState(
+    card.subCategory || ""
+  );
+  const [tempTags, setTempTags] = useState<string[]>(card.tags || []);
 
   const cardRef = useRef<HTMLDivElement>(null);
-  const titleInputRef = useRef<HTMLInputElement>(null);
-  const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   const isDataMetric = card.category === "Data/Metric";
   const categoryColor = getCategoryColor(card.category);
 
   // Canvas store for updates
-  const { updateNode, persistNodeUpdate, deleteNode, persistNodeDelete } =
+  const { persistNodeUpdate, deleteNode, sliceMetricByDimensions } =
     useCanvasStore();
-
-  const { deleteElements } = useReactFlow();
 
   // Accessibility hooks
   const { announce, getARIAProps, createKeyboardNavigationHandler } =
     useAccessibility();
+
+  // Category options
+  const categoryOptions: Array<{ value: CardCategory; label: string }> = [
+    { value: "Core/Value", label: "Core/Value" },
+    { value: "Data/Metric", label: "Data/Metric" },
+    { value: "Work/Action", label: "Work/Action" },
+    { value: "Ideas/Hypothesis", label: "Ideas/Hypothesis" },
+    { value: "Metadata", label: "Metadata" },
+  ];
+
+  // Toolbar state
+  const [isDimensionSliceOpen, setIsDimensionSliceOpen] = useState(false);
+
+  // Toolbar functions
+  const handleCollapseExpand = () => {
+    console.log("Toggle collapse for node:", card.id);
+  };
+
+  const handleCreateRelationship = () => {
+    console.log("Create relationship from node:", card.id);
+  };
+
+  const handleViewDetails = (tab?: string) => {
+    if (onOpenSettings) {
+      onOpenSettings(card.id, tab);
+    }
+  };
+
+  const handleDimensionSlice = () => {
+    setIsDimensionSliceOpen(true);
+  };
+
+  const handleSlice = async (
+    dimensions: string[],
+    historyOption: "manual" | "proportional" | "forfeit",
+    percentages?: number[]
+  ) => {
+    try {
+      const newCardIds = await sliceMetricByDimensions(
+        card.id,
+        dimensions,
+        historyOption,
+        percentages
+      );
+      console.log("Created dimension cards:", newCardIds);
+      setIsDimensionSliceOpen(false);
+    } catch (error) {
+      console.error("Error slicing metric:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "An error occurred while slicing the metric"
+      );
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteNode(card.id);
+      console.log("✅ Node deleted:", card.id);
+    } catch (error) {
+      console.error("❌ Failed to delete node:", error);
+    }
+  };
+
+  const handleDuplicate = () => {
+    console.log("Duplicate node:", card.id);
+    // TODO: Implement duplicate functionality
+  };
+
+  // Edit functions
+  const startEditing = () => {
+    setTempTitle(card.title);
+    setTempDescription(card.description || "");
+    setTempCategory(card.category);
+    setTempSubCategory(card.subCategory || "");
+    setTempTags(card.tags || []);
+    setIsEditing(true);
+  };
+
+  const saveChanges = async () => {
+    try {
+      const updates: Partial<{
+        title: string;
+        description: string;
+        category: CardCategory;
+        subCategory: string;
+        tags: string[];
+      }> = {};
+
+      if (tempTitle.trim() !== card.title) {
+        updates.title = tempTitle.trim();
+      }
+      if (tempDescription !== card.description) {
+        updates.description = tempDescription;
+      }
+      if (tempCategory !== card.category) {
+        updates.category = tempCategory;
+        updates.subCategory = undefined; // Reset subcategory when category changes
+      }
+      if (tempSubCategory !== card.subCategory) {
+        updates.subCategory = tempSubCategory;
+      }
+      if (JSON.stringify(tempTags) !== JSON.stringify(card.tags)) {
+        updates.tags = tempTags;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await persistNodeUpdate(card.id, updates as Partial<MetricCardType>);
+        console.log("✅ Card updated successfully");
+      }
+    } catch (error) {
+      console.error("❌ Failed to update card:", error);
+    }
+    setIsEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setTempTitle(card.title);
+    setTempDescription(card.description || "");
+    setTempCategory(card.category);
+    setTempSubCategory(card.subCategory || "");
+    setTempTags(card.tags || []);
+    setIsEditing(false);
+  };
 
   // Announce card selection changes
   useEffect(() => {
@@ -177,143 +319,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
     }
   }, [selected, card.title, announce]);
 
-  // Focus on input when editing starts
-  useEffect(() => {
-    if (isEditingTitle && titleInputRef.current) {
-      titleInputRef.current.focus();
-      titleInputRef.current.select();
-    }
-  }, [isEditingTitle]);
-
-  useEffect(() => {
-    if (isEditingDescription && descriptionInputRef.current) {
-      descriptionInputRef.current.focus();
-    }
-  }, [isEditingDescription]);
-
-  // Action handlers moved to context menu
-
-  // Title editing functions
-  const startEditingTitle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setTempTitle(card.title);
-    setIsEditingTitle(true);
-  };
-
-  const saveTitle = async () => {
-    if (tempTitle.trim() && tempTitle !== card.title) {
-      try {
-        // Update local state
-        updateNode(card.id, { title: tempTitle.trim() });
-        // Persist to database
-        await persistNodeUpdate(card.id, { title: tempTitle.trim() });
-        console.log("✅ Title updated:", tempTitle.trim());
-      } catch (error) {
-        console.error("❌ Failed to update title:", error);
-        setTempTitle(card.title); // Revert on error
-      }
-    }
-    setIsEditingTitle(false);
-  };
-
-  const cancelTitleEdit = () => {
-    setTempTitle(card.title);
-    setIsEditingTitle(false);
-  };
-
-  // Description editing functions
-  const startEditingDescription = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setTempDescription(card.description);
-    setIsEditingDescription(true);
-  };
-
-  const saveDescription = async () => {
-    if (tempDescription !== card.description) {
-      try {
-        // Update local state
-        updateNode(card.id, { description: tempDescription });
-        // Persist to database
-        await persistNodeUpdate(card.id, { description: tempDescription });
-        console.log("✅ Description updated");
-      } catch (error) {
-        console.error("❌ Failed to update description:", error);
-        setTempDescription(card.description); // Revert on error
-      }
-    }
-    setIsEditingDescription(false);
-  };
-
-  const cancelDescriptionEdit = () => {
-    setTempDescription(card.description);
-    setIsEditingDescription(false);
-  };
-
-  // Category change handlers
-  const handleCategoryChange = async (newCategory: CardCategory) => {
-    setSelectedCategory(newCategory);
-    setSelectedSubCategory(undefined); // Reset subcategory when main category changes
-
-    try {
-      // Update local state
-      updateNode(card.id, {
-        category: newCategory,
-        subCategory: undefined,
-      });
-      // Persist to database
-      await persistNodeUpdate(card.id, {
-        category: newCategory,
-        subCategory: undefined,
-      });
-      console.log("✅ Category updated:", newCategory);
-    } catch (error) {
-      console.error("❌ Failed to update category:", error);
-    }
-  };
-
-  const handleSubCategoryChange = async (newSubCategory: string) => {
-    setSelectedSubCategory(newSubCategory);
-
-    try {
-      // Update local state (avoid type issues with dynamic subcategory)
-      updateNode(card.id, { subCategory: newSubCategory as any });
-      // Persist to database
-      await persistNodeUpdate(card.id, { subCategory: newSubCategory as any });
-      console.log("✅ Subcategory updated:", newSubCategory);
-    } catch (error) {
-      console.error("❌ Failed to update subcategory:", error);
-    }
-  };
-
-  // Tags editing functions
-  const handleAddTag = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setTempTags([...card.tags]);
-    setIsEditingTags(true);
-  };
-
-  const handleTagsChange = (newTags: string[]) => {
-    setTempTags(newTags);
-  };
-
-  const saveTags = async () => {
-    try {
-      // Update local state
-      updateNode(card.id, { tags: tempTags });
-      // Persist to database
-      await persistNodeUpdate(card.id, { tags: tempTags });
-      console.log("✅ Tags updated:", tempTags);
-    } catch (error) {
-      console.error("❌ Failed to update tags:", error);
-      setTempTags(card.tags); // Revert on error
-    }
-    setIsEditingTags(false);
-  };
-
-  const cancelTagsEdit = () => {
-    setTempTags(card.tags);
-    setIsEditingTags(false);
-  };
+  // Read-only display - editing is now handled by the toolbar
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -387,39 +393,11 @@ export default function MetricCard({ data, selected }: NodeProps) {
       <div className="p-3 border-b border-border/50">
         {/* Dedicated Drag Handle Section */}
         {!isPreview && (
-          <div className="dragHandle cursor-move mb-2 flex items-center justify-center py-1 hover:bg-accent/20 rounded transition-colors">
-            <div className="flex items-center gap-1 px-2 py-1 rounded-sm text-muted-foreground hover:text-foreground transition-colors">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="rotate-90"
-              >
-                <path
-                  d="M9 3H15M9 12H15M9 21H15"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className="text-xs font-medium">Drag</span>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="rotate-90"
-              >
-                <path
-                  d="M9 3H15M9 12H15M9 21H15"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
+          <div className="absolute top-3 left-1/2 transform -translate-x-1/2 cursor-grab active:cursor-grabbing">
+            <div className="flex items-center gap-1 px-3 py-1 bg-muted/50 rounded-full text-xs text-muted-foreground hover:bg-muted transition-colors">
+              <GripVertical className="w-3 h-3" />
+              <span className="font-medium">Drag</span>
+              <GripVertical className="w-3 h-3" />
             </div>
           </div>
         )}
@@ -427,150 +405,156 @@ export default function MetricCard({ data, selected }: NodeProps) {
           <div className="flex items-center gap-2 flex-1">
             <span className="text-lg">{getCategoryIcon(card.category)}</span>
 
-            {/* Two-layer Category Selection */}
+            {/* Category and Subcategory - Editable when editing */}
             {!isPreview && (
               <div className="flex items-center gap-1 text-xs">
-                <Select
-                  value={selectedCategory}
-                  onValueChange={handleCategoryChange}
-                >
-                  <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground nodrag">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Core/Value">Core/Value</SelectItem>
-                    <SelectItem value="Data/Metric">Data/Metric</SelectItem>
-                    <SelectItem value="Work/Action">Work/Action</SelectItem>
-                    <SelectItem value="Ideas/Hypothesis">
-                      Ideas/Hypothesis
-                    </SelectItem>
-                    <SelectItem value="Metadata">Metadata</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {getSubCategoryOptions(selectedCategory).length > 0 && (
+                {isEditing ? (
                   <>
-                    <span className="text-muted-foreground">→</span>
                     <Select
-                      value={selectedSubCategory || ""}
-                      onValueChange={handleSubCategoryChange}
+                      value={tempCategory}
+                      onValueChange={(value: CardCategory) => {
+                        setTempCategory(value);
+                        setTempSubCategory(""); // Reset subcategory when category changes
+                      }}
                     >
-                      <SelectTrigger className="h-6 w-auto border-none p-0 focus:ring-0 text-xs text-muted-foreground hover:text-foreground nodrag">
-                        <SelectValue placeholder="Choose..." />
+                      <SelectTrigger className="h-5 w-20 text-xs">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {getSubCategoryOptions(selectedCategory).map(
-                          (subCat) => (
-                            <SelectItem key={subCat} value={subCat}>
-                              {subCat}
-                            </SelectItem>
-                          )
-                        )}
+                        {categoryOptions.map((category) => (
+                          <SelectItem
+                            key={category.value}
+                            value={category.value}
+                          >
+                            {category.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+                    {getSubCategoryOptions(tempCategory).length > 0 && (
+                      <>
+                        <span className="text-muted-foreground">→</span>
+                        <Select
+                          value={tempSubCategory}
+                          onValueChange={setTempSubCategory}
+                        >
+                          <SelectTrigger className="h-5 w-16 text-xs">
+                            <SelectValue placeholder="Sub" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getSubCategoryOptions(tempCategory).map(
+                              (subCat) => (
+                                <SelectItem key={subCat} value={subCat}>
+                                  {subCat}
+                                </SelectItem>
+                              )
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">
+                      {card.category}
+                    </span>
+                    {card.subCategory && (
+                      <>
+                        <span className="text-muted-foreground">→</span>
+                        <span className="text-muted-foreground">
+                          {card.subCategory}
+                        </span>
+                      </>
+                    )}
                   </>
                 )}
               </div>
             )}
           </div>
 
-          {/* Action buttons removed - now handled via context menu */}
-        </div>
+          {/* Edit button - only show when not in edit mode */}
+          {!isPreview && !isEditing && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={startEditing}
+              className="h-6 w-6 p-0 hover:bg-blue-50 hover:text-blue-600"
+              title="Edit Card"
+            >
+              <Edit className="h-3 w-3" />
+            </Button>
+          )}
 
-        {/* Editable Title */}
-        <div className="mb-1">
-          {isEditingTitle ? (
+          {/* Save/Cancel buttons - only show when editing */}
+          {!isPreview && isEditing && (
             <div className="flex items-center gap-1">
-              <Input
-                ref={titleInputRef}
-                value={tempTitle}
-                onChange={(e) => setTempTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  if (e.key === "Enter") saveTitle();
-                  if (e.key === "Escape") cancelTitleEdit();
-                }}
-                className="h-7 text-sm font-semibold nodrag"
-                placeholder="Enter title..."
-              />
               <Button
-                size="sm"
                 variant="ghost"
-                className="h-6 w-6 p-0 nodrag"
-                onClick={saveTitle}
+                size="sm"
+                onClick={saveChanges}
+                className="h-6 w-6 p-0 hover:bg-green-50 hover:text-green-600"
+                title="Save Changes"
               >
-                <Check className="h-3 w-3 text-green-600" />
+                <Check className="h-3 w-3" />
               </Button>
               <Button
-                size="sm"
                 variant="ghost"
-                className="h-6 w-6 p-0 nodrag"
-                onClick={cancelTitleEdit}
+                size="sm"
+                onClick={cancelEdit}
+                className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
+                title="Cancel Edit"
               >
-                <X className="h-3 w-3 text-red-600" />
+                <X className="h-3 w-3" />
               </Button>
-            </div>
-          ) : (
-            <div className="flex items-center">
-              <h3 className="font-semibold text-card-foreground text-sm leading-tight flex-1">
-                {card.title}
-              </h3>
             </div>
           )}
         </div>
 
-        {/* Editable Description */}
-        <div>
-          {isEditingDescription ? (
-            <div className="space-y-1">
-              <Textarea
-                ref={descriptionInputRef}
-                value={tempDescription}
-                onChange={(e) => setTempDescription(e.target.value)}
+        {/* Title - Editable when editing */}
+        <div className="mb-1">
+          <div className="flex items-center">
+            {isEditing ? (
+              <Input
+                value={tempTitle}
+                onChange={(e) => setTempTitle(e.target.value)}
                 onKeyDown={(e) => {
-                  e.stopPropagation();
-                  if (e.key === "Enter" && e.ctrlKey) saveDescription();
-                  if (e.key === "Escape") cancelDescriptionEdit();
+                  if (e.key === "Enter") saveChanges();
+                  if (e.key === "Escape") cancelEdit();
                 }}
-                className="min-h-[60px] text-xs resize-none"
-                placeholder="Enter description..."
+                className="h-6 text-sm font-semibold"
+                placeholder="Enter title..."
+                autoFocus
               />
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 px-2"
-                  onClick={saveDescription}
-                >
-                  <Check className="h-3 w-3 text-green-600 mr-1" />
-                  Save
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 px-2"
-                  onClick={cancelDescriptionEdit}
-                >
-                  <X className="h-3 w-3 text-red-600 mr-1" />
-                  Cancel
-                </Button>
-              </div>
-            </div>
+            ) : (
+              <h3 className="font-semibold text-card-foreground text-sm leading-tight flex-1">
+                {card.title}
+              </h3>
+            )}
+          </div>
+        </div>
+
+        {/* Description - Editable when editing */}
+        <div>
+          {isEditing ? (
+            <Textarea
+              value={tempDescription}
+              onChange={(e) => setTempDescription(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.ctrlKey) saveChanges();
+                if (e.key === "Escape") cancelEdit();
+              }}
+              className="min-h-[40px] text-xs resize-none"
+              placeholder="Enter description..."
+            />
+          ) : card.description ? (
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {card.description}
+            </p>
           ) : (
-            <div
-              className="group cursor-pointer"
-              onClick={startEditingDescription}
-            >
-              {card.description ? (
-                <p className="text-xs text-muted-foreground line-clamp-2 group-hover:text-foreground transition-colors">
-                  {card.description}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground/50 italic group-hover:text-muted-foreground transition-colors">
-                  Click to add description...
-                </p>
-              )}
-            </div>
+            <p className="text-xs text-muted-foreground/50 italic">
+              No description
+            </p>
           )}
         </div>
       </div>
@@ -621,52 +605,28 @@ export default function MetricCard({ data, selected }: NodeProps) {
           </div>
         )}
 
-        {/* Editable Tags */}
+        {/* Read-only Tags */}
         <div className="space-y-1">
-          {isEditingTags ? (
-            <div className="space-y-2">
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-xs text-muted-foreground">Tags:</span>
+            {isEditing ? (
               <TagInput
                 tags={tempTags}
-                onChange={handleTagsChange}
+                onChange={setTempTags}
                 placeholder="Add tags..."
                 maxTags={10}
-                variant="secondary"
                 className="text-xs"
               />
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 px-2"
-                  onClick={saveTags}
-                >
-                  <Check className="h-3 w-3 text-green-600 mr-1" />
-                  Save
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 px-2"
-                  onClick={cancelTagsEdit}
-                >
-                  <X className="h-3 w-3 text-red-600 mr-1" />
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 flex-wrap">
-              <span className="text-xs text-muted-foreground">Tags:</span>
+            ) : (
               <TagsList
                 tags={card.tags}
                 variant="secondary"
-                onAddTag={handleAddTag}
-                showAddButton={true}
+                showAddButton={false}
                 maxDisplayTags={2}
                 useColorfulTags={true}
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Assignee info (if available) */}
@@ -679,6 +639,170 @@ export default function MetricCard({ data, selected }: NodeProps) {
           </div>
         )}
       </div>
+
+      {/* Node Toolbar - React Flow built-in positioning */}
+      {!isPreview && (
+        <NodeToolbar>
+          <div className="flex items-center gap-1 bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-1">
+            {/* Quick View */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewDetails()}
+              className="h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600 hover:scale-110 transition-all duration-200"
+              title="View Details"
+            >
+              <Eye className="h-3 w-3" />
+            </Button>
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+
+            {/* Create Relationship */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCreateRelationship}
+              className="h-8 w-8 p-0 hover:bg-purple-50 hover:text-purple-600 hover:scale-110 transition-all duration-200"
+              title="Create Relationship"
+            >
+              <Link className="h-3 w-3" />
+            </Button>
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+
+            {/* Collapse/Expand */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCollapseExpand}
+              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              title="Collapse/Expand"
+            >
+              <Minimize2 className="h-3 w-3" />
+            </Button>
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+
+            {/* Duplicate */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDuplicate}
+              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              title="Duplicate"
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+
+            {/* Comments */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewDetails("comments")}
+              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              title="Comments"
+            >
+              <MessageSquare className="h-3 w-3" />
+            </Button>
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+
+            {/* Data */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewDetails("data")}
+              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              title="Data"
+            >
+              <BarChart3 className="h-3 w-3" />
+            </Button>
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+
+            {/* Segments */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewDetails("settings")}
+              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              title="Segments"
+            >
+              <Database className="h-3 w-3" />
+            </Button>
+
+            {/* Slice by Dimension (only for Data/Metric nodes) */}
+            {card.category === "Data/Metric" && (
+              <>
+                {/* Divider */}
+                <div className="w-px h-4 bg-gray-300 mx-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDimensionSlice}
+                  className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+                  title="Slice by Dimension"
+                >
+                  <Layers className="h-3 w-3" />
+                </Button>
+              </>
+            )}
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+
+            {/* Delete with confirmation */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 hover:scale-110 transition-all duration-200"
+                  title="Delete"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Card</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{card.title}"? This action
+                    cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </NodeToolbar>
+      )}
+
+      {/* Dimension Slice Modal */}
+      {!isPreview && card.category === "Data/Metric" && (
+        <DimensionSliceModal
+          isOpen={isDimensionSliceOpen}
+          onClose={() => setIsDimensionSliceOpen(false)}
+          parentCard={card}
+          onSlice={handleSlice}
+        />
+      )}
     </div>
   );
 }
