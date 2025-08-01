@@ -3,6 +3,7 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
+  getSmoothStepPath,
   useReactFlow,
 } from "@xyflow/react";
 import type { EdgeProps } from "@xyflow/react";
@@ -34,6 +35,7 @@ import type {
 interface DynamicEdgeData {
   relationship: Relationship;
   onOpenRelationshipSheet?: (relationshipId: string) => void;
+  onSwitchToRelationship?: (relationshipId: string) => void;
   [key: string]: unknown;
 }
 
@@ -41,40 +43,62 @@ interface DynamicEdgeProps extends EdgeProps {
   data: DynamicEdgeData;
 }
 
-// Relationship type icons and colors
-const getRelationshipTypeConfig = (type: RelationshipType) => {
+// Relationship type styling based on PRD specifications
+const getRelationshipTypeConfig = (type: RelationshipType, weight?: number) => {
+  const getColorByWeight = (weight?: number) => {
+    if (weight === undefined || weight === 0) return "#6b7280"; // Gray for no correlation
+    return weight > 0 ? "#16a34a" : "#dc2626"; // Green for positive, red for negative
+  };
+
+  // Check if relationship type needs numeric button - TODO: Use when implementing dynamic button logic
+  // const needsNumericButton = (type: RelationshipType) => {
+  //   return ["Deterministic", "Probabilistic", "Causal"].includes(type);
+  // };
+
   switch (type) {
     case "Deterministic":
       return {
         icon: ArrowRight,
-        color: "text-blue-600",
-        stroke: "#2563eb",
+        color: "text-gray-600",
+        stroke: "#6b7280", // Gray base color
         label: "Deterministic",
-        description: "Direct causal relationship",
+        description: "Formulaic relationship",
+        lineStyle: "smoothstep", // Rigid/formulaic
+        buttonValue: weight ? `${weight}` : "1.0",
+        showButton: true,
       };
     case "Probabilistic":
       return {
         icon: TrendingUp,
-        color: "text-green-600",
-        stroke: "#16a34a",
+        color: "text-gray-600",
+        stroke: getColorByWeight(weight),
         label: "Probabilistic",
         description: "Statistical correlation",
+        lineStyle: "dotted",
+        buttonValue: weight ? `${weight}` : "0.0",
+        showButton: true,
       };
     case "Causal":
       return {
         icon: Zap,
-        color: "text-yellow-600",
-        stroke: "#ca8a04",
+        color: "text-gray-600",
+        stroke: getColorByWeight(weight),
         label: "Causal",
         description: "Proven causal influence",
+        lineStyle: "solid",
+        buttonValue: weight ? `${weight}` : "0.0",
+        showButton: true,
       };
     case "Compositional":
       return {
         icon: Layers,
-        color: "text-purple-600",
-        stroke: "#9333ea",
+        color: "text-gray-600",
+        stroke: "#6b7280", // Gray base color
         label: "Compositional",
         description: "Part-of relationship",
+        lineStyle: "dotted-smoothstep", // Hierarchical with dots
+        buttonValue: weight ? `${weight}` : "1.0",
+        showButton: false, // No numeric value needed
       };
     default:
       return {
@@ -83,40 +107,39 @@ const getRelationshipTypeConfig = (type: RelationshipType) => {
         stroke: "#6b7280",
         label: "Unknown",
         description: "Undefined relationship",
+        lineStyle: "solid",
+        buttonValue: "0.0",
+        showButton: false,
       };
   }
 };
 
-// Confidence level styling
+// Confidence level styling - affects button appearance, not line style
 const getConfidenceConfig = (confidence: ConfidenceLevel) => {
   switch (confidence) {
     case "High":
       return {
-        strokeWidth: 3,
-        strokeDasharray: "none",
-        opacity: 1,
         badge: "bg-green-100 text-green-800 border-green-200",
+        buttonOpacity: 1,
+        buttonBorder: "border-green-300",
       };
     case "Medium":
       return {
-        strokeWidth: 2,
-        strokeDasharray: "5,5",
-        opacity: 0.8,
         badge: "bg-yellow-100 text-yellow-800 border-yellow-200",
+        buttonOpacity: 0.9,
+        buttonBorder: "border-yellow-300",
       };
     case "Low":
       return {
-        strokeWidth: 1,
-        strokeDasharray: "2,8",
-        opacity: 0.6,
         badge: "bg-red-100 text-red-800 border-red-200",
+        buttonOpacity: 0.7,
+        buttonBorder: "border-red-300",
       };
     default:
       return {
-        strokeWidth: 1,
-        strokeDasharray: "2,8",
-        opacity: 0.4,
         badge: "bg-gray-100 text-gray-800 border-gray-200",
+        buttonOpacity: 0.5,
+        buttonBorder: "border-gray-300",
       };
   }
 };
@@ -138,28 +161,89 @@ export default function DynamicEdge({
   const [isHovered, setIsHovered] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
-  const { relationship, onOpenRelationshipSheet } = data;
-  const typeConfig = getRelationshipTypeConfig(relationship.type);
+  const { relationship, onOpenRelationshipSheet, onSwitchToRelationship } =
+    data;
+  const typeConfig = getRelationshipTypeConfig(
+    relationship.type,
+    relationship.weight
+  );
   const confidenceConfig = getConfidenceConfig(relationship.confidence);
 
   // Handle double-click to open relationship sheet
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      onOpenRelationshipSheet?.(relationship.id);
-      console.log("🔗 Double-clicked relationship:", relationship.id);
+      // If relationship sheet is open, switch to this relationship instead of opening new sheet
+      if (onSwitchToRelationship) {
+        onSwitchToRelationship(relationship.id);
+        console.log(
+          "🔗 Double-clicked relationship (switch):",
+          relationship.id
+        );
+      } else if (onOpenRelationshipSheet) {
+        onOpenRelationshipSheet(relationship.id);
+        console.log("🔗 Double-clicked relationship (open):", relationship.id);
+      }
     },
-    [onOpenRelationshipSheet, relationship.id]
+    [onOpenRelationshipSheet, onSwitchToRelationship, relationship.id]
   );
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
+  // Handle button click to open relationship sheet
+  const handleButtonClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log("🔗 Button clicked relationship:", relationship.id);
+      // If relationship sheet is open, switch to this relationship instead of opening new sheet
+      if (onSwitchToRelationship) {
+        onSwitchToRelationship(relationship.id);
+        console.log("🔗 Called onSwitchToRelationship with:", relationship.id);
+      } else if (onOpenRelationshipSheet) {
+        onOpenRelationshipSheet(relationship.id);
+        console.log("🔗 Called onOpenRelationshipSheet with:", relationship.id);
+      } else {
+        console.error("❌ No relationship sheet handler defined!");
+      }
+    },
+    [onOpenRelationshipSheet, onSwitchToRelationship, relationship.id]
+  );
+
+  // Get path based on relationship type
+  const getEdgePath = () => {
+    if (typeConfig.lineStyle === "smoothstep") {
+      // Use smoothstep for deterministic relationships
+      return getSmoothStepPath({
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+      });
+    } else if (typeConfig.lineStyle === "dotted-smoothstep") {
+      // Use smoothstep with dots for compositional relationships
+      return getSmoothStepPath({
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+      });
+    } else {
+      // Use bezier for probabilistic and causal
+      return getBezierPath({
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+      });
+    }
+  };
+
+  const [edgePath, labelX, labelY] = getEdgePath();
 
   const handleDelete = useCallback(() => {
     if (confirm("Are you sure you want to delete this relationship?")) {
@@ -168,9 +252,13 @@ export default function DynamicEdge({
   }, [deleteElements, id]);
 
   const handleOpenSheet = useCallback(() => {
-    onOpenRelationshipSheet?.(relationship.id);
+    if (onSwitchToRelationship) {
+      onSwitchToRelationship(relationship.id);
+    } else if (onOpenRelationshipSheet) {
+      onOpenRelationshipSheet(relationship.id);
+    }
     setShowActions(false);
-  }, [onOpenRelationshipSheet, relationship.id]);
+  }, [onOpenRelationshipSheet, onSwitchToRelationship, relationship.id]);
 
   const handleViewEvidence = useCallback(() => {
     console.log("View evidence for relationship:", relationship.id);
@@ -179,16 +267,20 @@ export default function DynamicEdge({
 
   return (
     <>
-      {/* Main Edge Path with Double-Click Support */}
+      {/* Main Edge Path with Relationship Type Styling */}
       <BaseEdge
         path={edgePath}
         markerEnd={markerEnd}
         style={{
           ...style,
           stroke: typeConfig.stroke,
-          strokeWidth: confidenceConfig.strokeWidth,
-          strokeDasharray: confidenceConfig.strokeDasharray,
-          opacity: selected || isHovered ? 1 : confidenceConfig.opacity,
+          strokeWidth: 2,
+          strokeDasharray:
+            typeConfig.lineStyle === "dotted" ||
+            typeConfig.lineStyle === "dotted-smoothstep"
+              ? "5,5"
+              : "none",
+          opacity: selected || isHovered ? 1 : 0.8,
           transition: "all 0.2s ease-in-out",
           cursor: "pointer",
         }}
@@ -202,7 +294,7 @@ export default function DynamicEdge({
         path={edgePath}
         style={{
           stroke: "transparent",
-          strokeWidth: Math.max(12, confidenceConfig.strokeWidth + 8), // Wider invisible area
+          strokeWidth: 20, // Wider invisible area for easier clicking
           cursor: "pointer",
         }}
         onMouseEnter={() => setIsHovered(true)}
@@ -300,6 +392,39 @@ export default function DynamicEdge({
           </div>
         </div>
       </EdgeLabelRenderer>
+
+      {/* Relationship Management Button - Only for Numeric Relationships */}
+      {typeConfig.showButton && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              pointerEvents: "all",
+            }}
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleButtonClick}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                // TODO: Show confidence context menu
+                console.log("Confidence:", relationship.confidence);
+              }}
+              className={`h-8 w-8 p-0 rounded-full bg-white shadow-sm transition-all duration-200 ${confidenceConfig.buttonBorder} hover:bg-gray-50 hover:border-gray-400`}
+              style={{
+                opacity: confidenceConfig.buttonOpacity,
+              }}
+              title={`${typeConfig.label} Relationship (${relationship.confidence} confidence) - Click to edit, Right-click for options`}
+            >
+              <span className="text-xs font-mono font-medium text-gray-700">
+                {typeConfig.buttonValue}
+              </span>
+            </Button>
+          </div>
+        </EdgeLabelRenderer>
+      )}
     </>
   );
 }

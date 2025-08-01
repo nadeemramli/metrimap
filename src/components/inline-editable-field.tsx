@@ -1,21 +1,22 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef, useEffect } from "react"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { Check, X } from "lucide-react"
+import { useState, useRef, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Check, X } from "lucide-react";
 
 interface InlineEditableFieldProps {
-  value: string
-  onSave: (value: string) => void
-  isEditing: boolean
-  onEditingChange: (editing: boolean) => void
-  multiline?: boolean
-  placeholder?: string
-  className?: string
+  value: string;
+  onSave: (value: string) => void;
+  isEditing: boolean;
+  onEditingChange: (editing: boolean) => void;
+  multiline?: boolean;
+  placeholder?: string;
+  className?: string;
+  readOnly?: boolean;
 }
 
 export function InlineEditableField({
@@ -26,42 +27,43 @@ export function InlineEditableField({
   multiline = false,
   placeholder,
   className = "",
+  readOnly = false,
 }: InlineEditableFieldProps) {
-  const [editValue, setEditValue] = useState(value)
-  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
+  const [editValue, setEditValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
+      inputRef.current.focus();
+      inputRef.current.select();
     }
-  }, [isEditing])
+  }, [isEditing]);
 
   useEffect(() => {
-    setEditValue(value)
-  }, [value])
+    setEditValue(value);
+  }, [value]);
 
   const handleSave = () => {
-    onSave(editValue)
-    onEditingChange(false)
-  }
+    onSave(editValue);
+    onEditingChange(false);
+  };
 
   const handleCancel = () => {
-    setEditValue(value)
-    onEditingChange(false)
-  }
+    setEditValue(value);
+    onEditingChange(false);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !multiline) {
-      e.preventDefault()
-      handleSave()
+      e.preventDefault();
+      handleSave();
     } else if (e.key === "Escape") {
-      handleCancel()
+      handleCancel();
     }
-  }
+  };
 
   if (isEditing) {
-    const InputComponent = multiline ? Textarea : Input
+    const InputComponent = multiline ? Textarea : Input;
     return (
       <div className="flex items-center gap-2">
         <InputComponent
@@ -82,16 +84,16 @@ export function InlineEditableField({
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div
-      className={`cursor-pointer hover:bg-muted/50 rounded px-2 py-1 transition-colors ${className}`}
-      onDoubleClick={() => onEditingChange(true)}
-      title="Double-click to edit"
+      className={`${readOnly ? "cursor-default" : "cursor-pointer hover:bg-muted/50"} rounded px-2 py-1 transition-colors ${className}`}
+      onDoubleClick={readOnly ? undefined : () => onEditingChange(true)}
+      title={readOnly ? undefined : "Double-click to edit"}
     >
       {value || <span className="text-muted-foreground">{placeholder}</span>}
     </div>
-  )
+  );
 }

@@ -17,7 +17,6 @@ import {
   Controls,
   ControlButton,
 } from "@xyflow/react";
-import { Button } from "@/components/ui/button";
 import {
   Users,
   Keyboard,
@@ -48,12 +47,11 @@ import {
   RelationshipSheet,
   GroupNode,
 } from "@/components/canvas";
-import BulkOperationsToolbar from "@/components/canvas/BulkOperationsToolbar";
 import {
   useKeyboardShortcuts,
   createShortcut,
 } from "@/hooks/useKeyboardShortcuts";
-import { useAccessibility } from "@/hooks/useAccessibility";
+// import { useAccessibility } from "@/hooks/useAccessibility";
 import KeyboardShortcutsHelp from "@/components/ui/KeyboardShortcutsHelp";
 import QuickSearchCommand, {
   useQuickSearch,
@@ -62,12 +60,22 @@ import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
 import useAutoSave from "@/hooks/useAutoSave";
 import { generateUUID } from "@/lib/utils/validation";
 import ContextMenu from "@/components/canvas/ContextMenu";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 // Convert MetricCard to ReactFlow Node with callbacks
 const convertToNode = (
   card: MetricCardType,
   onOpenSettings: (cardId: string, tab?: string) => void,
   onNodeClick: (cardId: string) => void,
+  onSwitchToCard: (cardId: string, tab?: string) => void,
   selectedNodeIds: string[] = []
 ): Node => ({
   id: card.id,
@@ -76,15 +84,19 @@ const convertToNode = (
     card: card, // Store full card data for our custom component
     onOpenSettings, // Pass the settings callback
     onNodeClick, // Pass the click callback
+    onSwitchToCard, // Pass the switch callback for persistent sheets
   },
   type: "metricCard", // Use our custom node type
   selected: selectedNodeIds.includes(card.id),
+  // Removed dragHandle to enable touch device + handle connections
+  // The visual drag handle remains as UI guidance
 });
 
 // Convert Relationship to ReactFlow Edge with DynamicEdge
 const convertToEdge = (
   relationship: Relationship,
-  onOpenRelationshipSheet: (relationshipId: string) => void
+  onOpenRelationshipSheet: (relationshipId: string) => void,
+  onSwitchToRelationship: (relationshipId: string) => void
 ): Edge => ({
   id: relationship.id,
   source: relationship.sourceId,
@@ -93,6 +105,7 @@ const convertToEdge = (
   data: {
     relationship,
     onOpenRelationshipSheet,
+    onSwitchToRelationship,
   },
 });
 
@@ -139,6 +152,8 @@ function CanvasPageInner() {
   const [relationshipSheetId, setRelationshipSheetId] = useState<
     string | undefined
   >();
+  const [isSettingsSheetOpen, setIsSettingsSheetOpen] = useState(false);
+  const [isRelationshipSheetOpen, setIsRelationshipSheetOpen] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   // Add Node on Edge Drop state
@@ -147,15 +162,7 @@ function CanvasPageInner() {
     sourceNodeId: string;
   } | null>(null);
 
-  // Proximity Connect state
-  const [proximityConnections, setProximityConnections] = useState<
-    Array<{
-      from: string;
-      to: string;
-      fromPosition: { x: number; y: number };
-      toPosition: { x: number; y: number };
-    }>
-  >([]);
+  // Proximity Connect - REMOVED for better drag/toolbar UX
 
   // Context Menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -179,8 +186,8 @@ function CanvasPageInner() {
   // React Flow hooks
   const { screenToFlowPosition } = useReactFlow();
 
-  // Accessibility hook
-  const { announce } = useAccessibility();
+  // Accessibility hook - TODO: Implement accessibility announcements
+  // const { announce } = useAccessibility();
 
   // Zustand stores
   const {
@@ -599,6 +606,7 @@ function CanvasPageInner() {
       setSettingsInitialTab(tab);
     }
     setSettingsCardId(cardId);
+    setIsSettingsSheetOpen(true);
   }, []);
 
   // Handle node click for toolbar
@@ -608,7 +616,10 @@ function CanvasPageInner() {
 
   // Handle opening relationship sheet
   const handleOpenRelationshipSheet = useCallback((relationshipId: string) => {
+    console.log("🎯 Opening relationship sheet for:", relationshipId);
     setRelationshipSheetId(relationshipId);
+    setIsRelationshipSheetOpen(true);
+    console.log("🎯 relationshipSheetId set to:", relationshipId);
   }, []);
 
   // Handle group operations
@@ -641,6 +652,31 @@ function CanvasPageInner() {
     [canvas?.groups, updateGroup]
   );
 
+  // Handle closing settings sheet
+  const handleCloseSettingsSheet = useCallback(() => {
+    setIsSettingsSheetOpen(false);
+    setSettingsCardId(undefined);
+  }, []);
+
+  // Handle closing relationship sheet
+  const handleCloseRelationshipSheet = useCallback(() => {
+    setIsRelationshipSheetOpen(false);
+    setRelationshipSheetId(undefined);
+  }, []);
+
+  // Handle switching to a different card (for persistent sheet)
+  const handleSwitchToCard = useCallback((cardId: string, tab?: string) => {
+    if (tab) {
+      setSettingsInitialTab(tab);
+    }
+    setSettingsCardId(cardId);
+  }, []);
+
+  // Handle switching to a different relationship (for persistent sheet)
+  const handleSwitchToRelationship = useCallback((relationshipId: string) => {
+    setRelationshipSheetId(relationshipId);
+  }, []);
+
   // Handle auto-layout from controls
   const handleNodesChange = useCallback(
     (newNodes: Node[]) => {
@@ -663,6 +699,7 @@ function CanvasPageInner() {
           card,
           handleOpenSettings,
           handleNodeClick,
+          handleSwitchToCard,
           selectedNodeIds
         )
       ) || [];
@@ -692,122 +729,16 @@ function CanvasPageInner() {
   const edges = useMemo(
     () =>
       canvas?.edges.map((edge) =>
-        convertToEdge(edge, handleOpenRelationshipSheet)
+        convertToEdge(
+          edge,
+          handleOpenRelationshipSheet,
+          handleSwitchToRelationship
+        )
       ) || [],
-    [canvas?.edges, handleOpenRelationshipSheet]
+    [canvas?.edges, handleOpenRelationshipSheet, handleSwitchToRelationship]
   );
 
-  // Proximity Connect - Show visual indicators during drag and auto-connect on completion
-  const updateProximityIndicators = useCallback(
-    (draggedNode: Node, newPosition: { x: number; y: number }) => {
-      const PROXIMITY_THRESHOLD = 100; // pixels - slightly larger for visual feedback
-      const NODE_SIZE = { width: 320, height: 200 }; // MetricCard dimensions
-
-      // Calculate the center of the dragged node
-      const draggedCenter = {
-        x: newPosition.x + NODE_SIZE.width / 2,
-        y: newPosition.y + NODE_SIZE.height / 2,
-      };
-
-      // Find nearby nodes and create visual indicators
-      const proximityIndicators = nodes
-        .filter((node) => {
-          if (node.id === draggedNode.id) return false; // Skip self
-
-          const nodeCenter = {
-            x: node.position.x + NODE_SIZE.width / 2,
-            y: node.position.y + NODE_SIZE.height / 2,
-          };
-
-          const distance = Math.sqrt(
-            Math.pow(draggedCenter.x - nodeCenter.x, 2) +
-              Math.pow(draggedCenter.y - nodeCenter.y, 2)
-          );
-
-          return distance <= PROXIMITY_THRESHOLD;
-        })
-        .map((nearbyNode) => ({
-          from: draggedNode.id,
-          to: nearbyNode.id,
-          fromPosition: newPosition,
-          toPosition: nearbyNode.position,
-        }));
-
-      setProximityConnections(proximityIndicators);
-    },
-    [nodes]
-  );
-
-  const checkProximityAndConnect = useCallback(
-    async (draggedNode: Node, newPosition: { x: number; y: number }) => {
-      const PROXIMITY_THRESHOLD = 80; // pixels - slightly smaller for actual connection
-      const NODE_SIZE = { width: 320, height: 200 }; // MetricCard dimensions
-
-      // Calculate the center of the dragged node
-      const draggedCenter = {
-        x: newPosition.x + NODE_SIZE.width / 2,
-        y: newPosition.y + NODE_SIZE.height / 2,
-      };
-
-      // Find nearby nodes
-      const nearbyNodes = nodes.filter((node) => {
-        if (node.id === draggedNode.id) return false; // Skip self
-
-        const nodeCenter = {
-          x: node.position.x + NODE_SIZE.width / 2,
-          y: node.position.y + NODE_SIZE.height / 2,
-        };
-
-        const distance = Math.sqrt(
-          Math.pow(draggedCenter.x - nodeCenter.x, 2) +
-            Math.pow(draggedCenter.y - nodeCenter.y, 2)
-        );
-
-        return distance <= PROXIMITY_THRESHOLD;
-      });
-
-      // Auto-connect to nearby nodes
-      for (const nearbyNode of nearbyNodes) {
-        // Check if connection doesn't already exist
-        const connectionExists = edges.some(
-          (edge) =>
-            (edge.source === draggedNode.id && edge.target === nearbyNode.id) ||
-            (edge.source === nearbyNode.id && edge.target === draggedNode.id)
-        );
-
-        if (!connectionExists) {
-          const newRelationshipData = {
-            sourceId: draggedNode.id,
-            targetId: nearbyNode.id,
-            type: "Probabilistic" as const,
-            confidence: "Low" as const, // Lower confidence for auto-proximity connections
-            evidence: [],
-          };
-
-          try {
-            await createEdge(newRelationshipData);
-            console.log(
-              `🔗 Proximity auto-connect: ${draggedNode.id} → ${nearbyNode.id}`
-            );
-
-            // Visual feedback
-            announce(
-              `Connected to nearby node: ${nearbyNode.data?.title || nearbyNode.id}`
-            );
-          } catch (error) {
-            console.error(
-              `❌ Failed proximity auto-connect ${draggedNode.id} → ${nearbyNode.id}:`,
-              error
-            );
-          }
-        }
-      }
-
-      // Clear proximity indicators after connection attempt
-      setProximityConnections([]);
-    },
-    [nodes, edges, createEdge, announce]
-  );
+  // Proximity Connect - REMOVED for better drag/toolbar UX
 
   // Load canvas when component mounts or canvasId changes
   useEffect(() => {
@@ -838,19 +769,7 @@ function CanvasPageInner() {
             // Add to pending changes for auto-save
             addPendingChange(change.id);
 
-            // Proximity Connect - Show indicators during drag, connect on completion
-            if (change.position) {
-              const currentNode = nodes.find((n) => n.id === change.id);
-              if (currentNode) {
-                if (change.dragging) {
-                  // Show proximity indicators during drag
-                  updateProximityIndicators(currentNode, change.position);
-                } else {
-                  // Auto-connect when drag completes
-                  checkProximityAndConnect(currentNode, change.position);
-                }
-              }
-            }
+            // Proximity Connect - REMOVED for better drag/toolbar UX
 
             // For manual dragging, add extra logging
             if (!change.dragging) {
@@ -1161,7 +1080,8 @@ function CanvasPageInner() {
           onNodeContextMenu={handleNodeContextMenu}
           onPaneClick={handlePaneClick}
           isValidConnection={isValidConnection}
-          connectionMode={"loose" as ConnectionMode}
+          connectionMode={"strict" as ConnectionMode} // Better for touch devices - requires handle targeting
+          connectOnClick={true} // Enable touch device support - click to connect handles
           snapToGrid={true}
           snapGrid={[15, 15]}
           connectionLineStyle={{
@@ -1251,80 +1171,7 @@ function CanvasPageInner() {
         >
           <Background />
 
-          {/* Proximity Connection Indicators */}
-          {proximityConnections.length > 0 && (
-            <svg
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                pointerEvents: "none",
-                zIndex: 1000,
-              }}
-            >
-              <defs>
-                <linearGradient
-                  id="proximityGradient"
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="0%"
-                >
-                  <stop
-                    offset="0%"
-                    style={{ stopColor: "#f59e0b", stopOpacity: 0.8 }}
-                  />
-                  <stop
-                    offset="100%"
-                    style={{ stopColor: "#f97316", stopOpacity: 1 }}
-                  />
-                </linearGradient>
-              </defs>
-              {proximityConnections.map((connection, index) => {
-                const fromX = connection.fromPosition.x + 160; // Center of node
-                const fromY = connection.fromPosition.y + 100;
-                const toX = connection.toPosition.x + 160;
-                const toY = connection.toPosition.y + 100;
-
-                return (
-                  <g
-                    key={`proximity-${connection.from}-${connection.to}-${index}`}
-                  >
-                    {/* Proximity connection line */}
-                    <path
-                      d={`M${fromX},${fromY} C${fromX + 50},${fromY} ${toX - 50},${toY} ${toX},${toY}`}
-                      stroke="url(#proximityGradient)"
-                      strokeWidth={2}
-                      fill="none"
-                      strokeDasharray="5,5"
-                      className="animate-pulse"
-                    />
-                    {/* Proximity indicators */}
-                    <circle
-                      cx={toX}
-                      cy={toY}
-                      r={8}
-                      fill="#f97316"
-                      stroke="white"
-                      strokeWidth={2}
-                      className="animate-ping"
-                    />
-                    <circle
-                      cx={fromX}
-                      cy={fromY}
-                      r={6}
-                      fill="#f59e0b"
-                      stroke="white"
-                      strokeWidth={1}
-                      className="animate-pulse"
-                    />
-                  </g>
-                );
-              })}
-            </svg>
-          )}
+          {/* Proximity Connect - REMOVED for better drag/toolbar UX */}
 
           {/* Left Bottom Panel - Core Functions */}
           <Controls className="bg-card border border-border">
@@ -1409,23 +1256,24 @@ function CanvasPageInner() {
           />
         )}
 
-        {/* Bulk Operations Toolbar */}
-        <BulkOperationsToolbar />
+        {/* Bulk Operations Toolbar - Removed as we only use the top NodeToolbar */}
       </div>
 
       {/* Card Settings Sheet */}
       <CardSettingsSheet
-        isOpen={!!settingsCardId}
-        onClose={() => setSettingsCardId(undefined)}
+        isOpen={isSettingsSheetOpen}
+        onClose={handleCloseSettingsSheet}
         cardId={settingsCardId}
         initialTab={settingsInitialTab}
+        onSwitchToCard={handleSwitchToCard}
       />
 
       {/* Relationship Sheet */}
       <RelationshipSheet
-        isOpen={!!relationshipSheetId}
-        onClose={() => setRelationshipSheetId(undefined)}
+        isOpen={isRelationshipSheetOpen}
+        onClose={handleCloseRelationshipSheet}
         relationshipId={relationshipSheetId}
+        onSwitchToRelationship={handleSwitchToRelationship}
       />
 
       {/* Keyboard Shortcuts Help */}
@@ -1452,40 +1300,55 @@ function CanvasPageInner() {
 
       {/* Category Selection for Edge Drop */}
       {pendingNodeDrop && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-card border border-border rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Select Node Type</h3>
-            <div className="grid grid-cols-2 gap-3">
+        <AlertDialog
+          open={!!pendingNodeDrop}
+          onOpenChange={() => setPendingNodeDrop(null)}
+        >
+          <AlertDialogContent className="max-w-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Select Node Type</AlertDialogTitle>
+              <AlertDialogDescription>
+                Choose the type of node you want to create. This will determine
+                the card's appearance and functionality.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="grid grid-cols-2 gap-3 py-4">
               {[
                 {
                   category: "Core/Value",
                   label: "Core/Value",
                   icon: "🎯",
                   description: "Foundational value elements",
+                  color: "bg-blue-50 border-blue-200 text-blue-900",
                 },
                 {
                   category: "Data/Metric",
                   label: "Data/Metric",
                   icon: "📊",
                   description: "Quantifiable measures",
+                  color: "bg-green-50 border-green-200 text-green-900",
                 },
                 {
                   category: "Work/Action",
                   label: "Work/Action",
                   icon: "⚡",
                   description: "Business activities",
+                  color: "bg-orange-50 border-orange-200 text-orange-900",
                 },
                 {
                   category: "Ideas/Hypothesis",
                   label: "Ideas/Hypothesis",
                   icon: "💡",
                   description: "Assumptions & drivers",
+                  color: "bg-purple-50 border-purple-200 text-purple-900",
                 },
                 {
                   category: "Metadata",
                   label: "Metadata",
                   icon: "🏷️",
                   description: "Contextual information",
+                  color: "bg-gray-50 border-gray-200 text-gray-900",
                 },
               ].map((template) => (
                 <button
@@ -1493,30 +1356,24 @@ function CanvasPageInner() {
                   onClick={() =>
                     handleCategorySelect(template.category as CardCategory)
                   }
-                  className="p-4 border border-border rounded-lg hover:bg-accent hover:border-accent-foreground transition-colors text-left"
+                  className={`p-4 border rounded-lg hover:scale-105 transition-all duration-200 text-left ${template.color} hover:shadow-md`}
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">{template.icon}</span>
-                    <span className="font-medium text-sm">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl">{template.icon}</span>
+                    <span className="font-semibold text-sm">
                       {template.label}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {template.description}
-                  </p>
+                  <p className="text-xs opacity-80">{template.description}</p>
                 </button>
               ))}
             </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setPendingNodeDrop(null)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
       {/* Quick Search */}

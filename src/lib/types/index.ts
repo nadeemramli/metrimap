@@ -106,6 +106,7 @@ export interface Relationship {
   
   // Evidence and knowledge
   evidence: EvidenceItem[];
+  notes?: string;
   
   // History for influence drift analysis
   history?: RelationshipHistoryEntry[];

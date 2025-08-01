@@ -159,7 +159,6 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           
           const updatedProject = await updateProjectInSupabase(projectId, {
             ...updates,
-            updated_at: new Date().toISOString(),
             settings: updates.settings ? JSON.parse(JSON.stringify(updates.settings)) : undefined,
           });
           

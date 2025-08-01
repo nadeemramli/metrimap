@@ -57,6 +57,7 @@ interface MetricCardNodeData {
   card: MetricCardType;
   onOpenSettings?: (cardId: string, tab?: string) => void;
   onNodeClick?: (cardId: string, position: { x: number; y: number }) => void;
+  onSwitchToCard?: (cardId: string, tab?: string) => void;
   isPreview?: boolean;
 }
 
@@ -127,6 +128,63 @@ const getCategoryColor = (category: MetricCardType["category"]) => {
   }
 };
 
+// Handle colors - reversed design with dark as default
+const getHandleStyles = () => {
+  return {
+    // Base handle style - dark as default (reversed)
+    backgroundColor: "#374151", // dark gray background
+    border: "2px solid #1f2937", // darker gray border
+
+    // Hover state - lighter
+    hoverBackgroundColor: "#4b5563", // lighter gray
+    hoverBorder: "2px solid #374151", // gray-700
+
+    // Active/clicked state for touch device toggle - white (reversed)
+    activeBackgroundColor: "#ffffff", // white background
+    activeBorder: "3px solid #d1d5db", // light gray border
+
+    // Connecting state (when handle is selected for connection)
+    connectingBackgroundColor: "#dbeafe", // blue-50
+    connectingBorder: "3px solid #2563eb", // blue-600
+  };
+};
+
+// Category hover colors (darker borders and shadows)
+const getCategoryHoverColor = (category: MetricCardType["category"]) => {
+  switch (category) {
+    case "Core/Value":
+      return "hover:border-blue-600 hover:shadow-blue-600/20";
+    case "Data/Metric":
+      return "hover:border-green-600 hover:shadow-green-600/20";
+    case "Work/Action":
+      return "hover:border-orange-600 hover:shadow-orange-600/20";
+    case "Ideas/Hypothesis":
+      return "hover:border-purple-600 hover:shadow-purple-600/20";
+    case "Metadata":
+      return "hover:border-gray-600 hover:shadow-gray-600/20";
+    default:
+      return "hover:border-gray-600 hover:shadow-gray-600/20";
+  }
+};
+
+// Category selected colors (darkest borders and shadows)
+const getCategorySelectedColor = (category: MetricCardType["category"]) => {
+  switch (category) {
+    case "Core/Value":
+      return "border-blue-800 shadow-blue-800/30 ring-1 ring-blue-700/40";
+    case "Data/Metric":
+      return "border-green-800 shadow-green-800/30 ring-1 ring-green-700/40";
+    case "Work/Action":
+      return "border-orange-800 shadow-orange-800/30 ring-1 ring-orange-700/40";
+    case "Ideas/Hypothesis":
+      return "border-purple-800 shadow-purple-800/30 ring-1 ring-purple-700/40";
+    case "Metadata":
+      return "border-gray-800 shadow-gray-800/30 ring-1 ring-gray-700/40";
+    default:
+      return "border-gray-800 shadow-gray-800/30 ring-1 ring-gray-700/40";
+  }
+};
+
 // Trend components
 const getTrendIcon = (trend: MetricValue["trend"]) => {
   switch (trend) {
@@ -178,6 +236,9 @@ export default function MetricCard({ data, selected }: NodeProps) {
 
   const isDataMetric = card.category === "Data/Metric";
   const categoryColor = getCategoryColor(card.category);
+  const categoryHoverColor = getCategoryHoverColor(card.category);
+  const categorySelectedColor = getCategorySelectedColor(card.category);
+  const handleStyles = getHandleStyles();
 
   // Canvas store for updates
   const { persistNodeUpdate, deleteNode, sliceMetricByDimensions } =
@@ -319,12 +380,71 @@ export default function MetricCard({ data, selected }: NodeProps) {
     }
   }, [selected, card.title, announce]);
 
+  // Inject custom handle styles for touch device states
+  useEffect(() => {
+    const styleId = "handle-neutral-styles";
+    let existingStyle = document.getElementById(styleId);
+
+    if (!existingStyle) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        /* Custom Handle Styles for Touch Device Toggle States - Reversed Design */
+        .handle-neutral.react-flow__handle {
+          background-color: ${handleStyles.backgroundColor} !important;
+          border: ${handleStyles.border} !important;
+          transition: all 0.2s ease !important;
+        }
+        
+        .handle-neutral.react-flow__handle:hover {
+          background-color: ${handleStyles.hoverBackgroundColor} !important;
+          border: ${handleStyles.hoverBorder} !important;
+          transform: scale(1.05) !important;
+        }
+        
+        .handle-neutral.react-flow__handle.connectionindicator {
+          background-color: ${handleStyles.activeBackgroundColor} !important;
+          border: ${handleStyles.activeBorder} !important;
+          transform: scale(1.1) !important;
+          box-shadow: 0 0 0 2px rgba(209, 213, 219, 0.5) !important;
+        }
+        
+        .handle-neutral.react-flow__handle.connectingfrom,
+        .handle-neutral.react-flow__handle.connectingto {
+          background-color: ${handleStyles.connectingBackgroundColor} !important;
+          border: ${handleStyles.connectingBorder} !important;
+          transform: scale(1.15) !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    return () => {
+      // Cleanup styles when component unmounts
+      const styleToRemove = document.getElementById(styleId);
+      if (styleToRemove) {
+        document.head.removeChild(styleToRemove);
+      }
+    };
+  }, [handleStyles]);
+
   // Read-only display - editing is now handled by the toolbar
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onNodeClick) {
+    // If settings sheet is open, switch to this card instead of opening new sheet
+    if (data.onSwitchToCard && typeof data.onSwitchToCard === "function") {
+      data.onSwitchToCard(card.id);
+    } else if (onNodeClick) {
       onNodeClick(card.id, card.position);
+    }
+  };
+
+  const handleCardDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (data.onOpenSettings && typeof data.onOpenSettings === "function") {
+      data.onOpenSettings(card.id);
     }
   };
 
@@ -338,14 +458,15 @@ export default function MetricCard({ data, selected }: NodeProps) {
     <div
       ref={cardRef}
       className={cn(
-        "bg-card border-2 rounded-lg shadow-lg min-w-[280px] max-w-[320px] cursor-pointer transition-all duration-200",
+        "bg-card border-2 rounded-lg shadow-lg min-w-[280px] max-w-[320px] cursor-pointer transition-all duration-200 relative",
         selected
-          ? "border-primary shadow-xl shadow-primary/25 ring-2 ring-primary/20 scale-[1.02] bg-card/95"
-          : "border-border hover:shadow-xl hover:scale-[1.01]",
+          ? `shadow-xl bg-card/98 ${categorySelectedColor}`
+          : `hover:shadow-xl ${categoryHoverColor}`,
         categoryColor,
         isPreview && "min-w-[200px] max-w-[240px] scale-75"
       )}
       onClick={handleCardClick}
+      onDoubleClick={handleCardDoubleClick}
       onKeyDown={createKeyboardNavigationHandler(
         handleCardActivate,
         handleCardActivate,
@@ -363,53 +484,92 @@ export default function MetricCard({ data, selected }: NodeProps) {
       })}
       tabIndex={0}
     >
-      {/* Enhanced Handles for Easy Connect */}
+      {/* Enhanced Handles for Touch Device & Handle Connections - Proper source/target mix */}
       {!isPreview && (
         <>
+          {/* Top Side - Source (can start connections) */}
           <Handle
-            type="target"
+            type="source"
             position={Position.Top}
-            className="w-3 h-3 border-2 border-background bg-blue-500 hover:bg-blue-600 hover:scale-125 transition-all duration-200"
+            className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
+            style={{
+              width: "20px",
+              height: "20px",
+              minWidth: "20px",
+              minHeight: "20px",
+              top: "-15px", // 75% outside for easy access
+              backgroundColor: handleStyles.backgroundColor,
+              border: handleStyles.border,
+            }}
+            id="top-source"
           />
-          <Handle
-            type="source"
-            position={Position.Bottom}
-            className="w-3 h-3 border-2 border-background bg-green-500 hover:bg-green-600 hover:scale-125 transition-all duration-200"
-          />
+
+          {/* Bottom Side - Target (can receive connections) */}
           <Handle
             type="target"
-            position={Position.Left}
-            className="w-3 h-3 border-2 border-background bg-blue-500 hover:bg-blue-600 hover:scale-125 transition-all duration-200"
+            position={Position.Bottom}
+            className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
+            style={{
+              width: "20px",
+              height: "20px",
+              minWidth: "20px",
+              minHeight: "20px",
+              bottom: "-15px", // 75% outside for easy access
+              backgroundColor: handleStyles.backgroundColor,
+              border: handleStyles.border,
+            }}
+            id="bottom-target"
           />
+
+          {/* Left Side - Source (can start connections) */}
           <Handle
             type="source"
+            position={Position.Left}
+            className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
+            style={{
+              width: "20px",
+              height: "20px",
+              minWidth: "20px",
+              minHeight: "20px",
+              left: "-15px", // 75% outside for easy access
+              backgroundColor: handleStyles.backgroundColor,
+              border: handleStyles.border,
+            }}
+            id="left-source"
+          />
+
+          {/* Right Side - Target (can receive connections) */}
+          <Handle
+            type="target"
             position={Position.Right}
-            className="w-3 h-3 border-2 border-background bg-green-500 hover:bg-green-600 hover:scale-125 transition-all duration-200"
+            className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
+            style={{
+              width: "20px",
+              height: "20px",
+              minWidth: "20px",
+              minHeight: "20px",
+              right: "-15px", // 75% outside for easy access
+              backgroundColor: handleStyles.backgroundColor,
+              border: handleStyles.border,
+            }}
+            id="right-target"
           />
         </>
       )}
 
       {/* Card Header */}
       <div className="p-3 border-b border-border/50">
-        {/* Dedicated Drag Handle Section */}
-        {!isPreview && (
-          <div className="absolute top-3 left-1/2 transform -translate-x-1/2 cursor-grab active:cursor-grabbing">
-            <div className="flex items-center gap-1 px-3 py-1 bg-muted/50 rounded-full text-xs text-muted-foreground hover:bg-muted transition-colors">
-              <GripVertical className="w-3 h-3" />
-              <span className="font-medium">Drag</span>
-              <GripVertical className="w-3 h-3" />
-            </div>
-          </div>
-        )}
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2 flex-1">
-            <span className="text-lg">{getCategoryIcon(card.category)}</span>
+            <span className="nodrag text-lg">
+              {getCategoryIcon(card.category)}
+            </span>
 
             {/* Category and Subcategory - Editable when editing */}
             {!isPreview && (
               <div className="flex items-center gap-1 text-xs">
                 {isEditing ? (
-                  <>
+                  <div className="nodrag flex items-center gap-1">
                     <Select
                       value={tempCategory}
                       onValueChange={(value: CardCategory) => {
@@ -417,14 +577,15 @@ export default function MetricCard({ data, selected }: NodeProps) {
                         setTempSubCategory(""); // Reset subcategory when category changes
                       }}
                     >
-                      <SelectTrigger className="h-5 w-20 text-xs">
+                      <SelectTrigger className="nodrag h-5 w-20 text-xs">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="nodrag">
                         {categoryOptions.map((category) => (
                           <SelectItem
                             key={category.value}
                             value={category.value}
+                            className="nodrag"
                           >
                             {category.label}
                           </SelectItem>
@@ -438,13 +599,17 @@ export default function MetricCard({ data, selected }: NodeProps) {
                           value={tempSubCategory}
                           onValueChange={setTempSubCategory}
                         >
-                          <SelectTrigger className="h-5 w-16 text-xs">
+                          <SelectTrigger className="nodrag h-5 w-16 text-xs">
                             <SelectValue placeholder="Sub" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="nodrag">
                             {getSubCategoryOptions(tempCategory).map(
                               (subCat) => (
-                                <SelectItem key={subCat} value={subCat}>
+                                <SelectItem
+                                  key={subCat}
+                                  value={subCat}
+                                  className="nodrag"
+                                >
                                   {subCat}
                                 </SelectItem>
                               )
@@ -453,16 +618,16 @@ export default function MetricCard({ data, selected }: NodeProps) {
                         </Select>
                       </>
                     )}
-                  </>
+                  </div>
                 ) : (
                   <>
-                    <span className="text-muted-foreground">
+                    <span className="nodrag text-muted-foreground">
                       {card.category}
                     </span>
                     {card.subCategory && (
                       <>
-                        <span className="text-muted-foreground">→</span>
-                        <span className="text-muted-foreground">
+                        <span className="nodrag text-muted-foreground">→</span>
+                        <span className="nodrag text-muted-foreground">
                           {card.subCategory}
                         </span>
                       </>
@@ -473,42 +638,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
             )}
           </div>
 
-          {/* Edit button - only show when not in edit mode */}
-          {!isPreview && !isEditing && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={startEditing}
-              className="h-6 w-6 p-0 hover:bg-blue-50 hover:text-blue-600"
-              title="Edit Card"
-            >
-              <Edit className="h-3 w-3" />
-            </Button>
-          )}
-
-          {/* Save/Cancel buttons - only show when editing */}
-          {!isPreview && isEditing && (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={saveChanges}
-                className="h-6 w-6 p-0 hover:bg-green-50 hover:text-green-600"
-                title="Save Changes"
-              >
-                <Check className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={cancelEdit}
-                className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
-                title="Cancel Edit"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
+          {/* Edit button moved to toolbar */}
         </div>
 
         {/* Title - Editable when editing */}
@@ -522,12 +652,12 @@ export default function MetricCard({ data, selected }: NodeProps) {
                   if (e.key === "Enter") saveChanges();
                   if (e.key === "Escape") cancelEdit();
                 }}
-                className="h-6 text-sm font-semibold"
+                className="nodrag h-6 text-sm font-semibold"
                 placeholder="Enter title..."
                 autoFocus
               />
             ) : (
-              <h3 className="font-semibold text-card-foreground text-sm leading-tight flex-1">
+              <h3 className="nodrag font-semibold text-card-foreground text-sm leading-tight flex-1">
                 {card.title}
               </h3>
             )}
@@ -544,15 +674,15 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 if (e.key === "Enter" && e.ctrlKey) saveChanges();
                 if (e.key === "Escape") cancelEdit();
               }}
-              className="min-h-[40px] text-xs resize-none"
+              className="nodrag min-h-[40px] text-xs resize-none"
               placeholder="Enter description..."
             />
           ) : card.description ? (
-            <p className="text-xs text-muted-foreground line-clamp-2">
+            <p className="nodrag text-xs text-muted-foreground line-clamp-2">
               {card.description}
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground/50 italic">
+            <p className="nodrag text-xs text-muted-foreground/50 italic">
               No description
             </p>
           )}
@@ -561,22 +691,25 @@ export default function MetricCard({ data, selected }: NodeProps) {
 
       {/* Data/Metric Specific Content */}
       {isDataMetric && card.data && isExpanded && (
-        <div className="p-3 border-b border-border/50 bg-background/50">
-          <div className="space-y-2">
+        <div className="nodrag p-3 border-b border-border/50 bg-background/50">
+          <div className="nodrag space-y-2">
             {card.data.slice(0, 3).map((metric: MetricValue, index: number) => (
-              <div key={index} className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground font-medium">
+              <div
+                key={index}
+                className="nodrag flex items-center justify-between"
+              >
+                <span className="nodrag text-xs text-muted-foreground font-medium">
                   {metric.period}
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-card-foreground">
+                <div className="nodrag flex items-center gap-2">
+                  <span className="nodrag text-sm font-bold text-card-foreground">
                     {formatValue(metric.value)}
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="nodrag flex items-center gap-1">
                     {getTrendIcon(metric.trend)}
                     <span
                       className={cn(
-                        "text-xs font-medium",
+                        "nodrag text-xs font-medium",
                         getTrendColor(metric.trend)
                       )}
                     >
@@ -592,48 +725,50 @@ export default function MetricCard({ data, selected }: NodeProps) {
       )}
 
       {/* Card Footer */}
-      <div className="p-3 space-y-2">
+      <div className="nodrag p-3 space-y-2">
         {/* Causal Factors */}
         {card.causalFactors && card.causalFactors.length > 0 && (
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-muted-foreground">
+          <div className="nodrag flex items-center gap-2 mb-2">
+            <span className="nodrag text-xs text-muted-foreground">
               Causal Factor:
             </span>
-            <Badge variant="purple" className="text-xs font-medium">
+            <Badge variant="purple" className="nodrag text-xs font-medium">
               {card.causalFactors[0]}
             </Badge>
           </div>
         )}
 
         {/* Read-only Tags */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-xs text-muted-foreground">Tags:</span>
+        <div className="nodrag space-y-1">
+          <div className="nodrag flex items-center gap-1 flex-wrap">
+            <span className="nodrag text-xs text-muted-foreground">Tags:</span>
             {isEditing ? (
               <TagInput
                 tags={tempTags}
                 onChange={setTempTags}
                 placeholder="Add tags..."
                 maxTags={10}
-                className="text-xs"
+                className="nodrag text-xs"
               />
             ) : (
-              <TagsList
-                tags={card.tags}
-                variant="secondary"
-                showAddButton={false}
-                maxDisplayTags={2}
-                useColorfulTags={true}
-              />
+              <div className="nodrag">
+                <TagsList
+                  tags={card.tags}
+                  variant="secondary"
+                  showAddButton={false}
+                  maxDisplayTags={2}
+                  useColorfulTags={true}
+                />
+              </div>
             )}
           </div>
         </div>
 
         {/* Assignee info (if available) */}
         {card.assignees && card.assignees.length > 0 && (
-          <div className="flex items-center gap-1 pt-2 border-t border-border/30">
-            <Users className="h-3 w-3 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">
+          <div className="nodrag flex items-center gap-1 pt-2 border-t border-border/30">
+            <Users className="nodrag h-3 w-3 text-muted-foreground" />
+            <span className="nodrag text-xs text-muted-foreground">
               {card.assignees[0]}
             </span>
           </div>
@@ -642,14 +777,14 @@ export default function MetricCard({ data, selected }: NodeProps) {
 
       {/* Node Toolbar - React Flow built-in positioning */}
       {!isPreview && (
-        <NodeToolbar>
-          <div className="flex items-center gap-1 bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-1">
+        <NodeToolbar className="nodrag">
+          <div className="nodrag flex items-center gap-1 bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-1">
             {/* Quick View */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => handleViewDetails()}
-              className="h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600 hover:scale-110 transition-all duration-200"
+              className="nodrag h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600 hover:scale-110 transition-all duration-200"
               title="View Details"
             >
               <Eye className="h-3 w-3" />
@@ -663,7 +798,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
               variant="ghost"
               size="sm"
               onClick={handleCreateRelationship}
-              className="h-8 w-8 p-0 hover:bg-purple-50 hover:text-purple-600 hover:scale-110 transition-all duration-200"
+              className="nodrag h-8 w-8 p-0 hover:bg-purple-50 hover:text-purple-600 hover:scale-110 transition-all duration-200"
               title="Create Relationship"
             >
               <Link className="h-3 w-3" />
@@ -677,7 +812,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
               variant="ghost"
               size="sm"
               onClick={handleCollapseExpand}
-              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Collapse/Expand"
             >
               <Minimize2 className="h-3 w-3" />
@@ -691,7 +826,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
               variant="ghost"
               size="sm"
               onClick={handleDuplicate}
-              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Duplicate"
             >
               <Copy className="h-3 w-3" />
@@ -705,11 +840,48 @@ export default function MetricCard({ data, selected }: NodeProps) {
               variant="ghost"
               size="sm"
               onClick={() => handleViewDetails("comments")}
-              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Comments"
             >
               <MessageSquare className="h-3 w-3" />
             </Button>
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+
+            {/* Edit Card */}
+            {!isEditing ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={startEditing}
+                className="nodrag h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 hover:scale-110 transition-all duration-200"
+                title="Edit Card"
+              >
+                <Edit className="h-3 w-3" />
+              </Button>
+            ) : (
+              <div className="nodrag flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={saveChanges}
+                  className="nodrag h-6 w-6 p-0 hover:bg-green-50 hover:text-green-600"
+                  title="Save Changes"
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={cancelEdit}
+                  className="nodrag h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
+                  title="Cancel Edit"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
 
             {/* Divider */}
             <div className="w-px h-4 bg-gray-300 mx-1" />
@@ -719,7 +891,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
               variant="ghost"
               size="sm"
               onClick={() => handleViewDetails("data")}
-              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Data"
             >
               <BarChart3 className="h-3 w-3" />
@@ -733,7 +905,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
               variant="ghost"
               size="sm"
               onClick={() => handleViewDetails("settings")}
-              className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+              className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Segments"
             >
               <Database className="h-3 w-3" />
@@ -748,7 +920,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
                   variant="ghost"
                   size="sm"
                   onClick={handleDimensionSlice}
-                  className="h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+                  className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
                   title="Slice by Dimension"
                 >
                   <Layers className="h-3 w-3" />
@@ -765,13 +937,13 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 hover:scale-110 transition-all duration-200"
+                  className="nodrag h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 hover:scale-110 transition-all duration-200"
                   title="Delete"
                 >
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="nodrag">
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Card</AlertDialogTitle>
                   <AlertDialogDescription>
@@ -780,10 +952,12 @@ export default function MetricCard({ data, selected }: NodeProps) {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel className="nodrag">
+                    Cancel
+                  </AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    className="nodrag bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     Delete
                   </AlertDialogAction>
@@ -802,6 +976,19 @@ export default function MetricCard({ data, selected }: NodeProps) {
           parentCard={card}
           onSlice={handleSlice}
         />
+      )}
+
+      {/* Drag Section - Moved to bottom with padding */}
+      {!isPreview && (
+        <div className="p-3 border-t border-border/30 bg-muted/20">
+          <div className="drag-handle__custom flex justify-center cursor-grab active:cursor-grabbing">
+            <div className="flex items-center gap-1 px-3 py-1.5 bg-muted/80 backdrop-blur-sm rounded-full text-xs text-muted-foreground hover:bg-muted/90 transition-colors border border-border/50 shadow-sm">
+              <GripVertical className="w-3 h-3" />
+              <span className="font-medium select-none">Drag</span>
+              <GripVertical className="w-3 h-3" />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

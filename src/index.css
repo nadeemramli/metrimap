@@ -166,12 +166,13 @@
 [data-slot="popover-content"],
 [data-slot="dropdown-menu-content"],
 [data-slot="command"] {
-  z-index: 1001 !important;
+  z-index: 9999 !important;
   background: hsl(var(--background)) !important;
   border: 2px solid hsl(var(--border)) !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
   backdrop-filter: blur(4px) !important;
   opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 /* Additional support for dropdown menus specifically */
@@ -188,7 +189,8 @@
 }
 
 /* SHEET SPECIFIC FIXES - FORCE SOLID BACKGROUNDS */
-[data-slot="sheet-content"] {
+[data-slot="sheet-content"],
+.sheet-content {
   z-index: 1002 !important;
   background: white !important;
   color: hsl(var(--foreground)) !important;
@@ -197,6 +199,24 @@
   opacity: 1 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  height: 100vh !important;
+  transform: translateX(0) !important;
+  pointer-events: auto !important;
+}
+
+/* OVERRIDE BODY POINTER-EVENTS FOR SHEET CONTENT */
+body[data-scroll-locked="1"] [data-slot="sheet-content"],
+body[data-scroll-locked="1"] .sheet-content {
+  pointer-events: auto !important;
+}
+
+/* FORCE ALL SHEET CHILDREN TO BE INTERACTIVE */
+[data-slot="sheet-content"] *,
+.sheet-content * {
+  pointer-events: auto !important;
 }
 
 /* FORCE SHEET CHILDREN TO INHERIT PROPER COLORS */

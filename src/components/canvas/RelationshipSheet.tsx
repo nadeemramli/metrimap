@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -39,9 +39,12 @@ import {
   Layers,
   CheckCircle,
   Clock,
-  Workflow,
+  Settings,
+  ChevronRight,
+  HelpCircle,
 } from "lucide-react";
-import RelationshipWorkflows from "./RelationshipWorkflows";
+import { InlineEditableField } from "@/components/inline-editable-field";
+import { CloseButton } from "@/components/ui/close-button";
 import CorrelationAnalysisPanel from "./CorrelationAnalysisPanel";
 import { useCanvasStore } from "@/lib/stores";
 import type {
@@ -55,6 +58,7 @@ interface RelationshipSheetProps {
   isOpen: boolean;
   onClose: () => void;
   relationshipId?: string;
+  onSwitchToRelationship?: (relationshipId: string) => void;
 }
 
 const relationshipTypeOptions: Array<{
@@ -127,13 +131,12 @@ export default function RelationshipSheet({
   isOpen,
   onClose,
   relationshipId,
+  // onSwitchToRelationship,
 }: RelationshipSheetProps) {
+  console.log("📋 RelationshipSheet props:", { isOpen, relationshipId });
   const { getEdgeById, persistEdgeUpdate, persistEdgeDelete, getNodeById } =
     useCanvasStore();
   const relationship = relationshipId ? getEdgeById(relationshipId) : null;
-
-  const [activeTab, setActiveTab] = useState("details");
-  const [isModified, setIsModified] = useState(false);
 
   // Get source and target nodes for context
   const sourceNode = relationship ? getNodeById(relationship.sourceId) : null;
@@ -143,9 +146,53 @@ export default function RelationshipSheet({
   const [formData, setFormData] = useState<Partial<Relationship>>(() => ({
     type: relationship?.type || "Probabilistic",
     confidence: relationship?.confidence || "Medium",
-    weight: relationship?.weight || 50,
+    weight: relationship?.weight || 0,
     evidence: relationship?.evidence || [],
+    notes: relationship?.notes || "",
   }));
+
+  const [activeTab, setActiveTab] = useState("details");
+  const [isModified, setIsModified] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+
+  // Get available tabs based on relationship type
+  const getAvailableTabs = (type: RelationshipType) => {
+    const baseTabs = ["details", "evidence", "history"];
+
+    switch (type) {
+      case "Probabilistic":
+        return [...baseTabs, "analysis"];
+      case "Causal":
+        return [...baseTabs, "causal-checklist"];
+      case "Deterministic":
+      case "Compositional":
+      default:
+        return baseTabs;
+    }
+  };
+
+  const availableTabs = getAvailableTabs(formData.type || "Probabilistic");
+
+  // Ensure active tab is valid for current relationship type
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab("details");
+    }
+  }, [formData.type, availableTabs, activeTab]);
+
+  // Update form data when relationship changes
+  useEffect(() => {
+    if (relationship) {
+      setFormData({
+        type: relationship.type || "Probabilistic",
+        confidence: relationship.confidence || "Medium",
+        weight: relationship.weight || 0,
+        evidence: relationship.evidence || [],
+        notes: relationship.notes || "",
+      });
+    }
+  }, [relationship]);
 
   const [newEvidence, setNewEvidence] = useState<Partial<EvidenceItem>>({
     title: "",
@@ -235,6 +282,13 @@ export default function RelationshipSheet({
     }
   };
 
+  // Handle switching to a different relationship (for persistent sheet)
+  // const handleSwitchToDifferentRelationship = (newRelationshipId: string) => {
+  //   if (onSwitchToRelationship) {
+  //     onSwitchToRelationship(newRelationshipId);
+  //   }
+  // };
+
   if (!relationship || !sourceNode || !targetNode) {
     return null;
   }
@@ -245,175 +299,412 @@ export default function RelationshipSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[700px] sm:max-w-[700px] overflow-y-auto bg-background border-border z-[100]">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Network className="h-5 w-5" />
-            Relationship Configuration
-          </SheetTitle>
-          <SheetDescription>
-            {sourceNode.title} → {targetNode.title}
-          </SheetDescription>
+      <SheetContent className="w-[650px] sm:max-w-[650px] overflow-y-auto bg-background border-border z-[1001] relative pointer-events-auto sheet-content">
+        <SheetHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <SheetTitle className="sr-only">
+                Relationship Settings - {sourceNode?.title} →{" "}
+                {targetNode?.title}
+              </SheetTitle>
+              <SheetDescription className="sr-only">
+                Configure properties and evidence for this relationship
+              </SheetDescription>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Settings className="h-4 w-4" />
+                  <span>{formData.type || "Relationship Type"}</span>
+                  <ChevronRight className="h-4 w-4" />
+                  <span>{formData.confidence || "Confidence"}</span>
+                </div>
+
+                <InlineEditableField
+                  value={`${sourceNode?.title || "Source"} → ${targetNode?.title || "Target"}`}
+                  onSave={(value) => {
+                    // This is read-only, but keeping for consistency
+                    console.log("Relationship title updated:", value);
+                  }}
+                  isEditing={isEditingTitle}
+                  onEditingChange={setIsEditingTitle}
+                  placeholder="Relationship title"
+                  className="text-xl font-semibold"
+                  readOnly={true}
+                />
+
+                <InlineEditableField
+                  value={
+                    relationshipTypeOptions.find(
+                      (opt) => opt.value === formData.type
+                    )?.description ||
+                    "Configure relationship properties and evidence"
+                  }
+                  onSave={(value) => {
+                    // This is read-only, but keeping for consistency
+                    console.log("Relationship description updated:", value);
+                  }}
+                  isEditing={isEditingDescription}
+                  onEditingChange={setIsEditingDescription}
+                  multiline
+                  placeholder="Relationship description"
+                  className="text-sm text-muted-foreground font-medium"
+                  readOnly={true}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open("https://nadeemramli.com", "_blank")}
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                title="Get help with relationships"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+              <CloseButton onClose={onClose} />
+            </div>
+          </div>
         </SheetHeader>
 
-        <div className="mt-6">
+        <div className="mt-2 px-6 pb-6">
+          {/* Relationship Configuration Card - Always Visible */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">
+                Relationship Configuration
+              </CardTitle>
+              <CardDescription>
+                Define the core properties of this relationship
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Type</label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value: RelationshipType) =>
+                    handleFieldChange("type", value)
+                  }
+                >
+                  <SelectTrigger
+                    className="w-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log("Type dropdown clicked");
+                    }}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[9999] pointer-events-auto bg-popover text-popover-foreground background-white border shadow-md">
+                    {relationshipTypeOptions.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" />
+                            <div>
+                              <div className="font-medium">{option.label}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {option.description}
+                              </div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {selectedTypeConfig && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedTypeConfig.description}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Confidence Level
+                </label>
+                <Select
+                  value={formData.confidence}
+                  onValueChange={(value: ConfidenceLevel) =>
+                    handleFieldChange("confidence", value)
+                  }
+                >
+                  <SelectTrigger
+                    className="w-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log("Confidence dropdown clicked");
+                    }}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[9999] pointer-events-auto bg-popover text-popover-foreground background-white border shadow-md">
+                    {confidenceOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              option.value === "High"
+                                ? "bg-green-500"
+                                : option.value === "Medium"
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                            }`}
+                          />
+                          <div>
+                            <div className="font-medium">{option.label}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {option.description}
+                            </div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Relationship Strength ({formData.weight || 0})
+                </label>
+                <input
+                  type="range"
+                  min="-100"
+                  max="100"
+                  value={formData.weight || 0}
+                  onChange={(e) =>
+                    handleFieldChange("weight", parseInt(e.target.value))
+                  }
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>Negative (-100)</span>
+                  <span>Neutral (0)</span>
+                  <span>Positive (+100)</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Notes</label>
+                <Textarea
+                  value={formData.notes || ""}
+                  onChange={(e) => handleFieldChange("notes", e.target.value)}
+                  placeholder="Add notes about this relationship..."
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Separator className="mb-6" />
+
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-6 mb-6">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="workflow" className="gap-1">
-                <Workflow className="h-3 w-3" />
-                Workflow
-              </TabsTrigger>
-              <TabsTrigger value="evidence">
-                Evidence ({formData.evidence?.length || 0})
-              </TabsTrigger>
-              <TabsTrigger value="history" className="gap-1">
-                <Clock className="h-3 w-3" />
-                History ({relationship?.history?.length || 0})
-              </TabsTrigger>
-              <TabsTrigger value="analysis">Analysis</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
+            <div className="mb-6">
+              <TabsList className="bg-gray-100 rounded-lg p-[3px] shadow-sm w-full h-auto">
+                {availableTabs.includes("details") && (
+                  <TabsTrigger
+                    value="details"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                  >
+                    Details
+                  </TabsTrigger>
+                )}
+                {availableTabs.includes("evidence") && (
+                  <TabsTrigger
+                    value="evidence"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                  >
+                    Evidence ({formData.evidence?.length || 0})
+                  </TabsTrigger>
+                )}
+                {availableTabs.includes("history") && (
+                  <TabsTrigger
+                    value="history"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                  >
+                    History ({relationship?.history?.length || 0})
+                  </TabsTrigger>
+                )}
+                {availableTabs.includes("analysis") && (
+                  <TabsTrigger
+                    value="analysis"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                  >
+                    Analysis
+                  </TabsTrigger>
+                )}
+                {availableTabs.includes("causal-checklist") && (
+                  <TabsTrigger
+                    value="causal-checklist"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                  >
+                    Causal Checklist
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
 
             {/* Details Tab */}
-            <TabsContent value="details" className="space-y-6">
+            <TabsContent value="details" className="space-y-6 pt-2">
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Relationship configuration is available above.</p>
+                <p className="text-sm">
+                  Use the tabs below for additional details and evidence.
+                </p>
+              </div>
+            </TabsContent>
+
+            {/* Causal Checklist Tab */}
+            <TabsContent value="causal-checklist" className="space-y-6 pt-2">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Relationship Type</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5" />
+                    Causal Inference Checklist
+                  </CardTitle>
                   <CardDescription>
-                    Define the nature of this relationship
+                    Validate causality using established criteria
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Type
-                    </label>
-                    <Select
-                      value={formData.type}
-                      onValueChange={(value: RelationshipType) =>
-                        handleFieldChange("type", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {relationshipTypeOptions.map((option) => {
-                          const Icon = option.icon;
-                          return (
-                            <SelectItem key={option.value} value={option.value}>
-                              <div className="flex items-center gap-2">
-                                <Icon className="h-4 w-4" />
-                                <div>
-                                  <div className="font-medium">
-                                    {option.label}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {option.description}
-                                  </div>
-                                </div>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    {selectedTypeConfig && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {selectedTypeConfig.description}
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    {/* Temporal Precedence */}
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          id="temporal-precedence"
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor="temporal-precedence"
+                            className="font-medium"
+                          >
+                            Temporal Precedence
+                          </label>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Does the cause happen before the effect?
+                          </p>
+                          <Textarea
+                            placeholder="Explain the temporal relationship..."
+                            className="mt-2"
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Covariation */}
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          id="covariation"
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <label htmlFor="covariation" className="font-medium">
+                            Covariation
+                          </label>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Is there a clear statistical relationship?
+                          </p>
+                          <Textarea
+                            placeholder="Reference the analysis performed in the Probabilistic step..."
+                            className="mt-2"
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Non-Spuriousness */}
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          id="non-spuriousness"
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor="non-spuriousness"
+                            className="font-medium"
+                          >
+                            Non-Spuriousness
+                          </label>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Have potential confounding variables been considered
+                            or ruled out?
+                          </p>
+                          <Textarea
+                            placeholder="List potential confounders and how they were addressed..."
+                            className="mt-2"
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mechanism */}
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          id="mechanism"
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <label htmlFor="mechanism" className="font-medium">
+                            Mechanism
+                          </label>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Is there a logical, believable reason why this cause
+                            would lead to this effect?
+                          </p>
+                          <Textarea
+                            placeholder="Articulate the business logic and causal mechanism..."
+                            className="mt-2"
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">
+                      Causal Validation Progress
+                    </h4>
+                    <div className="space-y-2 text-sm text-blue-800">
+                      <p>
+                        ✓ All criteria must be satisfied to upgrade from
+                        correlation to causation
                       </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Confidence Level
-                    </label>
-                    <Select
-                      value={formData.confidence}
-                      onValueChange={(value: ConfidenceLevel) =>
-                        handleFieldChange("confidence", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {confidenceOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-3 h-3 rounded-full ${
-                                  option.value === "High"
-                                    ? "bg-green-500"
-                                    : option.value === "Medium"
-                                      ? "bg-yellow-500"
-                                      : "bg-red-500"
-                                }`}
-                              />
-                              <div>
-                                <div className="font-medium">
-                                  {option.label}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {option.description}
-                                </div>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Relationship Strength ({formData.weight || 50}%)
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={formData.weight || 50}
-                      onChange={(e) =>
-                        handleFieldChange("weight", parseInt(e.target.value))
-                      }
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>Weak</span>
-                      <span>Strong</span>
+                      <p>
+                        ✓ This checklist ensures rigorous validation of causal
+                        claims
+                      </p>
+                      <p>
+                        ✓ Each criterion should be thoroughly documented with
+                        evidence
+                      </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* Workflow Tab */}
-            <TabsContent value="workflow" className="space-y-6">
-              <RelationshipWorkflows
-                type={formData.type || "Probabilistic"}
-                onConfidenceChange={(confidence) =>
-                  handleFieldChange("confidence", confidence)
-                }
-                onEvidenceAdd={(evidence) =>
-                  handleFieldChange("evidence", [
-                    ...(formData.evidence || []),
-                    evidence,
-                  ])
-                }
-                onTypeUpgrade={(newType) => handleFieldChange("type", newType)}
-                currentEvidence={formData.evidence || []}
-              />
-            </TabsContent>
-
             {/* Evidence Tab */}
-            <TabsContent value="evidence" className="space-y-6">
+            <TabsContent value="evidence" className="space-y-6 pt-2">
               {/* Add New Evidence */}
               <Card>
                 <CardHeader>
@@ -604,7 +895,7 @@ export default function RelationshipSheet({
             </TabsContent>
 
             {/* History Tab */}
-            <TabsContent value="history" className="space-y-6">
+            <TabsContent value="history" className="space-y-6 pt-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -785,7 +1076,7 @@ export default function RelationshipSheet({
             </TabsContent>
 
             {/* Analysis Tab */}
-            <TabsContent value="analysis" className="space-y-6">
+            <TabsContent value="analysis" className="space-y-6 pt-2">
               {sourceNode && targetNode ? (
                 <CorrelationAnalysisPanel
                   sourceCard={sourceNode}
@@ -805,7 +1096,7 @@ export default function RelationshipSheet({
             </TabsContent>
 
             {/* Settings Tab */}
-            <TabsContent value="settings" className="space-y-6">
+            <TabsContent value="settings" className="space-y-6 pt-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">
