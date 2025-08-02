@@ -31,7 +31,7 @@ import { DataEventsTab } from "@/components/tabs/data-events-tab";
 import { ResultsTab } from "@/components/tabs/results-tab";
 import { CommentsTab } from "@/components/tabs/comments-tab";
 import { SettingsTab } from "@/components/tabs/settings-tab";
-import { CloseButton } from "@/components/ui/close-button";
+
 import { useCanvasStore } from "@/lib/stores";
 import type { MetricCard, Segment } from "@/lib/types";
 
@@ -170,7 +170,14 @@ export default function CardSettingsSheet({
   }
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
       <SheetContent className="w-[650px] sm:max-w-[650px] overflow-y-auto bg-background border-border">
         <SheetHeader className="pb-4">
           <div className="flex items-center justify-between">
@@ -209,7 +216,6 @@ export default function CardSettingsSheet({
                 />
               </div>
             </div>
-            <CloseButton onClose={onClose} />
           </div>
         </SheetHeader>
 

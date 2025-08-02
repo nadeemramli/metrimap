@@ -299,7 +299,7 @@ export default function HomePage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-56 p-2 bg-white border border-gray-200 shadow-lg rounded-lg"
+              className="w-56 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
             >
               <DropdownMenuItem
                 onClick={() => handleOpenCanvas(project.id)}

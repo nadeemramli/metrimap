@@ -58,6 +58,7 @@ interface MetricCardNodeData {
   onOpenSettings?: (cardId: string, tab?: string) => void;
   onNodeClick?: (cardId: string, position: { x: number; y: number }) => void;
   onSwitchToCard?: (cardId: string, tab?: string) => void;
+  isSettingsSheetOpen?: boolean;
   isPreview?: boolean;
 }
 
@@ -434,8 +435,17 @@ export default function MetricCard({ data, selected }: NodeProps) {
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     // If settings sheet is open, switch to this card instead of opening new sheet
-    if (data.onSwitchToCard && typeof data.onSwitchToCard === "function") {
+    if (
+      data.isSettingsSheetOpen &&
+      data.onSwitchToCard &&
+      typeof data.onSwitchToCard === "function"
+    ) {
       data.onSwitchToCard(card.id);
+    } else if (
+      data.onOpenSettings &&
+      typeof data.onOpenSettings === "function"
+    ) {
+      data.onOpenSettings(card.id);
     } else if (onNodeClick) {
       onNodeClick(card.id, card.position);
     }
@@ -487,9 +497,9 @@ export default function MetricCard({ data, selected }: NodeProps) {
       {/* Enhanced Handles for Touch Device & Handle Connections - Proper source/target mix */}
       {!isPreview && (
         <>
-          {/* Top Side - Source (can start connections) */}
+          {/* Top Side - Target (can receive connections) */}
           <Handle
-            type="source"
+            type="target"
             position={Position.Top}
             className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
             style={{
@@ -501,12 +511,12 @@ export default function MetricCard({ data, selected }: NodeProps) {
               backgroundColor: handleStyles.backgroundColor,
               border: handleStyles.border,
             }}
-            id="top-source"
+            id="top-target"
           />
 
-          {/* Bottom Side - Target (can receive connections) */}
+          {/* Bottom Side - Source (can start connections) */}
           <Handle
-            type="target"
+            type="source"
             position={Position.Bottom}
             className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
             style={{
@@ -518,12 +528,12 @@ export default function MetricCard({ data, selected }: NodeProps) {
               backgroundColor: handleStyles.backgroundColor,
               border: handleStyles.border,
             }}
-            id="bottom-target"
+            id="bottom-source"
           />
 
-          {/* Left Side - Source (can start connections) */}
+          {/* Left Side - Target (can receive connections) */}
           <Handle
-            type="source"
+            type="target"
             position={Position.Left}
             className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
             style={{
@@ -535,12 +545,12 @@ export default function MetricCard({ data, selected }: NodeProps) {
               backgroundColor: handleStyles.backgroundColor,
               border: handleStyles.border,
             }}
-            id="left-source"
+            id="left-target"
           />
 
-          {/* Right Side - Target (can receive connections) */}
+          {/* Right Side - Source (can start connections) */}
           <Handle
-            type="target"
+            type="source"
             position={Position.Right}
             className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
             style={{
@@ -552,7 +562,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
               backgroundColor: handleStyles.backgroundColor,
               border: handleStyles.border,
             }}
-            id="right-target"
+            id="right-source"
           />
         </>
       )}

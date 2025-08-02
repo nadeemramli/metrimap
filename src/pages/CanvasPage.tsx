@@ -76,6 +76,7 @@ const convertToNode = (
   onOpenSettings: (cardId: string, tab?: string) => void,
   onNodeClick: (cardId: string) => void,
   onSwitchToCard: (cardId: string, tab?: string) => void,
+  isSettingsSheetOpen: boolean,
   selectedNodeIds: string[] = []
 ): Node => ({
   id: card.id,
@@ -85,6 +86,7 @@ const convertToNode = (
     onOpenSettings, // Pass the settings callback
     onNodeClick, // Pass the click callback
     onSwitchToCard, // Pass the switch callback for persistent sheets
+    isSettingsSheetOpen, // Pass the sheet open state
   },
   type: "metricCard", // Use our custom node type
   selected: selectedNodeIds.includes(card.id),
@@ -96,18 +98,30 @@ const convertToNode = (
 const convertToEdge = (
   relationship: Relationship,
   onOpenRelationshipSheet: (relationshipId: string) => void,
-  onSwitchToRelationship: (relationshipId: string) => void
-): Edge => ({
-  id: relationship.id,
-  source: relationship.sourceId,
-  target: relationship.targetId,
-  type: "dynamicEdge",
-  data: {
-    relationship,
-    onOpenRelationshipSheet,
-    onSwitchToRelationship,
-  },
-});
+  onSwitchToRelationship: (relationshipId: string) => void,
+  isRelationshipSheetOpen: boolean
+): Edge => {
+  // Determine if edge should be animated based on relationship type
+  const shouldAnimate =
+    relationship.type === "Probabilistic" ||
+    relationship.type === "Compositional";
+
+  return {
+    id: relationship.id,
+    source: relationship.sourceId,
+    target: relationship.targetId,
+    type: "dynamicEdge",
+    animated: shouldAnimate, // Animate dotted lines (Probabilistic and Compositional)
+    data: {
+      relationship,
+      onOpenRelationshipSheet,
+      onSwitchToRelationship,
+      isRelationshipSheetOpen,
+      // Add a unique identifier to force re-rendering when relationship data changes
+      renderKey: `${relationship.id}-${relationship.type}-${relationship.weight}-${relationship.confidence}`,
+    },
+  };
+};
 
 // Convert GroupNode to ReactFlow Node
 const convertToGroupNode = (
@@ -700,6 +714,7 @@ function CanvasPageInner() {
           handleOpenSettings,
           handleNodeClick,
           handleSwitchToCard,
+          isSettingsSheetOpen,
           selectedNodeIds
         )
       ) || [];
@@ -721,6 +736,8 @@ function CanvasPageInner() {
     canvas?.groups,
     handleOpenSettings,
     handleNodeClick,
+    handleSwitchToCard,
+    isSettingsSheetOpen,
     selectedNodeIds,
     handleEditGroup,
     handleDeleteGroup,
@@ -732,10 +749,16 @@ function CanvasPageInner() {
         convertToEdge(
           edge,
           handleOpenRelationshipSheet,
-          handleSwitchToRelationship
+          handleSwitchToRelationship,
+          isRelationshipSheetOpen
         )
       ) || [],
-    [canvas?.edges, handleOpenRelationshipSheet, handleSwitchToRelationship]
+    [
+      canvas?.edges,
+      handleOpenRelationshipSheet,
+      handleSwitchToRelationship,
+      isRelationshipSheetOpen,
+    ]
   );
 
   // Proximity Connect - REMOVED for better drag/toolbar UX
@@ -956,6 +979,13 @@ function CanvasPageInner() {
 
   const onConnect = useCallback(
     async (params: Connection) => {
+      console.log("🔗 Connection params:", {
+        source: params.source,
+        target: params.target,
+        sourceHandle: params.sourceHandle,
+        targetHandle: params.targetHandle,
+      });
+
       if (params.source && params.target && isValidConnection(params)) {
         const newRelationshipData = {
           sourceId: params.source,
@@ -964,6 +994,8 @@ function CanvasPageInner() {
           confidence: "Low" as const, // Default confidence
           evidence: [],
         };
+
+        console.log("🔗 Creating relationship:", newRelationshipData);
 
         try {
           await createEdge(newRelationshipData);
@@ -1084,6 +1116,10 @@ function CanvasPageInner() {
           connectOnClick={true} // Enable touch device support - click to connect handles
           snapToGrid={true}
           snapGrid={[15, 15]}
+          defaultEdgeOptions={{
+            type: "dynamicEdge",
+            animated: false,
+          }}
           connectionLineStyle={{
             strokeWidth: 3,
             stroke: "#3b82f6",

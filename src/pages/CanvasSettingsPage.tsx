@@ -202,10 +202,10 @@ export default function CanvasSettingsPage() {
   // Filter data based on search and filters
   const filteredChangelog = useMemo(() => {
     return changelog.filter((entry) => {
-      const userName = entry.users?.name || entry.users?.email || "Unknown";
+      const userName = entry.userId || "Unknown";
       const matchesSearch =
         entry.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (entry.target_name?.toLowerCase() || "").includes(
+        (entry.targetName?.toLowerCase() || "").includes(
           searchQuery.toLowerCase()
         ) ||
         userName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -811,9 +811,7 @@ export default function CanvasSettingsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-medium text-foreground">
-                            {entry.users?.name ||
-                              entry.users?.email ||
-                              "Unknown"}
+                            {entry.userId || "Unknown"}
                           </span>
                           <span className="text-muted-foreground">
                             {entry.action}
@@ -822,7 +820,7 @@ export default function CanvasSettingsPage() {
                             {entry.target}
                           </Badge>
                           <span className="font-mono text-sm bg-muted px-2 py-0.5 rounded">
-                            {entry.target_name}
+                            {entry.targetName}
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">

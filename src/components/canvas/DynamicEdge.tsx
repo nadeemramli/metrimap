@@ -36,6 +36,8 @@ interface DynamicEdgeData {
   relationship: Relationship;
   onOpenRelationshipSheet?: (relationshipId: string) => void;
   onSwitchToRelationship?: (relationshipId: string) => void;
+  isRelationshipSheetOpen?: boolean;
+  renderKey?: string; // Unique identifier to force re-rendering
   [key: string]: unknown;
 }
 
@@ -161,20 +163,35 @@ export default function DynamicEdge({
   const [isHovered, setIsHovered] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
-  const { relationship, onOpenRelationshipSheet, onSwitchToRelationship } =
-    data;
+  const {
+    relationship,
+    onOpenRelationshipSheet,
+    onSwitchToRelationship,
+    isRelationshipSheetOpen,
+    renderKey,
+  } = data;
   const typeConfig = getRelationshipTypeConfig(
     relationship.type,
     relationship.weight
   );
   const confidenceConfig = getConfidenceConfig(relationship.confidence);
 
+  // Debug logging for edge styling updates
+  console.log(`🎨 Edge ${relationship.id} styling (renderKey: ${renderKey}):`, {
+    type: relationship.type,
+    weight: relationship.weight,
+    confidence: relationship.confidence,
+    stroke: typeConfig.stroke,
+    lineStyle: typeConfig.lineStyle,
+    buttonValue: typeConfig.buttonValue,
+  });
+
   // Handle double-click to open relationship sheet
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       // If relationship sheet is open, switch to this relationship instead of opening new sheet
-      if (onSwitchToRelationship) {
+      if (isRelationshipSheetOpen && onSwitchToRelationship) {
         onSwitchToRelationship(relationship.id);
         console.log(
           "🔗 Double-clicked relationship (switch):",
@@ -185,7 +202,12 @@ export default function DynamicEdge({
         console.log("🔗 Double-clicked relationship (open):", relationship.id);
       }
     },
-    [onOpenRelationshipSheet, onSwitchToRelationship, relationship.id]
+    [
+      onOpenRelationshipSheet,
+      onSwitchToRelationship,
+      relationship.id,
+      isRelationshipSheetOpen,
+    ]
   );
 
   // Handle button click to open relationship sheet
@@ -194,8 +216,18 @@ export default function DynamicEdge({
       e.stopPropagation();
       e.preventDefault();
       console.log("🔗 Button clicked relationship:", relationship.id);
+      console.log("🔗 Sheet open:", isRelationshipSheetOpen);
+      console.log(
+        "🔗 onSwitchToRelationship available:",
+        !!onSwitchToRelationship
+      );
+      console.log(
+        "🔗 onOpenRelationshipSheet available:",
+        !!onOpenRelationshipSheet
+      );
+
       // If relationship sheet is open, switch to this relationship instead of opening new sheet
-      if (onSwitchToRelationship) {
+      if (isRelationshipSheetOpen && onSwitchToRelationship) {
         onSwitchToRelationship(relationship.id);
         console.log("🔗 Called onSwitchToRelationship with:", relationship.id);
       } else if (onOpenRelationshipSheet) {
@@ -205,7 +237,12 @@ export default function DynamicEdge({
         console.error("❌ No relationship sheet handler defined!");
       }
     },
-    [onOpenRelationshipSheet, onSwitchToRelationship, relationship.id]
+    [
+      onOpenRelationshipSheet,
+      onSwitchToRelationship,
+      relationship.id,
+      isRelationshipSheetOpen,
+    ]
   );
 
   // Get path based on relationship type
@@ -252,13 +289,18 @@ export default function DynamicEdge({
   }, [deleteElements, id]);
 
   const handleOpenSheet = useCallback(() => {
-    if (onSwitchToRelationship) {
+    if (isRelationshipSheetOpen && onSwitchToRelationship) {
       onSwitchToRelationship(relationship.id);
     } else if (onOpenRelationshipSheet) {
       onOpenRelationshipSheet(relationship.id);
     }
     setShowActions(false);
-  }, [onOpenRelationshipSheet, onSwitchToRelationship, relationship.id]);
+  }, [
+    onOpenRelationshipSheet,
+    onSwitchToRelationship,
+    relationship.id,
+    isRelationshipSheetOpen,
+  ]);
 
   const handleViewEvidence = useCallback(() => {
     console.log("View evidence for relationship:", relationship.id);
@@ -283,6 +325,13 @@ export default function DynamicEdge({
           opacity: selected || isHovered ? 1 : 0.8,
           transition: "all 0.2s ease-in-out",
           cursor: "pointer",
+          // Add animation for dotted lines
+          ...(typeConfig.lineStyle === "dotted" ||
+          typeConfig.lineStyle === "dotted-smoothstep"
+            ? {
+                animation: "dash 1s linear infinite",
+              }
+            : {}),
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
