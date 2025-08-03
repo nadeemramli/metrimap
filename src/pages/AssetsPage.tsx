@@ -43,6 +43,7 @@ import CardSettingsSheet from "@/components/canvas/CardSettingsSheet";
 import RelationshipSheet from "@/components/canvas/RelationshipSheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById } from "@/lib/supabase/services/projects";
+import { useAuthenticatedSupabase } from "@/contexts/AuthenticatedSupabaseContext";
 import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
 import {
   addTagsToMetricCard,
@@ -97,6 +98,7 @@ const getRelationshipTypeColor = (type: string) => {
 
 export default function AssetsPage() {
   const { canvasId } = useParams();
+  const supabaseClient = useAuthenticatedSupabase();
   const { canvas, persistNodeDelete, persistEdgeDelete } = useCanvasStore();
 
   const [activeTab, setActiveTab] = useState<TabType>("metrics");
@@ -350,7 +352,7 @@ export default function AssetsPage() {
         setIsLoadingProject(true);
         try {
           console.log("🔄 Loading project data from database for:", canvasId);
-          const projectData = await getProjectById(canvasId);
+          const projectData = await getProjectById(canvasId, supabaseClient);
           console.log("✅ Project data loaded:", {
             nodes: projectData?.nodes?.length || 0,
             edges: projectData?.edges?.length || 0,
@@ -648,7 +650,7 @@ export default function AssetsPage() {
 
       // Refresh data and tags
       if (project) {
-        const updatedProject = await getProjectById(project.id);
+        const updatedProject = await getProjectById(project.id, supabaseClient);
         setProject(updatedProject);
 
         // Reload tags for the affected items

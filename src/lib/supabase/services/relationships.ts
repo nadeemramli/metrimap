@@ -1,6 +1,8 @@
 import { supabase } from '../client';
 import type { Tables, TablesInsert, TablesUpdate } from '../types';
 import type { Relationship, EvidenceItem } from '../../types';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types';
 
 export type RelationshipRow = Tables<'relationships'>;
 export type RelationshipInsert = TablesInsert<'relationships'>;
@@ -54,10 +56,16 @@ function transformToInsert(rel: Relationship, projectId: string, userId: string)
 }
 
 // Create a new relationship
-export async function createRelationship(relationship: Relationship, projectId: string, userId: string) {
+export async function createRelationship(
+  relationship: Relationship, 
+  projectId: string, 
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
   const insertData = transformToInsert(relationship, projectId, userId);
+  const client = authenticatedClient || supabase;
   
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('relationships')
     .insert(insertData)
     .select()
@@ -72,14 +80,19 @@ export async function createRelationship(relationship: Relationship, projectId: 
 }
 
 // Update a relationship
-export async function updateRelationship(id: string, updates: Partial<Relationship>) {
+export async function updateRelationship(
+  id: string, 
+  updates: Partial<Relationship>,
+  authenticatedClient?: SupabaseClient<Database>
+) {
   const updateData: RelationshipUpdate = {};
   
   if (updates.type !== undefined) updateData.type = updates.type;
   if (updates.confidence !== undefined) updateData.confidence = updates.confidence;
   if (updates.weight !== undefined) updateData.weight = updates.weight;
 
-  const { data, error } = await supabase
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('relationships')
     .update(updateData)
     .eq('id', id)
@@ -95,8 +108,12 @@ export async function updateRelationship(id: string, updates: Partial<Relationsh
 }
 
 // Delete a relationship
-export async function deleteRelationship(id: string) {
-  const { error } = await supabase
+export async function deleteRelationship(
+  id: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { error } = await client
     .from('relationships')
     .delete()
     .eq('id', id);
@@ -108,8 +125,12 @@ export async function deleteRelationship(id: string) {
 }
 
 // Get relationships for a project
-export async function getProjectRelationships(projectId: string) {
-  const { data, error } = await supabase
+export async function getProjectRelationships(
+  projectId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('relationships')
     .select(`
       *,
@@ -128,7 +149,12 @@ export async function getProjectRelationships(projectId: string) {
 // Evidence Items
 
 // Create evidence item
-export async function createEvidenceItem(evidence: EvidenceItem, relationshipId: string, userId: string) {
+export async function createEvidenceItem(
+  evidence: EvidenceItem, 
+  relationshipId: string, 
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
   const insertData: EvidenceItemInsert = {
     relationship_id: relationshipId,
     title: evidence.title,
@@ -142,7 +168,8 @@ export async function createEvidenceItem(evidence: EvidenceItem, relationshipId:
     created_by: userId,
   };
   
-  const { data, error } = await supabase
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('evidence_items')
     .insert(insertData)
     .select()
@@ -157,7 +184,11 @@ export async function createEvidenceItem(evidence: EvidenceItem, relationshipId:
 }
 
 // Update evidence item
-export async function updateEvidenceItem(id: string, updates: Partial<EvidenceItem>) {
+export async function updateEvidenceItem(
+  id: string, 
+  updates: Partial<EvidenceItem>,
+  authenticatedClient?: SupabaseClient<Database>
+) {
   const updateData: EvidenceItemUpdate = {};
   
   if (updates.title !== undefined) updateData.title = updates.title;
@@ -169,7 +200,8 @@ export async function updateEvidenceItem(id: string, updates: Partial<EvidenceIt
   if (updates.summary !== undefined) updateData.summary = updates.summary;
   if (updates.impactOnConfidence !== undefined) updateData.impact_on_confidence = updates.impactOnConfidence;
 
-  const { data, error } = await supabase
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('evidence_items')
     .update(updateData)
     .eq('id', id)
@@ -185,8 +217,12 @@ export async function updateEvidenceItem(id: string, updates: Partial<EvidenceIt
 }
 
 // Delete evidence item
-export async function deleteEvidenceItem(id: string) {
-  const { error } = await supabase
+export async function deleteEvidenceItem(
+  id: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { error } = await client
     .from('evidence_items')
     .delete()
     .eq('id', id);
@@ -198,8 +234,12 @@ export async function deleteEvidenceItem(id: string) {
 }
 
 // Get evidence items for a relationship
-export async function getRelationshipEvidence(relationshipId: string) {
-  const { data, error } = await supabase
+export async function getRelationshipEvidence(
+  relationshipId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('evidence_items')
     .select('*')
     .eq('relationship_id', relationshipId);

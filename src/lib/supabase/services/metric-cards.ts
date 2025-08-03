@@ -1,6 +1,8 @@
 import { supabase } from '../client';
 import type { Tables, TablesInsert, TablesUpdate } from '../types';
 import type { MetricCard } from '../../types';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types';
 
 export type MetricCardRow = Tables<'metric_cards'>;
 export type MetricCardInsert = TablesInsert<'metric_cards'>;
@@ -50,10 +52,16 @@ function transformToInsert(card: MetricCard, projectId: string, userId: string):
 }
 
 // Create a new metric card
-export async function createMetricCard(card: MetricCard, projectId: string, userId: string) {
+export async function createMetricCard(
+  card: MetricCard, 
+  projectId: string, 
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
   const insertData = transformToInsert(card, projectId, userId);
+  const client = authenticatedClient || supabase;
   
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('metric_cards')
     .insert(insertData)
     .select()
@@ -68,7 +76,11 @@ export async function createMetricCard(card: MetricCard, projectId: string, user
 }
 
 // Update a metric card
-export async function updateMetricCard(id: string, updates: Partial<MetricCard>) {
+export async function updateMetricCard(
+  id: string, 
+  updates: Partial<MetricCard>,
+  authenticatedClient?: SupabaseClient<Database>
+) {
   const updateData: MetricCardUpdate = {};
   
   if (updates.title !== undefined) updateData.title = updates.title;
@@ -90,7 +102,8 @@ export async function updateMetricCard(id: string, updates: Partial<MetricCard>)
   // Always update the timestamp
   updateData.updated_at = new Date().toISOString();
 
-  const { data, error } = await supabase
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('metric_cards')
     .update(updateData)
     .eq('id', id)
@@ -106,8 +119,12 @@ export async function updateMetricCard(id: string, updates: Partial<MetricCard>)
 }
 
 // Delete a metric card
-export async function deleteMetricCard(id: string) {
-  const { error } = await supabase
+export async function deleteMetricCard(
+  id: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { error } = await client
     .from('metric_cards')
     .delete()
     .eq('id', id);
@@ -119,8 +136,12 @@ export async function deleteMetricCard(id: string) {
 }
 
 // Get metric cards for a project
-export async function getProjectMetricCards(projectId: string) {
-  const { data, error } = await supabase
+export async function getProjectMetricCards(
+  projectId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('metric_cards')
     .select('*')
     .eq('project_id', projectId);
@@ -134,10 +155,15 @@ export async function getProjectMetricCards(projectId: string) {
 }
 
 // Update metric card position
-export async function updateMetricCardPosition(id: string, position: { x: number; y: number }) {
+export async function updateMetricCardPosition(
+  id: string, 
+  position: { x: number; y: number },
+  authenticatedClient?: SupabaseClient<Database>
+) {
   console.log(`💾 Updating position for metric card ${id}:`, position);
   
-  const { data, error } = await supabase
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('metric_cards')
     .update({ 
       position_x: position.x,

@@ -10,6 +10,7 @@ import {
   getTagUsageStats,
 } from '../supabase/services/tags';
 import { useAppStore } from './appStore';
+import { getAuthenticatedClient } from '../utils/authenticatedClient';
 
 interface TagStoreState {
   // State
@@ -45,7 +46,8 @@ export const useTagStore = create<TagStoreState>()(
       set({ isLoading: true, error: undefined });
       try {
         console.log("🔄 Loading project tags for:", projectId);
-        const tags = await getProjectTags(projectId);
+        const authenticatedClient = getAuthenticatedClient();
+        const tags = await getProjectTags(projectId, authenticatedClient || undefined);
         console.log("✅ Project tags loaded:", tags.length, "tags");
         console.log("📋 Tags:", tags);
         set({ tags, isLoading: false });
@@ -66,13 +68,14 @@ export const useTagStore = create<TagStoreState>()(
         const { user } = useAppStore.getState();
         if (!user) throw new Error('User not authenticated');
 
+        const authenticatedClient = getAuthenticatedClient();
         const newTag = await createTag({
           name: tagData.name,
           color: tagData.color || null,
           description: tagData.description || null,
           project_id: projectId,
           created_by: user.id,
-        });
+        }, authenticatedClient || undefined);
 
         set(state => ({
           tags: [...state.tags, newTag],
@@ -92,7 +95,8 @@ export const useTagStore = create<TagStoreState>()(
     updateProjectTag: async (tagId: string, updates: { name?: string; color?: string; description?: string }) => {
       set({ isLoading: true, error: undefined });
       try {
-        const updatedTag = await updateTag(tagId, updates);
+        const authenticatedClient = getAuthenticatedClient();
+        const updatedTag = await updateTag(tagId, updates, authenticatedClient || undefined);
         
         set(state => ({
           tags: state.tags.map(tag => 
@@ -114,7 +118,8 @@ export const useTagStore = create<TagStoreState>()(
     deleteProjectTag: async (tagId: string) => {
       set({ isLoading: true, error: undefined });
       try {
-        await deleteTag(tagId);
+        const authenticatedClient = getAuthenticatedClient();
+        await deleteTag(tagId, authenticatedClient || undefined);
         
         set(state => ({
           tags: state.tags.filter(tag => tag.id !== tagId),

@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/supabase/types';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types';
 
 export type Collaborator = Tables<'project_collaborators'> & {
   users: {
@@ -11,8 +13,12 @@ export type Collaborator = Tables<'project_collaborators'> & {
 };
 
 // Get all collaborators for a project
-export async function getProjectCollaborators(projectId: string): Promise<Collaborator[]> {
-  const { data, error } = await supabase
+export async function getProjectCollaborators(
+  projectId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<Collaborator[]> {
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('project_collaborators')
     .select(`
       *,
@@ -34,10 +40,13 @@ export async function addCollaborator(
   projectId: string, 
   userEmail: string, 
   role: 'owner' | 'admin' | 'editor' | 'viewer' = 'viewer',
-  permissions: string[] = ['read']
+  permissions: string[] = ['read'],
+  authenticatedClient?: SupabaseClient<Database>
 ) {
+  const client = authenticatedClient || supabase;
+  
   // First, find the user by email
-  const { data: userData, error: userError } = await supabase
+  const { data: userData, error: userError } = await client
     .from('users')
     .select('id')
     .eq('email', userEmail)
@@ -49,7 +58,7 @@ export async function addCollaborator(
   }
 
   // Then add the collaboration
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('project_collaborators')
     .insert({
       project_id: projectId,
@@ -78,9 +87,11 @@ export async function updateCollaborator(
   updates: {
     role?: string;
     permissions?: string[];
-  }
+  },
+  authenticatedClient?: SupabaseClient<Database>
 ) {
-  const { data, error } = await supabase
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('project_collaborators')
     .update(updates)
     .eq('id', collaboratorId)
@@ -99,8 +110,12 @@ export async function updateCollaborator(
 }
 
 // Remove a collaborator from a project
-export async function removeCollaborator(collaboratorId: string) {
-  const { error } = await supabase
+export async function removeCollaborator(
+  collaboratorId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { error } = await client
     .from('project_collaborators')
     .delete()
     .eq('id', collaboratorId);

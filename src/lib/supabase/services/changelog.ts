@@ -1,5 +1,7 @@
 import { supabase } from '../client';
 import type { Tables, TablesInsert } from '../types';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types';
 
 export type ChangelogRow = Tables<'changelog'>;
 export type ChangelogInsert = TablesInsert<'changelog'>;
@@ -49,10 +51,14 @@ function transformToInsert(entry: Omit<ChangelogEntry, 'id'>): ChangelogInsert {
 }
 
 // Log a new changelog entry
-export async function logChangelogEntry(entry: Omit<ChangelogEntry, 'id'>) {
+export async function logChangelogEntry(
+  entry: Omit<ChangelogEntry, 'id'>,
+  authenticatedClient?: SupabaseClient<Database>
+) {
   const insertData = transformToInsert(entry);
+  const client = authenticatedClient || supabase;
   
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('changelog')
     .insert(insertData)
     .select()
@@ -67,8 +73,13 @@ export async function logChangelogEntry(entry: Omit<ChangelogEntry, 'id'>) {
 }
 
 // Get changelog entries for a specific target
-export async function getChangelogForTarget(targetId: string, target: string = 'relationship') {
-  const { data, error } = await supabase
+export async function getChangelogForTarget(
+  targetId: string, 
+  target: string = 'relationship',
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('changelog')
     .select('*')
     .eq('target_id', targetId)
@@ -84,8 +95,13 @@ export async function getChangelogForTarget(targetId: string, target: string = '
 }
 
 // Get changelog entries for a project
-export async function getProjectChangelog(projectId: string, limit?: number) {
-  let query = supabase
+export async function getProjectChangelog(
+  projectId: string, 
+  limit?: number,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  let query = client
     .from('changelog')
     .select('*')
     .eq('project_id', projectId)
@@ -111,7 +127,8 @@ export async function logRelationshipCreated(
   relationshipId: string,
   relationshipName: string,
   projectId: string,
-  userId: string
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
 ) {
   return logChangelogEntry({
     timestamp: new Date().toISOString(),
@@ -122,7 +139,7 @@ export async function logRelationshipCreated(
     description: `Relationship "${relationshipName}" was created`,
     userId,
     projectId,
-  });
+  }, authenticatedClient);
 }
 
 export async function logRelationshipUpdated(
@@ -130,7 +147,8 @@ export async function logRelationshipUpdated(
   relationshipName: string,
   changes: Record<string, { from: any; to: any }>,
   projectId: string,
-  userId: string
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
 ) {
   const changeDescriptions = Object.entries(changes)
     .map(([field, { from, to }]) => `${field}: ${from} → ${to}`)
@@ -146,7 +164,7 @@ export async function logRelationshipUpdated(
     userId,
     projectId,
     metadata: { changes },
-  });
+  }, authenticatedClient);
 }
 
 export async function logEvidenceAdded(
@@ -155,7 +173,8 @@ export async function logEvidenceAdded(
   evidenceTitle: string,
   evidenceType: string,
   projectId: string,
-  userId: string
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
 ) {
   return logChangelogEntry({
     timestamp: new Date().toISOString(),
@@ -167,7 +186,7 @@ export async function logEvidenceAdded(
     userId,
     projectId,
     metadata: { evidenceTitle, evidenceType },
-  });
+  }, authenticatedClient);
 }
 
 export async function logAnalysisRun(
@@ -176,7 +195,8 @@ export async function logAnalysisRun(
   analysisType: string,
   results: Record<string, any>,
   projectId: string,
-  userId: string
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
 ) {
   return logChangelogEntry({
     timestamp: new Date().toISOString(),
@@ -188,7 +208,7 @@ export async function logAnalysisRun(
     userId,
     projectId,
     metadata: { analysisType, results },
-  });
+  }, authenticatedClient);
 }
 
 export async function logEvidenceRemoved(
@@ -196,7 +216,8 @@ export async function logEvidenceRemoved(
   relationshipName: string,
   evidenceTitle: string,
   projectId: string,
-  userId: string
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
 ) {
   return logChangelogEntry({
     timestamp: new Date().toISOString(),
@@ -208,5 +229,5 @@ export async function logEvidenceRemoved(
     userId,
     projectId,
     metadata: { evidenceTitle },
-  });
+  }, authenticatedClient);
 }

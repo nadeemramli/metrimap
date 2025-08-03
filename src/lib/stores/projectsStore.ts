@@ -9,6 +9,7 @@ import {
   getProjectById,
 } from '../supabase/services';
 import { useAppStore } from './appStore';
+import { getAuthenticatedClient } from '../utils/authenticatedClient';
 
 interface ProjectsStoreState {
   // State
@@ -58,13 +59,14 @@ export const useProjectsStore = create<ProjectsStoreState>()(
         try {
           const user = requireAuth();
           
-          const projects = await getUserProjects(user.id);
+          const authenticatedClient = getAuthenticatedClient();
+          const projects = await getUserProjects(user.id, authenticatedClient || undefined);
           // Load full canvas data for each project
           const canvasProjects: CanvasProject[] = [];
           
           for (const project of projects || []) {
             try {
-              const fullProject = await getProjectById(project.id);
+              const fullProject = await getProjectById(project.id, authenticatedClient || undefined);
               if (fullProject) {
                 canvasProjects.push(fullProject);
               }

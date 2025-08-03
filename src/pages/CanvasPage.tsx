@@ -22,7 +22,7 @@ import { Search, Save, Clock, Check, AlertCircle, Filter } from "lucide-react";
 
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore } from "@/lib/stores";
-import { getProjectById as getProjectFromDatabase } from "@/lib/supabase/services/projects";
+import { useClerkSupabase } from "@/hooks/useClerkSupabase";
 import { useCanvasHeader } from "@/contexts/CanvasHeaderContext";
 import type {
   MetricCard as MetricCardType,
@@ -30,6 +30,13 @@ import type {
   RelationshipType,
   GroupNode as GroupNodeType,
   CardCategory,
+  CardSubCategory,
+  MetricValue,
+  SourceType,
+  CausalFactor,
+  Dimension,
+  ConfidenceLevel,
+  CanvasSettings,
 } from "@/lib/types";
 import {
   MetricCard,
@@ -192,6 +199,7 @@ const edgeTypes = {
 
 function CanvasPageInner() {
   const { canvasId } = useParams();
+  const supabaseClient = useClerkSupabase();
   const navigate = useNavigate();
   const [settingsCardId, setSettingsCardId] = useState<string | undefined>();
   const [settingsInitialTab, setSettingsInitialTab] = useState<string>("data");
@@ -549,22 +557,101 @@ function CanvasPageInner() {
     return () => setHeaderInfo(null);
   }, [setHeaderInfo]);
 
-  // Function to load canvas directly from database (not from projects store)
+  // Function to load canvas directly from database using Clerk authentication
   const loadCanvasFromDatabase = async (projectId: string) => {
     try {
-      const project = await getProjectFromDatabase(projectId);
+      // Use Clerk-authenticated Supabase client to fetch project data
+      const { data: project, error } = await supabaseClient
+        .from("projects")
+        .select(
+          `
+          *,
+          metric_cards(*),
+          relationships(*),
+          groups(*)
+        `
+        )
+        .eq("id", projectId)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
       if (project) {
-        console.log("📥 Loading canvas from database:", {
-          nodes: project.nodes.length,
-          edges: project.edges.length,
-          groups: project.groups?.length || 0,
+        // Transform database data to CanvasProject format
+        const canvasProject = {
+          id: project.id,
+          name: project.name || "",
+          description: project.description || "",
+          tags: project.tags || [],
+          settings: (project.settings as CanvasSettings) || {},
+          nodes: (project.metric_cards || []).map((card) => ({
+            id: card.id,
+            title: card.title,
+            description: card.description || "",
+            category: card.category as CardCategory,
+            subCategory: card.sub_category as
+              | CardSubCategory[CardCategory]
+              | undefined,
+            tags: [], // Will be populated from tags table if needed
+            causalFactors: (card.causal_factors as CausalFactor[]) || [],
+            dimensions: (card.dimensions as Dimension[]) || [],
+            segments: [],
+            position: { x: card.position_x, y: card.position_y },
+            parentId: undefined, // Will be populated if needed
+            data: Array.isArray(card.data)
+              ? (card.data as unknown as MetricValue[])
+              : [],
+            sourceType: (card.source_type as SourceType) || "Manual",
+            formula: card.formula || "",
+            owner: card.owner_id || "",
+            assignees: card.assignees || [],
+            createdAt: card.created_at || new Date().toISOString(),
+            updatedAt: card.updated_at || new Date().toISOString(),
+          })),
+          edges: (project.relationships || []).map((rel) => ({
+            id: rel.id,
+            sourceId: rel.source_id,
+            targetId: rel.target_id,
+            type: rel.type as RelationshipType,
+            confidence: rel.confidence as ConfidenceLevel,
+            weight: rel.weight || 1,
+            description: rel.description || "",
+            evidence: [], // Will be populated from evidence table if needed
+            createdAt: rel.created_at || new Date().toISOString(),
+            updatedAt: rel.updated_at || new Date().toISOString(),
+          })),
+          groups: (project.groups || []).map((group) => ({
+            id: group.id,
+            name: group.name,
+            description: group.description || "",
+            color: group.color || "#e5e7eb",
+            position: { x: group.position_x, y: group.position_y },
+            size: { width: group.width, height: group.height },
+            nodeIds: group.node_ids || [],
+            isCollapsed: false, // Default to expanded
+            createdAt: group.created_at || new Date().toISOString(),
+            updatedAt: group.updated_at || new Date().toISOString(),
+          })),
+          collaborators: [], // Will be populated if needed
+          createdAt: project.created_at || new Date().toISOString(),
+          updatedAt: project.updated_at || new Date().toISOString(),
+          lastModifiedBy: project.last_modified_by || project.created_by || "",
+        };
+
+        console.log("📥 Loading canvas from database with Clerk auth:", {
+          nodes: canvasProject.nodes.length,
+          edges: canvasProject.edges.length,
+          groups: canvasProject.groups.length,
         });
-        loadCanvas(project);
+
+        loadCanvas(canvasProject);
       } else {
-        console.error("❌ Project not found:", projectId);
+        // Project not found
       }
     } catch (error) {
-      console.error("❌ Failed to load canvas:", error);
+      // Failed to load canvas
     }
   };
 

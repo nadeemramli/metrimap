@@ -5,6 +5,7 @@ import { getProjectCollaborators } from "@/lib/supabase/services/collaborators";
 import { getProjectChangelog } from "@/lib/supabase/services/changelog";
 import type { Collaborator } from "@/lib/supabase/services/collaborators";
 import type { ChangelogEntry } from "@/lib/supabase/services/changelog";
+import { useAuthenticatedSupabase } from "@/contexts/AuthenticatedSupabaseContext";
 import { useTagStore } from "@/lib/stores/tagStore";
 import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
 import {
@@ -75,6 +76,7 @@ type TabType = "general" | "changelog";
 
 export default function CanvasSettingsPage() {
   const { canvasId } = useParams();
+  const supabaseClient = useAuthenticatedSupabase();
   const navigate = useNavigate();
   const { projects, updateProject, deleteProject } = useProjectsStore();
   const { user } = useAppStore();
@@ -231,7 +233,10 @@ export default function CanvasSettingsPage() {
 
     setLoadingCollaborators(true);
     try {
-      const data = await getProjectCollaborators(currentProject.id);
+      const data = await getProjectCollaborators(
+        currentProject.id,
+        supabaseClient
+      );
       setCollaborators(data);
     } catch (error) {
       console.error("Failed to load collaborators:", error);
@@ -246,7 +251,11 @@ export default function CanvasSettingsPage() {
 
     setLoadingChangelog(true);
     try {
-      const data = await getProjectChangelog(currentProject.id);
+      const data = await getProjectChangelog(
+        currentProject.id,
+        undefined,
+        supabaseClient
+      );
       setChangelog(data);
     } catch (error) {
       console.error("Failed to load changelog:", error);

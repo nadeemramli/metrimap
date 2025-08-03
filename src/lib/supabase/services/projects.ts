@@ -1,6 +1,8 @@
 import { supabase } from '../client';
 import type { Tables, TablesInsert, TablesUpdate } from '../types';
 import type { CanvasProject } from '../../types';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types';
 
 export type Project = Tables<'projects'>;
 export type ProjectInsert = TablesInsert<'projects'>;
@@ -11,9 +13,14 @@ export type Relationship = Tables<'relationships'>;
 export type Group = Tables<'groups'>;
 
 // Fetch all projects for a user (fixed to eliminate RLS circular dependencies)
-export async function getUserProjects(userId: string) {
+export async function getUserProjects(
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  
   // Step 1: Get projects owned by user (RLS handles this)
-  const { data: ownedProjects, error: ownedError } = await supabase
+  const { data: ownedProjects, error: ownedError } = await client
     .from('projects')
     .select(`
       *,
@@ -32,7 +39,7 @@ export async function getUserProjects(userId: string) {
   }
 
   // Step 2: Get project IDs where user is a collaborator
-  const { data: collaborations, error: collabError } = await supabase
+  const { data: collaborations, error: collabError } = await client
     .from('project_collaborators')
     .select('project_id')
     .eq('user_id', userId);
@@ -48,7 +55,7 @@ export async function getUserProjects(userId: string) {
     const projectIds = collaborations.map(c => c.project_id).filter(id => id !== null);
     
     if (projectIds.length > 0) {
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('projects')
         .select(`
           *,
@@ -79,10 +86,14 @@ export async function getUserProjects(userId: string) {
 }
 
 // Fetch a single project with all its data
-export async function getProjectById(projectId: string): Promise<CanvasProject | null> {
+export async function getProjectById(
+  projectId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<CanvasProject | null> {
   console.log('🔍 getProjectById called with projectId:', projectId);
   
-  const { data: project, error: projectError } = await supabase
+  const client = authenticatedClient || supabase;
+  const { data: project, error: projectError } = await client
     .from('projects')
     .select(`
       *,
@@ -267,8 +278,12 @@ export async function getProjectById(projectId: string): Promise<CanvasProject |
 }
 
 // Create a new project
-export async function createProject(project: Omit<ProjectInsert, 'id'>) {
-  const { data, error } = await supabase
+export async function createProject(
+  project: Omit<ProjectInsert, 'id'>,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('projects')
     .insert(project)
     .select()
@@ -283,8 +298,13 @@ export async function createProject(project: Omit<ProjectInsert, 'id'>) {
 }
 
 // Update a project
-export async function updateProject(id: string, updates: ProjectUpdate) {
-  const { data, error } = await supabase
+export async function updateProject(
+  id: string, 
+  updates: ProjectUpdate,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('projects')
     .update(updates)
     .eq('id', id)
@@ -300,8 +320,12 @@ export async function updateProject(id: string, updates: ProjectUpdate) {
 }
 
 // Delete a project
-export async function deleteProject(id: string) {
-  const { error } = await supabase
+export async function deleteProject(
+  id: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { error } = await client
     .from('projects')
     .delete()
     .eq('id', id);
@@ -313,8 +337,13 @@ export async function deleteProject(id: string) {
 }
 
 // Duplicate a project
-export async function duplicateProject(projectId: string, newName: string, userId: string) {
-  const originalProject = await getProjectById(projectId);
+export async function duplicateProject(
+  projectId: string, 
+  newName: string, 
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const originalProject = await getProjectById(projectId, authenticatedClient);
   
   if (!originalProject) {
     throw new Error('Project not found');
@@ -328,7 +357,7 @@ export async function duplicateProject(projectId: string, newName: string, userI
     settings: originalProject.settings as any,
     created_by: userId,
     last_modified_by: userId,
-  });
+  }, authenticatedClient);
 
   // TODO: Copy metric cards, relationships, and groups
   // This would involve creating new records with new IDs
@@ -337,16 +366,20 @@ export async function duplicateProject(projectId: string, newName: string, userI
 }
 
 // Group database operations
-export async function createGroup(group: {
-  id: string;
-  name: string;
-  nodeIds: string[];
-  position: { x: number; y: number };
-  size: { width: number; height: number };
-  projectId: string;
-  createdBy: string;
-}) {
-  const { data, error } = await supabase
+export async function createGroup(
+  group: {
+    id: string;
+    name: string;
+    nodeIds: string[];
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+    projectId: string;
+    createdBy: string;
+  },
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('groups')
     .insert({
       id: group.id,
@@ -370,12 +403,16 @@ export async function createGroup(group: {
   return data;
 }
 
-export async function updateGroup(groupId: string, updates: {
-  name?: string;
-  nodeIds?: string[];
-  position?: { x: number; y: number };
-  size?: { width: number; height: number };
-}) {
+export async function updateGroup(
+  groupId: string, 
+  updates: {
+    name?: string;
+    nodeIds?: string[];
+    position?: { x: number; y: number };
+    size?: { width: number; height: number };
+  },
+  authenticatedClient?: SupabaseClient<Database>
+) {
   const updateData: any = {};
   
   if (updates.name !== undefined) updateData.name = updates.name;
@@ -389,7 +426,8 @@ export async function updateGroup(groupId: string, updates: {
     updateData.height = updates.size.height;
   }
 
-  const { data, error } = await supabase
+  const client = authenticatedClient || supabase;
+  const { data, error } = await client
     .from('groups')
     .update(updateData)
     .eq('id', groupId)
@@ -404,8 +442,12 @@ export async function updateGroup(groupId: string, updates: {
   return data;
 }
 
-export async function deleteGroup(groupId: string) {
-  const { error } = await supabase
+export async function deleteGroup(
+  groupId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase;
+  const { error } = await client
     .from('groups')
     .delete()
     .eq('id', groupId);

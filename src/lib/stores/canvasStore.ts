@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { CanvasState, CanvasProject, MetricCard, Relationship, GroupNode, CanvasSettings } from '../types';
-import { 
+import { useProjectsStore } from './projectsStore';
+import { useAppStore } from './appStore';
+import { generateUUID } from '../utils/validation';
+import { getAuthenticatedClient } from '../utils/authenticatedClient';
+import {
   createMetricCard,
   updateMetricCard as updateMetricCardInSupabase,
   deleteMetricCard as deleteMetricCardInSupabase,
@@ -12,9 +16,6 @@ import {
   updateGroup,
   deleteGroup,
 } from '../supabase/services';
-import { useProjectsStore } from './projectsStore';
-import { useAppStore } from './appStore';
-import { generateUUID } from '../utils/validation';
 
 interface CanvasStoreState extends CanvasState {
   // Auto-save state
@@ -144,7 +145,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     setLoading: (isLoading: boolean) => set({ isLoading }),
     setError: (error: string | undefined) => set({ error }),
 
-    // Async Node management (Supabase)
+    // Async Node management (Supabase) - Using authenticated client
     createNode: async (nodeData: Omit<MetricCard, 'id' | 'createdAt' | 'updatedAt'>) => {
       const state = get();
       if (!state.canvas) return;
@@ -154,24 +155,26 @@ export const useCanvasStore = create<CanvasStoreState>()(
         const { user } = useAppStore.getState();
         if (!user) throw new Error('User not authenticated');
         
+        const authenticatedClient = getAuthenticatedClient();
         const newNode = await createMetricCard(
           { ...nodeData, id: '', createdAt: '', updatedAt: '' },
           state.canvas.id,
-          user.id
+          user.id,
+          authenticatedClient || undefined
         );
         
         set((state) => ({
           canvas: state.canvas
             ? {
                 ...state.canvas,
-                nodes: [...state.canvas.nodes, newNode],
+                nodes: [...state.canvas.nodes, newNode as MetricCard],
                 updatedAt: new Date().toISOString(),
               }
             : undefined,
           isLoading: false,
         }));
         
-        console.log('✅ New metric card created and saved:', newNode.title);
+        console.log('✅ New metric card created and saved with Clerk auth:', newNode.title);
       } catch (error) {
         console.error('Error creating node:', error);
         set({ error: 'Failed to create node', isLoading: false });
@@ -181,7 +184,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
     persistNodeUpdate: async (nodeId: string, updates: Partial<MetricCard>) => {
       set({ isLoading: true, error: undefined });
       try {
-        await updateMetricCardInSupabase(nodeId, updates);
+        const authenticatedClient = getAuthenticatedClient();
+        await updateMetricCardInSupabase(nodeId, updates, authenticatedClient || undefined);
         
         // Update local state
         set((state) => ({
@@ -207,7 +211,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
     persistNodeDelete: async (nodeId: string) => {
       set({ isLoading: true, error: undefined });
       try {
-        await deleteMetricCardInSupabase(nodeId);
+        const authenticatedClient = getAuthenticatedClient();
+        await deleteMetricCardInSupabase(nodeId, authenticatedClient || undefined);
         
         // Update local state
         set((state) => ({
@@ -240,10 +245,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
         const { user } = useAppStore.getState();
         if (!user) throw new Error('User not authenticated');
         
+        const authenticatedClient = getAuthenticatedClient();
         const newEdge = await createRelationship(
           { ...edgeData, id: '', createdAt: '', updatedAt: '' },
           state.canvas.id,
-          user.id
+          user.id,
+          authenticatedClient || undefined
         );
         
         set((state) => ({
@@ -267,7 +274,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
     persistEdgeUpdate: async (edgeId: string, updates: Partial<Relationship>) => {
       set({ isLoading: true, error: undefined });
       try {
-        await updateRelationshipInSupabase(edgeId, updates);
+        const authenticatedClient = getAuthenticatedClient();
+        await updateRelationshipInSupabase(edgeId, updates, authenticatedClient || undefined);
         
         // Update local state
         set((state) => ({
@@ -293,7 +301,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
     persistEdgeDelete: async (edgeId: string) => {
       set({ isLoading: true, error: undefined });
       try {
-        await deleteRelationshipInSupabase(edgeId);
+        const authenticatedClient = getAuthenticatedClient();
+        await deleteRelationshipInSupabase(edgeId, authenticatedClient || undefined);
         
         // Update local state
         set((state) => ({
