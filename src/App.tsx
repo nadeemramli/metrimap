@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SignedOut, SignUp } from "@clerk/react-router";
+import { SignedOut, SignUp, SignedIn } from "@clerk/react-router";
 import { Navigate } from "react-router-dom";
 
 // Components
@@ -37,19 +37,29 @@ export default function App() {
             <Route
               path="/auth/sign-in"
               element={
-                <SignedOut>
-                  <SignInPage />
-                </SignedOut>
+                <>
+                  <SignedOut>
+                    <SignInPage />
+                  </SignedOut>
+                  <SignedIn>
+                    <Navigate to="/" replace />
+                  </SignedIn>
+                </>
               }
             />
             <Route
               path="/auth/sign-up"
               element={
-                <SignedOut>
-                  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
-                    <SignUp />
-                  </div>
-                </SignedOut>
+                <>
+                  <SignedOut>
+                    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
+                      <SignUp />
+                    </div>
+                  </SignedOut>
+                  <SignedIn>
+                    <Navigate to="/" replace />
+                  </SignedIn>
+                </>
               }
             />
 

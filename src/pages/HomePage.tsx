@@ -78,7 +78,7 @@ export default function HomePage() {
     updateProject,
     initializeProjects,
   } = useProjectsStore();
-  const { setCurrentCanvas } = useAppStore();
+  const { setCurrentCanvas, user } = useAppStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -109,10 +109,13 @@ export default function HomePage() {
 
   useKeyboardShortcuts(shortcuts, { enabled: true });
 
-  // Initialize projects store on component mount
+  // Initialize projects store on component mount, but only when user is available
   useEffect(() => {
-    initializeProjects();
-  }, [initializeProjects]);
+    if (user) {
+      console.log("User available, initializing projects");
+      initializeProjects();
+    }
+  }, [initializeProjects, user]);
 
   // Recent projects (updated in last 1 day)
   const isRecentProject = (project: CanvasProject) => {
