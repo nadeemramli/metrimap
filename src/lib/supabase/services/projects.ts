@@ -91,6 +91,7 @@ export async function getProjectById(
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<CanvasProject | null> {
   console.log('🔍 getProjectById called with projectId:', projectId);
+  console.log('🔍 authenticatedClient provided:', !!authenticatedClient);
   
   const client = authenticatedClient || supabase;
   const { data: project, error: projectError } = await client
@@ -119,7 +120,7 @@ export async function getProjectById(
   console.log('✅ Project found:', project.name);
 
   // Fetch metric cards
-  const { data: metricCards, error: cardsError } = await supabase
+  const { data: metricCards, error: cardsError } = await client
     .from('metric_cards')
     .select('*')
     .eq('project_id', projectId);
@@ -137,7 +138,7 @@ export async function getProjectById(
   let relationships: any[] = [];
   
   // First try with evidence_items
-  const { data: relationshipsWithEvidence, error: relationshipsError } = await supabase
+  const { data: relationshipsWithEvidence, error: relationshipsError } = await client
     .from('relationships')
     .select(`
       *,
@@ -148,7 +149,7 @@ export async function getProjectById(
   if (relationshipsError) {
     console.error('Error fetching relationships with evidence:', relationshipsError);
     // Try fetching relationships without evidence_items
-    const { data: relationshipsWithoutEvidence, error: relationshipsError2 } = await supabase
+    const { data: relationshipsWithoutEvidence, error: relationshipsError2 } = await client
       .from('relationships')
       .select('*')
       .eq('project_id', projectId);
@@ -168,7 +169,7 @@ export async function getProjectById(
   // If we still have no relationships, try a simpler query
   if (relationships.length === 0) {
     console.log('🔍 No relationships found, trying simple query...');
-    const { data: simpleRelationships, error: simpleError } = await supabase
+    const { data: simpleRelationships, error: simpleError } = await client
       .from('relationships')
       .select('id, source_id, target_id, type, confidence, weight, project_id')
       .eq('project_id', projectId);
@@ -185,7 +186,7 @@ export async function getProjectById(
   console.log('🔍 Sample relationship:', relationships?.[0]);
 
   // Fetch groups
-  const { data: groups, error: groupsError } = await supabase
+  const { data: groups, error: groupsError } = await client
     .from('groups')
     .select('*')
     .eq('project_id', projectId);

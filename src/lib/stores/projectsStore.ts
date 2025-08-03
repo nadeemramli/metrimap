@@ -65,9 +65,11 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           const canvasProjects: CanvasProject[] = [];
           
           console.log(`📋 Loading full data for ${projects?.length || 0} projects...`);
+          console.log(`🔍 Projects from getUserProjects:`, projects?.map(p => ({ id: p.id, name: p.name })));
           for (const project of projects || []) {
             console.log(`🔍 Loading project: ${project.name} (${project.id})`);
             try {
+              console.log(`🔍 Calling getProjectById for ${project.id}...`);
               const fullProject = await getProjectById(project.id, authenticatedClient || undefined);
               if (fullProject) {
                 console.log(`✅ Loaded project ${project.name} with ${fullProject.nodes.length} nodes, ${fullProject.edges.length} edges, ${fullProject.groups.length} groups`);
