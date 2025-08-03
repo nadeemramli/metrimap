@@ -8,6 +8,7 @@ import {
   Server,
   Settings,
   ArrowLeft,
+  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -137,6 +138,22 @@ export default function CanvasLayout() {
                 </Button>
               );
             })}
+        </div>
+
+        {/* Keyboard Shortcuts */}
+        <div className="px-1.5 py-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-9 h-9 p-0 rounded-md transition-all duration-150 hover:bg-accent/50 text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              // This will be handled by the CanvasPage component
+              window.dispatchEvent(new CustomEvent("openKeyboardShortcuts"));
+            }}
+            title="Keyboard Shortcuts"
+          >
+            <Keyboard className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Settings */}

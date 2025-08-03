@@ -5,9 +5,11 @@ This file stores project-specific knowledge, conventions, and user preferences l
 ## Project Understanding
 
 ### Core Purpose
+
 Metrimap is a visual-first business intelligence tool that transforms abstract business concepts into structured, analyzable metric trees. The goal is to make an organization's "fundamental formula" (how inputs become value) visible and tractable through interactive canvas-based modeling.
 
 ### Key Product Principles
+
 - **Canvas-Centric**: The React Flow canvas is the primary workspace where business models are built
 - **Evidence-Based**: Relationships between metrics must be supported by attached evidence (experiments, analyses)
 - **Progressive Rigor**: Tool guides users from correlation to causation through structured workflows
@@ -16,6 +18,7 @@ Metrimap is a visual-first business intelligence tool that transforms abstract b
 ## Technical Architecture
 
 ### Core Tech Stack
+
 - **Frontend**: React + TypeScript + Vite
 - **Canvas Engine**: React Flow with Dagre auto-layout
 - **UI Framework**: Shadcn + Tailwind CSS + Recharts
@@ -25,6 +28,7 @@ Metrimap is a visual-first business intelligence tool that transforms abstract b
 - **Deployment**: Vercel
 
 ### Key Components
+
 1. **Metric Cards (Nodes)**: 5 category system (Core/Value, Data/Metric, Work/Action, Ideas/Hypothesis, Metadata)
 2. **Relationships (Edges)**: 4 types (Deterministic, Probabilistic, Causal, Compositional)
 3. **Evidence System**: Attach supporting artifacts to validate relationships
@@ -33,6 +37,7 @@ Metrimap is a visual-first business intelligence tool that transforms abstract b
 ## Application Structure
 
 ### Beyond Canvas (Navigation)
+
 - **Homepage**: Project management and canvas gallery
 - **Dashboard**: Auto-generated from canvas subflows
 - **Assets**: Centralized repository (Metrics, Relationships, Repo tabs)
@@ -40,6 +45,7 @@ Metrimap is a visual-first business intelligence tool that transforms abstract b
 - **Settings**: Project metadata and immutable changelog
 
 ### Within Canvas (Core Functionality)
+
 - **Interactive Canvas**: Pan/zoom, multi-select, auto-save
 - **Dynamic Cards**: Category-based views with rich data display
 - **Relationship Management**: Visual confidence levels and evidence repositories
@@ -48,13 +54,16 @@ Metrimap is a visual-first business intelligence tool that transforms abstract b
 ## User Experience Philosophy
 
 ### Business Model Focus
+
 The tool is designed to help teams build coherent business models where:
+
 - Every metric card represents a component of the business system
 - Every relationship explicitly defines logical connections
 - Evidence validates or challenges assumed relationships
 - Dashboards reflect the actual structure of the business model
 
 ### Knowledge Management
+
 - Relationships serve as "knowledge hubs" storing institutional learning
 - Evidence items (experiments, analyses) attach to specific connections
 - Changelog provides full audit trail of model evolution
@@ -63,12 +72,14 @@ The tool is designed to help teams build coherent business models where:
 ## Development Conventions
 
 ### File Organization
+
 - Canvas components use React Flow patterns
 - State management through Zustand stores
 - Supabase integration for persistence
 - Web Workers for heavy computation (correlations, formula calculations)
 
 ### Infrastructure Setup
+
 - **Supabase Access**: MCP (Model Context Protocol) access to Supabase project already configured
 - **Database**: Supabase project already created and ready for schema development
 - **UI Components**: Shadcn UI components available - should be used creatively throughout the app
@@ -78,14 +89,55 @@ The tool is designed to help teams build coherent business models where:
 ## User Preferences
 
 ### Development Approach
+
 - Utilize existing Supabase project with MCP integration
 - Creative use of Shadcn components for sophisticated business intelligence UI
 - Incremental development starting with Phase 1: Core Foundation & Architecture
 - **Component Strategy**: Check existing Shadcn components in src/components/ui/ before installing new ones
 
+### Canvas Control Panel Layout
+
+- **Single Comprehensive Panel**: All canvas controls consolidated into one bottom-left panel
+- **Organized Sections**:
+  - Node Creation (Add Node Button)
+  - Group & Subflow Management (Automatic group creation, Subflow creation)
+  - Search & Navigation (Search)
+  - Layout Controls (Comprehensive dropdown with all 4 directions)
+  - Filter Controls (Comprehensive filtering with FilterModal)
+- **Debug Panel**: Left-top position with closeable interface for development troubleshooting
+- **Multi-Selection**: Shift+Click for multi-selection, disabled selection marquee to prevent conflicts with canvas panning
+- **Auto-Layout Integration**: Direct integration with applyAutoLayout utility for automatic node positioning
+- **Filter System**: Comprehensive filtering by categories, tags, owners, confidence levels, relationship types, and date ranges
+- **Improved UX**:
+  - **Automatic Group Creation**: Click Users button creates group with incremental naming ("Untitled Group 1", "Untitled Group 2", etc.)
+  - **Comprehensive Layout Controls**: Dropdown with all 4 layout directions (Top-Bottom, Bottom-Top, Left-Right, Right-Left)
+  - **Layout Persistence**: Layout direction is saved to canvas settings and restored when returning to canvas
+  - **Visual Feedback**: Loading states and current layout indication
+  - **Database Integration**: All group creation automatically saved to database
+  - **Keyboard Shortcuts**: Moved to sidebar above settings button for better accessibility
+  - **Native Toolbar Positioning**: Group nodes now use React Flow's native NodeToolbar for consistent positioning like metric cards
+  - **Bottom Selection Panel**: Replaced floating SelectionToolbar with React Flow's native Panel component for better UX
+  - **Grouping Functionality**: Multi-select nodes and use "Group X Nodes" button to create groups with automatic sizing and positioning
+  - **Visual Group Containment**: Nodes are properly contained within group boundaries using React Flow's subflow system
+  - **Group Interaction Fixes**: Fixed click behavior to prevent duplicate group creation and proper drag behavior
+  - **Group Layering**: Groups now appear above edges with proper z-index configuration
+  - **Node Constraint**: Nodes with parentId are properly constrained within their group boundaries
+  - **Context Menu Removal**: Completely removed context menu functionality to eliminate confusion
+  - **Subflow Cleanup**: Removed "Create Subflow" functionality and consolidated with grouping
+  - **Group Creation Fix**: Removed "Create New Group" button to prevent accidental group creation
+  - **Edge Layering Fix**: Fixed group rendering order and increased z-index to ensure groups appear above edges
+  - **Node Visibility Fix**: Adjusted z-index so nodes appear above groups, and made group background transparent
+  - **Group Interaction**: Added proper cursor states, resize handles, and visual feedback for drag vs resize areas
+  - **Group Duplication Fix**: Fixed group duplication issue by memoizing `updateGroupSize` function to prevent unnecessary re-renders
+  - **Fundamental Layering Fix**: Moved all components (SelectionPanel, Debug Panel) inside React Flow's `Panel` components to ensure proper compositing within the canvas layer instead of rendering as separate DOM layers
+  - **React Flow Layering Optimization**: Removed custom z-index values and added `elevateNodesOnSelect` and `elevateEdgesOnSelect` to let React Flow handle layering naturally
+  - **Edge Z-Index Implementation**: Added proper `edge.zIndex` attribute based on relationship type (Deterministic=1, Probabilistic=2, Causal=3, Compositional=4, Temporal=5) to use React Flow's edge layering system
+  - **Unified Debug Tool**: Created reusable `DebugPanel` component with question mark icon, natural collapse functionality, and consistent styling for all future debug tools
+
 ## Progress Completed
 
 ### Phase 1: Core Foundation ✅ COMPLETE
+
 - ✅ **React Router Setup**: Full routing structure implemented with nested routes
   - HomePage (`/`) - Project gallery with canvas cards
   - CanvasLayout (`/canvas/:id`) - Sidebar layout for canvas views
@@ -103,6 +155,7 @@ The tool is designed to help teams build coherent business models where:
 - ✅ **Store Integration**: Homepage and CanvasPage now use real Zustand data
 
 ### Phase 2: Canvas & Metric Cards ✅ COMPLETE
+
 - ✅ **Dynamic MetricCard Component**: Fully functional with PRD-aligned features
   - 5-category system with visual differentiation (Core/Value, Data/Metric, Work/Action, Ideas/Hypothesis, Metadata)
   - Enhanced Data/Metric view with time-series data and trend indicators
@@ -136,6 +189,7 @@ The tool is designed to help teams build coherent business models where:
   - Integration with card settings and node management
 
 ### Phase 3: Relationship Management ✅ COMPLETE
+
 - ✅ **Dynamic Edge Components**: Advanced relationship visualization
   - 4 relationship types with distinct icons and colors (Deterministic, Probabilistic, Causal, Compositional)
   - Confidence level visual indicators (High/Medium/Low with different stroke styles)
@@ -165,6 +219,7 @@ The tool is designed to help teams build coherent business models where:
 ## Development Strategy
 
 ### Build-First, Optimize-Later Approach
+
 - **Decision**: Continue building complete feature set before optimization
 - **Rationale**: Strong foundation with clean architecture, TypeScript safety, and no technical debt
 - **Current Code Quality**: All tests passing, no linting errors, consistent patterns
@@ -172,8 +227,9 @@ The tool is designed to help teams build coherent business models where:
 - **Optimization Plan**: Focused sprint after Phase 4 completion
 
 ### Development Path
+
 ```
-✅ Phase 1: Core Foundation & Architecture  
+✅ Phase 1: Core Foundation & Architecture
 ✅ Phase 2: Canvas & Metric Cards
 ✅ Phase 3: Relationship Management
 ✅ Phase 4: Beyond Canvas Pages (Homepage, Sidebar, Dashboard, Assets, Source, Settings)
@@ -182,9 +238,11 @@ The tool is designed to help teams build coherent business models where:
 ```
 
 ### Phase 4: Beyond Canvas Pages ✅ COMPLETE
+
 Focus on completing the application's navigation and page ecosystem to provide a complete user experience.
 
 #### Completed Features ✅
+
 - **Enhanced Homepage**: Advanced project gallery with tabs (All/Recent/Starred), search/filter, sorting, grid/list views, project management operations
 - **Professional Sidebar Navigation**: Icon-based navigation with tooltips, project context display, breadcrumbs, status indicators, enhanced UX
 - **Sophisticated Dashboard**: 4-tab interface (Overview/Metrics/Insights/Health), KPI cards with trends, AI-powered insights, system health monitoring, time range filtering
@@ -193,27 +251,26 @@ Focus on completing the application's navigation and page ecosystem to provide a
 - **Canvas Settings Page**: Project configuration with 5 tabs (General, Data, Team, Changelog, Settings), team management, activity tracking
 
 ### Phase 5: Advanced Features & Polish ✅ COMPLETE
+
 All advanced computation features and application ecosystem components successfully implemented.
 
 #### Completed Features ✅
+
 1. **Supabase Integration & Persistence** ✅
    - ✅ Set up database schema for projects, metric cards, relationships, evidence
-   - ✅ Implemented real-time data synchronization 
+   - ✅ Implemented real-time data synchronization
    - ✅ Connected Zustand stores to Supabase persistence layer
    - ✅ Database ready for user authentication and project sharing
-   
 2. **Web Workers & Formula Engine** ✅
    - ✅ Set up Web Workers with Comlink for heavy computations
    - ✅ Implemented math.js formula engine for calculated metrics
    - ✅ Built correlation computation using simple-statistics
    - ✅ Added background processing for metric calculations with fallback support
-   
 3. **Advanced Canvas Features** ✅
    - ✅ Implemented canvas grouping/subflows functionality with GroupNode and GroupControls
    - ✅ Built 'Dimension Slice' feature for metric decomposition (PRD-compliant)
    - ✅ Added auto-dashboard generation from canvas subflows
    - ✅ Enhanced auto-layout algorithms with Dagre integration
-   
 4. **User Experience & Guidance** ✅
    - ✅ Empty state handling for dashboards without groups
    - ✅ Interactive help system for group creation
@@ -223,12 +280,14 @@ All advanced computation features and application ecosystem components successfu
 **Phase 5 Complete**: All advanced features implemented and ready for Phase 6
 
 **Latest Critical Fix ✅**
+
 - **Data Flow Issue Resolved**: Fixed HomePage test failure by adding proper store initialization
 - **Store Architecture Verified**: Confirmed proper data flow from stores to UI across all pages
 - **All Tests Passing**: HomePage, App, MetricCard, and Worker tests now working correctly
 - **Development Ready**: Solid foundation verified, ready to continue with Phase 5 features
 
 **Latest Completed ✅**
+
 - **🎯 PRD Compliance Features (High Priority)**: Advanced features implementing PRD specifications
   - **📊 Historical Data Disaggregation Strategy**: Complete implementation of PRD 5.3.c dimension slice options
     - **Manual Entry**: New slice cards start empty for manual population
@@ -283,12 +342,14 @@ All advanced computation features and application ecosystem components successfu
 ## ✅ Data Flow Architecture
 
 ### Store Initialization Pattern
+
 - **HomePage as Entry Point**: HomePage properly initializes projects store via `useEffect(() => initializeProjects(), [initializeProjects])`
 - **Other Pages**: Use `getProjectById` for specific project lookups, assuming store is already initialized
 - **Fallback Mechanism**: Store automatically falls back to mock data when no user is authenticated
 - **Test Environment**: Supabase auth errors are expected and handled gracefully with mock data fallback
 
 ### Verified Data Flow ✅
+
 - **Homepage → Store → UI**: Projects load correctly from store to UI rendering
 - **Store Persistence**: Zustand stores properly integrate with Supabase for real-time data sync
 - **Error Handling**: Auth session missing errors are properly handled with fallback to mock data
@@ -297,10 +358,11 @@ All advanced computation features and application ecosystem components successfu
 ## ✅ PRD Compliance Implementation (MAJOR UPDATE)
 
 ### Authentication System - COMPLETED 🔐
+
 - **Status**: Full Supabase Authentication implemented and working
 - **Features Added**:
   - Login, Signup, Forgot Password, Reset Password pages
-  - Protected routes with ProtectedRoute component  
+  - Protected routes with ProtectedRoute component
   - Global auth state management with Zustand
   - User session management and persistence
   - Row Level Security (RLS) policies
@@ -309,6 +371,7 @@ All advanced computation features and application ecosystem components successfu
 - **Security**: Form validation utilities and error handling
 
 ### Historical Data Disaggregation Strategy - COMPLETED 📊
+
 - **Implementation**: Enhanced Dimension Slice feature with three options:
   - **Manual Entry**: Empty data for manual input
   - **Proportional Split**: Mathematical distribution based on percentages
@@ -317,18 +380,21 @@ All advanced computation features and application ecosystem components successfu
 - **Logic**: Complex proportional data distribution in canvasStore.ts
 
 ### Relationship Changelog (Influence Drift Analysis) - COMPLETED 📈
+
 - **Feature**: Automatic tracking of relationship property changes
 - **Data Tracked**: Weight, confidence, type, evidence changes over time
 - **UI**: Timeline visualization in RelationshipSheet with change icons
 - **Analytics**: Change summary statistics and historical trend analysis
 
 ### Causal Checklist Workflow - COMPLETED 🎯
+
 - **Implementation**: Scientific upgrade path from Probabilistic → Causal relationships
 - **Criteria**: 5 required + 2 optional scientific criteria with progress tracking
 - **Integration**: Built into RelationshipWorkflows component
 - **Validation**: Evidence-based upgrade requirements and automatic validation
 
 ### Evidence Repository - COMPLETED 📚
+
 - **Full CRUD System**: Comprehensive evidence management with dedicated store
 - **Features**:
   - Centralized evidence repository page (/evidence route)
@@ -340,6 +406,7 @@ All advanced computation features and application ecosystem components successfu
 - **Storage**: Dedicated Zustand evidenceStore with persistence
 
 ### Correlation Analysis with Statistical Significance - COMPLETED 🔬
+
 - **Statistical Engine**: Enhanced worker system with rigorous analysis
 - **Metrics Calculated**:
   - Pearson correlation with confidence intervals
@@ -351,6 +418,7 @@ All advanced computation features and application ecosystem components successfu
 - **Worker Support**: Both web worker and main thread fallback implementations
 
 ### Segments Functionality - IN PROGRESS 🏗️
+
 - **Types Added**: Segment and SegmentFilter interfaces in types/index.ts
 - **Data Model**: Support for dimension-based metric decomposition
 - **Status**: CardSettingsSheet partially updated, need to complete segments tab UI
@@ -359,8 +427,9 @@ All advanced computation features and application ecosystem components successfu
 ## 🎯 Current Task Status
 
 ### Completed PRD Features ✅
+
 1. ✅ Authentication System (personal use with hidden signup)
-2. ✅ Historical Data Disaggregation Strategy 
+2. ✅ Historical Data Disaggregation Strategy
 3. ✅ Relationship Changelog (Influence Drift Analysis)
 4. ✅ Causal Checklist Workflow
 5. ✅ Evidence Repository with full CRUD operations
@@ -368,21 +437,25 @@ All advanced computation features and application ecosystem components successfu
 7. ✅ Segments functionality (COMPLETED - Full UI with filters and percentage allocation)
 
 ### Completed Polish Features ✅
+
 1. ✅ **Comprehensive keyboard shortcuts and accessibility** - Full keyboard navigation and screen reader support
 2. ✅ **Advanced search across all assets** - Global search with filters and smart results
 3. ✅ **Bulk operations for metric cards and relationships** - Complete bulk editing, deletion, and management
 
 ### Remaining Implementation Tasks 📋
+
 1. **Canvas version history and restore points**
 2. **Advanced chart types and visualization options**
 
 ### 🎊 Achievement Status
+
 **All Core PRD Features**: ✅ COMPLETED (100%)
 **Polish Features**: 3/5 COMPLETED (60%)
 
 ### Excluded Features (Per User Request) ❌
+
 - Real-time collaboration feature
-- Data export/import feature  
+- Data export/import feature
 - Canvas templates and blueprint systems
 - All tests (removed from task lists)
 - AI-powered metric suggestions
@@ -392,24 +465,28 @@ All advanced computation features and application ecosystem components successfu
 ## 🛠️ Technical Implementation Notes
 
 ### Worker System Enhancement 🔧
+
 - **Statistical Functions**: Added `calculateCorrelationAnalysis` with full statistical rigor
 - **Fallback Support**: Main thread implementations for environments without workers
 - **Hook Integration**: Enhanced useWorker hook with correlation analysis support
 - **Performance**: Efficient calculations using simple-statistics library
 
 ### Component Architecture 🏗️
+
 - **Evidence Repository**: Standalone page with full CRUD operations
 - **Correlation Analysis**: Reusable panel component with rich statistical UI
 - **Modal Enhancements**: DimensionSliceModal with proportional split controls
 - **Form Validation**: Reusable validation utilities across components
 
 ### Data Model Extensions 📊
+
 - **MetricCard**: Added `segments` field for decomposition support
 - **EvidenceItem**: Extended with `createdAt`, `createdBy`, `tags`, `category`
 - **Relationship**: Added `history` field for change tracking
 - **New Types**: Segment, SegmentFilter, RelationshipHistoryEntry interfaces
 
 ### Navigation & Routing 🧭
+
 - **Evidence Repository**: Added /evidence route with protected access
 - **Sidebar Integration**: Evidence tab in CanvasLayout navigation
 - **HomePage Integration**: Evidence Repository button in header
@@ -417,12 +494,14 @@ All advanced computation features and application ecosystem components successfu
 ## 🚧 Remaining Technical Debt
 
 ### Testing Coverage 📊
+
 - **Status**: Tests were deliberately excluded per user request
 - **Note**: User will handle personal testing and ad-hoc optimization
 
 ## 🎉 Recently Completed Features (Current Session)
 
 ### 7. Segments Functionality ✅ COMPLETED
+
 - **Location**: `src/components/canvas/CardSettingsSheet.tsx` (New segments tab)
 - **Features**:
   - Full CRUD operations for segment management
@@ -436,6 +515,7 @@ All advanced computation features and application ecosystem components successfu
 - **Validation**: Smart percentage validation ensuring 100% allocation
 
 ### 8. Comprehensive Keyboard Shortcuts and Accessibility ✅ COMPLETED
+
 - **Core Hook**: `src/hooks/useKeyboardShortcuts.ts` - Advanced keyboard shortcut management
 - **Accessibility Hook**: `src/hooks/useAccessibility.ts` - Screen reader and focus management
 - **Help Component**: `src/components/ui/KeyboardShortcutsHelp.tsx` - Searchable shortcuts dialog
@@ -448,6 +528,7 @@ All advanced computation features and application ecosystem components successfu
 - **Notable Shortcuts**: Cmd+K (search), Cmd+N (new card), Cmd+D (delete), Escape (close/clear)
 
 ### 9. Advanced Search Across All Assets ✅ COMPLETED
+
 - **Quick Search**: `src/components/search/QuickSearchCommand.tsx` - Fast keyboard-driven search
 - **Advanced Search**: `src/components/search/AdvancedSearchModal.tsx` - Full-featured search modal
 - **Search Hook**: `src/hooks/useSearch.ts` - Comprehensive search logic with scoring
@@ -461,6 +542,7 @@ All advanced computation features and application ecosystem components successfu
 - **Search Capabilities**: Title, description, category, tags, evidence content matching
 
 ### 10. Bulk Operations for Metric Cards and Relationships ✅ COMPLETED
+
 - **Core Hook**: `src/hooks/useBulkOperations.ts` - Comprehensive bulk operations logic
 - **UI Component**: `src/components/canvas/BulkOperationsToolbar.tsx` - Smart toolbar interface
 - **Features**:
@@ -476,8 +558,9 @@ All advanced computation features and application ecosystem components successfu
 ## 🎉 Critical Fixes Implemented (Current Session)
 
 ### Fix 1: Removed Mock Data and Implemented Proper Supabase CRUD ✅ COMPLETED
+
 - **Problem**: Hybrid approach with mock data fallbacks instead of proper authentication
-- **Solution**: 
+- **Solution**:
   - **Removed all mock data** from `projectsStore.ts` and recreated with proper authentication requirements
   - **Updated RelationshipSheet** to use `persistEdgeUpdate/persistEdgeDelete` instead of local `updateEdge/deleteEdge`
   - **Updated CardSettingsSheet** to use `persistNodeUpdate/persistNodeDelete` instead of local methods
@@ -487,6 +570,7 @@ All advanced computation features and application ecosystem components successfu
 - **Impact**: Ensures all CRUD operations properly persist to Supabase with authentication requirements
 
 ### Fix 2: Fixed UI Transparency Issues with Sheets and Dialogs ✅ COMPLETED
+
 - **Problem**: Components becoming transparent despite proper background dimming
 - **Solution**:
   - **Added CSS fixes** in `src/index.css` targeting Radix Portal components
@@ -498,6 +582,7 @@ All advanced computation features and application ecosystem components successfu
 - **Impact**: Eliminates transparency issues and ensures proper visual hierarchy
 
 ### Fix 3: Implemented Auto-Saved Auto-Layout Mechanism ✅ COMPLETED
+
 - **Problem**: Users had to manually click auto-layout every time instead of having preferences persisted
 - **Solution**:
   - **Extended existing CanvasSettings** interface (already had `autoLayout` with `algorithm` and `enabled` fields)
@@ -506,7 +591,7 @@ All advanced computation features and application ecosystem components successfu
   - **Implemented auto-application** when nodes change and auto-layout is enabled (with 500ms debounce)
   - **Added settings initialization** that loads saved preferences when canvas loads
   - **Persistent algorithm selection** that saves layout direction changes automatically
-- **Features**: 
+- **Features**:
   - Toggle switch to enable/disable auto-layout
   - Persistent algorithm selection (TB, BT, LR, RL)
   - Automatic layout application when nodes are added/changed
@@ -516,5 +601,6 @@ All advanced computation features and application ecosystem components successfu
 ## 🚧 Remaining Technical Debt
 
 ### Testing Coverage 📊
+
 - **Status**: Tests were deliberately excluded per user request
 - **Note**: User will handle personal testing and ad-hoc optimization

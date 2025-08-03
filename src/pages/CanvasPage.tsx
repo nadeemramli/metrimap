@@ -16,26 +16,18 @@ import {
   Background,
   Controls,
   ControlButton,
+  Panel,
 } from "@xyflow/react";
-import {
-  Users,
-  Keyboard,
-  Search,
-  Save,
-  Clock,
-  Check,
-  AlertCircle,
-} from "lucide-react";
+import { Search, Save, Clock, Check, AlertCircle, Filter } from "lucide-react";
 
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore } from "@/lib/stores";
 import { getProjectById as getProjectFromDatabase } from "@/lib/supabase/services/projects";
 import { useCanvasHeader } from "@/contexts/CanvasHeaderContext";
-import AutoLayoutControls from "@/components/canvas/AutoLayoutControls";
-import FilterControls from "@/components/canvas/FilterControls";
 import type {
   MetricCard as MetricCardType,
   Relationship,
+  RelationshipType,
   GroupNode as GroupNodeType,
   CardCategory,
 } from "@/lib/types";
@@ -59,7 +51,18 @@ import QuickSearchCommand, {
 import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
 import useAutoSave from "@/hooks/useAutoSave";
 import { generateUUID } from "@/lib/utils/validation";
-import ContextMenu from "@/components/canvas/ContextMenu";
+import { applyAutoLayout } from "@/lib/utils/autoLayout";
+import { toast } from "sonner";
+import {
+  getAvailableFilterOptions,
+  applyFilters,
+  type FilterOptions,
+} from "@/lib/utils/filterUtils";
+
+import SelectionPanel from "@/components/canvas/SelectionPanel";
+import FilterModal from "@/components/canvas/FilterModal";
+import LayoutControls from "@/components/canvas/LayoutControls";
+import DebugPanel from "@/components/canvas/DebugPanel";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -81,6 +84,7 @@ const convertToNode = (
 ): Node => ({
   id: card.id,
   position: card.position,
+  parentId: card.parentId, // React Flow subflow support
   data: {
     card: card, // Store full card data for our custom component
     onOpenSettings, // Pass the settings callback
@@ -90,6 +94,9 @@ const convertToNode = (
   },
   type: "metricCard", // Use our custom node type
   selected: selectedNodeIds.includes(card.id),
+  selectable: true, // Ensure nodes are selectable
+  draggable: true, // Ensure nodes are draggable
+  // Let React Flow handle layering naturally
   // Removed dragHandle to enable touch device + handle connections
   // The visual drag handle remains as UI guidance
 });
@@ -106,12 +113,29 @@ const convertToEdge = (
     relationship.type === "Probabilistic" ||
     relationship.type === "Compositional";
 
+  // Set z-index based on relationship type for proper layering
+  const getEdgeZIndex = (type: RelationshipType) => {
+    switch (type) {
+      case "Deterministic":
+        return 1; // Base layer
+      case "Probabilistic":
+        return 2; // Above deterministic
+      case "Causal":
+        return 3; // Above probabilistic
+      case "Compositional":
+        return 4; // Above causal
+      default:
+        return 1;
+    }
+  };
+
   return {
     id: relationship.id,
     source: relationship.sourceId,
     target: relationship.targetId,
     type: "dynamicEdge",
     animated: shouldAnimate, // Animate dotted lines (Probabilistic and Compositional)
+    zIndex: getEdgeZIndex(relationship.type), // Use React Flow's edge z-index system
     data: {
       relationship,
       onOpenRelationshipSheet,
@@ -128,7 +152,11 @@ const convertToGroupNode = (
   group: GroupNodeType,
   onEditGroup: (groupId: string) => void,
   onDeleteGroup: (groupId: string) => void,
-  onToggleCollapse: (groupId: string) => void
+  onToggleCollapse: (groupId: string) => void,
+  onResizeGroup: (
+    groupId: string,
+    size: { width: number; height: number }
+  ) => void
 ): Node => ({
   id: group.id,
   position: group.position,
@@ -137,15 +165,19 @@ const convertToGroupNode = (
     onEditGroup,
     onDeleteGroup,
     onToggleCollapse,
+    onResizeGroup,
   },
   type: "groupNode",
   style: {
     width: group.size.width,
-    height: group.size.height,
+    height: group.isCollapsed ? 60 : group.size.height,
   },
   draggable: true,
   selectable: true,
-  zIndex: -1, // Groups should be behind other nodes
+  // Configure as subflow container
+  className: "group-node",
+  // Ensure group is treated as a container
+  extent: "parent",
 });
 
 // Define custom node and edge types
@@ -179,13 +211,23 @@ function CanvasPageInner() {
   // Proximity Connect - REMOVED for better drag/toolbar UX
 
   // Context Menu state
-  const [contextMenu, setContextMenu] = useState<{
-    id: string;
-    top?: number;
-    left?: number;
-    right?: number;
-    bottom?: number;
-  } | null>(null);
+
+  // Selection state
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+
+  // Debug panel state - now managed by DebugPanel component
+
+  // Filter state
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState<FilterOptions>({});
+  const [visibleNodeIds, setVisibleNodeIds] = useState<Set<string>>(new Set());
+  const [visibleEdgeIds, setVisibleEdgeIds] = useState<Set<string>>(new Set());
+
+  // Layout state
+  const [currentLayoutDirection, setCurrentLayoutDirection] = useState<
+    "TB" | "BT" | "LR" | "RL"
+  >("TB");
+
   const reactFlowRef = useRef<HTMLDivElement>(null);
 
   // Initialize auto-save functionality
@@ -212,95 +254,201 @@ function CanvasPageInner() {
     addPendingChange,
     createNode,
     createEdge,
-    updateGroup,
     deleteGroup,
     deleteNode,
     persistNodeDelete,
     addNode,
     selectNode,
-    deselectNodes,
+    deselectNode,
     clearSelection,
+    toggleGroupCollapse,
+    updateGroupSize,
+    groupSelectedNodes,
+    ungroupSelectedGroups,
+    updateCanvasSettings,
     pendingChanges,
     isSaving,
     lastSaved,
   } = useCanvasStore();
 
-  // Context Menu handlers
-  const handleNodeContextMenu = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      // Prevent native context menu from showing
-      event.preventDefault();
-
-      // Calculate position of the context menu
-      const pane = reactFlowRef.current?.getBoundingClientRect();
-      if (!pane) return;
-
-      setContextMenu({
-        id: node.id,
-        top: event.clientY < pane.height - 200 ? event.clientY : undefined,
-        left: event.clientX < pane.width - 200 ? event.clientX : undefined,
-        right:
-          event.clientX >= pane.width - 200
-            ? pane.width - event.clientX
-            : undefined,
-        bottom:
-          event.clientY >= pane.height - 200
-            ? pane.height - event.clientY
-            : undefined,
-      });
-    },
-    []
-  );
-
   const handlePaneClick = useCallback(() => {
-    setContextMenu(null);
     clearSelection(); // Clear node selection when clicking on empty space
+    setSelectedGroupIds([]); // Clear group selection when clicking on empty space
   }, [clearSelection]);
 
-  const handleContextMenuAction = useCallback(
-    (action: string, nodeId: string) => {
-      const node = canvas?.nodes.find((n) => n.id === nodeId);
-      if (!node) return;
+  // Group management handlers
+  const handleToggleCollapse = useCallback(
+    (groupId: string) => {
+      toggleGroupCollapse(groupId);
+    },
+    [toggleGroupCollapse]
+  );
 
-      switch (action) {
-        case "duplicate":
-          // Handle duplicate
-          console.log("Duplicate node:", nodeId);
-          break;
-        case "settings":
-          setSettingsCardId(nodeId);
-          break;
-        case "delete":
-          deleteNode(nodeId);
-          break;
-        case "comments":
-          // Open settings sheet with comments tab
-          setSettingsInitialTab("comments");
-          setSettingsCardId(nodeId);
-          break;
-        case "data":
-          // Open settings sheet with data tab
-          setSettingsInitialTab("data");
-          setSettingsCardId(nodeId);
-          break;
-        case "tags":
-          // Open settings sheet with settings tab (tags are managed there)
-          setSettingsInitialTab("settings");
-          setSettingsCardId(nodeId);
-          break;
-        case "assignees":
-          // Open settings sheet with settings tab (assignees are managed there)
-          setSettingsInitialTab("settings");
-          setSettingsCardId(nodeId);
-          break;
-        case "dimensions":
-          // Open settings sheet with settings tab (dimensions are managed there)
-          setSettingsInitialTab("settings");
-          setSettingsCardId(nodeId);
-          break;
+  const handleUpdateGroupSize = useCallback(
+    (groupId: string, size: { width: number; height: number }) => {
+      updateGroupSize(groupId, size);
+    },
+    [updateGroupSize]
+  );
+
+  // Selection Panel handlers
+  const handleGroupSelectedNodes = useCallback(async () => {
+    console.log("🎯 handleGroupSelectedNodes called with:", selectedNodeIds);
+
+    if (selectedNodeIds.length < 2) {
+      toast.error("At least 2 nodes must be selected to create a group");
+      return;
+    }
+
+    try {
+      await groupSelectedNodes(selectedNodeIds);
+      toast.success(`✅ Grouped ${selectedNodeIds.length} nodes successfully`);
+      clearSelection();
+      setSelectedGroupIds([]);
+    } catch (error) {
+      console.error("❌ Failed to group nodes:", error);
+      toast.error("Failed to group nodes. Please try again.");
+    }
+  }, [groupSelectedNodes, selectedNodeIds, clearSelection]);
+
+  const handleUngroupSelectedGroups = useCallback(async () => {
+    if (selectedGroupIds.length === 0) {
+      toast.error("No groups selected for ungrouping");
+      return;
+    }
+
+    try {
+      await ungroupSelectedGroups(selectedGroupIds);
+      toast.success(
+        `✅ Ungrouped ${selectedGroupIds.length} groups successfully`
+      );
+      clearSelection();
+      setSelectedGroupIds([]);
+    } catch (error) {
+      console.error("❌ Failed to ungroup nodes:", error);
+      toast.error("Failed to ungroup nodes. Please try again.");
+    }
+  }, [ungroupSelectedGroups, selectedGroupIds, clearSelection]);
+
+  const handleDeleteSelectedItems = useCallback(async () => {
+    const allSelectedIds = [...selectedNodeIds];
+
+    try {
+      // Delete selected nodes
+      for (const nodeId of allSelectedIds) {
+        deleteNode(nodeId);
+        await persistNodeDelete(nodeId);
+      }
+
+      // Delete selected groups
+      for (const groupId of selectedGroupIds) {
+        await deleteGroup(groupId);
+      }
+
+      const totalDeleted = allSelectedIds.length + selectedGroupIds.length;
+      toast.success(
+        `✅ Deleted ${totalDeleted} item${totalDeleted !== 1 ? "s" : ""} successfully`
+      );
+
+      clearSelection();
+      setSelectedGroupIds([]);
+    } catch (error) {
+      console.error("❌ Failed to delete selected items:", error);
+      toast.error("Failed to delete selected items. Please try again.");
+    }
+  }, [
+    selectedNodeIds,
+    selectedGroupIds,
+    deleteNode,
+    persistNodeDelete,
+    deleteGroup,
+    clearSelection,
+  ]);
+
+  const handleDuplicateSelectedItems = useCallback(() => {
+    // TODO: Implement duplicate functionality
+    console.log("Duplicate functionality not yet implemented");
+  }, []);
+
+  const handleOpenSelectedSettings = useCallback(() => {
+    if (selectedNodeIds.length === 1) {
+      setSettingsCardId(selectedNodeIds[0]);
+    }
+  }, [selectedNodeIds, setSettingsCardId]);
+
+  // Filter handlers
+  const handleOpenFilters = useCallback(() => {
+    setFilterModalOpen(true);
+  }, []);
+
+  const handleApplyFilters = useCallback(
+    (filters: FilterOptions) => {
+      setCurrentFilters(filters);
+
+      if (canvas?.nodes && canvas?.edges) {
+        const {
+          visibleNodeIds: newVisibleNodeIds,
+          visibleEdgeIds: newVisibleEdgeIds,
+        } = applyFilters(canvas.nodes, canvas.edges, filters);
+
+        setVisibleNodeIds(newVisibleNodeIds);
+        setVisibleEdgeIds(newVisibleEdgeIds);
       }
     },
-    [canvas?.nodes, deleteNode, setSettingsCardId]
+    [canvas?.nodes, canvas?.edges]
+  );
+
+  // Update layout direction when canvas settings change
+  useEffect(() => {
+    if (canvas?.settings?.autoLayout?.algorithm) {
+      setCurrentLayoutDirection(canvas.settings.autoLayout.algorithm);
+    } else {
+      // Default to TB if no saved layout
+      setCurrentLayoutDirection("TB");
+    }
+  }, [canvas?.settings?.autoLayout?.algorithm]);
+
+  // Layout application
+  const handleApplyLayout = useCallback(
+    (direction: "TB" | "BT" | "LR" | "RL") => {
+      setCurrentLayoutDirection(direction);
+
+      // Persist layout direction to canvas settings
+      updateCanvasSettings({
+        autoLayout: {
+          algorithm: direction,
+          enabled: true,
+        },
+      });
+
+      if (canvas?.nodes && canvas?.edges) {
+        const layoutedNodes = applyAutoLayout(
+          canvas.nodes.map((node) => ({
+            id: node.id,
+            position: node.position,
+            data: { card: node },
+            type: "metricCard",
+          })),
+          canvas.edges.map((edge) => ({
+            id: edge.id,
+            source: edge.sourceId,
+            target: edge.targetId,
+            data: { relationship: edge },
+          })),
+          { direction }
+        );
+
+        // Update node positions
+        layoutedNodes.forEach((node) => {
+          updateNodePosition(node.id, node.position);
+        });
+
+        console.log(
+          `✅ Applied ${direction} layout to canvas and saved to settings`
+        );
+      }
+    },
+    [canvas?.nodes, canvas?.edges, updateNodePosition, updateCanvasSettings]
   );
 
   // Beautiful auto-save status with enhanced UX
@@ -478,10 +626,17 @@ function CanvasPageInner() {
 
       createShortcut.cmd(
         "d",
-        () => {
+        async () => {
           if (selectedNodeIds.length > 0) {
-            selectedNodeIds.forEach((nodeId) => deleteNode(nodeId));
-            clearSelection();
+            try {
+              for (const nodeId of selectedNodeIds) {
+                deleteNode(nodeId);
+                await persistNodeDelete(nodeId);
+              }
+              clearSelection();
+            } catch (error) {
+              console.error("❌ Failed to delete nodes:", error);
+            }
           }
         },
         "Delete selected nodes",
@@ -529,6 +684,32 @@ function CanvasPageInner() {
         },
         "Zoom to 100%",
         "View"
+      ),
+
+      // Layout shortcuts
+      createShortcut.cmd(
+        "1",
+        () => handleApplyLayout("TB"),
+        "Apply Top-Bottom layout",
+        "Layout"
+      ),
+      createShortcut.cmd(
+        "2",
+        () => handleApplyLayout("BT"),
+        "Apply Bottom-Top layout",
+        "Layout"
+      ),
+      createShortcut.cmd(
+        "3",
+        () => handleApplyLayout("LR"),
+        "Apply Left-Right layout",
+        "Layout"
+      ),
+      createShortcut.cmd(
+        "4",
+        () => handleApplyLayout("RL"),
+        "Apply Right-Left layout",
+        "Layout"
       ),
 
       // Quick actions
@@ -643,27 +824,14 @@ function CanvasPageInner() {
   }, []);
 
   const handleDeleteGroup = useCallback(
-    (groupId: string) => {
-      deleteGroup(groupId);
-    },
-    [deleteGroup]
-  );
-
-  const handleToggleCollapse = useCallback(
-    (groupId: string) => {
-      const group = canvas?.groups.find((g) => g.id === groupId);
-      if (group) {
-        // Toggle collapsed state - you could add this to GroupNode interface
-        updateGroup(groupId, {
-          // Add collapsed property to GroupNode type if needed
-          size:
-            group.size.height < 100
-              ? { ...group.size, height: 200 }
-              : { ...group.size, height: 60 },
-        });
+    async (groupId: string) => {
+      try {
+        await deleteGroup(groupId);
+      } catch (error) {
+        console.error("❌ Failed to delete group:", error);
       }
     },
-    [canvas?.groups, updateGroup]
+    [deleteGroup]
   );
 
   // Handle closing settings sheet
@@ -691,33 +859,23 @@ function CanvasPageInner() {
     setRelationshipSheetId(relationshipId);
   }, []);
 
-  // Handle auto-layout from controls
-  const handleNodesChange = useCallback(
-    (newNodes: Node[]) => {
-      newNodes.forEach((node) => {
-        const card = canvas?.nodes.find((n) => n.id === node.id);
-        if (card && node.position) {
-          updateNodePosition(node.id, node.position);
-          addPendingChange(node.id);
-        }
-      });
-    },
-    [canvas?.nodes, updateNodePosition, addPendingChange]
-  );
-
   // Convert canvas data to ReactFlow format
   const nodes = useMemo(() => {
     const metricNodes =
-      canvas?.nodes.map((card) =>
-        convertToNode(
-          card,
-          handleOpenSettings,
-          handleNodeClick,
-          handleSwitchToCard,
-          isSettingsSheetOpen,
-          selectedNodeIds
+      canvas?.nodes
+        .filter(
+          (card) => visibleNodeIds.size === 0 || visibleNodeIds.has(card.id)
         )
-      ) || [];
+        .map((card) =>
+          convertToNode(
+            card,
+            handleOpenSettings,
+            handleNodeClick,
+            handleSwitchToCard,
+            isSettingsSheetOpen,
+            selectedNodeIds
+          )
+        ) || [];
 
     const groupNodes =
       canvas?.groups.map((group) =>
@@ -725,15 +883,17 @@ function CanvasPageInner() {
           group,
           handleEditGroup,
           handleDeleteGroup,
-          handleToggleCollapse
+          handleToggleCollapse,
+          handleUpdateGroupSize
         )
       ) || [];
 
-    // Groups should be rendered first (behind other nodes)
-    return [...groupNodes, ...metricNodes];
+    // Groups should be rendered last (on top of other nodes)
+    return [...metricNodes, ...groupNodes];
   }, [
     canvas?.nodes,
     canvas?.groups,
+    visibleNodeIds,
     handleOpenSettings,
     handleNodeClick,
     handleSwitchToCard,
@@ -742,19 +902,25 @@ function CanvasPageInner() {
     handleEditGroup,
     handleDeleteGroup,
     handleToggleCollapse,
+    handleUpdateGroupSize,
   ]);
   const edges = useMemo(
     () =>
-      canvas?.edges.map((edge) =>
-        convertToEdge(
-          edge,
-          handleOpenRelationshipSheet,
-          handleSwitchToRelationship,
-          isRelationshipSheetOpen
+      canvas?.edges
+        .filter(
+          (edge) => visibleEdgeIds.size === 0 || visibleEdgeIds.has(edge.id)
         )
-      ) || [],
+        .map((edge) =>
+          convertToEdge(
+            edge,
+            handleOpenRelationshipSheet,
+            handleSwitchToRelationship,
+            isRelationshipSheetOpen
+          )
+        ) || [],
     [
       canvas?.edges,
+      visibleEdgeIds,
       handleOpenRelationshipSheet,
       handleSwitchToRelationship,
       isRelationshipSheetOpen,
@@ -770,10 +936,27 @@ function CanvasPageInner() {
     }
   }, [canvasId]);
 
+  // Listen for keyboard shortcuts event from sidebar
+  useEffect(() => {
+    const handleOpenKeyboardShortcuts = () => {
+      setShowShortcutsHelp(true);
+    };
+
+    window.addEventListener(
+      "openKeyboardShortcuts",
+      handleOpenKeyboardShortcuts
+    );
+    return () => {
+      window.removeEventListener(
+        "openKeyboardShortcuts",
+        handleOpenKeyboardShortcuts
+      );
+    };
+  }, []);
+
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      // Apply changes to React Flow's internal state
-      // setNodes((nds) => applyNodeChanges(changes, nds)); // This line is removed
+      console.log("🎯 onNodesChange called with changes:", changes);
 
       changes.forEach((change) => {
         // Handle position changes - BULLETPROOF POSITION SAVING
@@ -792,8 +975,6 @@ function CanvasPageInner() {
             // Add to pending changes for auto-save
             addPendingChange(change.id);
 
-            // Proximity Connect - REMOVED for better drag/toolbar UX
-
             // For manual dragging, add extra logging
             if (!change.dragging) {
               console.log(
@@ -804,21 +985,49 @@ function CanvasPageInner() {
           }
         }
 
-        // Handle selection changes for NodeToolbar
+        // Handle selection changes for multi-selection
         if (change.type === "select") {
+          console.log(`🎯 Selection change for ${change.id}:`, {
+            selected: change.selected,
+            currentSelectedCount: selectedNodeIds.length,
+            allSelectedIds: selectedNodeIds,
+            canvasGroups: canvas?.groups?.map((g) => g.id) || [],
+          });
+
+          // Check if this is a group node by checking if it exists in canvas groups
+          const isGroupNode =
+            canvas?.groups.some((group) => group.id === change.id) || false;
+
+          console.log(`🎯 Is group node: ${isGroupNode} for ${change.id}`, {
+            changeId: change.id,
+            canvasGroups:
+              canvas?.groups?.map((g) => ({ id: g.id, name: g.name })) || [],
+            matchingGroup: canvas?.groups?.find((g) => g.id === change.id),
+          });
+
           if (change.selected) {
-            selectNode(change.id);
-          } else {
-            // For individual deselection, clear all and reselect others
-            const currentSelected = selectedNodeIds.filter(
-              (id) => id !== change.id
-            );
-            if (currentSelected.length > 0) {
-              // Clear all and reselect the remaining nodes
-              clearSelection();
-              currentSelected.forEach((id) => selectNode(id));
+            if (isGroupNode) {
+              // Add to group selection (prevent duplicates)
+              setSelectedGroupIds((prev) =>
+                prev.includes(change.id) ? prev : [...prev, change.id]
+              );
+              console.log(`✅ Added group ${change.id} to selection`);
             } else {
-              clearSelection();
+              // Add to node selection
+              selectNode(change.id);
+              console.log(`✅ Added node ${change.id} to selection`);
+            }
+          } else {
+            if (isGroupNode) {
+              // Remove from group selection
+              setSelectedGroupIds((prev) =>
+                prev.filter((id) => id !== change.id)
+              );
+              console.log(`✅ Removed group ${change.id} from selection`);
+            } else {
+              // Remove from node selection
+              deselectNode(change.id);
+              console.log(`✅ Removed node ${change.id} from selection`);
             }
           }
         }
@@ -828,13 +1037,21 @@ function CanvasPageInner() {
       canvas,
       updateNodePosition,
       addPendingChange,
-      nodes,
       selectNode,
-      deselectNodes,
+      deselectNode,
       selectedNodeIds,
-      clearSelection,
     ]
   );
+
+  // Log selection changes for debugging
+  useEffect(() => {
+    console.log("🎯 Selection changed:", { selectedNodeIds, selectedGroupIds });
+  }, [selectedNodeIds, selectedGroupIds]);
+
+  // Debug group creation
+  useEffect(() => {
+    console.log("🎯 Canvas groups updated:", canvas?.groups?.length || 0);
+  }, [canvas?.groups]);
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
     // Handle edge changes
@@ -1109,17 +1326,30 @@ function CanvasPageInner() {
           onNodesDelete={onNodesDelete}
           onConnect={onConnect}
           onConnectEnd={onConnectEnd}
-          onNodeContextMenu={handleNodeContextMenu}
           onPaneClick={handlePaneClick}
           isValidConnection={isValidConnection}
           connectionMode={"strict" as ConnectionMode} // Better for touch devices - requires handle targeting
           connectOnClick={true} // Enable touch device support - click to connect handles
           snapToGrid={true}
           snapGrid={[15, 15]}
+          multiSelectionKeyCode={["Shift"]} // Enable multi-selection with Shift key
+          selectionKeyCode={["Shift"]} // Enable selection with Shift key
+          panOnDrag={[0, 1, 2]} // Allow panning with left, middle, and right mouse buttons
+          selectionOnDrag={false} // Disable selection by dragging to prevent conflicts with panning
           defaultEdgeOptions={{
             type: "dynamicEdge",
             animated: false,
           }}
+          // Subflow configuration
+          fitViewOptions={{ padding: 0.1 }}
+          proOptions={{ hideAttribution: true }}
+          // Enable subflow behavior
+          nodesDraggable={true}
+          nodesConnectable={true}
+          elementsSelectable={true}
+          // Ensure proper layering
+          elevateNodesOnSelect={true}
+          elevateEdgesOnSelect={true}
           connectionLineStyle={{
             strokeWidth: 3,
             stroke: "#3b82f6",
@@ -1209,26 +1439,15 @@ function CanvasPageInner() {
 
           {/* Proximity Connect - REMOVED for better drag/toolbar UX */}
 
-          {/* Left Bottom Panel - Core Functions */}
+          {/* Comprehensive Control Panel - Bottom Left */}
           <Controls className="bg-card border border-border">
-            {/* Comprehensive Add Node Button */}
+            {/* Node Creation */}
             <AddNodeButton
               position={{ x: 100, y: 100 }}
               asControlButton={true}
             />
 
-            {/* Group Controls Button */}
-            <ControlButton
-              onClick={() => {
-                // Handle group functionality
-                console.log("Group controls");
-              }}
-              title="Group Controls"
-            >
-              <Users className="h-4 w-4" />
-            </ControlButton>
-
-            {/* Search Button */}
+            {/* Search & Navigation */}
             <ControlButton
               onClick={() => quickSearch.open()}
               title="Search (Cmd+F)"
@@ -1236,61 +1455,51 @@ function CanvasPageInner() {
               <Search className="h-4 w-4" />
             </ControlButton>
 
-            {/* Keyboard Shortcuts Button */}
-            <ControlButton
-              onClick={() => setShowShortcutsHelp(true)}
-              title="Keyboard Shortcuts"
-            >
-              <Keyboard className="h-4 w-4" />
-            </ControlButton>
-          </Controls>
-
-          {/* Right Bottom Panel - View Settings */}
-          <Controls
-            className="bg-card border border-border"
-            position="bottom-right"
-          >
-            {/* Comprehensive Auto Layout */}
-            <AutoLayoutControls
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={handleNodesChange}
+            {/* Layout Controls */}
+            <LayoutControls
+              onApplyLayout={handleApplyLayout}
+              currentDirection={currentLayoutDirection}
             />
 
-            {/* Comprehensive Filter & Date */}
-            <FilterControls />
+            {/* Filter Controls */}
+            <ControlButton onClick={handleOpenFilters} title="Filters">
+              <Filter className="h-4 w-4" />
+            </ControlButton>
           </Controls>
-        </ReactFlow>
+          {/* Selection Panel - Inside React Flow */}
+          <Panel position="bottom-center" className="z-10">
+            <SelectionPanel
+              selectedNodeIds={selectedNodeIds}
+              selectedGroupIds={selectedGroupIds}
+              onGroupNodes={handleGroupSelectedNodes}
+              onUngroupNodes={handleUngroupSelectedGroups}
+              onDeleteNodes={handleDeleteSelectedItems}
+              onDuplicateNodes={handleDuplicateSelectedItems}
+              onOpenSettings={handleOpenSelectedSettings}
+            />
+          </Panel>
 
-        {/* Context Menu */}
-        {contextMenu && (
-          <ContextMenu
-            {...contextMenu}
-            onClick={handlePaneClick}
-            onEdit={() => {}} // No longer used
-            onDuplicate={() =>
-              handleContextMenuAction("duplicate", contextMenu.id)
-            }
-            onSettings={() =>
-              handleContextMenuAction("settings", contextMenu.id)
-            }
-            onDelete={() => handleContextMenuAction("delete", contextMenu.id)}
-            onComments={() =>
-              handleContextMenuAction("comments", contextMenu.id)
-            }
-            onData={() => handleContextMenuAction("data", contextMenu.id)}
-            onTags={() => handleContextMenuAction("tags", contextMenu.id)}
-            onAssignees={() =>
-              handleContextMenuAction("assignees", contextMenu.id)
-            }
-            onDimensions={() =>
-              handleContextMenuAction("dimensions", contextMenu.id)
-            }
-            cardTitle={
-              canvas?.nodes.find((n) => n.id === contextMenu.id)?.title || ""
-            }
-          />
-        )}
+          {/* Unified Debug Tool - Inside React Flow */}
+          <DebugPanel title="Debug State" position="top-left">
+            <div>Selected Nodes: {selectedNodeIds.length}</div>
+            <div>Selected Groups: {selectedGroupIds.length}</div>
+            <div>Selected Node IDs: {selectedNodeIds.join(", ") || "none"}</div>
+            <div>
+              Selected Group IDs: {selectedGroupIds.join(", ") || "none"}
+            </div>
+            <div>
+              Selection Panel:{" "}
+              {selectedNodeIds.length + selectedGroupIds.length > 0
+                ? "visible"
+                : "hidden"}
+            </div>
+            <div>Total Nodes: {canvas?.nodes?.length || 0}</div>
+            <div>Total Groups: {canvas?.groups?.length || 0}</div>
+            <div className="mt-2 text-yellow-300">
+              Shift+Click should work for multi-selection
+            </div>
+          </DebugPanel>
+        </ReactFlow>
 
         {/* Bulk Operations Toolbar - Removed as we only use the top NodeToolbar */}
       </div>
@@ -1450,6 +1659,25 @@ function CanvasPageInner() {
               break;
           }
         }}
+      />
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        onApplyFilters={handleApplyFilters}
+        currentFilters={currentFilters}
+        availableOptions={
+          canvas
+            ? getAvailableFilterOptions(canvas.nodes, canvas.edges)
+            : {
+                categories: [],
+                tags: [],
+                owners: [],
+                confidence: [],
+                relationshipTypes: [],
+              }
+        }
       />
     </div>
   );

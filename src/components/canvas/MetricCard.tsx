@@ -432,8 +432,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
 
   // Read-only display - editing is now handled by the toolbar
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCardClick = () => {
+    // Don't stop propagation - let React Flow handle selection
+    // Only handle additional actions after React Flow processes the event
+
     // If settings sheet is open, switch to this card instead of opening new sheet
     if (
       data.isSettingsSheetOpen &&
@@ -452,6 +454,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
   };
 
   const handleCardDoubleClick = (e: React.MouseEvent) => {
+    // Only stop propagation for double-click to prevent conflicts
     e.stopPropagation();
     if (data.onOpenSettings && typeof data.onOpenSettings === "function") {
       data.onOpenSettings(card.id);
@@ -477,6 +480,13 @@ export default function MetricCard({ data, selected }: NodeProps) {
       )}
       onClick={handleCardClick}
       onDoubleClick={handleCardDoubleClick}
+      onMouseDown={(e) => {
+        // Allow React Flow to handle selection on mouse down
+        // Only prevent default if it's a right-click (context menu)
+        if (e.button === 2) {
+          e.preventDefault();
+        }
+      }}
       onKeyDown={createKeyboardNavigationHandler(
         handleCardActivate,
         handleCardActivate,
@@ -787,13 +797,16 @@ export default function MetricCard({ data, selected }: NodeProps) {
 
       {/* Node Toolbar - React Flow built-in positioning */}
       {!isPreview && (
-        <NodeToolbar className="nodrag">
+        <NodeToolbar className="nodrag" position={Position.Top} offset={10}>
           <div className="nodrag flex items-center gap-1 bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-1">
             {/* Quick View */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleViewDetails()}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewDetails();
+              }}
               className="nodrag h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600 hover:scale-110 transition-all duration-200"
               title="View Details"
             >
@@ -807,7 +820,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleCreateRelationship}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCreateRelationship();
+              }}
               className="nodrag h-8 w-8 p-0 hover:bg-purple-50 hover:text-purple-600 hover:scale-110 transition-all duration-200"
               title="Create Relationship"
             >
@@ -821,7 +837,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleCollapseExpand}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCollapseExpand();
+              }}
               className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Collapse/Expand"
             >
@@ -835,7 +854,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleDuplicate}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDuplicate();
+              }}
               className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Duplicate"
             >
@@ -849,7 +871,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleViewDetails("comments")}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewDetails("comments");
+              }}
               className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Comments"
             >
@@ -864,7 +889,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={startEditing}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startEditing();
+                }}
                 className="nodrag h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 hover:scale-110 transition-all duration-200"
                 title="Edit Card"
               >
@@ -875,7 +903,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={saveChanges}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    saveChanges();
+                  }}
                   className="nodrag h-6 w-6 p-0 hover:bg-green-50 hover:text-green-600"
                   title="Save Changes"
                 >
@@ -884,7 +915,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={cancelEdit}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    cancelEdit();
+                  }}
                   className="nodrag h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
                   title="Cancel Edit"
                 >
@@ -900,7 +934,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleViewDetails("data")}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewDetails("data");
+              }}
               className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Data"
             >
@@ -914,7 +951,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleViewDetails("settings")}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewDetails("settings");
+              }}
               className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
               title="Segments"
             >
@@ -929,7 +969,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleDimensionSlice}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDimensionSlice();
+                  }}
                   className="nodrag h-8 w-8 p-0 hover:bg-gray-50 hover:text-gray-600 hover:scale-110 transition-all duration-200"
                   title="Slice by Dimension"
                 >
@@ -966,7 +1009,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
                     Cancel
                   </AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={handleDelete}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete();
+                    }}
                     className="nodrag bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     Delete

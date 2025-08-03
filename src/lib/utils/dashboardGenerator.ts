@@ -27,9 +27,9 @@ export function generateDashboardsFromGroups(canvas: CanvasProject): DashboardCo
   }
 
   return canvas.groups.map((group) => {
-    // Get metrics that belong to this group
+    // Get metrics that belong to this group using parentId
     const groupMetrics = canvas.nodes.filter(node => 
-      group.nodeIds.includes(node.id)
+      node.parentId === group.id
     );
 
     return {

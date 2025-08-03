@@ -168,7 +168,6 @@ export default function DynamicEdge({
     onOpenRelationshipSheet,
     onSwitchToRelationship,
     isRelationshipSheetOpen,
-    renderKey,
   } = data;
   const typeConfig = getRelationshipTypeConfig(
     relationship.type,
@@ -176,15 +175,7 @@ export default function DynamicEdge({
   );
   const confidenceConfig = getConfidenceConfig(relationship.confidence);
 
-  // Debug logging for edge styling updates
-  console.log(`🎨 Edge ${relationship.id} styling (renderKey: ${renderKey}):`, {
-    type: relationship.type,
-    weight: relationship.weight,
-    confidence: relationship.confidence,
-    stroke: typeConfig.stroke,
-    lineStyle: typeConfig.lineStyle,
-    buttonValue: typeConfig.buttonValue,
-  });
+  // Debug logging for edge styling updates - REMOVED to reduce console noise
 
   // Handle double-click to open relationship sheet
   const handleDoubleClick = useCallback(
@@ -456,11 +447,6 @@ export default function DynamicEdge({
               variant="outline"
               size="sm"
               onClick={handleButtonClick}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                // TODO: Show confidence context menu
-                console.log("Confidence:", relationship.confidence);
-              }}
               className={`h-8 w-8 p-0 rounded-full bg-white shadow-sm transition-all duration-200 ${confidenceConfig.buttonBorder} hover:bg-gray-50 hover:border-gray-400`}
               style={{
                 opacity: confidenceConfig.buttonOpacity,

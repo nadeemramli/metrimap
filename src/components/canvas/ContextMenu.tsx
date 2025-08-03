@@ -1,4 +1,11 @@
-import { Copy, Trash2, MessageSquare, BarChart3, Database } from "lucide-react";
+import {
+  Copy,
+  Trash2,
+  MessageSquare,
+  BarChart3,
+  Database,
+  FolderPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -28,6 +35,7 @@ interface ContextMenuProps {
   onTags: () => void;
   onAssignees: () => void;
   onDimensions: () => void;
+  onCreateSubflow?: () => void;
   cardTitle: string;
 }
 
@@ -42,7 +50,7 @@ export default function ContextMenu({
   onDelete,
   onComments,
   onData,
-
+  onCreateSubflow,
   cardTitle,
 }: ContextMenuProps) {
   return (
@@ -113,6 +121,24 @@ export default function ContextMenu({
             <Copy className="h-4 w-4 mr-2" />
             Duplicate
           </Button>
+
+          <div className="h-px bg-border my-1" />
+
+          {/* Subflow Actions */}
+          {onCreateSubflow && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="justify-start h-8 px-2 text-sm"
+              onClick={() => {
+                onCreateSubflow();
+                onClick();
+              }}
+            >
+              <FolderPlus className="h-4 w-4 mr-2" />
+              Create Subflow
+            </Button>
+          )}
 
           <div className="h-px bg-border my-1" />
 

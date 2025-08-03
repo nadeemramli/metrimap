@@ -4,7 +4,7 @@ description: This rule identifies code that was commented out to resolve linter 
 globs:
   - "**/*.ts"
   - "**/*.tsx"
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Log of Partially Implemented Features

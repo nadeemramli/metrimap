@@ -9,7 +9,9 @@ import {
   updateRelationship as updateRelationshipInSupabase,
   deleteRelationship as deleteRelationshipInSupabase,
   getCurrentUser,
-
+  createGroup,
+  updateGroup,
+  deleteGroup,
 } from '../supabase/services';
 import { useProjectsStore } from './projectsStore';
 import { generateUUID } from '../utils/validation';
@@ -39,6 +41,7 @@ interface CanvasStoreState extends CanvasState {
   duplicateNode: (nodeId: string) => void;
   selectNodes: (nodeIds: string[]) => void;
   selectNode: (nodeId: string) => void;
+  deselectNode: (nodeId: string) => void;
   deselectNodes: () => void;
   clearSelection: () => void;
 
@@ -56,11 +59,19 @@ interface CanvasStoreState extends CanvasState {
   deselectEdges: () => void;
 
   // Group management
-  addGroup: (group: GroupNode) => void;
-  updateGroup: (groupId: string, updates: Partial<GroupNode>) => void;
-  deleteGroup: (groupId: string) => void;
+  addGroup: (group: GroupNode) => Promise<void>;
+  updateGroup: (groupId: string, updates: Partial<GroupNode>) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
   addNodesToGroup: (groupId: string, nodeIds: string[]) => void;
   removeNodesFromGroup: (groupId: string, nodeIds: string[]) => void;
+  
+  // Group management
+  toggleGroupCollapse: (groupId: string) => void;
+  updateGroupSize: (groupId: string, size: { width: number; height: number }) => void;
+  
+  // Selection-based grouping
+  groupSelectedNodes: (nodeIds: string[]) => Promise<string>;
+  ungroupSelectedGroups: (groupIds: string[]) => Promise<void>;
 
   // Auto-save functionality
   addPendingChange: (nodeId: string) => void;
@@ -504,7 +515,14 @@ export const useCanvasStore = create<CanvasStoreState>()(
       }),
 
     selectNodes: (nodeIds: string[]) => set({ selectedNodeIds: nodeIds }),
-    selectNode: (nodeId: string) => set({ selectedNodeIds: [nodeId] }),
+    selectNode: (nodeId: string) => set((state) => ({
+      selectedNodeIds: state.selectedNodeIds.includes(nodeId) 
+        ? state.selectedNodeIds 
+        : [...state.selectedNodeIds, nodeId]
+    })),
+    deselectNode: (nodeId: string) => set((state) => ({
+      selectedNodeIds: state.selectedNodeIds.filter(id => id !== nodeId)
+    })),
     deselectNodes: () => set({ selectedNodeIds: [] }),
     clearSelection: () => set({ selectedNodeIds: [] }),
 
@@ -620,40 +638,142 @@ export const useCanvasStore = create<CanvasStoreState>()(
     deselectEdges: () => set({ selectedEdgeIds: [] }),
 
     // Group management
-    addGroup: (group: GroupNode) =>
-      set((state) => ({
-        canvas: state.canvas
-          ? {
-              ...state.canvas,
-              groups: [...state.canvas.groups, group],
-              updatedAt: new Date().toISOString(),
-            }
-          : undefined,
-      })),
+    addGroup: async (group: GroupNode) => {
+      const state = get();
+      if (!state.canvas?.id) {
+        console.error('No canvas loaded');
+        return;
+      }
 
-    updateGroup: (groupId: string, updates: Partial<GroupNode>) =>
-      set((state) => ({
-        canvas: state.canvas
-          ? {
-              ...state.canvas,
-              groups: state.canvas.groups.map((group) =>
-                group.id === groupId ? { ...group, ...updates } : group
-              ),
-              updatedAt: new Date().toISOString(),
-            }
-          : undefined,
-      })),
+      try {
+        // Get current user for created_by field
+        const user = await getCurrentUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
 
-    deleteGroup: (groupId: string) =>
-      set((state) => ({
-        canvas: state.canvas
-          ? {
-              ...state.canvas,
-              groups: state.canvas.groups.filter((group) => group.id !== groupId),
-              updatedAt: new Date().toISOString(),
-            }
-          : undefined,
-      })),
+        // Persist to database
+        await createGroup({
+          id: group.id,
+          name: group.name,
+          nodeIds: group.nodeIds,
+          position: group.position,
+          size: group.size,
+          projectId: state.canvas.id,
+          createdBy: user.id,
+        });
+
+        // Update local state
+        set((state) => ({
+          canvas: state.canvas
+            ? {
+                ...state.canvas,
+                groups: [...state.canvas.groups, group],
+                updatedAt: new Date().toISOString(),
+              }
+            : undefined,
+        }));
+
+        // Sync with projects store
+        try {
+          const projectsStore = useProjectsStore.getState();
+          const updatedCanvas = get().canvas;
+          if (updatedCanvas) {
+            projectsStore.updateProject(state.canvas.id, {
+              groups: updatedCanvas.groups,
+              updatedAt: updatedCanvas.updatedAt,
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to sync group creation with projects store:', error);
+        }
+      } catch (error) {
+        console.error('Failed to create group:', error);
+        throw error;
+      }
+    },
+
+    updateGroup: async (groupId: string, updates: Partial<GroupNode>) => {
+      try {
+        // Persist to database
+        await updateGroup(groupId, {
+          name: updates.name,
+          nodeIds: updates.nodeIds,
+          position: updates.position,
+          size: updates.size,
+        });
+
+        // Update local state
+        set((state) => ({
+          canvas: state.canvas
+            ? {
+                ...state.canvas,
+                groups: state.canvas.groups.map((group) =>
+                  group.id === groupId ? { ...group, ...updates } : group
+                ),
+                updatedAt: new Date().toISOString(),
+              }
+            : undefined,
+        }));
+
+        // Sync with projects store
+        try {
+          const projectsStore = useProjectsStore.getState();
+          const updatedCanvas = get().canvas;
+          if (updatedCanvas) {
+            projectsStore.updateProject(updatedCanvas.id, {
+              groups: updatedCanvas.groups,
+              updatedAt: updatedCanvas.updatedAt,
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to sync group update with projects store:', error);
+        }
+      } catch (error) {
+        console.error('Failed to update group:', error);
+        throw error;
+      }
+    },
+
+    deleteGroup: async (groupId: string) => {
+      try {
+        // Persist to database
+        await deleteGroup(groupId);
+
+        // Update local state
+        set((state) => ({
+          canvas: state.canvas
+            ? {
+                ...state.canvas,
+                groups: state.canvas.groups.filter((group) => group.id !== groupId),
+                // Remove parentId from all nodes in this group
+                nodes: state.canvas.nodes.map((node) =>
+                  node.parentId === groupId ? { ...node, parentId: undefined } : node
+                ),
+                updatedAt: new Date().toISOString(),
+              }
+            : undefined,
+        }));
+
+        // Sync with projects store
+        try {
+          const projectsStore = useProjectsStore.getState();
+          const updatedCanvas = get().canvas;
+          if (updatedCanvas) {
+            projectsStore.updateProject(updatedCanvas.id, {
+              groups: updatedCanvas.groups,
+              nodes: updatedCanvas.nodes,
+              updatedAt: updatedCanvas.updatedAt,
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to sync group deletion with projects store:', error);
+        }
+      } catch (error) {
+        console.error('Failed to delete group:', error);
+        throw error;
+      }
+    },
 
     addNodesToGroup: (groupId: string, nodeIds: string[]) =>
       set((state) => ({
@@ -664,6 +784,10 @@ export const useCanvasStore = create<CanvasStoreState>()(
                 group.id === groupId
                   ? { ...group, nodeIds: [...new Set([...group.nodeIds, ...nodeIds])] }
                   : group
+              ),
+              // Update parentId for all nodes being added to the group
+              nodes: state.canvas.nodes.map((node) =>
+                nodeIds.includes(node.id) ? { ...node, parentId: groupId } : node
               ),
               updatedAt: new Date().toISOString(),
             }
@@ -680,10 +804,215 @@ export const useCanvasStore = create<CanvasStoreState>()(
                   ? { ...group, nodeIds: group.nodeIds.filter((id) => !nodeIds.includes(id)) }
                   : group
               ),
+              // Remove parentId from nodes being removed from the group
+              nodes: state.canvas.nodes.map((node) =>
+                nodeIds.includes(node.id) ? { ...node, parentId: undefined } : node
+              ),
               updatedAt: new Date().toISOString(),
             }
           : undefined,
       })),
+
+
+
+    toggleGroupCollapse: (groupId: string) =>
+      set((state) => ({
+        canvas: state.canvas
+          ? {
+              ...state.canvas,
+              groups: state.canvas.groups.map((group) =>
+                group.id === groupId
+                  ? { ...group, isCollapsed: !group.isCollapsed }
+                  : group
+              ),
+              updatedAt: new Date().toISOString(),
+            }
+          : undefined,
+      })),
+
+    updateGroupSize: (groupId: string, size: { width: number; height: number }) =>
+      set((state) => ({
+        canvas: state.canvas
+          ? {
+              ...state.canvas,
+              groups: state.canvas.groups.map((group) =>
+                group.id === groupId
+                  ? { ...group, size }
+                  : group
+              ),
+              updatedAt: new Date().toISOString(),
+            }
+          : undefined,
+      })),
+
+    // Selection-based grouping
+    groupSelectedNodes: async (nodeIds: string[]) => {
+      console.log("🎯 groupSelectedNodes called with:", nodeIds);
+      
+      if (nodeIds.length < 2) {
+        throw new Error("At least 2 nodes must be selected to create a group");
+      }
+
+      const state = get();
+      if (!state.canvas?.id) {
+        throw new Error("No canvas loaded");
+      }
+
+      try {
+        // Calculate group bounds based on selected nodes
+        const selectedNodes = state.canvas.nodes.filter(node => 
+          nodeIds.includes(node.id)
+        );
+
+        if (selectedNodes.length === 0) {
+          throw new Error("No valid nodes found");
+        }
+
+        // Calculate bounding box
+        const positions = selectedNodes.map(node => node.position);
+        const minX = Math.min(...positions.map(p => p.x));
+        const maxX = Math.max(...positions.map(p => p.x));
+        const minY = Math.min(...positions.map(p => p.y));
+        const maxY = Math.max(...positions.map(p => p.y));
+
+        // Add padding to the group
+        const padding = 50;
+        const groupPosition = { x: minX - padding, y: minY - padding };
+        const groupSize = { 
+          width: maxX - minX + 200 + padding * 2, 
+          height: maxY - minY + 150 + padding * 2 
+        };
+
+        console.log("🎯 Group creation details:", {
+          selectedNodes: selectedNodes.map(n => ({ id: n.id, position: n.position })),
+          positions,
+          minX, maxX, minY, maxY,
+          groupPosition,
+          groupSize,
+        });
+
+        const groupId = generateUUID();
+        const groupName = `Group ${state.canvas.groups.length + 1}`;
+
+        const newGroup: GroupNode = {
+          id: groupId,
+          name: groupName,
+          nodeIds,
+          position: groupPosition,
+          size: groupSize,
+          isCollapsed: false,
+          zIndex: 0,
+        };
+
+        // Get current user for created_by field
+        const user = await getCurrentUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
+
+        // Persist to database
+        await createGroup({
+          id: groupId,
+          name: groupName,
+          nodeIds,
+          position: groupPosition,
+          size: groupSize,
+          projectId: state.canvas.id,
+          createdBy: user.id,
+        });
+
+        // Update local state
+        set((state) => ({
+          canvas: state.canvas
+            ? {
+                ...state.canvas,
+                groups: [...state.canvas.groups, newGroup],
+                // Update parentId for all nodes in the group
+                nodes: state.canvas.nodes.map((node) =>
+                  nodeIds.includes(node.id) ? { ...node, parentId: groupId } : node
+                ),
+                updatedAt: new Date().toISOString(),
+              }
+            : undefined,
+        }));
+
+        console.log("✅ Group created successfully:", {
+          groupId,
+          nodeIds,
+          totalGroups: get().canvas?.groups.length,
+          totalNodes: get().canvas?.nodes.length,
+        });
+
+        // Sync with projects store
+        try {
+          const projectsStore = useProjectsStore.getState();
+          const updatedCanvas = get().canvas;
+          if (updatedCanvas) {
+            projectsStore.updateProject(state.canvas.id, {
+              groups: updatedCanvas.groups,
+              nodes: updatedCanvas.nodes,
+              updatedAt: updatedCanvas.updatedAt,
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to sync group creation with projects store:', error);
+        }
+
+        return groupId;
+      } catch (error) {
+        console.error('Failed to group nodes:', error);
+        throw error;
+      }
+    },
+
+    ungroupSelectedGroups: async (groupIds: string[]) => {
+      const state = get();
+      if (!state.canvas?.id) {
+        throw new Error("No canvas loaded");
+      }
+
+      try {
+        // Delete groups from database
+        for (const groupId of groupIds) {
+          await deleteGroup(groupId);
+        }
+
+        // Update local state
+        set((state) => ({
+          canvas: state.canvas
+            ? {
+                ...state.canvas,
+                groups: state.canvas.groups.filter(group => !groupIds.includes(group.id)),
+                // Remove parentId from all nodes in the deleted groups
+                nodes: state.canvas.nodes.map((node) =>
+                  node.parentId && groupIds.includes(node.parentId) 
+                    ? { ...node, parentId: undefined } 
+                    : node
+                ),
+                updatedAt: new Date().toISOString(),
+              }
+            : undefined,
+        }));
+
+        // Sync with projects store
+        try {
+          const projectsStore = useProjectsStore.getState();
+          const updatedCanvas = get().canvas;
+          if (updatedCanvas) {
+            projectsStore.updateProject(state.canvas.id, {
+              groups: updatedCanvas.groups,
+              nodes: updatedCanvas.nodes,
+              updatedAt: updatedCanvas.updatedAt,
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to sync group deletion with projects store:', error);
+        }
+      } catch (error) {
+        console.error('Failed to ungroup nodes:', error);
+        throw error;
+      }
+    },
 
     // Dimension slice implementation
     sliceMetricByDimensions: async (

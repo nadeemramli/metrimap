@@ -274,3 +274,83 @@ export async function duplicateProject(projectId: string, newName: string, userI
   
   return newProject;
 }
+
+// Group database operations
+export async function createGroup(group: {
+  id: string;
+  name: string;
+  nodeIds: string[];
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  projectId: string;
+  createdBy: string;
+}) {
+  const { data, error } = await supabase
+    .from('groups')
+    .insert({
+      id: group.id,
+      name: group.name,
+      node_ids: group.nodeIds,
+      position_x: group.position.x,
+      position_y: group.position.y,
+      width: group.size.width,
+      height: group.size.height,
+      project_id: group.projectId,
+      created_by: group.createdBy,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating group:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function updateGroup(groupId: string, updates: {
+  name?: string;
+  nodeIds?: string[];
+  position?: { x: number; y: number };
+  size?: { width: number; height: number };
+}) {
+  const updateData: any = {};
+  
+  if (updates.name !== undefined) updateData.name = updates.name;
+  if (updates.nodeIds !== undefined) updateData.node_ids = updates.nodeIds;
+  if (updates.position !== undefined) {
+    updateData.position_x = updates.position.x;
+    updateData.position_y = updates.position.y;
+  }
+  if (updates.size !== undefined) {
+    updateData.width = updates.size.width;
+    updateData.height = updates.size.height;
+  }
+
+  const { data, error } = await supabase
+    .from('groups')
+    .update(updateData)
+    .eq('id', groupId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating group:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function deleteGroup(groupId: string) {
+  const { error } = await supabase
+    .from('groups')
+    .delete()
+    .eq('id', groupId);
+
+  if (error) {
+    console.error('Error deleting group:', error);
+    throw error;
+  }
+}

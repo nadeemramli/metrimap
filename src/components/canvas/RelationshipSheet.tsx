@@ -118,7 +118,7 @@ export default function RelationshipSheet({
   relationshipId,
   // onSwitchToRelationship,
 }: RelationshipSheetProps) {
-  console.log("📋 RelationshipSheet props:", { isOpen, relationshipId });
+  // console.log("📋 RelationshipSheet props:", { isOpen, relationshipId });
   const { canvasId } = useParams();
   const { getEdgeById, persistEdgeUpdate, persistEdgeDelete, getNodeById } =
     useCanvasStore();

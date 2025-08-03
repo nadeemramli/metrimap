@@ -65,6 +65,9 @@ export interface MetricCard {
   // Position on canvas
   position: { x: number; y: number };
   
+  // React Flow subflow support
+  parentId?: string; // ID of the group this node belongs to
+  
   // Data for Data/Metric cards
   data?: MetricValue[];
   sourceType?: SourceType;
@@ -185,6 +188,9 @@ export interface GroupNode {
   nodeIds: string[];
   position: { x: number; y: number };
   size: { width: number; height: number };
+  // React Flow subflow properties
+  isCollapsed?: boolean;
+  zIndex?: number;
 }
 
 // Events for changelog
