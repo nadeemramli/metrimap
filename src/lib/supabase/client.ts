@@ -17,6 +17,15 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// Create a Supabase client with Clerk authentication using the native integration
+export function createClerkSupabaseClient(getToken: () => Promise<string | null>) {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    async accessToken() {
+      return getToken() ?? null;
+    },
+  });
+}
+
 // Helper function to get the current user
 export const getCurrentUser = async () => {
   const { data: { user }, error } = await supabase.auth.getUser();

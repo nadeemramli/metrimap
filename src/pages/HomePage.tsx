@@ -52,6 +52,7 @@ import {
   Folder,
 } from "lucide-react";
 import { useProjectsStore, useAppStore } from "@/lib/stores";
+import { useClerkSupabase } from "@/hooks/useClerkSupabase";
 import type { CanvasProject } from "@/lib/types";
 import QuickSearchCommand, {
   useQuickSearch,
@@ -72,13 +73,13 @@ export default function HomePage() {
   const navigate = useNavigate();
   const {
     projects,
-    addProject,
     duplicateProject,
     deleteProject,
     updateProject,
     initializeProjects,
   } = useProjectsStore();
   const { setCurrentCanvas, user } = useAppStore();
+  const supabaseClient = useClerkSupabase();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -190,25 +191,34 @@ export default function HomePage() {
   const starredProjects = projects.filter((p) => p.tags.includes("starred"));
 
   const handleCreateCanvas = async () => {
-    if (isCreatingCanvas) return; // Prevent multiple clicks
+    if (isCreatingCanvas || !user) return; // Prevent multiple clicks
 
     setIsCreatingCanvas(true);
     try {
-      const newProjectData = {
-        name: "New Canvas",
-        description: "New business model canvas",
-        tags: ["New"],
-        collaborators: [],
-        nodes: [],
-        edges: [],
-        groups: [],
-        settings: {},
-        lastModifiedBy: "Current User",
-      };
+      // Create project directly using Clerk-authenticated Supabase client
+      const { data, error } = await supabaseClient
+        .from("projects")
+        .insert({
+          name: "New Canvas",
+          description: "New business model canvas",
+          tags: ["New"],
+          settings: {},
+          created_by: user.id,
+          last_modified_by: user.id,
+        })
+        .select()
+        .single();
 
-      const newProjectId = await addProject(newProjectData);
-      setCurrentCanvas(newProjectId);
-      navigate(`/canvas/${newProjectId}`);
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setCurrentCanvas(data.id);
+        navigate(`/canvas/${data.id}`);
+        // Refresh projects list
+        initializeProjects();
+      }
     } catch (error) {
       console.error("Failed to create canvas:", error);
       const errorMessage =
