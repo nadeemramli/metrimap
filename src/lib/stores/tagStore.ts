@@ -9,7 +9,7 @@ import {
   searchProjectTags,
   getTagUsageStats,
 } from '../supabase/services/tags';
-import { getCurrentUser } from '../supabase/client';
+import { useAppStore } from './appStore';
 
 interface TagStoreState {
   // State
@@ -63,7 +63,7 @@ export const useTagStore = create<TagStoreState>()(
     createProjectTag: async (projectId: string, tagData: { name: string; color?: string; description?: string }) => {
       set({ isLoading: true, error: undefined });
       try {
-        const user = await getCurrentUser();
+        const { user } = useAppStore.getState();
         if (!user) throw new Error('User not authenticated');
 
         const newTag = await createTag({

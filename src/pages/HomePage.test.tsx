@@ -1,37 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { screen } from "@testing-library/react";
+import { renderWithClerk } from "../test-utils";
 import HomePage from "./HomePage";
 
 describe("HomePage", () => {
   it("renders homepage title", () => {
-    render(
-      <BrowserRouter>
-        <HomePage />
-      </BrowserRouter>
-    );
-
+    renderWithClerk(<HomePage />);
     expect(screen.getByText("Metrimap")).toBeDefined();
   });
 
   it("renders new canvas button", () => {
-    render(
-      <BrowserRouter>
-        <HomePage />
-      </BrowserRouter>
-    );
-
+    renderWithClerk(<HomePage />);
     expect(screen.getByText("New Canvas")).toBeDefined();
   });
 
   it("renders empty state when no projects are loaded", () => {
-    render(
-      <BrowserRouter>
-        <HomePage />
-      </BrowserRouter>
-    );
-
-    // Test should expect empty state since auth fails in test environment
+    renderWithClerk(<HomePage />);
     expect(screen.getByText("No projects yet")).toBeDefined();
     expect(
       screen.getByText(

@@ -8,12 +8,12 @@ import {
   createRelationship,
   updateRelationship as updateRelationshipInSupabase,
   deleteRelationship as deleteRelationshipInSupabase,
-  getCurrentUser,
   createGroup,
   updateGroup,
   deleteGroup,
 } from '../supabase/services';
 import { useProjectsStore } from './projectsStore';
+import { useAppStore } from './appStore';
 import { generateUUID } from '../utils/validation';
 
 interface CanvasStoreState extends CanvasState {
@@ -151,7 +151,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       
       set({ isLoading: true, error: undefined });
       try {
-        const user = await getCurrentUser();
+        const { user } = useAppStore.getState();
         if (!user) throw new Error('User not authenticated');
         
         const newNode = await createMetricCard(
@@ -237,7 +237,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       
       set({ isLoading: true, error: undefined });
       try {
-        const user = await getCurrentUser();
+        const { user } = useAppStore.getState();
         if (!user) throw new Error('User not authenticated');
         
         const newEdge = await createRelationship(
@@ -647,7 +647,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
       try {
         // Get current user for created_by field
-        const user = await getCurrentUser();
+        const { user } = useAppStore.getState();
         if (!user) {
           throw new Error("User not authenticated");
         }
@@ -905,7 +905,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         };
 
         // Get current user for created_by field
-        const user = await getCurrentUser();
+        const { user } = useAppStore.getState();
         if (!user) {
           throw new Error("User not authenticated");
         }

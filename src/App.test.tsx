@@ -1,22 +1,41 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
+import { ClerkProvider } from "@clerk/react-router";
+import { BrowserRouter } from "react-router-dom";
+import { vi } from "vitest";
 import App from "./App";
 
-// Basic test to satisfy pre-commit hooks
+// Mock Clerk hooks for testing
+vi.mock("@clerk/react-router", async () => {
+  const actual = await vi.importActual("@clerk/react-router");
+  return {
+    ...actual,
+    useUser: () => ({
+      user: null,
+      isLoaded: true,
+    }),
+    useAuth: () => ({
+      isSignedIn: false,
+      isLoaded: true,
+    }),
+  };
+});
+
+// Test wrapper that provides all necessary providers
+const TestWrapper = ({ children }: { children: React.ReactNode }) => (
+  <BrowserRouter>
+    <ClerkProvider publishableKey="pk_test_mock">{children}</ClerkProvider>
+  </BrowserRouter>
+);
+
 describe("App", () => {
   it("renders without crashing", () => {
-    // App already includes BrowserRouter, so don't wrap it again
-    render(<App />);
-
-    // App should render without throwing errors
+    render(<App />, { wrapper: TestWrapper });
     expect(document.body).toBeDefined();
   });
 
   it("initializes React Query client", () => {
-    // App already includes BrowserRouter and QueryClient
-    render(<App />);
-
-    // Check if the app renders without errors
+    render(<App />, { wrapper: TestWrapper });
     expect(document.querySelector("body")).toBeDefined();
   });
 });

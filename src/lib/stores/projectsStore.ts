@@ -7,8 +7,8 @@ import {
   deleteProject as deleteProjectInSupabase,
   getUserProjects,
   getProjectById,
-  getCurrentUser,
 } from '../supabase/services';
+import { useAppStore } from './appStore';
 
 interface ProjectsStoreState {
   // State
@@ -31,9 +31,9 @@ interface ProjectsStoreState {
   getRecentProjects: (limit?: number) => CanvasProject[];
 }
 
-// Helper function to check authentication
-const requireAuth = async () => {
-  const user = await getCurrentUser();
+// Helper function to check authentication using Clerk user
+const requireAuth = () => {
+  const { user } = useAppStore.getState();
   if (!user) {
     throw new Error('Authentication required. Please log in.');
   }
@@ -56,7 +56,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
         
         set({ isLoading: true, error: undefined });
         try {
-          const user = await requireAuth();
+          const user = requireAuth();
           
           const projects = await getUserProjects(user.id);
           // Load full canvas data for each project
@@ -101,7 +101,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
 
       addProject: async (projectData) => {
         try {
-          const user = await requireAuth();
+          const user = requireAuth();
           
           set({ isLoading: true, error: undefined });
           
@@ -153,7 +153,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
 
       updateProject: async (projectId, updates) => {
         try {
-          await requireAuth();
+          requireAuth();
           
           set({ isLoading: true, error: undefined });
           
@@ -188,7 +188,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
 
       deleteProject: async (projectId) => {
         try {
-          await requireAuth();
+          requireAuth();
           
           set({ isLoading: true, error: undefined });
           
@@ -210,7 +210,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
 
       duplicateProject: async (projectId) => {
         try {
-          const user = await requireAuth();
+          const user = requireAuth();
           
           const state = get();
           const originalProject = state.projects.find(p => p.id === projectId);

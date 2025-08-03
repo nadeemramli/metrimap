@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { useAppStore } from "@/lib/stores";
+import { useUser, useAuth } from "@clerk/react-router";
 import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -7,11 +7,12 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isAuthLoading, isInitialized } = useAppStore();
+  const { user, isLoaded } = useUser();
+  const { isSignedIn } = useAuth();
   const location = useLocation();
 
-  // Show loading while auth is initializing
-  if (!isInitialized || isAuthLoading) {
+  // Show loading while Clerk is loading
+  if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex items-center space-x-2">
@@ -22,9 +23,15 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!user) {
-    return <Navigate to="/auth/login" state={{ from: location }} replace />;
+  // Redirect to sign-in if not authenticated
+  if (!isSignedIn || !user) {
+    return (
+      <Navigate
+        to="/auth/sign-in"
+        state={{ from: location.pathname }}
+        replace
+      />
+    );
   }
 
   return <>{children}</>;
