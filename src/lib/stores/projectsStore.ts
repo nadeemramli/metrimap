@@ -55,12 +55,33 @@ export const useProjectsStore = create<ProjectsStoreState>()(
         const state = get();
         if (state.isInitialized) return;
         
+        console.log('🚀 initializeProjects called');
         set({ isLoading: true, error: undefined });
+        
+        // Retry mechanism for authenticated client
+        let authenticatedClient = getAuthenticatedClient();
+        let retries = 0;
+        const maxRetries = 5;
+        
+        while (!authenticatedClient && retries < maxRetries) {
+          console.log(`⏳ Waiting for authenticated client... (attempt ${retries + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          authenticatedClient = getAuthenticatedClient();
+          retries++;
+        }
+        
+        if (!authenticatedClient) {
+          console.error('❌ No authenticated client available after retries');
+          throw new Error('Authenticated client not available');
+        }
+        
         try {
           const user = requireAuth();
+          console.log('✅ User authenticated:', user.id);
+          console.log('✅ Authenticated client obtained:', !!authenticatedClient);
           
-          const authenticatedClient = getAuthenticatedClient();
-          const projects = await getUserProjects(user.id, authenticatedClient || undefined);
+          const projects = await getUserProjects(user.id, authenticatedClient);
+          console.log('✅ getUserProjects completed, got projects:', projects?.length || 0);
           // Load full canvas data for each project
           const canvasProjects: CanvasProject[] = [];
           
