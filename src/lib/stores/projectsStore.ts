@@ -64,14 +64,33 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           // Load full canvas data for each project
           const canvasProjects: CanvasProject[] = [];
           
+          console.log(`📋 Loading full data for ${projects?.length || 0} projects...`);
           for (const project of projects || []) {
+            console.log(`🔍 Loading project: ${project.name} (${project.id})`);
             try {
               const fullProject = await getProjectById(project.id, authenticatedClient || undefined);
               if (fullProject) {
+                console.log(`✅ Loaded project ${project.name} with ${fullProject.nodes.length} nodes, ${fullProject.edges.length} edges, ${fullProject.groups.length} groups`);
                 canvasProjects.push(fullProject);
+              } else {
+                console.log(`⚠️ No full data returned for project ${project.name}`);
+                // Fallback to basic project data
+                canvasProjects.push({
+                  id: project.id,
+                  name: project.name,
+                  description: project.description || '',
+                  tags: project.tags || [],
+                  collaborators: [],
+                  nodes: [],
+                  edges: [],
+                  groups: [],
+                  createdAt: project.created_at || new Date().toISOString(),
+                  updatedAt: project.updated_at || new Date().toISOString(),
+                  lastModifiedBy: user.id,
+                });
               }
             } catch (error) {
-              console.error(`Failed to load full data for project ${project.id}:`, error);
+              console.error(`❌ Failed to load full data for project ${project.id}:`, error);
               // Fallback to basic project data
               canvasProjects.push({
                 id: project.id,

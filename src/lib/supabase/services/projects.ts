@@ -124,6 +124,8 @@ export async function getProjectById(
     .select('*')
     .eq('project_id', projectId);
 
+  console.log('🔍 Metric cards query result:', { data: metricCards?.length || 0, error: cardsError });
+
   if (cardsError) {
     console.error('Error fetching metric cards:', cardsError);
     throw cardsError;
@@ -188,6 +190,8 @@ export async function getProjectById(
     .select('*')
     .eq('project_id', projectId);
 
+  console.log('🔍 Groups query result:', { data: groups?.length || 0, error: groupsError });
+
   if (groupsError) {
     console.error('Error fetching groups:', groupsError);
     throw groupsError;
@@ -213,14 +217,37 @@ export async function getProjectById(
       tags: [], // Tags are now stored in metric_card_tags junction table
       causalFactors: (card.causal_factors || []) as any,
       dimensions: (card.dimensions || []) as any,
+      segments: [],
       position: { x: card.position_x, y: card.position_y },
+      parentId: undefined,
       data: card.data as any,
       sourceType: card.source_type as any,
       formula: card.formula || undefined,
-      owner: undefined, // We'll need to resolve this
+      owner: card.owner_id || '',
       assignees: card.assignees || [],
       createdAt: card.created_at || new Date().toISOString(),
       updatedAt: card.updated_at || new Date().toISOString(),
+      // Add card data for CanvasPreview compatibility
+      card: {
+        id: card.id,
+        title: card.title,
+        description: card.description || '',
+        category: card.category as any,
+        subCategory: card.sub_category as any,
+        tags: [],
+        causalFactors: (card.causal_factors || []) as any,
+        dimensions: (card.dimensions || []) as any,
+        segments: [],
+        position: { x: card.position_x, y: card.position_y },
+        parentId: undefined,
+        data: card.data as any,
+        sourceType: card.source_type as any,
+        formula: card.formula || undefined,
+        owner: card.owner_id || '',
+        assignees: card.assignees || [],
+        createdAt: card.created_at || new Date().toISOString(),
+        updatedAt: card.updated_at || new Date().toISOString(),
+      },
     })) || [],
 
     // Transform relationships to match our Relationship interface
@@ -230,10 +257,12 @@ export async function getProjectById(
         id: rel.id,
         sourceId: rel.source_id,
         targetId: rel.target_id,
+        source: rel.source_id, // For CanvasPreview compatibility
+        target: rel.target_id, // For CanvasPreview compatibility
         type: rel.type as any,
         confidence: rel.confidence as any,
-        weight: rel.weight || undefined,
-        notes: undefined, // Notes field doesn't exist in database yet
+        weight: rel.weight || 1,
+        description: rel.description || '',
         evidence: rel.evidence_items?.map((evidence: any) => ({
           id: evidence.id,
           title: evidence.title,
@@ -256,9 +285,14 @@ export async function getProjectById(
     groups: groups?.map((group: Group) => ({
       id: group.id,
       name: group.name,
+      description: group.description || '',
+      color: group.color || '#e5e7eb',
       nodeIds: group.node_ids || [],
       position: { x: group.position_x, y: group.position_y },
       size: { width: group.width, height: group.height },
+      isCollapsed: false,
+      createdAt: group.created_at || new Date().toISOString(),
+      updatedAt: group.updated_at || new Date().toISOString(),
     })) || [],
 
     settings: project.settings as any || {},

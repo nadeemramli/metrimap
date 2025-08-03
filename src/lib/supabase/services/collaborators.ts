@@ -25,7 +25,7 @@ export async function getProjectCollaborators(
       users(id, name, email, avatar_url)
     `)
     .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
+    .order('invited_at', { ascending: true });
 
   if (error) {
     console.error('Error fetching collaborators:', error);

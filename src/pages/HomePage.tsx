@@ -124,6 +124,24 @@ export default function HomePage() {
     return new Date(project.updatedAt) > oneDayAgo;
   };
 
+  // Debug: Log projects data
+  useEffect(() => {
+    console.log("🏠 HomePage projects data:", {
+      totalProjects: projects.length,
+      projectsWithNodes: projects.filter((p) => p.nodes.length > 0).length,
+      projectsWithEdges: projects.filter((p) => p.edges.length > 0).length,
+      projectsWithGroups: projects.filter((p) => p.groups.length > 0).length,
+      sampleProject: projects[0]
+        ? {
+            name: projects[0].name,
+            nodes: projects[0].nodes.length,
+            edges: projects[0].edges.length,
+            groups: projects[0].groups.length,
+          }
+        : null,
+    });
+  }, [projects]);
+
   // Filter and sort projects
   const filteredAndSortedProjects = useMemo(() => {
     let filtered = projects.filter((project) => {
