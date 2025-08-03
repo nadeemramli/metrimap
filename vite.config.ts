@@ -10,6 +10,19 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    port: 5173,
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          clerk: ['@clerk/react-router'],
+        },
+      },
+    },
+  },
   worker: {
     format: 'es',
     plugins: () => [react()]
