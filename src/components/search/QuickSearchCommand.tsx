@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -175,6 +181,12 @@ export default function QuickSearchCommand({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] p-0 gap-0 bg-background text-foreground border-2 border-border shadow-2xl backdrop-blur-sm">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Quick Search</DialogTitle>
+          <DialogDescription>
+            Search for metric cards, relationships, and evidence
+          </DialogDescription>
+        </DialogHeader>
         <div className="border-b px-4 py-3">
           <div className="flex items-center gap-3">
             <Search className="h-5 w-5 text-muted-foreground" />

@@ -159,10 +159,16 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           
           set({ isLoading: true, error: undefined });
           
-          const updatedProject = await updateProjectInSupabase(projectId, {
-            ...updates,
-            settings: updates.settings ? JSON.parse(JSON.stringify(updates.settings)) : undefined,
-          });
+          // Convert camelCase to snake_case for database
+          const dbUpdates: any = {};
+          if (updates.name !== undefined) dbUpdates.name = updates.name;
+          if (updates.description !== undefined) dbUpdates.description = updates.description;
+          if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+          if (updates.settings !== undefined) dbUpdates.settings = JSON.parse(JSON.stringify(updates.settings));
+          if (updates.updatedAt !== undefined) dbUpdates.updated_at = updates.updatedAt;
+          if (updates.lastModifiedBy !== undefined) dbUpdates.last_modified_by = updates.lastModifiedBy;
+          
+          const updatedProject = await updateProjectInSupabase(projectId, dbUpdates);
           
           if (updatedProject) {
             set(state => ({

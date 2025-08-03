@@ -157,7 +157,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         
         const authenticatedClient = getAuthenticatedClient();
         const newNode = await createMetricCard(
-          { ...nodeData, id: '', createdAt: '', updatedAt: '' },
+          { ...nodeData, owner: user.id, id: '', createdAt: '', updatedAt: '' },
           state.canvas.id,
           user.id,
           authenticatedClient || undefined

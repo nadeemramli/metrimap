@@ -52,7 +52,7 @@ import {
   Folder,
 } from "lucide-react";
 import { useProjectsStore, useAppStore } from "@/lib/stores";
-import { useClerkSupabase } from "@/hooks/useClerkSupabase";
+
 import type { CanvasProject } from "@/lib/types";
 import QuickSearchCommand, {
   useQuickSearch,
@@ -79,7 +79,6 @@ export default function HomePage() {
     initializeProjects,
   } = useProjectsStore();
   const { setCurrentCanvas, user } = useAppStore();
-  const supabaseClient = useClerkSupabase();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -195,29 +194,23 @@ export default function HomePage() {
 
     setIsCreatingCanvas(true);
     try {
-      // Create project directly using Clerk-authenticated Supabase client
-      const { data, error } = await supabaseClient
-        .from("projects")
-        .insert({
-          name: "New Canvas",
-          description: "New business model canvas",
-          tags: ["New"],
-          settings: {},
-          created_by: user.id,
-          last_modified_by: user.id,
-        })
-        .select()
-        .single();
+      // Use the projects store to create the project
+      const { addProject } = useProjectsStore.getState();
+      const newProjectId = await addProject({
+        name: "New Canvas",
+        description: "New business model canvas",
+        tags: ["New"],
+        settings: {},
+        collaborators: [],
+        nodes: [],
+        edges: [],
+        groups: [],
+        lastModifiedBy: user.id,
+      });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setCurrentCanvas(data.id);
-        navigate(`/canvas/${data.id}`);
-        // Refresh projects list
-        initializeProjects();
+      if (newProjectId) {
+        setCurrentCanvas(newProjectId);
+        navigate(`/canvas/${newProjectId}`);
       }
     } catch (error) {
       console.error("Failed to create canvas:", error);

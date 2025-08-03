@@ -46,7 +46,7 @@ function transformToInsert(card: MetricCard, projectId: string, userId: string):
     causal_factors: card.causalFactors,
     dimensions: card.dimensions,
     assignees: card.assignees,
-    owner_id: card.owner,
+    owner_id: card.owner && card.owner.trim() !== '' ? card.owner : null,
     created_by: userId,
   };
 }
@@ -97,7 +97,9 @@ export async function updateMetricCard(
   if (updates.causalFactors !== undefined) updateData.causal_factors = updates.causalFactors;
   if (updates.dimensions !== undefined) updateData.dimensions = updates.dimensions;
   if (updates.assignees !== undefined) updateData.assignees = updates.assignees;
-  if (updates.owner !== undefined) updateData.owner_id = updates.owner;
+  if (updates.owner !== undefined && updates.owner && updates.owner.trim() !== '') {
+    updateData.owner_id = updates.owner;
+  }
   
   // Always update the timestamp
   updateData.updated_at = new Date().toISOString();
