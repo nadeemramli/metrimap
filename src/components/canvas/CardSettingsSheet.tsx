@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -43,13 +43,13 @@ interface CardSettingsSheetProps {
   onSwitchToCard?: (cardId: string, tab?: string) => void;
 }
 
-const CardSettingsSheetComponent: FC<CardSettingsSheetProps> = ({
+function CardSettingsSheetComponent({
   isOpen,
   onClose,
   cardId,
   initialTab = "data",
   // onSwitchToCard,
-}) => {
+}: CardSettingsSheetProps): React.ReactElement {
   // Early return with a proper React element if not open
   if (!isOpen) {
     return <></>;
@@ -802,7 +802,6 @@ const CardSettingsSheetComponent: FC<CardSettingsSheetProps> = ({
       )}
     </Sheet>
   );
-};
+}
 
-const CardSettingsSheet = CardSettingsSheetComponent;
-export default CardSettingsSheet;
+export default CardSettingsSheetComponent;

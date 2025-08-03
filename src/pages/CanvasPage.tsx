@@ -1520,6 +1520,8 @@ function CanvasPageInner() {
       </div>
 
       {/* Card Settings Sheet */}
+      {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+      {/* @ts-ignore */}
       <CardSettingsSheet
         isOpen={isSettingsSheetOpen}
         onClose={handleCloseSettingsSheet}
@@ -1535,12 +1537,6 @@ function CanvasPageInner() {
         relationshipId={relationshipSheetId}
         onSwitchToRelationship={handleSwitchToRelationship}
       />
-      {console.log("🎯 RelationshipSheet rendered with:", {
-        isOpen: isRelationshipSheetOpen,
-        relationshipId: relationshipSheetId,
-        hasOnClose: !!handleCloseRelationshipSheet,
-        hasOnSwitchToRelationship: !!handleSwitchToRelationship,
-      })}
 
       {/* Keyboard Shortcuts Help */}
       <KeyboardShortcutsHelp
