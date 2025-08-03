@@ -810,12 +810,21 @@ function CanvasPageInner() {
   }, []);
 
   // Handle opening relationship sheet
-  const handleOpenRelationshipSheet = useCallback((relationshipId: string) => {
-    console.log("🎯 Opening relationship sheet for:", relationshipId);
-    setRelationshipSheetId(relationshipId);
-    setIsRelationshipSheetOpen(true);
-    console.log("🎯 relationshipSheetId set to:", relationshipId);
-  }, []);
+  const handleOpenRelationshipSheet = useCallback(
+    (relationshipId: string) => {
+      console.log("🎯 Opening relationship sheet for:", relationshipId);
+      console.log("🎯 Current relationshipSheetId:", relationshipSheetId);
+      console.log(
+        "🎯 Current isRelationshipSheetOpen:",
+        isRelationshipSheetOpen
+      );
+      setRelationshipSheetId(relationshipId);
+      setIsRelationshipSheetOpen(true);
+      console.log("🎯 relationshipSheetId set to:", relationshipId);
+      console.log("🎯 isRelationshipSheetOpen set to: true");
+    },
+    [relationshipSheetId, isRelationshipSheetOpen]
+  );
 
   // Handle group operations
   const handleEditGroup = useCallback((groupId: string) => {
@@ -855,9 +864,15 @@ function CanvasPageInner() {
   }, []);
 
   // Handle switching to a different relationship (for persistent sheet)
-  const handleSwitchToRelationship = useCallback((relationshipId: string) => {
-    setRelationshipSheetId(relationshipId);
-  }, []);
+  const handleSwitchToRelationship = useCallback(
+    (relationshipId: string) => {
+      console.log("🎯 Switching to relationship:", relationshipId);
+      console.log("🎯 Current relationshipSheetId:", relationshipSheetId);
+      setRelationshipSheetId(relationshipId);
+      console.log("🎯 relationshipSheetId updated to:", relationshipId);
+    },
+    [relationshipSheetId]
+  );
 
   // Convert canvas data to ReactFlow format
   const nodes = useMemo(() => {
@@ -1520,6 +1535,12 @@ function CanvasPageInner() {
         relationshipId={relationshipSheetId}
         onSwitchToRelationship={handleSwitchToRelationship}
       />
+      {console.log("🎯 RelationshipSheet rendered with:", {
+        isOpen: isRelationshipSheetOpen,
+        relationshipId: relationshipSheetId,
+        hasOnClose: !!handleCloseRelationshipSheet,
+        hasOnSwitchToRelationship: !!handleSwitchToRelationship,
+      })}
 
       {/* Keyboard Shortcuts Help */}
       <KeyboardShortcutsHelp

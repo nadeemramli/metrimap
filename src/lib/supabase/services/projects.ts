@@ -80,6 +80,8 @@ export async function getUserProjects(userId: string) {
 
 // Fetch a single project with all its data
 export async function getProjectById(projectId: string): Promise<CanvasProject | null> {
+  console.log('🔍 getProjectById called with projectId:', projectId);
+  
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .select(`
@@ -98,7 +100,12 @@ export async function getProjectById(projectId: string): Promise<CanvasProject |
     throw projectError;
   }
 
-  if (!project) return null;
+  if (!project) {
+    console.log('❌ No project found for ID:', projectId);
+    return null;
+  }
+
+  console.log('✅ Project found:', project.name);
 
   // Fetch metric cards
   const { data: metricCards, error: cardsError } = await supabase
@@ -111,8 +118,13 @@ export async function getProjectById(projectId: string): Promise<CanvasProject |
     throw cardsError;
   }
 
+  console.log('✅ Metric cards fetched:', metricCards?.length || 0);
+
   // Fetch relationships with evidence
-  const { data: relationships, error: relationshipsError } = await supabase
+  let relationships: any[] = [];
+  
+  // First try with evidence_items
+  const { data: relationshipsWithEvidence, error: relationshipsError } = await supabase
     .from('relationships')
     .select(`
       *,
@@ -121,9 +133,43 @@ export async function getProjectById(projectId: string): Promise<CanvasProject |
     .eq('project_id', projectId);
 
   if (relationshipsError) {
-    console.error('Error fetching relationships:', relationshipsError);
-    throw relationshipsError;
+    console.error('Error fetching relationships with evidence:', relationshipsError);
+    // Try fetching relationships without evidence_items
+    const { data: relationshipsWithoutEvidence, error: relationshipsError2 } = await supabase
+      .from('relationships')
+      .select('*')
+      .eq('project_id', projectId);
+    
+    if (relationshipsError2) {
+      console.error('Error fetching relationships (second attempt):', relationshipsError2);
+      throw relationshipsError2;
+    }
+    
+    console.log('⚠️ Relationships fetched without evidence_items:', relationshipsWithoutEvidence?.length || 0);
+    relationships = relationshipsWithoutEvidence || [];
+  } else {
+    console.log('✅ Relationships fetched with evidence:', relationshipsWithEvidence?.length || 0);
+    relationships = relationshipsWithEvidence || [];
   }
+
+  // If we still have no relationships, try a simpler query
+  if (relationships.length === 0) {
+    console.log('🔍 No relationships found, trying simple query...');
+    const { data: simpleRelationships, error: simpleError } = await supabase
+      .from('relationships')
+      .select('id, source_id, target_id, type, confidence, weight, project_id')
+      .eq('project_id', projectId);
+    
+    if (simpleError) {
+      console.error('Error with simple relationships query:', simpleError);
+    } else {
+      console.log('✅ Simple relationships query successful:', simpleRelationships?.length || 0);
+      relationships = simpleRelationships || [];
+    }
+  }
+
+  console.log('✅ Final relationships count:', relationships.length);
+  console.log('🔍 Sample relationship:', relationships?.[0]);
 
   // Fetch groups
   const { data: groups, error: groupsError } = await supabase
@@ -135,6 +181,8 @@ export async function getProjectById(projectId: string): Promise<CanvasProject |
     console.error('Error fetching groups:', groupsError);
     throw groupsError;
   }
+
+  console.log('✅ Groups fetched:', groups?.length || 0);
 
   // Transform database data to CanvasProject format
   const canvasProject: CanvasProject = {
@@ -151,7 +199,7 @@ export async function getProjectById(projectId: string): Promise<CanvasProject |
       description: card.description || '',
       category: card.category as any,
       subCategory: card.sub_category as any,
-      tags: card.tags || [],
+      tags: [], // Tags are now stored in metric_card_tags junction table
       causalFactors: (card.causal_factors || []) as any,
       dimensions: (card.dimensions || []) as any,
       position: { x: card.position_x, y: card.position_y },
@@ -165,27 +213,33 @@ export async function getProjectById(projectId: string): Promise<CanvasProject |
     })) || [],
 
     // Transform relationships to match our Relationship interface
-    edges: relationships?.map((rel: any) => ({
-      id: rel.id,
-      sourceId: rel.source_id,
-      targetId: rel.target_id,
-      type: rel.type as any,
-      confidence: rel.confidence as any,
-      weight: rel.weight || undefined,
-      evidence: rel.evidence_items?.map((evidence: any) => ({
-        id: evidence.id,
-        title: evidence.title,
-        type: evidence.type as any,
-        date: evidence.date,
-        owner: evidence.owner_id || '',
-        link: evidence.link || undefined,
-        hypothesis: evidence.hypothesis || undefined,
-        summary: evidence.summary,
-        impactOnConfidence: evidence.impact_on_confidence || undefined,
-      })) || [],
-      createdAt: rel.created_at || new Date().toISOString(),
-      updatedAt: rel.updated_at || new Date().toISOString(),
-    })) || [],
+    edges: relationships?.map((rel: any) => {
+      console.log('🔍 Transforming relationship:', rel);
+      const transformed = {
+        id: rel.id,
+        sourceId: rel.source_id,
+        targetId: rel.target_id,
+        type: rel.type as any,
+        confidence: rel.confidence as any,
+        weight: rel.weight || undefined,
+        notes: undefined, // Notes field doesn't exist in database yet
+        evidence: rel.evidence_items?.map((evidence: any) => ({
+          id: evidence.id,
+          title: evidence.title,
+          type: evidence.type as any,
+          date: evidence.date,
+          owner: evidence.owner_id || '',
+          link: evidence.link || undefined,
+          hypothesis: evidence.hypothesis || undefined,
+          summary: evidence.summary,
+          impactOnConfidence: evidence.impact_on_confidence || undefined,
+        })) || [],
+        createdAt: rel.created_at || new Date().toISOString(),
+        updatedAt: rel.updated_at || new Date().toISOString(),
+      };
+      console.log('🔍 Transformed relationship:', transformed);
+      return transformed;
+    }) || [],
 
     // Transform groups to match our GroupNode interface
     groups: groups?.map((group: Group) => ({
@@ -201,6 +255,13 @@ export async function getProjectById(projectId: string): Promise<CanvasProject |
     updatedAt: project.updated_at || new Date().toISOString(),
     lastModifiedBy: project.last_modified_by || project.created_by,
   };
+
+  console.log('✅ CanvasProject created with:', {
+    nodes: canvasProject.nodes.length,
+    edges: canvasProject.edges.length,
+    groups: canvasProject.groups.length,
+  });
+  console.log('🔍 Sample transformed relationship:', canvasProject.edges?.[0]);
 
   return canvasProject;
 }

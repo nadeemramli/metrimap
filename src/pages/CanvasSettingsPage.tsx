@@ -5,6 +5,8 @@ import { getProjectCollaborators } from "@/lib/supabase/services/collaborators";
 import { getProjectChangelog } from "@/lib/supabase/services/changelog";
 import type { Collaborator } from "@/lib/supabase/services/collaborators";
 import type { ChangelogEntry } from "@/lib/supabase/services/changelog";
+import { useTagStore } from "@/lib/stores/tagStore";
+import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +66,8 @@ import {
   Zap,
   BarChart3,
   User,
+  Tag,
+  X,
 } from "lucide-react";
 import { useProjectsStore } from "@/lib/stores";
 
@@ -89,6 +93,19 @@ export default function CanvasSettingsPage() {
   // Dirty state tracking for better UX
   const [isDirty, setIsDirty] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Tag management state
+  const [isTagManagementOpen, setIsTagManagementOpen] = useState(false);
+
+  // Tag store
+  const {
+    tags,
+    isLoading: isLoadingTags,
+    loadProjectTags,
+    createProjectTag,
+    updateProjectTag,
+    deleteProjectTag,
+  } = useTagStore();
 
   // Find project from store instead of calling async function
   const currentProject = canvasId
@@ -136,6 +153,15 @@ export default function CanvasSettingsPage() {
     );
   };
 
+  // Load data when component mounts
+  useEffect(() => {
+    if (canvasId) {
+      loadCollaborators();
+      loadChangelog();
+      loadProjectTags(canvasId);
+    }
+  }, [canvasId]);
+
   // Load project data when available
   useEffect(() => {
     if (currentProject) {
@@ -155,19 +181,49 @@ export default function CanvasSettingsPage() {
     }
   }, [currentProject, canvasId]);
 
-  // Load collaborators when project changes
-  useEffect(() => {
-    if (currentProject?.id) {
-      loadCollaborators();
-    }
-  }, [currentProject?.id]);
+  // Tag management functions
+  const handleOpenTagManagement = async () => {
+    if (!canvasId) return;
 
-  // Load changelog when project changes
-  useEffect(() => {
-    if (currentProject?.id) {
-      loadChangelog();
+    try {
+      await loadProjectTags(canvasId);
+      setIsTagManagementOpen(true);
+    } catch (error) {
+      console.error("Failed to load project tags:", error);
     }
-  }, [currentProject?.id]);
+  };
+
+  const handleCreateTag = async (tagName: string) => {
+    if (!canvasId) return;
+
+    try {
+      await createProjectTag(canvasId, { name: tagName });
+      console.log("Tag created successfully:", tagName);
+    } catch (error) {
+      console.error("Failed to create tag:", error);
+    }
+  };
+
+  const handleUpdateTag = async (
+    tagId: string,
+    updates: { name?: string; color?: string; description?: string }
+  ) => {
+    try {
+      await updateProjectTag(tagId, updates);
+      console.log("Tag updated successfully:", tagId);
+    } catch (error) {
+      console.error("Failed to update tag:", error);
+    }
+  };
+
+  const handleDeleteTag = async (tagId: string) => {
+    try {
+      await deleteProjectTag(tagId);
+      console.log("Tag deleted successfully:", tagId);
+    } catch (error) {
+      console.error("Failed to delete tag:", error);
+    }
+  };
 
   // Load collaborators function
   const loadCollaborators = async () => {
@@ -495,6 +551,24 @@ export default function CanvasSettingsPage() {
                   <div className="text-sm text-muted-foreground">
                     {new Date(currentProject.createdAt).toLocaleDateString()}
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Canvas Tags
+                  </label>
+                  <div className="text-sm text-muted-foreground mb-2">
+                    Manage tags used within this canvas for metrics and
+                    relationships
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleOpenTagManagement}
+                    className="w-full"
+                  >
+                    <Tag className="h-4 w-4 mr-2" />
+                    Manage Canvas Tags
+                  </Button>
                 </div>
 
                 <div className="pt-4 border-t border-red-200">
@@ -845,6 +919,111 @@ export default function CanvasSettingsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Tag Management Dialog */}
+      {isTagManagementOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Manage Canvas Tags</h2>
+                <p className="text-sm text-muted-foreground">
+                  Create and manage tags used within this canvas
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsTagManagementOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Create New Tag */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Create New Tag
+                </label>
+                <EnhancedTagInput
+                  tags={[]}
+                  onAdd={handleCreateTag}
+                  onRemove={() => {}}
+                  placeholder="Enter tag name..."
+                  maxTags={1}
+                  showCreateOption={true}
+                  showSearchResults={false}
+                />
+              </div>
+
+              {/* Existing Tags */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Existing Tags ({tags.length})
+                </label>
+                {isLoadingTags ? (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">Loading tags...</p>
+                  </div>
+                ) : tags.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">
+                      No tags created yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {tags.map((tag) => (
+                      <div
+                        key={tag.id}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{tag.name}</Badge>
+                          {tag.description && (
+                            <span className="text-sm text-muted-foreground">
+                              {tag.description}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              handleUpdateTag(tag.id, { name: tag.name })
+                            }
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTag(tag.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setIsTagManagementOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

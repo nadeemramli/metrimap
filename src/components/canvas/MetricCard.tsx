@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Handle, Position, NodeToolbar, type NodeProps } from "@xyflow/react";
 import {
+  getMetricCardTags,
+  addTagsToMetricCard,
+  removeTagsFromMetricCard,
+} from "@/lib/supabase/services/tags";
+import {
   TrendingUp,
   TrendingDown,
   Minus,
@@ -42,7 +47,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import TagsList from "./TagsList";
-import { TagInput } from "@/components/ui/tag-input";
+import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
 import { cn } from "@/lib/utils";
 import { useAccessibility } from "@/hooks/useAccessibility";
 import { useCanvasStore } from "@/lib/stores/canvasStore";
@@ -231,7 +236,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
   const [tempSubCategory, setTempSubCategory] = useState(
     card.subCategory || ""
   );
-  const [tempTags, setTempTags] = useState<string[]>(card.tags || []);
+  const [tempTags, setTempTags] = useState<string[]>([]);
+  const [cardTags, setCardTags] = useState<string[]>([]);
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [isSavingTags, setIsSavingTags] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -319,12 +327,17 @@ export default function MetricCard({ data, selected }: NodeProps) {
   };
 
   // Edit functions
+  const [activeEditField, setActiveEditField] = useState<
+    "title" | "description" | "tags"
+  >("title");
+
   const startEditing = () => {
     setTempTitle(card.title);
     setTempDescription(card.description || "");
     setTempCategory(card.category);
     setTempSubCategory(card.subCategory || "");
-    setTempTags(card.tags || []);
+    setTempTags(cardTags); // Use loaded tags instead of card.tags
+    setActiveEditField("title");
     setIsEditing(true);
   };
 
@@ -335,7 +348,6 @@ export default function MetricCard({ data, selected }: NodeProps) {
         description: string;
         category: CardCategory;
         subCategory: string;
-        tags: string[];
       }> = {};
 
       if (tempTitle.trim() !== card.title) {
@@ -351,13 +363,44 @@ export default function MetricCard({ data, selected }: NodeProps) {
       if (tempSubCategory !== card.subCategory) {
         updates.subCategory = tempSubCategory;
       }
-      if (JSON.stringify(tempTags) !== JSON.stringify(card.tags)) {
-        updates.tags = tempTags;
-      }
 
+      // Save basic card updates
       if (Object.keys(updates).length > 0) {
         await persistNodeUpdate(card.id, updates as Partial<MetricCardType>);
         console.log("✅ Card updated successfully");
+      }
+
+      // Handle tag updates separately using the new database system
+      if (JSON.stringify(tempTags) !== JSON.stringify(cardTags)) {
+        setIsSavingTags(true);
+        try {
+          // Find tags to add and remove
+          const tagsToAdd = tempTags.filter((tag) => !cardTags.includes(tag));
+          const tagsToRemove = cardTags.filter(
+            (tag) => !tempTags.includes(tag)
+          );
+
+          // Add new tags
+          if (tagsToAdd.length > 0) {
+            await addTagsToMetricCard(card.id, tagsToAdd);
+          }
+
+          // Remove old tags
+          if (tagsToRemove.length > 0) {
+            await removeTagsFromMetricCard(card.id, tagsToRemove);
+          }
+
+          // Reload tags to get the updated list
+          const updatedTags = await getMetricCardTags(card.id);
+          setCardTags(updatedTags);
+          setTempTags(updatedTags);
+
+          console.log("✅ Tags updated successfully");
+        } catch (error) {
+          console.error("❌ Failed to update tags:", error);
+        } finally {
+          setIsSavingTags(false);
+        }
       }
     } catch (error) {
       console.error("❌ Failed to update card:", error);
@@ -370,9 +413,30 @@ export default function MetricCard({ data, selected }: NodeProps) {
     setTempDescription(card.description || "");
     setTempCategory(card.category);
     setTempSubCategory(card.subCategory || "");
-    setTempTags(card.tags || []);
+    setTempTags(cardTags); // Use loaded tags instead of card.tags
+    setActiveEditField("title");
     setIsEditing(false);
   };
+
+  // Load tags for this metric card
+  useEffect(() => {
+    const loadTags = async () => {
+      setIsLoadingTags(true);
+      try {
+        const tags = await getMetricCardTags(card.id);
+        setCardTags(tags);
+        setTempTags(tags); // Initialize temp tags with current tags
+      } catch (error) {
+        console.error(`Failed to load tags for metric card ${card.id}:`, error);
+        setCardTags([]);
+        setTempTags([]);
+      } finally {
+        setIsLoadingTags(false);
+      }
+    };
+
+    loadTags();
+  }, [card.id]);
 
   // Announce card selection changes
   useEffect(() => {
@@ -436,6 +500,11 @@ export default function MetricCard({ data, selected }: NodeProps) {
     // Don't stop propagation - let React Flow handle selection
     // Only handle additional actions after React Flow processes the event
 
+    // If we're currently editing, don't open the sheet
+    if (isEditing) {
+      return;
+    }
+
     // If settings sheet is open, switch to this card instead of opening new sheet
     if (
       data.isSettingsSheetOpen &&
@@ -456,12 +525,23 @@ export default function MetricCard({ data, selected }: NodeProps) {
   const handleCardDoubleClick = (e: React.MouseEvent) => {
     // Only stop propagation for double-click to prevent conflicts
     e.stopPropagation();
+
+    // If we're currently editing, don't open the sheet
+    if (isEditing) {
+      return;
+    }
+
     if (data.onOpenSettings && typeof data.onOpenSettings === "function") {
       data.onOpenSettings(card.id);
     }
   };
 
   const handleCardActivate = () => {
+    // If we're currently editing, don't trigger node click
+    if (isEditing) {
+      return;
+    }
+
     if (onNodeClick) {
       onNodeClick(card.id, card.position);
     }
@@ -481,6 +561,12 @@ export default function MetricCard({ data, selected }: NodeProps) {
       onClick={handleCardClick}
       onDoubleClick={handleCardDoubleClick}
       onMouseDown={(e) => {
+        // If we're editing, prevent React Flow from handling the mouse down
+        if (isEditing) {
+          e.stopPropagation();
+          return;
+        }
+
         // Allow React Flow to handle selection on mouse down
         // Only prevent default if it's a right-click (context menu)
         if (e.button === 2) {
@@ -669,12 +755,36 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 value={tempTitle}
                 onChange={(e) => setTempTitle(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") saveChanges();
+                  // Stop propagation for all key events during editing
+                  e.stopPropagation();
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    setActiveEditField("description");
+                  }
+                  if (e.key === "Tab" && !e.shiftKey) {
+                    e.preventDefault();
+                    setActiveEditField("description");
+                  }
                   if (e.key === "Escape") cancelEdit();
+                }}
+                onKeyUp={(e) => {
+                  // Stop propagation for key up events too
+                  e.stopPropagation();
+                }}
+                onKeyPress={(e) => {
+                  // Stop propagation for key press events
+                  e.stopPropagation();
                 }}
                 className="nodrag h-6 text-sm font-semibold"
                 placeholder="Enter title..."
-                autoFocus
+                autoFocus={activeEditField === "title"}
+                // Allow all characters including spaces
+                onCompositionStart={(e) => e.stopPropagation()}
+                onCompositionEnd={(e) => e.stopPropagation()}
+                onInput={(e) => {
+                  // Stop propagation for input events
+                  e.stopPropagation();
+                }}
               />
             ) : (
               <h3 className="nodrag font-semibold text-card-foreground text-sm leading-tight flex-1">
@@ -691,15 +801,48 @@ export default function MetricCard({ data, selected }: NodeProps) {
               value={tempDescription}
               onChange={(e) => setTempDescription(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && e.ctrlKey) saveChanges();
+                // Stop propagation for all key events during editing
+                e.stopPropagation();
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  setActiveEditField("tags");
+                }
+                if (e.key === "Enter" && e.shiftKey) {
+                  // Allow Shift+Enter for new paragraphs
+                  return;
+                }
+                if (e.key === "Tab" && !e.shiftKey) {
+                  e.preventDefault();
+                  setActiveEditField("tags");
+                }
+                if (e.key === "Tab" && e.shiftKey) {
+                  e.preventDefault();
+                  setActiveEditField("title");
+                }
                 if (e.key === "Escape") cancelEdit();
               }}
+              onKeyUp={(e) => {
+                // Stop propagation for key up events too
+                e.stopPropagation();
+              }}
+              onKeyPress={(e) => {
+                // Stop propagation for key press events
+                e.stopPropagation();
+              }}
               className="nodrag min-h-[40px] text-xs resize-none"
-              placeholder="Enter description..."
+              placeholder="Enter description... (Enter to go to tags, Shift+Enter for new line)"
+              autoFocus={activeEditField === "description"}
+              // Allow all characters including spaces and newlines
+              onCompositionStart={(e) => e.stopPropagation()}
+              onCompositionEnd={(e) => e.stopPropagation()}
+              onInput={(e) => {
+                // Stop propagation for input events
+                e.stopPropagation();
+              }}
             />
-          ) : card.description ? (
+          ) : tempDescription ? (
             <p className="nodrag text-xs text-muted-foreground line-clamp-2">
-              {card.description}
+              {tempDescription}
             </p>
           ) : (
             <p className="nodrag text-xs text-muted-foreground/50 italic">
@@ -758,27 +901,63 @@ export default function MetricCard({ data, selected }: NodeProps) {
           </div>
         )}
 
-        {/* Read-only Tags */}
+        {/* Tags - Editable when editing */}
         <div className="nodrag space-y-1">
           <div className="nodrag flex items-center gap-1 flex-wrap">
             <span className="nodrag text-xs text-muted-foreground">Tags:</span>
             {isEditing ? (
-              <TagInput
-                tags={tempTags}
-                onChange={setTempTags}
-                placeholder="Add tags..."
-                maxTags={10}
-                className="nodrag text-xs"
-              />
+              <div className="nodrag flex-1">
+                {isSavingTags ? (
+                  <span className="text-xs text-muted-foreground">
+                    Saving tags...
+                  </span>
+                ) : (
+                  <div
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        saveChanges();
+                      }
+                      if (e.key === "Tab" && e.shiftKey) {
+                        e.preventDefault();
+                        setActiveEditField("description");
+                      }
+                    }}
+                  >
+                    <EnhancedTagInput
+                      tags={tempTags}
+                      onAdd={(tag) => {
+                        if (!tempTags.includes(tag)) {
+                          setTempTags([...tempTags, tag]);
+                        }
+                      }}
+                      onRemove={(tag) => {
+                        setTempTags(tempTags.filter((t) => t !== tag));
+                      }}
+                      placeholder="Add tags... (Enter to save changes)"
+                      maxTags={10}
+                      className="nodrag text-xs"
+                      showCreateOption={true}
+                      showSearchResults={true}
+                    />
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="nodrag">
-                <TagsList
-                  tags={card.tags}
-                  variant="secondary"
-                  showAddButton={false}
-                  maxDisplayTags={2}
-                  useColorfulTags={true}
-                />
+                {isLoadingTags ? (
+                  <span className="text-xs text-muted-foreground">
+                    Loading tags...
+                  </span>
+                ) : (
+                  <TagsList
+                    tags={cardTags}
+                    variant="secondary"
+                    showAddButton={false}
+                    maxDisplayTags={2}
+                    useColorfulTags={true}
+                  />
+                )}
               </div>
             )}
           </div>

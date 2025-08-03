@@ -42,6 +42,12 @@ import { useCanvasStore } from "@/lib/stores";
 import { useEvidenceStore } from "@/lib/stores/evidenceStore";
 import { useProjectsStore } from "@/lib/stores/projectsStore";
 import { useWorker } from "@/lib/hooks/useWorker";
+import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
+import {
+  getRelationshipTags,
+  addTagsToRelationship,
+  removeTagsFromRelationship,
+} from "@/lib/supabase/services/tags";
 import {
   getChangelogForTarget,
   logRelationshipUpdated,
@@ -118,7 +124,6 @@ export default function RelationshipSheet({
   relationshipId,
   // onSwitchToRelationship,
 }: RelationshipSheetProps) {
-  // console.log("📋 RelationshipSheet props:", { isOpen, relationshipId });
   const { canvasId } = useParams();
   const { getEdgeById, persistEdgeUpdate, persistEdgeDelete, getNodeById } =
     useCanvasStore();
@@ -177,6 +182,11 @@ export default function RelationshipSheet({
   } | null>(null);
   const [isRunningAnalysis, setIsRunningAnalysis] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  // Tag state for the new database system
+  const [relationshipTags, setRelationshipTags] = useState<string[]>([]);
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [isSavingTags, setIsSavingTags] = useState(false);
 
   // Causal checklist state
   const [causalChecklist, setCausalChecklist] = useState([
@@ -239,6 +249,29 @@ export default function RelationshipSheet({
     }
   }, [formData.type, availableTabs, activeTab]);
 
+  // Load tags for this relationship
+  useEffect(() => {
+    const loadTags = async () => {
+      if (!relationshipId) return;
+
+      setIsLoadingTags(true);
+      try {
+        const tags = await getRelationshipTags(relationshipId);
+        setRelationshipTags(tags);
+      } catch (error) {
+        console.error(
+          `Failed to load tags for relationship ${relationshipId}:`,
+          error
+        );
+        setRelationshipTags([]);
+      } finally {
+        setIsLoadingTags(false);
+      }
+    };
+
+    loadTags();
+  }, [relationshipId]);
+
   // Update form data when relationship changes
   useEffect(() => {
     if (relationship) {
@@ -279,6 +312,39 @@ export default function RelationshipSheet({
   const handleFieldChange = (field: keyof Relationship, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setIsModified(true);
+  };
+
+  // Tag management functions
+  const handleAddTag = async (tag: string) => {
+    if (!relationshipId) return;
+
+    setIsSavingTags(true);
+    try {
+      await addTagsToRelationship(relationshipId, [tag]);
+      // Reload tags to get the updated list
+      const updatedTags = await getRelationshipTags(relationshipId);
+      setRelationshipTags(updatedTags);
+    } catch (error) {
+      console.error("Failed to add tag:", error);
+    } finally {
+      setIsSavingTags(false);
+    }
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!relationshipId) return;
+
+    setIsSavingTags(true);
+    try {
+      await removeTagsFromRelationship(relationshipId, [tagToRemove]);
+      // Reload tags to get the updated list
+      const updatedTags = await getRelationshipTags(relationshipId);
+      setRelationshipTags(updatedTags);
+    } catch (error) {
+      console.error("Failed to remove tag:", error);
+    } finally {
+      setIsSavingTags(false);
+    }
   };
 
   // Evidence management functions
@@ -816,6 +882,40 @@ export default function RelationshipSheet({
                     className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     rows={3}
                   />
+                </div>
+
+                {/* Tags */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Tags
+                  </label>
+                  {isLoadingTags ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        Loading tags...
+                      </span>
+                    </div>
+                  ) : (
+                    <EnhancedTagInput
+                      tags={relationshipTags}
+                      onAdd={handleAddTag}
+                      onRemove={handleRemoveTag}
+                      placeholder="Add tags..."
+                      maxTags={10}
+                      className="min-h-[2.5rem]"
+                      showCreateOption={true}
+                      showSearchResults={true}
+                    />
+                  )}
+                  {isSavingTags && (
+                    <div className="flex items-center justify-center py-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        Saving tags...
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Buttons - Only in Settings Tab */}

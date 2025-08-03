@@ -181,7 +181,7 @@ export function DataEventsTab({
     type: "milestone" as Event["type"],
   });
 
-  if (!card) return null;
+  if (!card) return <></>;
 
   // Provide fallback values for chart options since our card structure is different
   const chartOptions = {

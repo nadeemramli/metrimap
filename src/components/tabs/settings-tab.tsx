@@ -20,27 +20,20 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { X, Trash2, Save, Database, SettingsIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCanvasStore } from "@/lib/stores";
+import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
+import {
+  getMetricCardTags,
+  addTagsToMetricCard,
+  removeTagsFromMetricCard,
+} from "@/lib/supabase/services/tags";
 import type {
   CardCategory,
   SourceType,
   Dimension,
   CausalFactor,
 } from "@/lib/types";
-
-const SUGGESTED_TAGS = [
-  "KPI",
-  "Revenue",
-  "Growth",
-  "Engagement",
-  "Conversion",
-  "Retention",
-  "Marketing",
-  "Product",
-  "Operations",
-  "Finance",
-];
 
 const CATEGORY_OPTIONS: Array<{ value: CardCategory; label: string }> = [
   { value: "Core/Value", label: "Core/Value" },
@@ -193,6 +186,11 @@ export function SettingsTab({
   const { getNodeById, persistNodeUpdate } = useCanvasStore();
   const card = cardId ? getNodeById(cardId) : null;
 
+  // Tag state for the new database system
+  const [cardTags, setCardTags] = useState<string[]>([]);
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [isSavingTags, setIsSavingTags] = useState(false);
+
   // Adapter functions to match the v0 interface
   const updateCard = (updates: any) => {
     if (card && cardId) {
@@ -207,21 +205,57 @@ export function SettingsTab({
     // Use the parent's save function
     onSave();
   };
-  const [newTag, setNewTag] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleAddTag = (tag: string) => {
-    if (card && !(card.tags || []).includes(tag)) {
-      updateCard({ tags: [...(card.tags || []), tag] });
+  // Load tags for this metric card
+  useEffect(() => {
+    const loadTags = async () => {
+      if (!cardId) return;
+
+      setIsLoadingTags(true);
+      try {
+        const tags = await getMetricCardTags(cardId);
+        setCardTags(tags);
+      } catch (error) {
+        console.error(`Failed to load tags for metric card ${cardId}:`, error);
+        setCardTags([]);
+      } finally {
+        setIsLoadingTags(false);
+      }
+    };
+
+    loadTags();
+  }, [cardId]);
+
+  const handleAddTag = async (tag: string) => {
+    if (!cardId) return;
+
+    setIsSavingTags(true);
+    try {
+      await addTagsToMetricCard(cardId, [tag]);
+      // Reload tags to get the updated list
+      const updatedTags = await getMetricCardTags(cardId);
+      setCardTags(updatedTags);
+    } catch (error) {
+      console.error("Failed to add tag:", error);
+    } finally {
+      setIsSavingTags(false);
     }
-    setNewTag("");
   };
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    if (card) {
-      updateCard({
-        tags: (card.tags || []).filter((tag) => tag !== tagToRemove),
-      });
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!cardId) return;
+
+    setIsSavingTags(true);
+    try {
+      await removeTagsFromMetricCard(cardId, [tagToRemove]);
+      // Reload tags to get the updated list
+      const updatedTags = await getMetricCardTags(cardId);
+      setCardTags(updatedTags);
+    } catch (error) {
+      console.error("Failed to remove tag:", error);
+    } finally {
+      setIsSavingTags(false);
     }
   };
 
@@ -244,7 +278,7 @@ export function SettingsTab({
     setIsSaving(false);
   };
 
-  if (!card) return null;
+  if (!card) return <></>;
 
   return (
     <div className="space-y-6">
@@ -432,48 +466,33 @@ export function SettingsTab({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {(card.tags || []).map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="flex items-center gap-1"
-              >
-                {tag}
-                <X
-                  className="h-3 w-3 cursor-pointer hover:text-destructive"
-                  onClick={() => handleRemoveTag(tag)}
-                />
-              </Badge>
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            <Input
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              placeholder="Add a tag..."
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newTag.trim()) {
-                  handleAddTag(newTag.trim());
-                }
-              }}
-            />
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTED_TAGS.filter(
-                (tag) => !(card.tags || []).includes(tag)
-              ).map((tag) => (
-                <Button
-                  key={tag}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAddTag(tag)}
-                >
-                  + {tag}
-                </Button>
-              ))}
+          {isLoadingTags ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-sm text-muted-foreground">
+                Loading tags...
+              </span>
             </div>
-          </div>
+          ) : (
+            <EnhancedTagInput
+              tags={cardTags}
+              onAdd={handleAddTag}
+              onRemove={handleRemoveTag}
+              placeholder="Add tags..."
+              maxTags={10}
+              className="min-h-[2.5rem]"
+              showCreateOption={true}
+              showSearchResults={true}
+            />
+          )}
+          {isSavingTags && (
+            <div className="flex items-center justify-center py-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-xs text-muted-foreground">
+                Saving tags...
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -124,24 +124,28 @@ const getConfidenceConfig = (confidence: ConfidenceLevel) => {
         badge: "bg-green-100 text-green-800 border-green-200",
         buttonOpacity: 1,
         buttonBorder: "border-green-300",
+        buttonBg: "bg-green-50",
       };
     case "Medium":
       return {
         badge: "bg-yellow-100 text-yellow-800 border-yellow-200",
-        buttonOpacity: 0.9,
+        buttonOpacity: 1,
         buttonBorder: "border-yellow-300",
+        buttonBg: "bg-yellow-50",
       };
     case "Low":
       return {
         badge: "bg-red-100 text-red-800 border-red-200",
-        buttonOpacity: 0.7,
+        buttonOpacity: 1,
         buttonBorder: "border-red-300",
+        buttonBg: "bg-red-50",
       };
     default:
       return {
         badge: "bg-gray-100 text-gray-800 border-gray-200",
-        buttonOpacity: 0.5,
+        buttonOpacity: 1,
         buttonBorder: "border-gray-300",
+        buttonBg: "bg-gray-50",
       };
   }
 };
@@ -201,12 +205,12 @@ export default function DynamicEdge({
     ]
   );
 
-  // Handle button click to open relationship sheet
-  const handleButtonClick = useCallback(
+  // Handle edge click to open relationship sheet
+  const handleEdgeClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       e.preventDefault();
-      console.log("🔗 Button clicked relationship:", relationship.id);
+      console.log("🔗 Edge clicked relationship:", relationship.id);
       console.log("🔗 Sheet open:", isRelationshipSheetOpen);
       console.log(
         "🔗 onSwitchToRelationship available:",
@@ -280,10 +284,25 @@ export default function DynamicEdge({
   }, [deleteElements, id]);
 
   const handleOpenSheet = useCallback(() => {
+    console.log("🔗 handleOpenSheet called for relationship:", relationship.id);
+    console.log("🔗 Sheet open:", isRelationshipSheetOpen);
+    console.log(
+      "🔗 onSwitchToRelationship available:",
+      !!onSwitchToRelationship
+    );
+    console.log(
+      "🔗 onOpenRelationshipSheet available:",
+      !!onOpenRelationshipSheet
+    );
+
     if (isRelationshipSheetOpen && onSwitchToRelationship) {
       onSwitchToRelationship(relationship.id);
+      console.log("🔗 Called onSwitchToRelationship with:", relationship.id);
     } else if (onOpenRelationshipSheet) {
       onOpenRelationshipSheet(relationship.id);
+      console.log("🔗 Called onOpenRelationshipSheet with:", relationship.id);
+    } else {
+      console.error("❌ No relationship sheet handler defined!");
     }
     setShowActions(false);
   }, [
@@ -327,6 +346,7 @@ export default function DynamicEdge({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onDoubleClick={handleDoubleClick}
+        onClick={handleEdgeClick} // Make the main edge clickable
       />
 
       {/* Invisible Wider Path for Easier Clicking */}
@@ -334,12 +354,13 @@ export default function DynamicEdge({
         path={edgePath}
         style={{
           stroke: "transparent",
-          strokeWidth: 20, // Wider invisible area for easier clicking
+          strokeWidth: 30, // Even wider invisible area for easier clicking
           cursor: "pointer",
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onDoubleClick={handleDoubleClick}
+        onClick={handleEdgeClick} // Make the entire edge clickable
       />
 
       {/* Edge Label and Actions */}
@@ -433,7 +454,7 @@ export default function DynamicEdge({
         </div>
       </EdgeLabelRenderer>
 
-      {/* Relationship Management Button - Only for Numeric Relationships */}
+      {/* Relationship Management Button - Always visible and easier to click */}
       {typeConfig.showButton && (
         <EdgeLabelRenderer>
           <div
@@ -446,14 +467,17 @@ export default function DynamicEdge({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleButtonClick}
-              className={`h-8 w-8 p-0 rounded-full bg-white shadow-sm transition-all duration-200 ${confidenceConfig.buttonBorder} hover:bg-gray-50 hover:border-gray-400`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdgeClick(e);
+              }}
+              className={`h-10 w-10 p-0 rounded-full shadow-lg transition-all duration-200 ${confidenceConfig.buttonBorder} ${confidenceConfig.buttonBg} hover:scale-110 hover:shadow-xl border-2`}
               style={{
                 opacity: confidenceConfig.buttonOpacity,
+                zIndex: 10,
               }}
-              title={`${typeConfig.label} Relationship (${relationship.confidence} confidence) - Click to edit, Right-click for options`}
             >
-              <span className="text-xs font-mono font-medium text-gray-700">
+              <span className="text-sm font-mono font-bold text-gray-800">
                 {typeConfig.buttonValue}
               </span>
             </Button>

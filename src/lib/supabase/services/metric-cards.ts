@@ -14,14 +14,14 @@ function transformMetricCard(card: MetricCardRow): MetricCard {
     description: card.description || '',
     category: card.category as any,
     subCategory: card.sub_category as any,
-    tags: card.tags || [],
+    tags: [], // Will be fetched from metric_card_tags junction table
     causalFactors: (card.causal_factors || []) as any,
     dimensions: (card.dimensions || []) as any,
     position: { x: card.position_x, y: card.position_y },
     data: card.data as any,
     sourceType: card.source_type as any,
     formula: card.formula || undefined,
-    owner: undefined, // We'll need to resolve this
+    owner: card.owner_id || undefined,
     assignees: card.assignees || [],
     createdAt: card.created_at || new Date().toISOString(),
     updatedAt: card.updated_at || new Date().toISOString(),
@@ -36,7 +36,6 @@ function transformToInsert(card: MetricCard, projectId: string, userId: string):
     description: card.description,
     category: card.category,
     sub_category: card.subCategory,
-    tags: card.tags,
     position_x: card.position.x,
     position_y: card.position.y,
     data: card.data as any,
@@ -45,6 +44,7 @@ function transformToInsert(card: MetricCard, projectId: string, userId: string):
     causal_factors: card.causalFactors,
     dimensions: card.dimensions,
     assignees: card.assignees,
+    owner_id: card.owner,
     created_by: userId,
   };
 }
@@ -75,7 +75,6 @@ export async function updateMetricCard(id: string, updates: Partial<MetricCard>)
   if (updates.description !== undefined) updateData.description = updates.description;
   if (updates.category !== undefined) updateData.category = updates.category;
   if (updates.subCategory !== undefined) updateData.sub_category = updates.subCategory;
-  if (updates.tags !== undefined) updateData.tags = updates.tags;
   if (updates.position !== undefined) {
     updateData.position_x = updates.position.x;
     updateData.position_y = updates.position.y;
@@ -141,7 +140,7 @@ export async function updateMetricCardPosition(id: string, position: { x: number
   const { data, error } = await supabase
     .from('metric_cards')
     .update({ 
-      position_x: position.x, 
+      position_x: position.x,
       position_y: position.y,
       updated_at: new Date().toISOString(),
     })

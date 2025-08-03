@@ -52,7 +52,7 @@ export function ResultsTab({
     }
   };
 
-  if (!card) return null;
+  if (!card) return <></>;
 
   // Provide fallback values for targets since our card structure might be different
   const targets = {

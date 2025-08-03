@@ -193,7 +193,7 @@ export function CorrelationsTab({
     return "Low";
   };
 
-  if (!card) return null;
+  if (!card) return <></>;
 
   return (
     <div className="space-y-6">

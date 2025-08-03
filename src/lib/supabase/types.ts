@@ -201,70 +201,70 @@ export type Database = {
           },
         ]
       }
-      metric_cards: {
-        Row: {
-          assignees: string[] | null
-          category: string
-          causal_factors: string[] | null
-          created_at: string | null
-          created_by: string
-          data: Json | null
-          description: string | null
-          dimensions: string[] | null
-          formula: string | null
-          id: string
-          owner_id: string | null
-          position_x: number
-          position_y: number
-          project_id: string | null
-          source_type: string | null
-          sub_category: string | null
-          tags: string[] | null
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          assignees?: string[] | null
-          category: string
-          causal_factors?: string[] | null
-          created_at?: string | null
-          created_by: string
-          data?: Json | null
-          description?: string | null
-          dimensions?: string[] | null
-          formula?: string | null
-          id?: string
-          owner_id?: string | null
-          position_x?: number
-          position_y?: number
-          project_id?: string | null
-          source_type?: string | null
-          sub_category?: string | null
-          tags?: string[] | null
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          assignees?: string[] | null
-          category?: string
-          causal_factors?: string[] | null
-          created_at?: string | null
-          created_by?: string
-          data?: Json | null
-          description?: string | null
-          dimensions?: string[] | null
-          formula?: string | null
-          id?: string
-          owner_id?: string | null
-          position_x?: number
-          position_y?: number
-          project_id?: string | null
-          source_type?: string | null
-          sub_category?: string | null
-          tags?: string[] | null
-          title?: string
-          updated_at?: string | null
-        }
+        metric_cards: {
+    Row: {
+      id: string
+      title: string
+      description: string | null
+      category: string
+      sub_category: string | null
+      data: Json | null
+      position_x: number
+      position_y: number
+      source_type: string | null
+      formula: string | null
+      causal_factors: string[] | null
+      dimensions: string[] | null
+      assignees: string[] | null
+      owner_id: string | null
+      project_id: string
+      created_at: string | null
+      updated_at: string | null
+      created_by: string
+      last_modified_by: string | null
+    }
+    Insert: {
+      id?: string
+      title: string
+      description?: string | null
+      category: string
+      sub_category?: string | null
+      data?: Json | null
+      position_x?: number
+      position_y?: number
+      source_type?: string | null
+      formula?: string | null
+      causal_factors?: string[] | null
+      dimensions?: string[] | null
+      assignees?: string[] | null
+      owner_id?: string | null
+      project_id: string
+      created_at?: string | null
+      updated_at?: string | null
+      created_by: string
+      last_modified_by?: string | null
+    }
+    Update: {
+      id?: string
+      title?: string
+      description?: string | null
+      category?: string
+      sub_category?: string | null
+      data?: Json | null
+      position_x?: number
+      position_y?: number
+      source_type?: string | null
+      formula?: string | null
+      causal_factors?: string[] | null
+      dimensions?: string[] | null
+      assignees?: string[] | null
+      owner_id?: string | null
+      project_id?: string
+      created_at?: string | null
+      updated_at?: string | null
+      created_by?: string
+      last_modified_by?: string | null
+    }
         Relationships: [
           {
             foreignKeyName: "metric_cards_created_by_fkey"
@@ -274,8 +274,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "metric_cards_owner_id_fkey"
-            columns: ["owner_id"]
+            foreignKeyName: "metric_cards_last_modified_by_fkey"
+            columns: ["last_modified_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -286,7 +286,43 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          }
+        ]
+      }
+      metric_card_tags: {
+        Row: {
+          id: string
+          metric_card_id: string
+          tag_id: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          metric_card_id: string
+          tag_id: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          metric_card_id?: string
+          tag_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metric_card_tags_metric_card_id_fkey"
+            columns: ["metric_card_id"]
+            isOneToOne: false
+            referencedRelation: "metric_cards"
+            referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "metric_card_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          }
         ]
       }
       project_collaborators: {
@@ -387,45 +423,58 @@ export type Database = {
       }
       relationships: {
         Row: {
-          confidence: string
-          created_at: string | null
-          created_by: string
           id: string
-          project_id: string | null
-          source_id: string | null
-          target_id: string | null
+          source_id: string
+          target_id: string
           type: string
-          updated_at: string | null
+          confidence: string
           weight: number | null
+          description: string | null
+          project_id: string
+          created_at: string | null
+          updated_at: string | null
+          created_by: string
+          last_modified_by: string | null
         }
         Insert: {
-          confidence?: string
-          created_at?: string | null
-          created_by: string
           id?: string
-          project_id?: string | null
-          source_id?: string | null
-          target_id?: string | null
+          source_id: string
+          target_id: string
           type: string
-          updated_at?: string | null
+          confidence: string
           weight?: number | null
+          description?: string | null
+          project_id: string
+          created_at?: string | null
+          updated_at?: string | null
+          created_by: string
+          last_modified_by?: string | null
         }
         Update: {
-          confidence?: string
-          created_at?: string | null
-          created_by?: string
           id?: string
-          project_id?: string | null
-          source_id?: string | null
-          target_id?: string | null
+          source_id?: string
+          target_id?: string
           type?: string
-          updated_at?: string | null
+          confidence?: string
           weight?: number | null
+          description?: string | null
+          project_id?: string
+          created_at?: string | null
+          updated_at?: string | null
+          created_by?: string
+          last_modified_by?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "relationships_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relationships_last_modified_by_fkey"
+            columns: ["last_modified_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -449,6 +498,90 @@ export type Database = {
             columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "metric_cards"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      relationship_tags: {
+        Row: {
+          id: string
+          relationship_id: string
+          tag_id: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          relationship_id: string
+          tag_id: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          relationship_id?: string
+          tag_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relationship_tags_relationship_id_fkey"
+            columns: ["relationship_id"]
+            isOneToOne: false
+            referencedRelation: "relationships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relationship_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      tags: {
+        Row: {
+          id: string
+          name: string
+          color: string | null
+          description: string | null
+          project_id: string | null
+          created_by: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          color?: string | null
+          description?: string | null
+          project_id?: string | null
+          created_by: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          color?: string | null
+          description?: string | null
+          project_id?: string | null
+          created_by?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
