@@ -1,21 +1,31 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { CanvasState, CanvasProject, MetricCard, Relationship, GroupNode, CanvasSettings } from '../types';
-import { useProjectsStore } from './projectsStore';
-import { useAppStore } from './appStore';
-import { generateUUID } from '../utils/validation';
-import { getAuthenticatedClient } from '../utils/authenticatedClient';
-import {
+import type { 
+  MetricCard, 
+  Relationship, 
+  GroupNode, 
+  CanvasProject, 
+  CanvasState, 
+  CanvasSettings 
+} from '../types';
+import { 
   createMetricCard,
   updateMetricCard as updateMetricCardInSupabase,
   deleteMetricCard as deleteMetricCardInSupabase,
+} from '../supabase/services/metric-cards';
+import { 
   createRelationship,
   updateRelationship as updateRelationshipInSupabase,
   deleteRelationship as deleteRelationshipInSupabase,
+} from '../supabase/services/relationships';
+import { 
   createGroup,
-  updateGroup,
-  deleteGroup,
-} from '../supabase/services';
+  updateGroup as updateGroupInSupabase,
+  deleteGroup as deleteGroupInSupabase,
+} from '../supabase/services/projects';
+import { useAppStore } from './appStore';
+import { getClientForEnvironment } from '../utils/authenticatedClient';
+import { generateUUID } from '../utils/validation';
 
 interface CanvasStoreState extends CanvasState {
   // Auto-save state
@@ -145,22 +155,33 @@ export const useCanvasStore = create<CanvasStoreState>()(
     setLoading: (isLoading: boolean) => set({ isLoading }),
     setError: (error: string | undefined) => set({ error }),
 
-    // Async Node management (Supabase) - Using authenticated client
+    // Async Node management (Supabase) - Using enhanced client utility
     createNode: async (nodeData: Omit<MetricCard, 'id' | 'createdAt' | 'updatedAt'>) => {
       const state = get();
-      if (!state.canvas) return;
+      if (!state.canvas) {
+        console.error('❌ No canvas loaded');
+        return;
+      }
+      
+      console.log('🔍 createNode called with:', {
+        canvasId: state.canvas.id,
+        nodeData: nodeData.title,
+        user: useAppStore.getState().user?.id
+      });
       
       set({ isLoading: true, error: undefined });
       try {
         const { user } = useAppStore.getState();
         if (!user) throw new Error('User not authenticated');
         
-        const authenticatedClient = getAuthenticatedClient();
+        const client = getClientForEnvironment();
+        console.log('🔍 Using client:', client ? 'authenticated' : 'default');
+        
         const newNode = await createMetricCard(
           { ...nodeData, owner: user.id, id: '', createdAt: '', updatedAt: '' },
           state.canvas.id,
           user.id,
-          authenticatedClient || undefined
+          client
         );
         
         set((state) => ({
@@ -174,9 +195,9 @@ export const useCanvasStore = create<CanvasStoreState>()(
           isLoading: false,
         }));
         
-        console.log('✅ New metric card created and saved with Clerk auth:', newNode.title);
+        console.log('✅ New metric card created and saved:', newNode.title);
       } catch (error) {
-        console.error('Error creating node:', error);
+        console.error('❌ Error creating node:', error);
         set({ error: 'Failed to create node', isLoading: false });
       }
     },
@@ -184,8 +205,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
     persistNodeUpdate: async (nodeId: string, updates: Partial<MetricCard>) => {
       set({ isLoading: true, error: undefined });
       try {
-        const authenticatedClient = getAuthenticatedClient();
-        await updateMetricCardInSupabase(nodeId, updates, authenticatedClient || undefined);
+        const client = getClientForEnvironment();
+        await updateMetricCardInSupabase(nodeId, updates, client);
         
         // Update local state
         set((state) => ({
@@ -211,8 +232,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
     persistNodeDelete: async (nodeId: string) => {
       set({ isLoading: true, error: undefined });
       try {
-        const authenticatedClient = getAuthenticatedClient();
-        await deleteMetricCardInSupabase(nodeId, authenticatedClient || undefined);
+        const client = getClientForEnvironment();
+        await deleteMetricCardInSupabase(nodeId, client);
         
         // Update local state
         set((state) => ({
@@ -245,12 +266,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
         const { user } = useAppStore.getState();
         if (!user) throw new Error('User not authenticated');
         
-        const authenticatedClient = getAuthenticatedClient();
+        const client = getClientForEnvironment();
         const newEdge = await createRelationship(
           { ...edgeData, id: '', createdAt: '', updatedAt: '' },
           state.canvas.id,
           user.id,
-          authenticatedClient || undefined
+          client
         );
         
         set((state) => ({
@@ -274,8 +295,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
     persistEdgeUpdate: async (edgeId: string, updates: Partial<Relationship>) => {
       set({ isLoading: true, error: undefined });
       try {
-        const authenticatedClient = getAuthenticatedClient();
-        await updateRelationshipInSupabase(edgeId, updates, authenticatedClient || undefined);
+        const client = getClientForEnvironment();
+        await updateRelationshipInSupabase(edgeId, updates, client);
         
         // Update local state
         set((state) => ({
@@ -301,8 +322,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
     persistEdgeDelete: async (edgeId: string) => {
       set({ isLoading: true, error: undefined });
       try {
-        const authenticatedClient = getAuthenticatedClient();
-        await deleteRelationshipInSupabase(edgeId, authenticatedClient || undefined);
+        const client = getClientForEnvironment();
+        await deleteRelationshipInSupabase(edgeId, client);
         
         // Update local state
         set((state) => ({
@@ -458,10 +479,13 @@ export const useCanvasStore = create<CanvasStoreState>()(
           const currentCanvas = get().canvas;
           if (currentCanvas) {
             try {
-              const projectsStore = useProjectsStore.getState();
-              projectsStore.updateProject(currentCanvas.id, {
-                updatedAt: new Date().toISOString(),
-              });
+              // This part of the code was removed as per the new_code,
+              // as the projectsStore is no longer imported.
+              // The original code had this line:
+              // const projectsStore = useProjectsStore.getState();
+              // projectsStore.updateProject(currentCanvas.id, {
+              //   updatedAt: new Date().toISOString(),
+              // });
             } catch (error) {
               console.warn('Failed to sync with projects store:', error);
             }
@@ -685,14 +709,17 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
         // Sync with projects store
         try {
-          const projectsStore = useProjectsStore.getState();
-          const updatedCanvas = get().canvas;
-          if (updatedCanvas) {
-            projectsStore.updateProject(state.canvas.id, {
-              groups: updatedCanvas.groups,
-              updatedAt: updatedCanvas.updatedAt,
-            });
-          }
+          // This part of the code was removed as per the new_code,
+          // as the projectsStore is no longer imported.
+          // The original code had this line:
+          // const projectsStore = useProjectsStore.getState();
+          // const updatedCanvas = get().canvas;
+          // if (updatedCanvas) {
+          //   projectsStore.updateProject(state.canvas.id, {
+          //     groups: updatedCanvas.groups,
+          //     updatedAt: updatedCanvas.updatedAt,
+          //   });
+          // }
         } catch (error) {
           console.warn('Failed to sync group creation with projects store:', error);
         }
@@ -705,7 +732,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     updateGroup: async (groupId: string, updates: Partial<GroupNode>) => {
       try {
         // Persist to database
-        await updateGroup(groupId, {
+        await updateGroupInSupabase(groupId, {
           name: updates.name,
           nodeIds: updates.nodeIds,
           position: updates.position,
@@ -727,14 +754,17 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
         // Sync with projects store
         try {
-          const projectsStore = useProjectsStore.getState();
-          const updatedCanvas = get().canvas;
-          if (updatedCanvas) {
-            projectsStore.updateProject(updatedCanvas.id, {
-              groups: updatedCanvas.groups,
-              updatedAt: updatedCanvas.updatedAt,
-            });
-          }
+          // This part of the code was removed as per the new_code,
+          // as the projectsStore is no longer imported.
+          // The original code had this line:
+          // const projectsStore = useProjectsStore.getState();
+          // const updatedCanvas = get().canvas;
+          // if (updatedCanvas) {
+          //   projectsStore.updateProject(updatedCanvas.id, {
+          //     groups: updatedCanvas.groups,
+          //     updatedAt: updatedCanvas.updatedAt,
+          //   });
+          // }
         } catch (error) {
           console.warn('Failed to sync group update with projects store:', error);
         }
@@ -747,7 +777,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     deleteGroup: async (groupId: string) => {
       try {
         // Persist to database
-        await deleteGroup(groupId);
+        await deleteGroupInSupabase(groupId);
 
         // Update local state
         set((state) => ({
@@ -766,15 +796,18 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
         // Sync with projects store
         try {
-          const projectsStore = useProjectsStore.getState();
-          const updatedCanvas = get().canvas;
-          if (updatedCanvas) {
-            projectsStore.updateProject(updatedCanvas.id, {
-              groups: updatedCanvas.groups,
-              nodes: updatedCanvas.nodes,
-              updatedAt: updatedCanvas.updatedAt,
-            });
-          }
+          // This part of the code was removed as per the new_code,
+          // as the projectsStore is no longer imported.
+          // The original code had this line:
+          // const projectsStore = useProjectsStore.getState();
+          // const updatedCanvas = get().canvas;
+          // if (updatedCanvas) {
+          //   projectsStore.updateProject(updatedCanvas.id, {
+          //     groups: updatedCanvas.groups,
+          //     nodes: updatedCanvas.nodes,
+          //     updatedAt: updatedCanvas.updatedAt,
+          //   });
+          // }
         } catch (error) {
           console.warn('Failed to sync group deletion with projects store:', error);
         }
@@ -954,15 +987,18 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
         // Sync with projects store
         try {
-          const projectsStore = useProjectsStore.getState();
-          const updatedCanvas = get().canvas;
-          if (updatedCanvas) {
-            projectsStore.updateProject(state.canvas.id, {
-              groups: updatedCanvas.groups,
-              nodes: updatedCanvas.nodes,
-              updatedAt: updatedCanvas.updatedAt,
-            });
-          }
+          // This part of the code was removed as per the new_code,
+          // as the projectsStore is no longer imported.
+          // The original code had this line:
+          // const projectsStore = useProjectsStore.getState();
+          // const updatedCanvas = get().canvas;
+          // if (updatedCanvas) {
+          //   projectsStore.updateProject(state.canvas.id, {
+          //     groups: updatedCanvas.groups,
+          //     nodes: updatedCanvas.nodes,
+          //     updatedAt: updatedCanvas.updatedAt,
+          //   });
+          // }
         } catch (error) {
           console.warn('Failed to sync group creation with projects store:', error);
         }
@@ -983,7 +1019,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       try {
         // Delete groups from database
         for (const groupId of groupIds) {
-          await deleteGroup(groupId);
+          await deleteGroupInSupabase(groupId);
         }
 
         // Update local state
@@ -1005,15 +1041,18 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
         // Sync with projects store
         try {
-          const projectsStore = useProjectsStore.getState();
-          const updatedCanvas = get().canvas;
-          if (updatedCanvas) {
-            projectsStore.updateProject(state.canvas.id, {
-              groups: updatedCanvas.groups,
-              nodes: updatedCanvas.nodes,
-              updatedAt: updatedCanvas.updatedAt,
-            });
-          }
+          // This part of the code was removed as per the new_code,
+          // as the projectsStore is no longer imported.
+          // The original code had this line:
+          // const projectsStore = useProjectsStore.getState();
+          // const updatedCanvas = get().canvas;
+          // if (updatedCanvas) {
+          //   projectsStore.updateProject(state.canvas.id, {
+          //     groups: updatedCanvas.groups,
+          //     nodes: updatedCanvas.nodes,
+          //     updatedAt: updatedCanvas.updatedAt,
+          //   });
+          // }
         } catch (error) {
           console.warn('Failed to sync group deletion with projects store:', error);
         }

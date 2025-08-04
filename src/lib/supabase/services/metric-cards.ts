@@ -58,7 +58,16 @@ export async function createMetricCard(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
+  console.log('🔍 createMetricCard called with:', {
+    projectId,
+    userId,
+    cardTitle: card.title,
+    hasAuthenticatedClient: !!authenticatedClient
+  });
+  
   const insertData = transformToInsert(card, projectId, userId);
+  console.log('🔍 Insert data:', insertData);
+  
   const client = authenticatedClient || supabase;
   
   const { data, error } = await client
@@ -68,10 +77,11 @@ export async function createMetricCard(
     .single();
 
   if (error) {
-    console.error('Error creating metric card:', error);
+    console.error('❌ Error creating metric card:', error);
     throw error;
   }
 
+  console.log('✅ Metric card created successfully:', data);
   return transformMetricCard(data);
 }
 

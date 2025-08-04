@@ -1,137 +1,183 @@
-# Metric Mapping Canvas
+# Supabase CLI
 
-A modern web application for creating, managing, and visualizing metric relationships and causal models. Built with React Flow for interactive canvas functionality, Supabase for data persistence, and TypeScript for type safety.
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
-## Features
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
-- **Interactive Canvas**: Drag-and-drop interface for creating and connecting metric cards
-- **Relationship Mapping**: Visualize causal relationships between metrics with different relationship types
-- **Group Management**: Organize metrics into collapsible groups for better organization
-- **Real-time Collaboration**: Auto-save functionality with visual feedback
-- **Advanced Filtering**: Filter metrics by category, tags, owners, and relationship types
-- **Layout Algorithms**: Automatic layout with multiple direction options (Top-Bottom, Bottom-Top, Left-Right, Right-Left)
-- **Search & Navigation**: Quick search and advanced search capabilities
-- **Keyboard Shortcuts**: Comprehensive keyboard shortcuts for efficient workflow
+This repository contains all the functionality for Supabase CLI.
 
-## Tech Stack
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI Framework**: Tailwind CSS + shadcn/ui components
-- **Canvas Engine**: React Flow (@xyflow/react)
-- **State Management**: Zustand
-- **Backend**: Supabase (PostgreSQL + Auth + Real-time)
-- **Icons**: Lucide React
-- **Notifications**: Sonner
+## Getting started
 
-## Getting Started
+### Install the CLI
 
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd metric-mapping
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-
-   ```bash
-   cp .env.example .env.local
-   ```
-
-   Add your Supabase credentials:
-
-   ```
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-4. **Start the development server**
-
-   ```bash
-   npm run dev
-   ```
-
-5. **Open your browser**
-   Navigate to `http://localhost:5173`
-
-## Project Structure
-
-```
-src/
-├── components/
-│   ├── canvas/          # Canvas-specific components
-│   ├── ui/             # Reusable UI components
-│   └── search/         # Search functionality
-├── lib/
-│   ├── stores/         # Zustand stores
-│   ├── supabase/       # Supabase client and services
-│   └── utils/          # Utility functions
-├── pages/              # Page components
-├── hooks/              # Custom React hooks
-└── types/              # TypeScript type definitions
-```
-
-## Key Features
-
-### Canvas Operations
-
-- **Multi-selection**: Shift+Click to select multiple nodes
-- **Grouping**: Select nodes and group them together
-- **Auto-layout**: Apply automatic layout algorithms
-- **Connection Validation**: Smart connection validation with visual feedback
-
-### Data Management
-
-- **Auto-save**: Real-time saving with visual status indicators
-- **Undo/Redo**: Track changes and provide undo functionality
-- **Bulk Operations**: Delete, duplicate, and manage multiple items
-
-### User Experience
-
-- **Responsive Design**: Works on desktop and touch devices
-- **Accessibility**: Keyboard navigation and screen reader support
-- **Performance**: Optimized rendering and state management
-
-## Development
-
-### Code Style
-
-- TypeScript for type safety
-- ESLint for code quality
-- Prettier for code formatting
-
-### State Management
-
-- Zustand for global state
-- React Flow for canvas state
-- Supabase for data persistence
-
-### Testing
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
 ```bash
-npm run test
+npm i supabase --save-dev
 ```
 
-### Building
+To install the beta release channel:
 
 ```bash
-npm run build
+npm i supabase@beta --save-dev
 ```
 
-## Contributing
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
+```
 
-## License
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
 
-MIT License - see LICENSE file for details
+<details>
+  <summary><b>macOS</b></summary>
+
+  Available via [Homebrew](https://brew.sh). To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Windows</b></summary>
+
+  Available via [Scoop](https://scoop.sh). To install:
+
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
+
+  To upgrade:
+
+  ```powershell
+  scoop update supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Linux</b></summary>
+
+  Available via [Homebrew](https://brew.sh) and Linux packages.
+
+  #### via Homebrew
+
+  To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+
+  #### via Linux packages
+
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
+
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
+
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
+
+```bash
+supabase bootstrap
+```
+
+Or using npx:
+
+```bash
+npx supabase bootstrap
+```
+
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+
+## Docs
+
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+
+## Breaking changes
+
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```

@@ -4,6 +4,7 @@ import { useClerkSupabase } from "@/hooks/useClerkSupabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { setAuthenticatedClient } from "@/lib/utils/authenticatedClient";
+import { createDevSupabaseClient } from "@/lib/supabase/client";
 
 interface AuthenticatedSupabaseContextType {
   supabaseClient: SupabaseClient<Database>;
@@ -17,7 +18,15 @@ export function AuthenticatedSupabaseProvider({
 }: {
   children: ReactNode;
 }) {
-  const supabaseClient = useClerkSupabase();
+  // Check if we're in development mode
+  const isDevelopment =
+    import.meta.env.VITE_SUPABASE_URL?.includes("127.0.0.1") ||
+    import.meta.env.VITE_SUPABASE_URL?.includes("localhost");
+
+  // Use development client in development mode, otherwise use Clerk client
+  const supabaseClient = isDevelopment
+    ? createDevSupabaseClient()
+    : useClerkSupabase();
 
   // Set the authenticated client for stores to use
   useEffect(() => {

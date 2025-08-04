@@ -40,6 +40,15 @@ export default function ClerkSupabaseProvider({
           );
           const supabaseClient = createClerkSupabaseClient(() => getToken());
 
+          // Ensure development user exists in production database
+          // Temporarily disabled due to JWT signature issues
+          // await ensureDevUserExists(
+          //   user.id,
+          //   user.emailAddresses[0]?.emailAddress || "",
+          //   user.fullName || user.emailAddresses[0]?.emailAddress || "User",
+          //   supabaseClient
+          // );
+
           // Create or update user in Supabase using Clerk authentication
           const { error: upsertError } = await supabaseClient
             .from("users")

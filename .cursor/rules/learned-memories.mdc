@@ -604,3 +604,12 @@ All advanced computation features and application ecosystem components successfu
 
 - **Status**: Tests were deliberately excluded per user request
 - **Note**: User will handle personal testing and ad-hoc optimization
+
+## Technical Decisions
+
+- **Supabase CLI Usage**: Use `npx supabase` instead of global installation for all Supabase CLI commands in this project.
+
+## Project Conventions
+
+- [Convention 1]
+- [Convention 2]
