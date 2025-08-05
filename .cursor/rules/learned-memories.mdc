@@ -611,5 +611,5 @@ All advanced computation features and application ecosystem components successfu
 
 ## Project Conventions
 
-- [Convention 1]
-- [Convention 2]
+- **Documentation Location**: All documentation should be created in the `/docs` directory for better knowledge organization
+- **Documentation Structure**: Use clear, organized documentation with proper markdown formatting and comprehensive guides

@@ -28,9 +28,8 @@ import SignInPage from "./pages/SignInPage";
 const queryClient = new QueryClient();
 
 // Check if we're in development mode (using local Supabase)
-const isDevelopment =
-  import.meta.env.VITE_SUPABASE_URL?.includes("127.0.0.1") ||
-  import.meta.env.VITE_SUPABASE_URL?.includes("localhost");
+import { isDevelopmentEnvironment } from "@/lib/supabase/client";
+const isDevelopment = isDevelopmentEnvironment();
 
 export default function App() {
   console.log("App component rendering");

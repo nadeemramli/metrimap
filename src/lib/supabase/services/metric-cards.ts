@@ -68,7 +68,7 @@ export async function createMetricCard(
   const insertData = transformToInsert(card, projectId, userId);
   console.log('🔍 Insert data:', insertData);
   
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   
   const { data, error } = await client
     .from('metric_cards')
@@ -114,7 +114,7 @@ export async function updateMetricCard(
   // Always update the timestamp
   updateData.updated_at = new Date().toISOString();
 
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('metric_cards')
     .update(updateData)
@@ -135,7 +135,7 @@ export async function deleteMetricCard(
   id: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { error } = await client
     .from('metric_cards')
     .delete()
@@ -152,7 +152,7 @@ export async function getProjectMetricCards(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('metric_cards')
     .select('*')
@@ -174,7 +174,7 @@ export async function updateMetricCardPosition(
 ) {
   console.log(`💾 Updating position for metric card ${id}:`, position);
   
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('metric_cards')
     .update({ 

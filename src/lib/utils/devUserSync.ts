@@ -8,7 +8,7 @@ export async function syncDevUserToProduction(
   name?: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   
   try {
     // Check if user already exists

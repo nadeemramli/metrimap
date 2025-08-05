@@ -17,7 +17,7 @@ export async function getUserProjects(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   
   // Step 1: Get projects owned by user (RLS handles this)
   const { data: ownedProjects, error: ownedError } = await client
@@ -93,7 +93,7 @@ export async function getProjectById(
   console.log('🔍 getProjectById called with projectId:', projectId);
   console.log('🔍 authenticatedClient provided:', !!authenticatedClient);
   
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data: project, error: projectError } = await client
     .from('projects')
     .select(`
@@ -317,7 +317,7 @@ export async function createProject(
   project: Omit<ProjectInsert, 'id'>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('projects')
     .insert(project)
@@ -338,7 +338,7 @@ export async function updateProject(
   updates: ProjectUpdate,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('projects')
     .update(updates)
@@ -359,7 +359,7 @@ export async function deleteProject(
   id: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { error } = await client
     .from('projects')
     .delete()
@@ -413,7 +413,7 @@ export async function createGroup(
   },
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('groups')
     .insert({
@@ -461,7 +461,7 @@ export async function updateGroup(
     updateData.height = updates.size.height;
   }
 
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('groups')
     .update(updateData)
@@ -481,7 +481,7 @@ export async function deleteGroup(
   groupId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { error } = await client
     .from('groups')
     .delete()

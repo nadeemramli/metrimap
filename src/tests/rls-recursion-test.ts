@@ -97,7 +97,7 @@ class RLSRecursionTester {
     for (const table of tables) {
       const result = await this.runTestWithTimeout(
         async () => {
-          const { data, error } = await supabase
+          const { data, error } = await supabase()
             .from(table as any)
             .select('*')
             .limit(1);
@@ -124,7 +124,7 @@ class RLSRecursionTester {
     // Test 1: Basic project query
     results.push(await this.runTestWithTimeout(
       async () => {
-        const { data, error } = await supabase
+        const { data, error } = await supabase()
           .from('projects')
           .select('*')
           .limit(1);
@@ -139,7 +139,7 @@ class RLSRecursionTester {
     // Test 2: Project with collaborators join
     results.push(await this.runTestWithTimeout(
       async () => {
-        const { data, error } = await supabase
+        const { data, error } = await supabase()
           .from('projects')
           .select(`
             *,
@@ -161,7 +161,7 @@ class RLSRecursionTester {
     // Test 3: Complex project query with multiple joins
     results.push(await this.runTestWithTimeout(
       async () => {
-        const { data, error } = await supabase
+        const { data, error } = await supabase()
           .from('projects')
           .select(`
             *,
@@ -190,7 +190,7 @@ class RLSRecursionTester {
     // Test 1: Basic collaborator query
     results.push(await this.runTestWithTimeout(
       async () => {
-        const { data, error } = await supabase
+        const { data, error } = await supabase()
           .from('project_collaborators')
           .select('*')
           .limit(1);
@@ -205,7 +205,7 @@ class RLSRecursionTester {
     // Test 2: Collaborators with project details
     results.push(await this.runTestWithTimeout(
       async () => {
-        const { data, error } = await supabase
+        const { data, error } = await supabase()
           .from('project_collaborators')
           .select(`
             *,
@@ -231,7 +231,7 @@ class RLSRecursionTester {
     const results: TestResult[] = [];
     
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase().auth.getUser();
     if (!user) {
       throw new Error('User not authenticated - cannot run CRUD tests');
     }
@@ -239,7 +239,7 @@ class RLSRecursionTester {
     // Test 1: Create project
     results.push(await this.runTestWithTimeout(
       async () => {
-        const { data, error } = await supabase
+        const { data, error } = await supabase()
           .from('projects')
           .insert({
             name: `Test Project ${Date.now()}`,
@@ -259,13 +259,13 @@ class RLSRecursionTester {
     // Test 2: Update project (if we have one)
     results.push(await this.runTestWithTimeout(
       async () => {
-        const { data: projects } = await supabase
+        const { data: projects } = await supabase()
           .from('projects')
           .select('id')
           .limit(1);
         
         if (projects && projects.length > 0) {
-          const { data, error } = await supabase
+          const { data, error } = await supabase()
             .from('projects')
             .update({ description: 'Updated description' })
             .eq('id', projects[0].id)
@@ -292,10 +292,10 @@ class RLSRecursionTester {
     // Stress Test 1: Multiple table OR query
     results.push(await this.runTestWithTimeout(
       async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase().auth.getUser();
         if (!user) throw new Error('No user');
         
-        const { data, error } = await supabase
+        const { data, error } = await supabase()
           .from('projects')
           .select('*')
           .or(`created_by.eq.${user.id},project_collaborators.user_id.eq.${user.id}`)
@@ -311,7 +311,7 @@ class RLSRecursionTester {
     // Stress Test 2: Deep nested query
     results.push(await this.runTestWithTimeout(
       async () => {
-        const { data, error } = await supabase
+        const { data, error } = await supabase()
           .from('metric_cards')
           .select(`
             *,

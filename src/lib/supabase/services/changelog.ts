@@ -56,7 +56,7 @@ export async function logChangelogEntry(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const insertData = transformToInsert(entry);
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   
   const { data, error } = await client
     .from('changelog')
@@ -78,7 +78,7 @@ export async function getChangelogForTarget(
   target: string = 'relationship',
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('changelog')
     .select('*')
@@ -100,7 +100,7 @@ export async function getProjectChangelog(
   limit?: number,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   let query = client
     .from('changelog')
     .select('*')
