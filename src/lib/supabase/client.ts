@@ -3,24 +3,35 @@ import type { Database } from './types'
 
 // Get environment variables with validation
 const getSupabaseConfig = () => {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+  // Check for Vite environment variables (local development)
+  const viteSupabaseUrl = import.meta.env.VITE_SUPABASE_URL
+  const viteSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+  
+  // Check for Supabase integration variables (production)
+  const nextPublicSupabaseUrl = import.meta.env.NEXT_PUBLIC_SUPABASE_URL
+  const nextPublicSupabaseAnonKey = import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  // Use Vite variables if available (local dev), otherwise use Supabase integration variables
+  const supabaseUrl = viteSupabaseUrl || nextPublicSupabaseUrl
+  const supabaseAnonKey = viteSupabaseAnonKey || nextPublicSupabaseAnonKey
 
   console.log('🔧 Environment variables check:', {
-    VITE_SUPABASE_URL: supabaseUrl ? 'Set' : 'Not set',
-    VITE_SUPABASE_ANON_KEY: supabaseAnonKey ? 'Set' : 'Not set',
-    urlLength: supabaseUrl?.length || 0,
-    keyLength: supabaseAnonKey?.length || 0
+    VITE_SUPABASE_URL: viteSupabaseUrl ? 'Set' : 'Not set',
+    VITE_SUPABASE_ANON_KEY: viteSupabaseAnonKey ? 'Set' : 'Not set',
+    NEXT_PUBLIC_SUPABASE_URL: nextPublicSupabaseUrl ? 'Set' : 'Not set',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: nextPublicSupabaseAnonKey ? 'Set' : 'Not set',
+    finalUrl: supabaseUrl ? 'Set' : 'Not set',
+    finalKey: supabaseAnonKey ? 'Set' : 'Not set'
   })
 
   if (!supabaseUrl) {
-    console.error('❌ VITE_SUPABASE_URL is required. Please check your .env file.')
-    throw new Error('VITE_SUPABASE_URL is required. Please check your .env file.')
+    console.error('❌ Supabase URL is required. Please check your environment variables.')
+    throw new Error('Supabase URL is required. Please check your environment variables.')
   }
 
   if (!supabaseAnonKey) {
-    console.error('❌ VITE_SUPABASE_ANON_KEY is required. Please check your .env file.')
-    throw new Error('VITE_SUPABASE_ANON_KEY is required. Please check your .env file.')
+    console.error('❌ Supabase anon key is required. Please check your environment variables.')
+    throw new Error('Supabase anon key is required. Please check your environment variables.')
   }
 
   console.log('✅ Environment variables loaded successfully')
@@ -29,7 +40,8 @@ const getSupabaseConfig = () => {
 
 // Enhanced environment detection
 const isDevelopmentEnvironment = () => {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+  // Check both Vite and Supabase integration variables
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) return false
   
   // Check for local development URLs
