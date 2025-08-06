@@ -7,11 +7,11 @@ const getSupabaseConfig = () => {
   const viteSupabaseUrl = import.meta.env.VITE_SUPABASE_URL
   const viteSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
   
-  // Check for Supabase integration variables (production)
+  // Check for Next.js public variables (production)
   const nextPublicSupabaseUrl = import.meta.env.NEXT_PUBLIC_SUPABASE_URL
   const nextPublicSupabaseAnonKey = import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
-  // Use Vite variables if available (local dev), otherwise use Supabase integration variables
+  // Use Vite variables if available (local dev), otherwise use Next.js public variables
   const supabaseUrl = viteSupabaseUrl || nextPublicSupabaseUrl
   const supabaseAnonKey = viteSupabaseAnonKey || nextPublicSupabaseAnonKey
 
