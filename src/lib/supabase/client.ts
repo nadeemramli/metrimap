@@ -73,20 +73,42 @@ export const supabase = () => {
   return defaultClient
 }
 
-// Create a Clerk-integrated Supabase client (singleton)
+// Create a Clerk-integrated Supabase client using the official integration method
+// This follows the official Supabase-Clerk integration guide
 export const createClerkSupabaseClient = (getToken: () => Promise<string | null>) => {
-  if (!clerkClient) {
-    console.log('🔧 Creating Clerk Supabase client (singleton)')
-    const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
-    clerkClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
+  console.log('🔧 Creating Clerk Supabase client with official integration')
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
+  
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    global: {
+      // Custom fetch that injects the Clerk Supabase JWT token into request headers
+      fetch: async (url, options = {}) => {
+        try {
+          // Get the Clerk Supabase JWT token using the 'supabase' template
+          const clerkToken = await getToken()
+          
+          if (clerkToken) {
+            // Insert the Clerk Supabase token into the headers
+            const headers = new Headers(options?.headers)
+            headers.set('Authorization', `Bearer ${clerkToken}`)
+            
+            // Call the default fetch with the modified headers
+            return fetch(url, {
+              ...options,
+              headers,
+            })
+          } else {
+            // Fallback to default fetch if no token
+            return fetch(url, options)
+          }
+        } catch (error) {
+          console.error('Error in Clerk Supabase client fetch:', error)
+          // Fallback to default fetch on error
+          return fetch(url, options)
+        }
       },
-    })
-  }
-  return clerkClient
+    },
+  })
 }
 
 // Alternative: Create a single Clerk client without function dependency

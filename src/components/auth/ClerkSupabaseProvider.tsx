@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useUser, useAuth } from "@clerk/react-router";
 import { useAppStore } from "@/lib/stores";
-import { getClerkSupabaseClient } from "@/lib/supabase/client";
+import { createClerkSupabaseClient } from "@/lib/supabase/client";
 
 interface ClerkSupabaseProviderProps {
   children: React.ReactNode;
@@ -34,29 +34,30 @@ export default function ClerkSupabaseProvider({
             email: user.emailAddresses[0]?.emailAddress || "",
           });
 
-          // Create Supabase client with Clerk authentication using native integration
+          // Create Supabase client with Clerk authentication using official integration
           console.log(
-            "Creating authenticated Supabase client with native integration"
+            "Creating authenticated Supabase client with official Clerk integration"
           );
-          const supabaseClient = getClerkSupabaseClient();
 
-          // Set authentication headers
-          const token = await getToken();
-          if (token) {
-            supabaseClient.auth.setSession({
-              access_token: token,
-              refresh_token: "",
-            });
-          }
+          // Create a function to get the Clerk Supabase JWT token
+          const getClerkSupabaseToken = async () => {
+            try {
+              // Get the Clerk Supabase JWT token using the 'supabase' template
+              // This follows the official Supabase-Clerk integration guide
+              const token = await getToken({
+                template: "supabase", // This should match the JWT template name in Clerk Dashboard
+              });
+              return token;
+            } catch (error) {
+              console.error("Error getting Clerk Supabase token:", error);
+              return null;
+            }
+          };
 
-          // Ensure development user exists in production database
-          // Temporarily disabled due to JWT signature issues
-          // await ensureDevUserExists(
-          //   user.id,
-          //   user.emailAddresses[0]?.emailAddress || "",
-          //   user.fullName || user.emailAddresses[0]?.emailAddress || "User",
-          //   supabaseClient
-          // );
+          // Create the Clerk-authenticated Supabase client
+          const supabaseClient = createClerkSupabaseClient(
+            getClerkSupabaseToken
+          );
 
           // Create or update user in Supabase using Clerk authentication
           const { error: upsertError } = await supabaseClient
@@ -81,7 +82,7 @@ export default function ClerkSupabaseProvider({
             console.error("Error upserting user to Supabase:", upsertError);
           } else {
             console.log(
-              "User successfully synced to Supabase using native integration"
+              "User successfully synced to Supabase using official Clerk integration"
             );
           }
         } catch (error) {
