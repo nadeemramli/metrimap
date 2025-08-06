@@ -89,6 +89,16 @@ export const createClerkSupabaseClient = (getToken: () => Promise<string | null>
   return clerkClient
 }
 
+// Alternative: Create a single Clerk client without function dependency
+export const getClerkSupabaseClient = () => {
+  if (!clerkClient) {
+    console.log('🔧 Creating Clerk Supabase client (singleton)')
+    const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
+    clerkClient = createClient<Database>(supabaseUrl, supabaseAnonKey)
+  }
+  return clerkClient
+}
+
 // Development-specific client that bypasses Clerk authentication and RLS (singleton)
 export const createDevSupabaseClient = () => {
   if (!devClient) {

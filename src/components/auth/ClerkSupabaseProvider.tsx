@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useUser, useAuth } from "@clerk/react-router";
 import { useAppStore } from "@/lib/stores";
-import { createClerkSupabaseClient } from "@/lib/supabase/client";
+import { getClerkSupabaseClient } from "@/lib/supabase/client";
 
 interface ClerkSupabaseProviderProps {
   children: React.ReactNode;
@@ -38,7 +38,13 @@ export default function ClerkSupabaseProvider({
           console.log(
             "Creating authenticated Supabase client with native integration"
           );
-          const supabaseClient = createClerkSupabaseClient(() => getToken());
+          const supabaseClient = getClerkSupabaseClient();
+
+          // Set authentication headers
+          const token = await getToken();
+          if (token) {
+            supabaseClient.rest.headers["Authorization"] = `Bearer ${token}`;
+          }
 
           // Ensure development user exists in production database
           // Temporarily disabled due to JWT signature issues

@@ -1,81 +1,70 @@
-# Environment Configuration Guide
+# Environment Configuration
 
-This guide explains how to configure the application for different environments: local development, staging, preview, and production.
+This document outlines the environment configuration for different deployment stages.
 
-## Environment Types
+## Overview
 
-### 1. Local Development
+The application supports two main environments:
 
-- **Purpose**: Development and testing on your local machine
-- **Supabase**: Local instance running via `supabase start`
-- **Authentication**: Bypassed for easier development
-- **URL Pattern**: `http://127.0.0.1:54321` or `http://localhost:54321`
+- **Local Development**: Uses local Supabase instance and Vite environment variables
+- **Production/Staging**: Uses remote Supabase instance via Supabase integration
 
-### 2. Staging/Preview
+## Environment Variables
 
-- **Purpose**: Testing with remote Supabase instance
-- **Supabase**: Remote instance (e.g., Vercel preview deployments)
-- **Authentication**: Clerk authentication required
-- **URL Pattern**: `https://[project-ref].supabase.co`
+### Local Development
 
-### 3. Production
-
-- **Purpose**: Live application
-- **Supabase**: Production remote instance
-- **Authentication**: Clerk authentication required
-- **URL Pattern**: `https://[project-ref].supabase.co`
-
-## Configuration Examples
-
-### Local Development (.env)
+**File**: `.env` (local only, not committed to git)
 
 ```bash
-# Clerk Configuration (optional for local dev)
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_key
+# Clerk Configuration
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_bW9kZXJuLXBob2VuaXgtMTkuY2xlcmsuYWNjb3VudHMuZGV2JA
 
-# Supabase Configuration (local)
+# Supabase Configuration (Local Development)
 VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
 
-# Development Domain
-VITE_APP_URL=http://localhost:3000
+# App URL
+VITE_APP_URL=http://dev.canvasm.app:5173
 ```
 
-### Staging/Preview (.env)
+**Characteristics**:
+
+- Uses local Supabase instance (localhost:54321)
+- Uses demo/development keys
+- Bypasses Row Level Security (RLS) for development
+- Uses Clerk test keys
+
+### Production/Staging
+
+**Source**: Supabase Integration in Vercel Dashboard
 
 ```bash
-# Clerk Configuration (required)
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_key
+# Automatically provided by Supabase Integration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-production-anon-key
 
-# Supabase Configuration (remote)
-VITE_SUPABASE_URL=https://pdzcgkngdjmeogbdojum.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.your_remote_anon_key
-
-# App URL
-VITE_APP_URL=https://your-preview-domain.vercel.app
+# Clerk Configuration (Shared Environment Variables)
+VITE_CLERK_PUBLISHABLE_KEY=your-production-clerk-key
 ```
 
-### Production (.env)
+**Characteristics**:
 
-```bash
-# Clerk Configuration (required)
-VITE_CLERK_PUBLISHABLE_KEY=pk_live_your_production_clerk_key
+- Uses remote Supabase instance
+- Uses production keys
+- Enforces Row Level Security (RLS)
+- Uses Clerk production keys
 
-# Supabase Configuration (production)
-VITE_SUPABASE_URL=https://your-production-project.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.your_production_anon_key
+## Environment Detection
 
-# App URL
-VITE_APP_URL=https://your-production-domain.com
-```
-
-## Environment Detection Logic
-
-The application automatically detects the environment based on the Supabase URL:
+The application automatically detects the environment:
 
 ```typescript
+// Enhanced environment detection
 const isDevelopmentEnvironment = () => {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  // Check both Vite and Supabase integration variables
+  const supabaseUrl =
+    import.meta.env.VITE_SUPABASE_URL ||
+    import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!supabaseUrl) return false;
 
   // Check for local development URLs
@@ -88,132 +77,124 @@ const isDevelopmentEnvironment = () => {
 };
 ```
 
-### Behavior by Environment
+## Environment-Specific Behavior
 
-| Environment    | Supabase URL Pattern     | Authentication    | RLS Bypass      | Debug Features |
-| -------------- | ------------------------ | ----------------- | --------------- | -------------- |
-| **Local**      | `http://127.0.0.1:54321` | ❌ Bypassed       | ✅ Service Role | ✅ Debug Page  |
-| **Staging**    | `https://*.supabase.co`  | ✅ Clerk Required | ❌ Normal RLS   | ❌ No Debug    |
-| **Production** | `https://*.supabase.co`  | ✅ Clerk Required | ❌ Normal RLS   | ❌ No Debug    |
+### Local Development (`isDevelopmentEnvironment() === true`)
+
+- **Authentication**: Bypassed with development user
+- **RLS**: Bypassed using service role key
+- **Database**: Local Supabase instance
+- **Features**: Full development features enabled
+- **Debugging**: Enhanced logging and error reporting
+
+### Production/Staging (`isDevelopmentEnvironment() === false`)
+
+- **Authentication**: Clerk authentication required
+- **RLS**: Enforced with proper policies
+- **Database**: Remote Supabase instance
+- **Features**: Production features only
+- **Security**: Full security measures active
 
 ## Setup Instructions
 
-### For Local Development
+### Local Development Setup
 
-1. **Start Local Supabase**:
+1. **Install Supabase CLI**:
+
+   ```bash
+   npm install -g supabase
+   ```
+
+2. **Start local Supabase**:
 
    ```bash
    supabase start
    ```
 
-2. **Create .env file** with local configuration:
+3. **Create `.env` file**:
 
    ```bash
-   VITE_SUPABASE_URL=http://127.0.0.1:54321
-   VITE_SUPABASE_ANON_KEY=your_local_anon_key
+   cp .env.example .env
+   # Edit with your local values
    ```
 
-3. **Start Development Server**:
+4. **Start development server**:
    ```bash
    npm run dev
    ```
 
-### For Staging/Preview Deployments
+### Production/Staging Setup
 
-1. **Get Supabase Credentials** from your staging project:
-   - Go to your Supabase project dashboard
-   - Navigate to Settings > API
-   - Copy the Project URL and anon key
+1. **Supabase Integration**: Already configured in Vercel
+2. **Environment Variables**: Automatically provided by integration
+3. **Deployment**: Automatic via Vercel
 
-2. **Set Environment Variables** in your deployment platform:
+## Vercel Dashboard Configuration
 
-   ```bash
-   VITE_SUPABASE_URL=https://your-staging-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your_staging_anon_key
-   VITE_CLERK_PUBLISHABLE_KEY=your_clerk_key
-   ```
+### Preview Environment
 
-3. **Deploy** your application
+- `NEXT_PUBLIC_SUPABASE_URL`: Set by Supabase integration
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Set by Supabase integration
+- `SUPABASE_URL`: Set by Supabase integration
+- `SUPABASE_ANON_KEY`: Set by Supabase integration
+- `POSTGRES_USER`: Set by Supabase integration
+- `POSTGRES_HOST`: Set by Supabase integration
+- `POSTGRES_DATABASE`: Set by Supabase integration
 
-### For Production
+### Shared Environment Variables
 
-1. **Get Production Credentials** from your production Supabase project
-2. **Set Environment Variables** in your production deployment
-3. **Deploy** with production configuration
+- `VITE_CLERK_PUBLISHABLE_KEY`: Production Clerk key
 
 ## Troubleshooting
 
-### Common Issues
+### Local Development Issues
 
-1. **"supabaseUrl is required" Error**
-   - Check that `VITE_SUPABASE_URL` is set in your environment
-   - Ensure the URL format is correct (http:// for local, https:// for remote)
+**Problem**: "VITE_SUPABASE_URL is required"
+**Solution**: Ensure `.env` file exists and contains correct local values
 
-2. **Authentication Issues**
-   - For local development: Authentication is bypassed
-   - For remote environments: Ensure Clerk is properly configured
+**Problem**: Supabase connection failed
+**Solution**: Run `supabase start` to start local instance
 
-3. **RLS (Row Level Security) Issues**
-   - Local development: Uses service role key to bypass RLS
-   - Remote environments: Normal RLS applies, ensure proper policies
+### Production/Staging Issues
 
-4. **Environment Detection Issues**
-   - Check the console logs for environment detection output
-   - Verify the Supabase URL format matches expected patterns
+**Problem**: "Supabase URL is required"
+**Solution**: Check that Supabase integration is properly configured in Vercel
 
-### Debug Information
-
-The application logs detailed information about environment detection:
-
-```javascript
-console.log("🔧 Environment detection:", {
-  supabaseUrl: "https://your-project.supabase.co",
-  isLocal: false,
-  isDevelopment: false,
-});
-```
-
-### Testing Different Environments
-
-You can test the environment detection by temporarily changing your `.env` file:
-
-```bash
-# Test local environment
-VITE_SUPABASE_URL=http://127.0.0.1:54321
-
-# Test remote environment
-VITE_SUPABASE_URL=https://your-project.supabase.co
-```
+**Problem**: Authentication not working
+**Solution**: Verify Clerk publishable key is set correctly
 
 ## Security Considerations
 
 ### Local Development
 
-- Uses service role key to bypass RLS
-- No authentication required
-- **Never use service role key in production**
+- Uses demo keys (safe for local development)
+- Bypasses security measures for easier development
+- Never commit `.env` file to version control
 
-### Remote Environments
+### Production/Staging
 
-- Uses anon key with proper RLS
-- Clerk authentication required
-- Proper security policies applied
+- Uses production keys
+- Enforces all security measures
+- Environment variables managed by Vercel
 
 ## Migration Between Environments
 
-When moving from local to staging/production:
+### Local → Staging
 
-1. **Update Supabase URL** from local to remote
-2. **Update anon key** to remote project key
-3. **Configure Clerk** for authentication
-4. **Test authentication flow**
-5. **Verify RLS policies** work correctly
+1. Ensure code works with local environment
+2. Push to repository
+3. Vercel automatically deploys with production environment variables
 
-## Environment Variables Reference
+### Staging → Production
 
-| Variable                     | Local                    | Staging                 | Production              | Required |
-| ---------------------------- | ------------------------ | ----------------------- | ----------------------- | -------- |
-| `VITE_SUPABASE_URL`          | `http://127.0.0.1:54321` | `https://*.supabase.co` | `https://*.supabase.co` | ✅       |
-| `VITE_SUPABASE_ANON_KEY`     | Local anon key           | Staging anon key        | Production anon key     | ✅       |
-| `VITE_CLERK_PUBLISHABLE_KEY` | Optional                 | Required                | Required                | Staging+ |
-| `VITE_APP_URL`               | `http://localhost:3000`  | Preview URL             | Production URL          | Optional |
+1. Test thoroughly in staging environment
+2. Promote deployment in Vercel dashboard
+3. Same environment variables used for both
+
+## Best Practices
+
+1. **Never commit environment files**: Keep `.env` in `.gitignore`
+2. **Use different keys**: Local development should use different keys than production
+3. **Test both environments**: Ensure features work in both local and staging
+4. **Monitor deployments**: Check Vercel logs for environment-related issues
+5. **Document changes**: Update this document when environment configuration changes
