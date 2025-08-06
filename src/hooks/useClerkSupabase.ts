@@ -14,7 +14,10 @@ export function useClerkSupabase() {
     const updateAuthHeaders = async () => {
       const token = await getToken();
       if (token) {
-        client.rest.headers['Authorization'] = `Bearer ${token}`;
+        client.auth.setSession({
+          access_token: token,
+          refresh_token: "",
+        });
       }
     };
     

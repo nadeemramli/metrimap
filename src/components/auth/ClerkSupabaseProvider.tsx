@@ -43,7 +43,10 @@ export default function ClerkSupabaseProvider({
           // Set authentication headers
           const token = await getToken();
           if (token) {
-            supabaseClient.rest.headers["Authorization"] = `Bearer ${token}`;
+            supabaseClient.auth.setSession({
+              access_token: token,
+              refresh_token: "",
+            });
           }
 
           // Ensure development user exists in production database
