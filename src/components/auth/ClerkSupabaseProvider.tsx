@@ -34,30 +34,27 @@ export default function ClerkSupabaseProvider({
             email: user.emailAddresses[0]?.emailAddress || "",
           });
 
-          // Create Supabase client with Clerk authentication using official integration
+          // Create Supabase client with Clerk authentication using NATIVE integration
           console.log(
-            "Creating authenticated Supabase client with official Clerk integration"
+            "Creating authenticated Supabase client with NATIVE Clerk integration"
           );
 
-          // Create a function to get the Clerk Supabase JWT token
-          const getClerkSupabaseToken = async () => {
+          // Create a function to get the Clerk session token (native approach)
+          const getClerkSessionToken = async () => {
             try {
-              // Get the Clerk Supabase JWT token using the 'supabase' template
-              // This follows the official Supabase-Clerk integration guide
-              const token = await getToken({
-                template: "supabase", // This should match the JWT template name in Clerk Dashboard
-              });
+              // Use the native integration - no JWT template needed
+              // This is the recommended approach (non-deprecated)
+              const token = await getToken();
               return token;
             } catch (error) {
-              console.error("Error getting Clerk Supabase token:", error);
+              console.error("Error getting Clerk session token:", error);
               return null;
             }
           };
 
           // Create the Clerk-authenticated Supabase client
-          const supabaseClient = createClerkSupabaseClient(
-            getClerkSupabaseToken
-          );
+          const supabaseClient =
+            createClerkSupabaseClient(getClerkSessionToken);
 
           // Create or update user in Supabase using Clerk authentication
           const { error: upsertError } = await supabaseClient
@@ -82,7 +79,7 @@ export default function ClerkSupabaseProvider({
             console.error("Error upserting user to Supabase:", upsertError);
           } else {
             console.log(
-              "User successfully synced to Supabase using official Clerk integration"
+              "User successfully synced to Supabase using NATIVE Clerk integration"
             );
           }
         } catch (error) {
