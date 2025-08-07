@@ -4,6 +4,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ClerkProvider } from "@clerk/react-router";
 import "./index.css";
 import App from "./App.tsx";
+import UserbackInitializer from "./components/feedback/UserbackInitializer";
+import DevUserbackInitializer from "./components/feedback/DevUserbackInitializer";
+import { isDevelopmentEnvironment } from "@/lib/supabase/client";
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -55,6 +58,11 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+        {isDevelopmentEnvironment() ? (
+          <DevUserbackInitializer />
+        ) : (
+          <UserbackInitializer />
+        )}
         <Routes>
           <Route path="/*" element={<App />} />
         </Routes>
