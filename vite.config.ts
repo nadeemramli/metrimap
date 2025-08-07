@@ -26,6 +26,17 @@ export default defineConfig({
           clerk: ['@clerk/react-router'],
         },
       },
+      onwarn(warning, warn) {
+        // Suppress eval warnings from editorjs packages
+        if (warning.code === 'EVAL' && (
+          warning.id?.includes('editorjs-hyperlink') ||
+          warning.id?.includes('editorjs-') ||
+          warning.id?.includes('@editorjs/')
+        )) {
+          return;
+        }
+        warn(warning);
+      },
     },
   },
   worker: {

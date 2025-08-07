@@ -18,6 +18,8 @@ import SimpleImage from "@editorjs/simple-image";
 import Attaches from "@editorjs/attaches";
 import InlineCode from "@editorjs/inline-code";
 import Underline from "@editorjs/underline";
+// Note: editorjs-hyperlink uses eval() which causes security warnings
+// These warnings are suppressed in vite.config.ts via onwarn configuration
 import Hyperlink from "editorjs-hyperlink";
 import ChangeCase from "editorjs-change-case";
 import Code from "@editorjs/code";
