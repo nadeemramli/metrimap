@@ -368,10 +368,21 @@ export default function RelationshipSheet({
         [];
       handleFieldChange("evidence", updatedEvidence);
     } else {
-      // Add new evidence to global store
-      addEvidence(evidence);
+      // Add new evidence to global store with relationship context
+      const evidenceWithContext: EvidenceItem = {
+        ...evidence,
+        context: {
+          type: "relationship",
+          targetId: relationship?.id,
+          targetName: `${sourceNode?.title} → ${targetNode?.title}`,
+        },
+      };
+      addEvidence(evidenceWithContext);
       // Add evidence to relationship
-      handleFieldChange("evidence", [...(formData.evidence || []), evidence]);
+      handleFieldChange("evidence", [
+        ...(formData.evidence || []),
+        evidenceWithContext,
+      ]);
 
       // Log evidence addition
       if (relationship && currentProject) {

@@ -9,6 +9,8 @@ import {
   Maximize2,
   RotateCcw,
   Filter,
+  FileText,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -41,6 +43,7 @@ interface CanvasControlsProps {
   nodes: Node[];
   edges: Edge[];
   onNodesChange: (nodes: Node[]) => void;
+  onAddEvidence?: () => void;
 }
 
 const AUTO_LAYOUT_ALGORITHMS = [
@@ -64,6 +67,7 @@ export default function CanvasControls({
   nodes,
   edges,
   onNodesChange,
+  onAddEvidence,
 }: CanvasControlsProps) {
   const { zoomIn, zoomOut, zoomTo, fitView, getZoom, setCenter } =
     useReactFlow();
@@ -234,6 +238,23 @@ export default function CanvasControls({
       <div className="flex items-center justify-between">
         {/* Left Controls - Date Range & Filters */}
         <div className="flex items-center gap-2 pointer-events-auto">
+          {/* Evidence Button */}
+          {onAddEvidence && (
+            <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onAddEvidence}
+                className="flex items-center gap-2 text-xs"
+                title="Add general evidence to canvas"
+              >
+                <FileText className="h-4 w-4" />
+                <Plus className="h-3 w-3" />
+                Evidence
+              </Button>
+            </div>
+          )}
+
           <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg">
             <div className="flex items-center gap-2">
               {/* Date Range Picker */}

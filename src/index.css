@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Import Editor.js styles */
+@import "./styles/editor.css";
+
 @layer base {
   :root {
     --radius: 0.625rem;

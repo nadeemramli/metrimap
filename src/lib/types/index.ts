@@ -142,8 +142,49 @@ export interface EvidenceItem {
   impactOnConfidence?: string;
   createdAt?: string;
   createdBy?: string;
+  updatedAt?: string;
   tags?: string[];
   category?: string;
+  
+  // Editor.js content for rich editing
+  content?: {
+    time: number;
+    blocks: Array<{
+      id: string;
+      type: string;
+      data: any;
+    }>;
+    version: string;
+  };
+  
+  // Context tracking - where this evidence belongs
+  context?: {
+    type: "relationship" | "card" | "general";
+    targetId?: string; // relationship ID, card ID, or null for general
+    targetName?: string; // for display purposes
+  };
+  
+  // Canvas positioning for general evidence
+  position?: {
+    x: number;
+    y: number;
+  };
+  
+  // UI state for canvas evidence cards
+  isVisible?: boolean;
+  isExpanded?: boolean;
+  
+  // Comments for evidence (as shown in your image)
+  comments?: EvidenceComment[];
+}
+
+export interface EvidenceComment {
+  id: string;
+  evidenceId: string;
+  content: string;
+  author: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CanvasSettings {

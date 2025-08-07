@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { EvidenceItem } from '../types';
+import type { EvidenceItem, EvidenceComment } from '../types';
 
 interface EvidenceState {
   evidence: EvidenceItem[];
@@ -12,6 +12,23 @@ interface EvidenceState {
   getEvidenceById: (id: string) => EvidenceItem | undefined;
   getEvidenceByType: (type: string) => EvidenceItem[];
   getEvidenceByOwner: (owner: string) => EvidenceItem[];
+  
+  // Context-based evidence retrieval
+  getEvidenceByContext: (contextType: "relationship" | "card" | "general", targetId?: string) => EvidenceItem[];
+  getEvidenceForRelationship: (relationshipId: string) => EvidenceItem[];
+  getEvidenceForCard: (cardId: string) => EvidenceItem[];
+  getGeneralEvidence: () => EvidenceItem[];
+  
+  // Comments management
+  addComment: (evidenceId: string, comment: Omit<EvidenceComment, 'id' | 'evidenceId' | 'createdAt'>) => void;
+  updateComment: (evidenceId: string, commentId: string, content: string) => void;
+  deleteComment: (evidenceId: string, commentId: string) => void;
+  
+  // Canvas evidence positioning
+  updateEvidencePosition: (id: string, position: { x: number; y: number }) => void;
+  toggleEvidenceVisibility: (id: string) => void;
+  toggleEvidenceExpansion: (id: string) => void;
+  
   searchEvidence: (query: string) => EvidenceItem[];
   duplicateEvidence: (id: string) => EvidenceItem | null;
 }
@@ -68,6 +85,114 @@ export const useEvidenceStore = create<EvidenceState>()(
         );
       },
 
+      // Context-based evidence retrieval
+      getEvidenceByContext: (contextType: "relationship" | "card" | "general", targetId?: string) => {
+        const state = get();
+        return state.evidence.filter((item) => {
+          if (!item.context) return contextType === "general";
+          return item.context.type === contextType && 
+                 (contextType === "general" || item.context.targetId === targetId);
+        });
+      },
+
+      getEvidenceForRelationship: (relationshipId: string) => {
+        const state = get();
+        return state.evidence.filter((item) => 
+          item.context?.type === "relationship" && item.context.targetId === relationshipId
+        );
+      },
+
+      getEvidenceForCard: (cardId: string) => {
+        const state = get();
+        return state.evidence.filter((item) => 
+          item.context?.type === "card" && item.context.targetId === cardId
+        );
+      },
+
+      getGeneralEvidence: () => {
+        const state = get();
+        return state.evidence.filter((item) => 
+          !item.context || item.context.type === "general"
+        );
+      },
+
+      // Comments management
+      addComment: (evidenceId: string, comment: Omit<EvidenceComment, 'id' | 'evidenceId' | 'createdAt'>) => {
+        set((state) => ({
+          evidence: state.evidence.map((item) =>
+            item.id === evidenceId
+              ? {
+                  ...item,
+                  comments: [
+                    ...(item.comments || []),
+                    {
+                      id: `comment_${Date.now()}`,
+                      evidenceId,
+                      createdAt: new Date().toISOString(),
+                      ...comment,
+                    } as EvidenceComment,
+                  ],
+                }
+              : item
+          ),
+        }));
+      },
+
+      updateComment: (evidenceId: string, commentId: string, content: string) => {
+        set((state) => ({
+          evidence: state.evidence.map((item) =>
+            item.id === evidenceId
+              ? {
+                  ...item,
+                  comments: item.comments?.map((comment) =>
+                    comment.id === commentId
+                      ? { ...comment, content, updatedAt: new Date().toISOString() }
+                      : comment
+                  ),
+                }
+              : item
+          ),
+        }));
+      },
+
+      deleteComment: (evidenceId: string, commentId: string) => {
+        set((state) => ({
+          evidence: state.evidence.map((item) =>
+            item.id === evidenceId
+              ? {
+                  ...item,
+                  comments: item.comments?.filter((comment) => comment.id !== commentId),
+                }
+              : item
+          ),
+        }));
+      },
+
+      // Canvas evidence positioning
+      updateEvidencePosition: (id: string, position: { x: number; y: number }) => {
+        set((state) => ({
+          evidence: state.evidence.map((item) =>
+            item.id === id ? { ...item, position } : item
+          ),
+        }));
+      },
+
+      toggleEvidenceVisibility: (id: string) => {
+        set((state) => ({
+          evidence: state.evidence.map((item) =>
+            item.id === id ? { ...item, isVisible: !item.isVisible } : item
+          ),
+        }));
+      },
+
+      toggleEvidenceExpansion: (id: string) => {
+        set((state) => ({
+          evidence: state.evidence.map((item) =>
+            item.id === id ? { ...item, isExpanded: !item.isExpanded } : item
+          ),
+        }));
+      },
+
       duplicateEvidence: (id: string) => {
         const state = get();
         const original = state.evidence.find((item) => item.id === id);
@@ -78,6 +203,14 @@ export const useEvidenceStore = create<EvidenceState>()(
           id: `evidence_${Date.now()}`,
           title: `${original.title} (Copy)`,
           createdAt: new Date().toISOString(),
+          // Reset canvas-specific properties
+          position: original.position ? { 
+            x: original.position.x + 20, 
+            y: original.position.y + 20 
+          } : undefined,
+          isVisible: true,
+          isExpanded: false,
+          comments: [], // Don't duplicate comments
         };
 
         set((state) => ({

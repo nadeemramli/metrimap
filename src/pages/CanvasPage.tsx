@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -18,10 +18,19 @@ import {
   ControlButton,
   Panel,
 } from "@xyflow/react";
-import { Search, Save, Clock, Check, AlertCircle, Filter } from "lucide-react";
+import {
+  Search,
+  Save,
+  Clock,
+  Check,
+  AlertCircle,
+  Filter,
+  FileText,
+} from "lucide-react";
 
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore } from "@/lib/stores";
+import { useEvidenceStore } from "@/lib/stores/evidenceStore";
 import { useClerkSupabase } from "@/hooks/useClerkSupabase";
 import { useCanvasHeader } from "@/contexts/CanvasHeaderContext";
 import type {
@@ -37,6 +46,7 @@ import type {
   Dimension,
   ConfidenceLevel,
   CanvasSettings,
+  EvidenceItem,
 } from "@/lib/types";
 import {
   MetricCard,
@@ -46,6 +56,7 @@ import {
   RelationshipSheet,
   GroupNode,
 } from "@/components/canvas";
+import EvidenceNode from "@/components/canvas/EvidenceNode";
 import {
   useKeyboardShortcuts,
   createShortcut,
@@ -155,6 +166,22 @@ const convertToEdge = (
 };
 
 // Convert GroupNode to ReactFlow Node
+const convertToEvidenceNode = (
+  evidence: EvidenceItem,
+  onUpdateEvidence: (id: string, updates: Partial<EvidenceItem>) => void,
+  onDeleteEvidence: (id: string) => void
+): Node => ({
+  id: evidence.id,
+  type: "evidenceNode",
+  position: evidence.position || { x: 100, y: 100 },
+  data: {
+    evidence,
+    onUpdateEvidence,
+    onDeleteEvidence,
+  },
+  dragHandle: ".evidence-drag-handle",
+});
+
 const convertToGroupNode = (
   group: GroupNodeType,
   onEditGroup: (groupId: string) => void,
@@ -191,6 +218,7 @@ const convertToGroupNode = (
 const nodeTypes = {
   metricCard: MetricCard,
   groupNode: GroupNode,
+  evidenceNode: EvidenceNode,
 };
 
 const edgeTypes = {
@@ -199,6 +227,7 @@ const edgeTypes = {
 
 function CanvasPageInner() {
   const { canvasId } = useParams();
+  const [searchParams] = useSearchParams();
   const supabaseClient = useClerkSupabase();
   const navigate = useNavigate();
   const [settingsCardId, setSettingsCardId] = useState<string | undefined>();
@@ -248,7 +277,7 @@ function CanvasPageInner() {
   const { setHeaderInfo } = useCanvasHeader();
 
   // React Flow hooks
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, setCenter } = useReactFlow();
 
   // Accessibility hook - TODO: Implement accessibility announcements
   // const { announce } = useAccessibility();
@@ -278,6 +307,17 @@ function CanvasPageInner() {
     isSaving,
     lastSaved,
   } = useCanvasStore();
+
+  const { addEvidence, updateEvidence, deleteEvidence, getGeneralEvidence } =
+    useEvidenceStore();
+  // Subscribe to evidence list so canvas re-renders when evidence content changes
+  const evidenceList = useEvidenceStore((s) => s.evidence);
+
+  // Debug: Log evidence store initialization
+  console.log(
+    "🔍 Evidence store initialized, addEvidence function:",
+    addEvidence
+  );
 
   const handlePaneClick = useCallback(() => {
     clearSelection(); // Clear node selection when clicking on empty space
@@ -388,6 +428,52 @@ function CanvasPageInner() {
   const handleOpenFilters = useCallback(() => {
     setFilterModalOpen(true);
   }, []);
+
+  const handleAddEvidence = useCallback(() => {
+    console.log("🔍 Evidence button clicked!");
+    console.log("🔍 addEvidence function:", addEvidence);
+
+    // Get current viewport center for better positioning
+    const reactFlowInstance = reactFlowRef.current?.getBoundingClientRect();
+    const centerX = reactFlowInstance ? reactFlowInstance.width / 2 : 400;
+    const centerY = reactFlowInstance ? reactFlowInstance.height / 2 : 300;
+
+    // Create a new general evidence item
+    const newEvidence: EvidenceItem = {
+      id: `evidence_${Date.now()}`,
+      title: "New Evidence",
+      type: "Analysis",
+      date: new Date().toISOString().split("T")[0],
+      owner: "Current User", // TODO: Get from auth
+      summary: "Add your evidence summary here",
+      hypothesis: "",
+      impactOnConfidence: "",
+      createdAt: new Date().toISOString(),
+      createdBy: "current-user", // TODO: Get from auth
+      context: {
+        type: "general",
+        targetName: "Canvas Evidence",
+      },
+      position: { x: centerX, y: centerY }, // Center position
+      isVisible: true,
+      isExpanded: false,
+    };
+
+    console.log("🔍 Created evidence item:", newEvidence);
+
+    try {
+      // Add to evidence store
+      addEvidence(newEvidence);
+      console.log("✅ Evidence added to store successfully");
+
+      // Show success message
+      toast.success("Evidence added to canvas");
+      console.log("✅ Toast message shown");
+    } catch (error) {
+      console.error("❌ Error adding evidence:", error);
+      toast.error("Failed to add evidence");
+    }
+  }, [addEvidence]);
 
   const handleApplyFilters = useCallback(
     (filters: FilterOptions) => {
@@ -990,8 +1076,15 @@ function CanvasPageInner() {
         )
       ) || [];
 
+    // Get general evidence items and convert to nodes
+    const evidenceNodes = getGeneralEvidence()
+      .filter((evidence) => evidence.isVisible !== false)
+      .map((evidence) =>
+        convertToEvidenceNode(evidence, updateEvidence, deleteEvidence)
+      );
+
     // Groups should be rendered last (on top of other nodes)
-    return [...metricNodes, ...groupNodes];
+    return [...metricNodes, ...evidenceNodes, ...groupNodes];
   }, [
     canvas?.nodes,
     canvas?.groups,
@@ -1005,6 +1098,10 @@ function CanvasPageInner() {
     handleDeleteGroup,
     handleToggleCollapse,
     handleUpdateGroupSize,
+    getGeneralEvidence,
+    updateEvidence,
+    deleteEvidence,
+    evidenceList,
   ]);
   const edges = useMemo(
     () =>
@@ -1028,6 +1125,48 @@ function CanvasPageInner() {
       isRelationshipSheetOpen,
     ]
   );
+
+  // Focus handling from query param
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    if (!focus) return;
+    const [kind, id] = focus.split(":");
+    if (!id) return;
+    // evidence: focus evidence node id
+    if (kind === "evidence") {
+      const target = nodes.find((n) => n.id === id);
+      if (target && target.position) {
+        setCenter(target.position.x, target.position.y, {
+          zoom: 1.2,
+          duration: 800,
+        });
+        selectNode(id);
+      }
+    }
+    if (kind === "card") {
+      const target = nodes.find((n) => n.id === id);
+      if (target && target.position) {
+        setCenter(target.position.x, target.position.y, {
+          zoom: 1.2,
+          duration: 800,
+        });
+        selectNode(id);
+      }
+    }
+    if (kind === "rel") {
+      const rel = canvas?.edges.find((e) => e.id === id);
+      if (rel) {
+        const a = nodes.find((n) => n.id === rel.sourceId);
+        const b = nodes.find((n) => n.id === rel.targetId);
+        if (a && b) {
+          const cx = (a.position.x + b.position.x) / 2;
+          const cy = (a.position.y + b.position.y) / 2;
+          setCenter(cx, cy, { zoom: 1.0, duration: 800 });
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, nodes, canvas?.edges]);
 
   // Proximity Connect - REMOVED for better drag/toolbar UX
 
@@ -1555,6 +1694,17 @@ function CanvasPageInner() {
               title="Search (Cmd+F)"
             >
               <Search className="h-4 w-4" />
+            </ControlButton>
+
+            {/* Evidence Button */}
+            <ControlButton
+              onClick={() => {
+                console.log("🔍 Evidence ControlButton clicked!");
+                handleAddEvidence();
+              }}
+              title="Add Evidence"
+            >
+              <FileText className="h-4 w-4" />
             </ControlButton>
 
             {/* Layout Controls */}
