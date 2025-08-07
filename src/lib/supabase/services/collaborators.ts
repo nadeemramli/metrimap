@@ -17,7 +17,7 @@ export async function getProjectCollaborators(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<Collaborator[]> {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('project_collaborators')
     .select(`
@@ -43,7 +43,7 @@ export async function addCollaborator(
   permissions: string[] = ['read'],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   
   // First, find the user by email
   const { data: userData, error: userError } = await client
@@ -90,7 +90,7 @@ export async function updateCollaborator(
   },
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('project_collaborators')
     .update(updates)
@@ -114,7 +114,7 @@ export async function removeCollaborator(
   collaboratorId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase;
+  const client = authenticatedClient || supabase();
   const { error } = await client
     .from('project_collaborators')
     .delete()

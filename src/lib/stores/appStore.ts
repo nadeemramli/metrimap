@@ -62,7 +62,7 @@ export const useAppStore = create<AppStoreState>()(
 
       signOut: async () => {
         try {
-          await supabase.auth.signOut();
+          await supabase().auth.signOut();
           set({ 
             user: undefined, 
             currentCanvasId: undefined 
@@ -77,7 +77,7 @@ export const useAppStore = create<AppStoreState>()(
           set({ isAuthLoading: true });
           
           // Get current session
-          const { data: { session } } = await supabase.auth.getSession();
+          const { data: { session } } = await supabase().auth.getSession();
           
           if (session?.user) {
             set({
@@ -90,7 +90,7 @@ export const useAppStore = create<AppStoreState>()(
           }
 
           // Listen for auth changes
-          supabase.auth.onAuthStateChange((event, session) => {
+          supabase().auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
               set({
                 user: {

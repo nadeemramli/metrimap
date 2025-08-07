@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .cursor/mcp.json
 .env
+
+# Environment secrets (contains actual sensitive values)
+docs/environment/ENVIRONMENT_SECRETS.md

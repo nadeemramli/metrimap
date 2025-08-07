@@ -586,7 +586,7 @@ function CanvasPageInner() {
           description: project.description || "",
           tags: project.tags || [],
           settings: (project.settings as CanvasSettings) || {},
-          nodes: (project.metric_cards || []).map((card) => ({
+          nodes: (project.metric_cards || []).map((card: any) => ({
             id: card.id,
             title: card.title,
             description: card.description || "",
@@ -610,7 +610,7 @@ function CanvasPageInner() {
             createdAt: card.created_at || new Date().toISOString(),
             updatedAt: card.updated_at || new Date().toISOString(),
           })),
-          edges: (project.relationships || []).map((rel) => ({
+          edges: (project.relationships || []).map((rel: any) => ({
             id: rel.id,
             sourceId: rel.source_id,
             targetId: rel.target_id,
@@ -622,7 +622,7 @@ function CanvasPageInner() {
             createdAt: rel.created_at || new Date().toISOString(),
             updatedAt: rel.updated_at || new Date().toISOString(),
           })),
-          groups: (project.groups || []).map((group) => ({
+          groups: (project.groups || []).map((group: any) => ({
             id: group.id,
             name: group.name,
             description: group.description || "",

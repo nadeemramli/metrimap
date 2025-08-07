@@ -9,7 +9,7 @@ import {
   getProjectById,
 } from '../supabase/services';
 import { useAppStore } from './appStore';
-import { getAuthenticatedClient } from '../utils/authenticatedClient';
+import { getClientForEnvironment, isDevelopmentMode } from '../utils/authenticatedClient';
 
 interface ProjectsStoreState {
   // State
@@ -58,30 +58,17 @@ export const useProjectsStore = create<ProjectsStoreState>()(
         console.log('🚀 initializeProjects called');
         set({ isLoading: true, error: undefined });
         
-        // Retry mechanism for authenticated client
-        let authenticatedClient = getAuthenticatedClient();
-        let retries = 0;
-        const maxRetries = 5;
-        
-        while (!authenticatedClient && retries < maxRetries) {
-          console.log(`⏳ Waiting for authenticated client... (attempt ${retries + 1}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          authenticatedClient = getAuthenticatedClient();
-          retries++;
-        }
-        
-        if (!authenticatedClient) {
-          console.error('❌ No authenticated client available after retries');
-          throw new Error('Authenticated client not available');
-        }
-        
         try {
           const user = requireAuth();
           console.log('✅ User authenticated:', user.id);
-          console.log('✅ Authenticated client obtained:', !!authenticatedClient);
           
-          const projects = await getUserProjects(user.id, authenticatedClient);
+          // Use enhanced client utility
+          const client = getClientForEnvironment();
+          console.log('✅ Client obtained for environment');
+          
+          const projects = await getUserProjects(user.id, client);
           console.log('✅ getUserProjects completed, got projects:', projects?.length || 0);
+          
           // Load full canvas data for each project
           const canvasProjects: CanvasProject[] = [];
           
@@ -91,7 +78,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
             console.log(`🔍 Loading project: ${project.name} (${project.id})`);
             try {
               console.log(`🔍 Calling getProjectById for ${project.id}...`);
-              const fullProject = await getProjectById(project.id, authenticatedClient || undefined);
+              const fullProject = await getProjectById(project.id, client);
               if (fullProject) {
                 console.log(`✅ Loaded project ${project.name} with ${fullProject.nodes.length} nodes, ${fullProject.edges.length} edges, ${fullProject.groups.length} groups`);
                 canvasProjects.push(fullProject);
@@ -134,11 +121,17 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           set({ projects: canvasProjects, isLoading: false, isInitialized: true });
         } catch (error) {
           console.error('Failed to initialize projects:', error);
+          
+          // In development, show more helpful error messages
+          const errorMessage = isDevelopmentMode()
+            ? `Development Error: ${error instanceof Error ? error.message : 'Unknown error'}. This might be due to using production keys in development.`
+            : error instanceof Error ? error.message : 'Failed to load projects';
+          
           set({ 
             projects: [], 
             isLoading: false, 
             isInitialized: true, 
-            error: error instanceof Error ? error.message : 'Failed to load projects'
+            error: errorMessage
           });
         }
       },
@@ -159,7 +152,8 @@ export const useProjectsStore = create<ProjectsStoreState>()(
             settings: projectData.settings ? JSON.parse(JSON.stringify(projectData.settings)) : undefined,
           };
           
-          const newProject = await createProjectInSupabase(projectToCreate);
+          const client = getClientForEnvironment();
+          const newProject = await createProjectInSupabase(projectToCreate, client);
           
           if (newProject) {
             const canvasProject: CanvasProject = {
@@ -210,7 +204,8 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           if (updates.updatedAt !== undefined) dbUpdates.updated_at = updates.updatedAt;
           if (updates.lastModifiedBy !== undefined) dbUpdates.last_modified_by = updates.lastModifiedBy;
           
-          const updatedProject = await updateProjectInSupabase(projectId, dbUpdates);
+          const client = getClientForEnvironment();
+          const updatedProject = await updateProjectInSupabase(projectId, dbUpdates, client);
           
           if (updatedProject) {
             set(state => ({
@@ -242,7 +237,8 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           
           set({ isLoading: true, error: undefined });
           
-          await deleteProjectInSupabase(projectId);
+          const client = getClientForEnvironment();
+          await deleteProjectInSupabase(projectId, client);
           
           set(state => ({
             projects: state.projects.filter(p => p.id !== projectId),
@@ -288,7 +284,8 @@ export const useProjectsStore = create<ProjectsStoreState>()(
             settings: projectData.settings ? JSON.parse(JSON.stringify(projectData.settings)) : undefined,
           };
           
-          const newProject = await createProjectInSupabase(projectDataWithSettings);
+          const client = getClientForEnvironment();
+          const newProject = await createProjectInSupabase(projectDataWithSettings, client);
           
           if (newProject) {
             const canvasProject: CanvasProject = {

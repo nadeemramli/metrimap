@@ -65,12 +65,15 @@ import {
 import { UserMenu } from "@/components/layout/UserMenu";
 import { getTagColor } from "@/lib/utils/tag-colors";
 import { CanvasPreview } from "@/components/canvas/CanvasPreview";
+import FeedbackButton from "@/components/feedback/FeedbackButton";
+import { isDevelopmentEnvironment } from "@/lib/supabase/client";
 
 type SortOption = "name" | "updated" | "created" | "nodes" | "edges";
 type ViewMode = "grid" | "list";
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const isDevelopment = isDevelopmentEnvironment();
   const {
     projects,
     duplicateProject,
@@ -626,7 +629,10 @@ export default function HomePage() {
             <h1 className="text-xl font-bold transition-all duration-300 hover:scale-105 cursor-pointer">
               Metrimap
             </h1>
-            <UserMenu />
+            <div className="flex items-center gap-3">
+              {isDevelopment && <FeedbackButton variant="outline" size="sm" />}
+              <UserMenu />
+            </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useUser, SignOutButton } from "@clerk/react-router";
-import { LogOut, User, Settings } from "lucide-react";
+import { LogOut, User, Settings, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -18,6 +18,15 @@ export function UserMenu() {
   if (!user) return null;
 
   const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`;
+
+  const handleFeedbackClick = () => {
+    // Trigger Userback widget manually
+    if (window.Userback) {
+      window.Userback.open();
+    } else {
+      console.warn("Userback widget not available");
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -52,6 +61,10 @@ export function UserMenu() {
         <DropdownMenuItem>
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleFeedbackClick}>
+          <MessageSquare className="mr-2 h-4 w-4" />
+          <span>Give Feedback</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <SignOutButton>

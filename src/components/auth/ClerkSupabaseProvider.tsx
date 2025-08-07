@@ -34,11 +34,27 @@ export default function ClerkSupabaseProvider({
             email: user.emailAddresses[0]?.emailAddress || "",
           });
 
-          // Create Supabase client with Clerk authentication using native integration
+          // Create Supabase client with Clerk authentication using NATIVE integration
           console.log(
-            "Creating authenticated Supabase client with native integration"
+            "Creating authenticated Supabase client with NATIVE Clerk integration"
           );
-          const supabaseClient = createClerkSupabaseClient(() => getToken());
+
+          // Create a function to get the Clerk session token (native approach)
+          const getClerkSessionToken = async () => {
+            try {
+              // Use the native integration - no JWT template needed
+              // This is the recommended approach (non-deprecated)
+              const token = await getToken();
+              return token;
+            } catch (error) {
+              console.error("Error getting Clerk session token:", error);
+              return null;
+            }
+          };
+
+          // Create the Clerk-authenticated Supabase client
+          const supabaseClient =
+            createClerkSupabaseClient(getClerkSessionToken);
 
           // Create or update user in Supabase using Clerk authentication
           const { error: upsertError } = await supabaseClient
@@ -63,7 +79,7 @@ export default function ClerkSupabaseProvider({
             console.error("Error upserting user to Supabase:", upsertError);
           } else {
             console.log(
-              "User successfully synced to Supabase using native integration"
+              "User successfully synced to Supabase using NATIVE Clerk integration"
             );
           }
         } catch (error) {

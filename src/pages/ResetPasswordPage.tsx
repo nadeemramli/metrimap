@@ -27,7 +27,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     // Handle the auth callback from Supabase
     const handleAuthCallback = async () => {
-      const { error } = await supabase.auth.getSession();
+      const { error } = await supabase().auth.getSession();
 
       if (error) {
         setError("Invalid or expired reset link. Please request a new one.");
@@ -57,7 +57,7 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { error } = await supabase().auth.updateUser({
         password: password,
       });
 
