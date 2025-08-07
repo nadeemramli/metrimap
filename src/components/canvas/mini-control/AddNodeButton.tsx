@@ -15,6 +15,10 @@ import type { CardCategory } from "@/lib/types";
 interface AddNodeButtonProps {
   position?: { x: number; y: number };
   asControlButton?: boolean;
+  onAddCustomNode?: (
+    type: "sourceNode" | "chartNode" | "operatorNode",
+    position?: { x: number; y: number }
+  ) => void;
 }
 
 const categoryTemplates: Array<{
@@ -58,6 +62,7 @@ const categoryTemplates: Array<{
 export default function AddNodeButton({
   position,
   asControlButton = false,
+  onAddCustomNode,
 }: AddNodeButtonProps) {
   const { createNode } = useCanvasStore();
 
@@ -140,6 +145,46 @@ export default function AddNodeButton({
             </div>
           </DropdownMenuItem>
         ))}
+
+        {/* Custom Nodes Section */}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Custom Nodes</DropdownMenuLabel>
+        <DropdownMenuItem
+          onClick={() => onAddCustomNode?.("sourceNode", position)}
+          className="flex items-start gap-3 p-3"
+        >
+          <span className="text-lg mt-0.5">🗄️</span>
+          <div className="flex-1">
+            <div className="font-medium text-sm">Source Node</div>
+            <div className="text-xs text-muted-foreground leading-relaxed">
+              Connect or generate data
+            </div>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => onAddCustomNode?.("chartNode", position)}
+          className="flex items-start gap-3 p-3"
+        >
+          <span className="text-lg mt-0.5">📈</span>
+          <div className="flex-1">
+            <div className="font-medium text-sm">Visualization Node</div>
+            <div className="text-xs text-muted-foreground leading-relaxed">
+              Drag fields and configure axes
+            </div>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => onAddCustomNode?.("operatorNode", position)}
+          className="flex items-start gap-3 p-3"
+        >
+          <span className="text-lg mt-0.5">⚙️</span>
+          <div className="flex-1">
+            <div className="font-medium text-sm">Operative Node</div>
+            <div className="text-xs text-muted-foreground leading-relaxed">
+              Apply formula/toggle/date logic
+            </div>
+          </div>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

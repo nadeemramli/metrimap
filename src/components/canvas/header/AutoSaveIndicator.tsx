@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Save, Clock, CheckCircle, AlertCircle } from "lucide-react";
-import { useAutoSave } from "@/hooks/useAutoSave";
+import { useAutoSave } from "@/lib/hooks/useAutoSave";
 import { useCanvasStore } from "@/lib/stores/canvasStore";
 import { cn } from "@/lib/utils";
 

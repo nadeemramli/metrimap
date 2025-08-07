@@ -45,8 +45,8 @@ import {
 import {
   useBulkOperations,
   type BulkUpdateData,
-} from "@/hooks/useBulkOperations";
-import { useAccessibility } from "@/hooks/useAccessibility";
+} from "@/lib/hooks/useBulkOperations";
+import { useAccessibility } from "@/lib/hooks/useAccessibility";
 
 interface BulkOperationsToolbarProps {
   className?: string;

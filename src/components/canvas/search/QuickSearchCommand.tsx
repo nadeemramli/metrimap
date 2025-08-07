@@ -18,12 +18,12 @@ import {
   ArrowRight,
   Command,
 } from "lucide-react";
-import { useSearch } from "@/hooks/useSearch";
+import { useSearch } from "@/lib/hooks/useSearch";
 import {
   useKeyboardShortcuts,
   createShortcut,
-} from "@/hooks/useKeyboardShortcuts";
-import type { SearchResult } from "@/hooks/useSearch";
+} from "@/lib/hooks/useKeyboardShortcuts";
+import type { SearchResult } from "@/lib/hooks/useSearch";
 
 interface QuickSearchCommandProps {
   isOpen: boolean;

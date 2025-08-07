@@ -1,9 +1,8 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Settings, Copy, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import TagsList from "@/components/canvas/TagsList";
+import TagsList from "@/components/canvas/node-function/TagsList";
 import type { MetricCard } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -43,11 +42,15 @@ const formatValue = (value: number): string => {
 const getTrendIcon = (trend: "up" | "down" | "neutral", size = 16) => {
   switch (trend) {
     case "up":
-      return <TrendingUp className={`h-${size/4} w-${size/4} text-green-600`} />;
+      return (
+        <TrendingUp className={`h-${size / 4} w-${size / 4} text-green-600`} />
+      );
     case "down":
-      return <TrendingDown className={`h-${size/4} w-${size/4} text-red-600`} />;
+      return (
+        <TrendingDown className={`h-${size / 4} w-${size / 4} text-red-600`} />
+      );
     default:
-      return <Minus className={`h-${size/4} w-${size/4} text-gray-600`} />;
+      return <Minus className={`h-${size / 4} w-${size / 4} text-gray-600`} />;
   }
 };
 
@@ -81,10 +84,12 @@ export function MetricCardView({
       <CardHeader className={compact ? "pb-2" : "pb-3"}>
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <CardTitle className={cn(
-              "text-base font-medium truncate",
-              compact && "text-sm"
-            )}>
+            <CardTitle
+              className={cn(
+                "text-base font-medium truncate",
+                compact && "text-sm"
+              )}
+            >
               {card.title}
             </CardTitle>
             {!compact && card.description && (
@@ -93,7 +98,7 @@ export function MetricCardView({
               </p>
             )}
           </div>
-          
+
           {showActions && (
             <div className="flex items-center gap-1 ml-2">
               <Button
@@ -143,11 +148,16 @@ export function MetricCardView({
                   </span>
                   <div className="flex items-center gap-1">
                     {getTrendIcon(dataPoint.trend)}
-                    <span className={cn(
-                      "text-xs",
-                      dataPoint.change_percent > 0 ? "text-green-600" : 
-                      dataPoint.change_percent < 0 ? "text-red-600" : "text-gray-600"
-                    )}>
+                    <span
+                      className={cn(
+                        "text-xs",
+                        dataPoint.change_percent > 0
+                          ? "text-green-600"
+                          : dataPoint.change_percent < 0
+                            ? "text-red-600"
+                            : "text-gray-600"
+                      )}
+                    >
                       {dataPoint.change_percent > 0 ? "+" : ""}
                       {dataPoint.change_percent.toFixed(1)}%
                     </span>
@@ -164,7 +174,11 @@ export function MetricCardView({
             <span className="text-xs text-muted-foreground">Factors:</span>
             <div className="flex flex-wrap gap-1">
               {card.causalFactors.slice(0, 2).map((factor) => (
-                <Badge key={factor} variant="purple" className="text-xs font-medium">
+                <Badge
+                  key={factor}
+                  variant="purple"
+                  className="text-xs font-medium"
+                >
                   {factor}
                 </Badge>
               ))}
@@ -181,7 +195,7 @@ export function MetricCardView({
         {card.tags && card.tags.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Tags:</span>
-            <TagsList 
+            <TagsList
               tags={card.tags}
               variant="secondary"
               maxDisplayTags={compact ? 1 : 3}
@@ -194,12 +208,11 @@ export function MetricCardView({
         {/* Metadata */}
         {!compact && (
           <div className="flex items-center justify-between mt-4 pt-3 border-t text-xs text-muted-foreground">
-            <span>
-              {new Date(card.updatedAt).toLocaleDateString()}
-            </span>
+            <span>{new Date(card.updatedAt).toLocaleDateString()}</span>
             {card.assignees && card.assignees.length > 0 && (
               <span>
-                Assigned to {card.assignees.length} user{card.assignees.length !== 1 ? 's' : ''}
+                Assigned to {card.assignees.length} user
+                {card.assignees.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>

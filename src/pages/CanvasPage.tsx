@@ -31,7 +31,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore } from "@/lib/stores";
 import { useEvidenceStore } from "@/lib/stores/evidenceStore";
-import { useClerkSupabase } from "@/hooks/useClerkSupabase";
+import { useClerkSupabase } from "@/lib/hooks/useClerkSupabase";
 import { useCanvasHeader } from "@/contexts/CanvasHeaderContext";
 import type {
   MetricCard as MetricCardType,
@@ -56,18 +56,21 @@ import {
   RelationshipSheet,
   GroupNode,
 } from "@/components/canvas";
-import EvidenceNode from "@/components/canvas/EvidenceNode";
+import EvidenceNode from "@/components/canvas/node/EvidenceNode";
+import ChartNode from "@/components/canvas/node/chart-node";
+import SourceNode from "@/components/canvas/node/source-node/source-node";
+import OperatorNode from "@/components/canvas/node/operator-node";
 import {
   useKeyboardShortcuts,
   createShortcut,
-} from "@/hooks/useKeyboardShortcuts";
+} from "@/lib/hooks/useKeyboardShortcuts";
 // import { useAccessibility } from "@/hooks/useAccessibility";
 import KeyboardShortcutsHelp from "@/components/ui/KeyboardShortcutsHelp";
 import QuickSearchCommand, {
   useQuickSearch,
-} from "@/components/search/QuickSearchCommand";
-import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
-import useAutoSave from "@/hooks/useAutoSave";
+} from "@/components/canvas/search/QuickSearchCommand";
+import AdvancedSearchModal from "@/components/canvas/search/AdvancedSearchModal";
+import useAutoSave from "@/lib/hooks/useAutoSave";
 import { generateUUID } from "@/lib/utils/validation";
 import { applyAutoLayout } from "@/lib/utils/autoLayout";
 import { toast } from "sonner";
@@ -77,10 +80,10 @@ import {
   type FilterOptions,
 } from "@/lib/utils/filterUtils";
 
-import SelectionPanel from "@/components/canvas/SelectionPanel";
-import FilterModal from "@/components/canvas/FilterModal";
-import LayoutControls from "@/components/canvas/LayoutControls";
-import DebugPanel from "@/components/canvas/DebugPanel";
+import SelectionPanel from "@/components/canvas/grouping/SelectionPanel";
+import FilterModal from "@/components/canvas/mini-control/FilterModal";
+import LayoutControls from "@/components/canvas/mini-control/LayoutControls";
+import DebugPanel from "@/components/canvas/left-sidepanel/DebugPanel";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -219,6 +222,9 @@ const nodeTypes = {
   metricCard: MetricCard,
   groupNode: GroupNode,
   evidenceNode: EvidenceNode,
+  sourceNode: SourceNode,
+  chartNode: ChartNode,
+  operatorNode: OperatorNode,
 };
 
 const edgeTypes = {
@@ -244,6 +250,8 @@ function CanvasPageInner() {
     position: { x: number; y: number };
     sourceNodeId: string;
   } | null>(null);
+  // Ephemeral nodes for custom node types (source/chart/operator)
+  const [extraNodes, setExtraNodes] = useState<Node[]>([]);
 
   // Proximity Connect - REMOVED for better drag/toolbar UX
 
@@ -266,6 +274,17 @@ function CanvasPageInner() {
   >("TB");
 
   const reactFlowRef = useRef<HTMLDivElement>(null);
+  // Listen for temp node additions from AddNodeButton
+  useEffect(() => {
+    const handler = (e: any) => {
+      const node = e?.detail as Node | undefined;
+      if (node) {
+        setExtraNodes((prev) => [...prev, node]);
+      }
+    };
+    window.addEventListener("rf:addTempNode", handler as any);
+    return () => window.removeEventListener("rf:addTempNode", handler as any);
+  }, []);
 
   // Initialize auto-save functionality
   useAutoSave();
@@ -1084,7 +1103,7 @@ function CanvasPageInner() {
       );
 
     // Groups should be rendered last (on top of other nodes)
-    return [...metricNodes, ...evidenceNodes, ...groupNodes];
+    return [...metricNodes, ...evidenceNodes, ...groupNodes, ...extraNodes];
   }, [
     canvas?.nodes,
     canvas?.groups,
@@ -1102,6 +1121,7 @@ function CanvasPageInner() {
     updateEvidence,
     deleteEvidence,
     evidenceList,
+    extraNodes,
   ]);
   const edges = useMemo(
     () =>
@@ -1686,6 +1706,39 @@ function CanvasPageInner() {
             <AddNodeButton
               position={{ x: 100, y: 100 }}
               asControlButton={true}
+              onAddCustomNode={(type, pos) => {
+                const id = `temp-${type}-${Date.now()}`;
+                const position = pos || { x: 100, y: 100 };
+                const base: any = { id, position, data: {}, type };
+                if (type === "sourceNode") {
+                  base.data = {
+                    title: "Source",
+                    sourceType: "random",
+                    sample: [],
+                  };
+                } else if (type === "chartNode") {
+                  base.data = {
+                    title: "Chart",
+                    chartType: "bar",
+                    xAxis: null,
+                    yAxis: null,
+                    data: [],
+                  };
+                } else if (type === "operatorNode") {
+                  base.data = {
+                    label: "Operator",
+                    operationType: "formula",
+                    isActive: true,
+                  };
+                }
+                // Append to local visible list by leveraging ReactFlow add by edges/nodes state if available
+                // Fallback: show toast instructing user to create a Data/Metric card and connect
+                try {
+                  (window as any).dispatchEvent?.(
+                    new CustomEvent("rf:addTempNode", { detail: base })
+                  );
+                } catch {}
+              }}
             />
 
             {/* Search & Navigation */}

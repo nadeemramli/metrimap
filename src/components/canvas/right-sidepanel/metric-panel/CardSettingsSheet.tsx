@@ -37,11 +37,11 @@ import {
   Calendar,
   User,
 } from "lucide-react";
-import { InlineEditableField } from "@/components/inline-editable-field";
-import { DataEventsTab } from "@/components/tabs/data-events-tab";
-import { ResultsTab } from "@/components/tabs/results-tab";
-import { CommentsTab } from "@/components/tabs/comments-tab";
-import { SettingsTab } from "@/components/tabs/settings-tab";
+import { InlineEditableField } from "@/components/canvas/node-function/inline-editable-field";
+import { DataEventsTab } from "@/components/canvas/right-sidepanel/relationship-panel/tabs/data-events-tab";
+import { ResultsTab } from "@/components/canvas/right-sidepanel/relationship-panel/tabs/results-tab";
+import { CommentsTab } from "@/components/canvas/right-sidepanel/relationship-panel/tabs/comments-tab";
+import { SettingsTab } from "@/components/canvas/right-sidepanel/relationship-panel/tabs/settings-tab";
 import EvidenceDialog from "@/components/evidence/EvidenceDialog";
 
 import { useCanvasStore } from "@/lib/stores";
@@ -55,6 +55,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import DataTransformationNode from "@/components/canvas/node/source-node/data-transformation-node";
 
 interface CardSettingsSheetProps {
   isOpen: boolean;
@@ -357,6 +358,13 @@ function CardSettingsSheetComponent({
                   </TabsTrigger>
 
                   <TabsTrigger
+                    value="source"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                  >
+                    Source
+                  </TabsTrigger>
+
+                  <TabsTrigger
                     value="segments"
                     className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
                   >
@@ -391,6 +399,42 @@ function CardSettingsSheetComponent({
                   isModified={isModified}
                   onFieldChange={handleTabChange}
                 />
+              </TabsContent>
+
+              <TabsContent value="source" className="space-y-6 pt-2">
+                <div className="border rounded-lg p-2">
+                  <DataTransformationNode
+                    nodeName="source_pipeline"
+                    onDataTransform={(rows: any[]) => {
+                      if (cardId) {
+                        try {
+                          const mapped = Array.isArray(rows)
+                            ? rows.slice(0, 60).map((r, i) => ({
+                                period: (
+                                  r.timestamp ||
+                                  r.date ||
+                                  r.signup_date ||
+                                  `P${i + 1}`
+                                ).toString(),
+                                value: Number(
+                                  r.value ?? r.price ?? r.quantity ?? r.age ?? 0
+                                ),
+                                change_percent: 0,
+                                trend: "neutral" as const,
+                              }))
+                            : [];
+                          persistNodeUpdate(cardId, {
+                            data: mapped,
+                            sourceType: "Random",
+                            updatedAt: new Date().toISOString(),
+                          } as any);
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }
+                    }}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="results" className="space-y-6 pt-2">

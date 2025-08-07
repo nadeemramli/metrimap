@@ -46,10 +46,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import TagsList from "./TagsList";
+import TagsList from "@/components/canvas/node-function/TagsList";
 import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
 import { cn } from "@/lib/utils";
-import { useAccessibility } from "@/hooks/useAccessibility";
+import { useAccessibility } from "@/lib/hooks/useAccessibility";
 import { useCanvasStore } from "@/lib/stores/canvasStore";
 import { DimensionSliceModal } from "./index";
 import type {
