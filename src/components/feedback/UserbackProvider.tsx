@@ -41,9 +41,13 @@ export default function UserbackProvider({ children }: UserbackProviderProps) {
             info: {
               name: user.fullName || user.firstName || "User",
               email: user.emailAddresses?.[0]?.emailAddress || "",
-              // Additional user context
-              created_at: user.createdAt,
-              last_sign_in: user.lastSignInAt,
+              // Additional user context - convert to strings for Userback compatibility
+              created_at: user.createdAt
+                ? new Date(user.createdAt).toISOString()
+                : undefined,
+              last_sign_in: user.lastSignInAt
+                ? new Date(user.lastSignInAt).toISOString()
+                : undefined,
             },
           };
 
@@ -62,6 +66,21 @@ export default function UserbackProvider({ children }: UserbackProviderProps) {
         // Optional: Add custom styling or configuration
         if (userback) {
           console.log("✅ Userback widget successfully initialized");
+          console.log("🔧 Userback widget object:", userback);
+
+          // Test if widget can be opened manually
+          setTimeout(() => {
+            try {
+              if (window.Userback) {
+                console.log("🔧 Testing Userback widget open...");
+                window.Userback.open();
+              }
+            } catch (error) {
+              console.error("❌ Error testing Userback widget:", error);
+            }
+          }, 3000); // Wait 3 seconds before testing
+        } else {
+          console.warn("⚠️ Userback widget returned null/undefined");
         }
       } catch (error) {
         console.error("❌ Error initializing Userback:", error);

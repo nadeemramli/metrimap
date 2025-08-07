@@ -30,6 +30,9 @@ export default function DevUserbackProvider({
               name: user.name || "Development User",
               email: user.email || "dev@canvasm.app",
               environment: "development",
+              // Add timestamps as strings for Userback compatibility
+              created_at: new Date().toISOString(),
+              last_sign_in: new Date().toISOString(),
             },
           };
 
