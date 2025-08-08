@@ -1,4 +1,4 @@
-import React from "react";
+// no React import needed with automatic runtime
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tag } from "lucide-react";

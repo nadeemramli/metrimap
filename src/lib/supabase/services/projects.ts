@@ -1,16 +1,16 @@
-import { supabase } from '../client';
-import type { Tables, TablesInsert, TablesUpdate } from '../types';
-import type { CanvasProject } from '../../types';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../types';
+import { supabase } from "../client";
+import type { Tables, TablesInsert, TablesUpdate } from "../types";
+import type { CanvasProject } from "../../types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../types";
 
-export type Project = Tables<'projects'>;
-export type ProjectInsert = TablesInsert<'projects'>;
-export type ProjectUpdate = TablesUpdate<'projects'>;
+export type Project = Tables<"projects">;
+export type ProjectInsert = TablesInsert<"projects">;
+export type ProjectUpdate = TablesUpdate<"projects">;
 
-export type MetricCard = Tables<'metric_cards'>;
-export type Relationship = Tables<'relationships'>;
-export type Group = Tables<'groups'>;
+export type MetricCard = Tables<"metric_cards">;
+export type Relationship = Tables<"relationships">;
+export type Group = Tables<"groups">;
 
 // Fetch all projects for a user (fixed to eliminate RLS circular dependencies)
 export async function getUserProjects(
@@ -18,59 +18,65 @@ export async function getUserProjects(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
-  
+
   // Step 1: Get projects owned by user (RLS handles this)
   const { data: ownedProjects, error: ownedError } = await client
-    .from('projects')
-    .select(`
+    .from("projects")
+    .select(
+      `
       *,
       project_collaborators(
         role,
         permissions,
         users(id, name, email, avatar_url)
       )
-    `)
-    .eq('created_by', userId)
-    .order('updated_at', { ascending: false });
+    `
+    )
+    .eq("created_by", userId)
+    .order("updated_at", { ascending: false });
 
   if (ownedError) {
-    console.error('Error fetching owned projects:', ownedError);
+    console.error("Error fetching owned projects:", ownedError);
     throw ownedError;
   }
 
   // Step 2: Get project IDs where user is a collaborator
   const { data: collaborations, error: collabError } = await client
-    .from('project_collaborators')
-    .select('project_id')
-    .eq('user_id', userId);
+    .from("project_collaborators")
+    .select("project_id")
+    .eq("user_id", userId);
 
   if (collabError) {
-    console.error('Error fetching collaborations:', collabError);
+    console.error("Error fetching collaborations:", collabError);
     throw collabError;
   }
 
   // Step 3: Get collaborated projects (if any)
   let collaboratedProjects: any[] = [];
   if (collaborations && collaborations.length > 0) {
-    const projectIds = collaborations.map(c => c.project_id).filter(id => id !== null);
-    
+    const projectIds = collaborations
+      .map((c) => c.project_id)
+      .filter((id) => id !== null);
+
     if (projectIds.length > 0) {
       const { data, error } = await client
-        .from('projects')
-        .select(`
+        .from("projects")
+        .select(
+          `
           *,
           project_collaborators(
             role,
             permissions,
             users(id, name, email, avatar_url)
           )
-        `)
-        .in('id', projectIds)
-        .neq('created_by', userId) // Avoid duplicates with owned projects
-        .order('updated_at', { ascending: false });
+        `
+        )
+        .in("id", projectIds)
+        .neq("created_by", userId) // Avoid duplicates with owned projects
+        .order("updated_at", { ascending: false });
 
       if (error) {
-        console.error('Error fetching collaborated projects:', error);
+        console.error("Error fetching collaborated projects:", error);
         throw error;
       }
 
@@ -79,8 +85,10 @@ export async function getUserProjects(
   }
 
   // Step 4: Combine and sort all projects
-  const allProjects = [...(ownedProjects || []), ...collaboratedProjects]
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  const allProjects = [...(ownedProjects || []), ...collaboratedProjects].sort(
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  );
 
   return allProjects;
 }
@@ -90,152 +98,161 @@ export async function getProjectById(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<CanvasProject | null> {
-  console.log('🔍 getProjectById called with projectId:', projectId);
-  console.log('🔍 authenticatedClient provided:', !!authenticatedClient);
-  
+  console.log("🔍 getProjectById called with projectId:", projectId);
+  console.log("🔍 authenticatedClient provided:", !!authenticatedClient);
+
   const client = authenticatedClient || supabase();
   const { data: project, error: projectError } = await client
-    .from('projects')
-    .select(`
+    .from("projects")
+    .select(
+      `
       *,
       project_collaborators(
         role,
         permissions,
         users(id, name, email, avatar_url)
       )
-    `)
-    .eq('id', projectId)
+    `
+    )
+    .eq("id", projectId)
     .single();
 
   if (projectError) {
-    console.error('Error fetching project:', projectError);
+    console.error("Error fetching project:", projectError);
     throw projectError;
   }
 
   if (!project) {
-    console.log('❌ No project found for ID:', projectId);
+    console.log("❌ No project found for ID:", projectId);
     return null;
   }
 
-  console.log('✅ Project found:', project.name);
+  console.log("✅ Project found:", project.name);
 
   // Fetch metric cards
   const { data: metricCards, error: cardsError } = await client
-    .from('metric_cards')
-    .select('*')
-    .eq('project_id', projectId);
+    .from("metric_cards")
+    .select("*")
+    .eq("project_id", projectId);
 
-  console.log('🔍 Metric cards query result:', { data: metricCards?.length || 0, error: cardsError });
+  console.log("🔍 Metric cards query result:", {
+    data: metricCards?.length || 0,
+    error: cardsError,
+  });
 
   if (cardsError) {
-    console.error('Error fetching metric cards:', cardsError);
+    console.error("Error fetching metric cards:", cardsError);
     throw cardsError;
   }
 
-  console.log('✅ Metric cards fetched:', metricCards?.length || 0);
+  console.log("✅ Metric cards fetched:", metricCards?.length || 0);
 
   // Fetch relationships with evidence
   let relationships: any[] = [];
-  
+
   // First try with evidence_items
-  const { data: relationshipsWithEvidence, error: relationshipsError } = await client
-    .from('relationships')
-    .select(`
+  const { data: relationshipsWithEvidence, error: relationshipsError } =
+    await client
+      .from("relationships")
+      .select(
+        `
       *,
       evidence_items(*)
-    `)
-    .eq('project_id', projectId);
+    `
+      )
+      .eq("project_id", projectId);
 
   if (relationshipsError) {
-    console.error('Error fetching relationships with evidence:', relationshipsError);
+    console.error(
+      "Error fetching relationships with evidence:",
+      relationshipsError
+    );
     // Try fetching relationships without evidence_items
-    const { data: relationshipsWithoutEvidence, error: relationshipsError2 } = await client
-      .from('relationships')
-      .select('*')
-      .eq('project_id', projectId);
-    
+    const { data: relationshipsWithoutEvidence, error: relationshipsError2 } =
+      await client
+        .from("relationships")
+        .select("*")
+        .eq("project_id", projectId);
+
     if (relationshipsError2) {
-      console.error('Error fetching relationships (second attempt):', relationshipsError2);
+      console.error(
+        "Error fetching relationships (second attempt):",
+        relationshipsError2
+      );
       throw relationshipsError2;
     }
-    
-    console.log('⚠️ Relationships fetched without evidence_items:', relationshipsWithoutEvidence?.length || 0);
+
+    console.log(
+      "⚠️ Relationships fetched without evidence_items:",
+      relationshipsWithoutEvidence?.length || 0
+    );
     relationships = relationshipsWithoutEvidence || [];
   } else {
-    console.log('✅ Relationships fetched with evidence:', relationshipsWithEvidence?.length || 0);
+    console.log(
+      "✅ Relationships fetched with evidence:",
+      relationshipsWithEvidence?.length || 0
+    );
     relationships = relationshipsWithEvidence || [];
   }
 
   // If we still have no relationships, try a simpler query
   if (relationships.length === 0) {
-    console.log('🔍 No relationships found, trying simple query...');
+    console.log("🔍 No relationships found, trying simple query...");
     const { data: simpleRelationships, error: simpleError } = await client
-      .from('relationships')
-      .select('id, source_id, target_id, type, confidence, weight, project_id')
-      .eq('project_id', projectId);
-    
+      .from("relationships")
+      .select("id, source_id, target_id, type, confidence, weight, project_id")
+      .eq("project_id", projectId);
+
     if (simpleError) {
-      console.error('Error with simple relationships query:', simpleError);
+      console.error("Error with simple relationships query:", simpleError);
     } else {
-      console.log('✅ Simple relationships query successful:', simpleRelationships?.length || 0);
+      console.log(
+        "✅ Simple relationships query successful:",
+        simpleRelationships?.length || 0
+      );
       relationships = simpleRelationships || [];
     }
   }
 
-  console.log('✅ Final relationships count:', relationships.length);
-  console.log('🔍 Sample relationship:', relationships?.[0]);
+  console.log("✅ Final relationships count:", relationships.length);
+  console.log("🔍 Sample relationship:", relationships?.[0]);
 
   // Fetch groups
   const { data: groups, error: groupsError } = await client
-    .from('groups')
-    .select('*')
-    .eq('project_id', projectId);
+    .from("groups")
+    .select("*")
+    .eq("project_id", projectId);
 
-  console.log('🔍 Groups query result:', { data: groups?.length || 0, error: groupsError });
+  console.log("🔍 Groups query result:", {
+    data: groups?.length || 0,
+    error: groupsError,
+  });
 
   if (groupsError) {
-    console.error('Error fetching groups:', groupsError);
+    console.error("Error fetching groups:", groupsError);
     throw groupsError;
   }
 
-  console.log('✅ Groups fetched:', groups?.length || 0);
+  console.log("✅ Groups fetched:", groups?.length || 0);
 
   // Transform database data to CanvasProject format
   const canvasProject: CanvasProject = {
     id: project.id,
     name: project.name,
-    description: project.description || '',
+    description: project.description || "",
     tags: project.tags || [],
-    collaborators: project.project_collaborators?.map((pc: any) => pc.users.email) || [],
-    
+    collaborators:
+      project.project_collaborators?.map((pc: any) => pc.users.email) || [],
+
     // Transform metric cards to match our MetricCard interface
-    nodes: metricCards?.map((card: MetricCard) => ({
-      id: card.id,
-      title: card.title,
-      description: card.description || '',
-      category: card.category as any,
-      subCategory: card.sub_category as any,
-      tags: [], // Tags are now stored in metric_card_tags junction table
-      causalFactors: (card.causal_factors || []) as any,
-      dimensions: (card.dimensions || []) as any,
-      segments: [],
-      position: { x: card.position_x, y: card.position_y },
-      parentId: undefined,
-      data: card.data as any,
-      sourceType: card.source_type as any,
-      formula: card.formula || undefined,
-      owner: card.owner_id || '',
-      assignees: card.assignees || [],
-      createdAt: card.created_at || new Date().toISOString(),
-      updatedAt: card.updated_at || new Date().toISOString(),
-      // Add card data for CanvasPreview compatibility
-      card: {
+    nodes:
+      metricCards?.map((card: MetricCard) => ({
         id: card.id,
         title: card.title,
-        description: card.description || '',
+        description: card.description || "",
         category: card.category as any,
         subCategory: card.sub_category as any,
-        tags: [],
+        tags: [], // Tags are now stored in metric_card_tags junction table
         causalFactors: (card.causal_factors || []) as any,
         dimensions: (card.dimensions || []) as any,
         segments: [],
@@ -244,88 +261,111 @@ export async function getProjectById(
         data: card.data as any,
         sourceType: card.source_type as any,
         formula: card.formula || undefined,
-        owner: card.owner_id || '',
+        owner: card.owner_id || "",
         assignees: card.assignees || [],
         createdAt: card.created_at || new Date().toISOString(),
         updatedAt: card.updated_at || new Date().toISOString(),
-      },
-    })) || [],
+        // Add card data for CanvasPreview compatibility
+        card: {
+          id: card.id,
+          title: card.title,
+          description: card.description || "",
+          category: card.category as any,
+          subCategory: card.sub_category as any,
+          tags: [],
+          causalFactors: (card.causal_factors || []) as any,
+          dimensions: (card.dimensions || []) as any,
+          segments: [],
+          position: { x: card.position_x, y: card.position_y },
+          parentId: undefined,
+          data: card.data as any,
+          sourceType: card.source_type as any,
+          formula: card.formula || undefined,
+          owner: card.owner_id || "",
+          assignees: card.assignees || [],
+          createdAt: card.created_at || new Date().toISOString(),
+          updatedAt: card.updated_at || new Date().toISOString(),
+        },
+      })) || [],
 
     // Transform relationships to match our Relationship interface
-    edges: relationships?.map((rel: any) => {
-      console.log('🔍 Transforming relationship:', rel);
-      const transformed = {
-        id: rel.id,
-        sourceId: rel.source_id,
-        targetId: rel.target_id,
-        source: rel.source_id, // For CanvasPreview compatibility
-        target: rel.target_id, // For CanvasPreview compatibility
-        type: rel.type as any,
-        confidence: rel.confidence as any,
-        weight: rel.weight || 1,
-        description: rel.description || '',
-        evidence: rel.evidence_items?.map((evidence: any) => ({
-          id: evidence.id,
-          title: evidence.title,
-          type: evidence.type as any,
-          date: evidence.date,
-          owner: evidence.owner_id || '',
-          link: evidence.link || undefined,
-          hypothesis: evidence.hypothesis || undefined,
-          summary: evidence.summary,
-          impactOnConfidence: evidence.impact_on_confidence || undefined,
-        })) || [],
-        createdAt: rel.created_at || new Date().toISOString(),
-        updatedAt: rel.updated_at || new Date().toISOString(),
-      };
-      console.log('🔍 Transformed relationship:', transformed);
-      return transformed;
-    }) || [],
+    edges:
+      relationships?.map((rel: any) => {
+        console.log("🔍 Transforming relationship:", rel);
+        const transformed = {
+          id: rel.id,
+          sourceId: rel.source_id,
+          targetId: rel.target_id,
+          source: rel.source_id, // For CanvasPreview compatibility
+          target: rel.target_id, // For CanvasPreview compatibility
+          type: rel.type as any,
+          confidence: rel.confidence as any,
+          weight: rel.weight || 1,
+          description: rel.description || "",
+          evidence:
+            rel.evidence_items?.map((evidence: any) => ({
+              id: evidence.id,
+              title: evidence.title,
+              type: evidence.type as any,
+              date: evidence.date,
+              owner: evidence.owner_id || "",
+              link: evidence.link || undefined,
+              hypothesis: evidence.hypothesis || undefined,
+              summary: evidence.summary,
+              impactOnConfidence: evidence.impact_on_confidence || undefined,
+            })) || [],
+          createdAt: rel.created_at || new Date().toISOString(),
+          updatedAt: rel.updated_at || new Date().toISOString(),
+        };
+        console.log("🔍 Transformed relationship:", transformed);
+        return transformed;
+      }) || [],
 
     // Transform groups to match our GroupNode interface
-    groups: groups?.map((group: Group) => ({
-      id: group.id,
-      name: group.name,
-      description: group.description || '',
-      color: group.color || '#e5e7eb',
-      nodeIds: group.node_ids || [],
-      position: { x: group.position_x, y: group.position_y },
-      size: { width: group.width, height: group.height },
-      isCollapsed: false,
-      createdAt: group.created_at || new Date().toISOString(),
-      updatedAt: group.updated_at || new Date().toISOString(),
-    })) || [],
+    groups:
+      groups?.map((group: Group) => ({
+        id: group.id,
+        name: group.name,
+        description: group.description || "",
+        color: group.color || "#e5e7eb",
+        nodeIds: group.node_ids || [],
+        position: { x: group.position_x, y: group.position_y },
+        size: { width: group.width, height: group.height },
+        isCollapsed: false,
+        createdAt: group.created_at || new Date().toISOString(),
+        updatedAt: group.updated_at || new Date().toISOString(),
+      })) || [],
 
-    settings: project.settings as any || {},
+    settings: (project.settings as any) || {},
     createdAt: project.created_at || new Date().toISOString(),
     updatedAt: project.updated_at || new Date().toISOString(),
     lastModifiedBy: project.last_modified_by || project.created_by,
   };
 
-  console.log('✅ CanvasProject created with:', {
+  console.log("✅ CanvasProject created with:", {
     nodes: canvasProject.nodes.length,
     edges: canvasProject.edges.length,
     groups: canvasProject.groups.length,
   });
-  console.log('🔍 Sample transformed relationship:', canvasProject.edges?.[0]);
+  console.log("🔍 Sample transformed relationship:", canvasProject.edges?.[0]);
 
   return canvasProject;
 }
 
 // Create a new project
 export async function createProject(
-  project: Omit<ProjectInsert, 'id'>,
+  project: Omit<ProjectInsert, "id">,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
   const { data, error } = await client
-    .from('projects')
+    .from("projects")
     .insert(project)
     .select()
     .single();
 
   if (error) {
-    console.error('Error creating project:', error);
+    console.error("Error creating project:", error);
     throw error;
   }
 
@@ -334,24 +374,41 @@ export async function createProject(
 
 // Update a project
 export async function updateProject(
-  id: string, 
+  id: string,
   updates: ProjectUpdate,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
   const { data, error } = await client
-    .from('projects')
+    .from("projects")
     .update(updates)
-    .eq('id', id)
+    .eq("id", id)
     .select()
     .single();
 
   if (error) {
-    console.error('Error updating project:', error);
+    console.error("Error updating project:", error);
     throw error;
   }
 
   return data;
+}
+
+// Convenience helpers for settings JSON merges
+export async function mergeProjectSettings(
+  projectId: string,
+  partialSettings: Record<string, any>,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase();
+  const { data: proj, error: fetchErr } = await client
+    .from("projects")
+    .select("settings")
+    .eq("id", projectId)
+    .single();
+  if (fetchErr) throw fetchErr;
+  const next = { ...(proj?.settings || {}), ...partialSettings } as any;
+  return updateProject(projectId, { settings: next } as any, client);
 }
 
 // Delete a project
@@ -360,43 +417,43 @@ export async function deleteProject(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
-  const { error } = await client
-    .from('projects')
-    .delete()
-    .eq('id', id);
+  const { error } = await client.from("projects").delete().eq("id", id);
 
   if (error) {
-    console.error('Error deleting project:', error);
+    console.error("Error deleting project:", error);
     throw error;
   }
 }
 
 // Duplicate a project
 export async function duplicateProject(
-  projectId: string, 
-  newName: string, 
+  projectId: string,
+  newName: string,
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const originalProject = await getProjectById(projectId, authenticatedClient);
-  
+
   if (!originalProject) {
-    throw new Error('Project not found');
+    throw new Error("Project not found");
   }
 
   // Create new project
-  const newProject = await createProject({
-    name: newName,
-    description: originalProject.description,
-    tags: originalProject.tags,
-    settings: originalProject.settings as any,
-    created_by: userId,
-    last_modified_by: userId,
-  }, authenticatedClient);
+  const newProject = await createProject(
+    {
+      name: newName,
+      description: originalProject.description,
+      tags: originalProject.tags,
+      settings: originalProject.settings as any,
+      created_by: userId,
+      last_modified_by: userId,
+    },
+    authenticatedClient
+  );
 
   // TODO: Copy metric cards, relationships, and groups
   // This would involve creating new records with new IDs
-  
+
   return newProject;
 }
 
@@ -415,7 +472,7 @@ export async function createGroup(
 ) {
   const client = authenticatedClient || supabase();
   const { data, error } = await client
-    .from('groups')
+    .from("groups")
     .insert({
       id: group.id,
       name: group.name,
@@ -431,7 +488,7 @@ export async function createGroup(
     .single();
 
   if (error) {
-    console.error('Error creating group:', error);
+    console.error("Error creating group:", error);
     throw error;
   }
 
@@ -439,7 +496,7 @@ export async function createGroup(
 }
 
 export async function updateGroup(
-  groupId: string, 
+  groupId: string,
   updates: {
     name?: string;
     nodeIds?: string[];
@@ -449,7 +506,7 @@ export async function updateGroup(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const updateData: any = {};
-  
+
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.nodeIds !== undefined) updateData.node_ids = updates.nodeIds;
   if (updates.position !== undefined) {
@@ -463,14 +520,14 @@ export async function updateGroup(
 
   const client = authenticatedClient || supabase();
   const { data, error } = await client
-    .from('groups')
+    .from("groups")
     .update(updateData)
-    .eq('id', groupId)
+    .eq("id", groupId)
     .select()
     .single();
 
   if (error) {
-    console.error('Error updating group:', error);
+    console.error("Error updating group:", error);
     throw error;
   }
 
@@ -482,13 +539,10 @@ export async function deleteGroup(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
-  const { error } = await client
-    .from('groups')
-    .delete()
-    .eq('id', groupId);
+  const { error } = await client.from("groups").delete().eq("id", groupId);
 
   if (error) {
-    console.error('Error deleting group:', error);
+    console.error("Error deleting group:", error);
     throw error;
   }
 }

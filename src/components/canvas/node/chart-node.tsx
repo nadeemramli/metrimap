@@ -127,7 +127,7 @@ const ChartNodeInner = memo(({ data, selected }: NodeProps) => {
   return (
     <Card
       className={cn(
-        "w-80 bg-card border-2 rounded-lg shadow-lg",
+        "w-80 bg-white dark:bg-white-300 border-2 rounded-lg shadow-lg",
         selected && "ring-2 ring-blue-500"
       )}
     >

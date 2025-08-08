@@ -16,7 +16,7 @@ interface AddNodeButtonProps {
   position?: { x: number; y: number };
   asControlButton?: boolean;
   onAddCustomNode?: (
-    type: "sourceNode" | "chartNode" | "operatorNode",
+    type: "sourceNode" | "chartNode" | "operatorNode" | "whiteboardNode",
     position?: { x: number; y: number }
   ) => void;
 }

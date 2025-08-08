@@ -55,7 +55,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import DataTransformationNode from "@/components/canvas/node/source-node/data-transformation-node";
+// Source pipeline UI is now owned by Source Node; removed from card settings
 
 interface CardSettingsSheetProps {
   isOpen: boolean;
@@ -357,12 +357,7 @@ function CardSettingsSheetComponent({
                     Results
                   </TabsTrigger>
 
-                  <TabsTrigger
-                    value="source"
-                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
-                  >
-                    Source
-                  </TabsTrigger>
+                  {/* Source tab removed; source pipeline is configured on Source Node */}
 
                   <TabsTrigger
                     value="segments"
@@ -401,41 +396,7 @@ function CardSettingsSheetComponent({
                 />
               </TabsContent>
 
-              <TabsContent value="source" className="space-y-6 pt-2">
-                <div className="border rounded-lg p-2">
-                  <DataTransformationNode
-                    nodeName="source_pipeline"
-                    onDataTransform={(rows: any[]) => {
-                      if (cardId) {
-                        try {
-                          const mapped = Array.isArray(rows)
-                            ? rows.slice(0, 60).map((r, i) => ({
-                                period: (
-                                  r.timestamp ||
-                                  r.date ||
-                                  r.signup_date ||
-                                  `P${i + 1}`
-                                ).toString(),
-                                value: Number(
-                                  r.value ?? r.price ?? r.quantity ?? r.age ?? 0
-                                ),
-                                change_percent: 0,
-                                trend: "neutral" as const,
-                              }))
-                            : [];
-                          persistNodeUpdate(cardId, {
-                            data: mapped,
-                            sourceType: "Random",
-                            updatedAt: new Date().toISOString(),
-                          } as any);
-                        } catch (e) {
-                          console.error(e);
-                        }
-                      }
-                    }}
-                  />
-                </div>
-              </TabsContent>
+              {/* Source tab content removed */}
 
               <TabsContent value="results" className="space-y-6 pt-2">
                 <ResultsTab

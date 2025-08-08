@@ -72,7 +72,7 @@ const OperatorNodeInner = memo(({ data, selected }: NodeProps) => {
   return (
     <Card
       className={cn(
-        "min-w-[220px] bg-card border-2 rounded-lg shadow-lg transition-all duration-200",
+        "min-w-[220px] bg-white dark:bg-white-300 border-2 rounded-lg shadow-lg transition-all duration-200",
         selected && "ring-2 ring-blue-500",
         localData.isActive ? "opacity-100" : "opacity-60"
       )}
