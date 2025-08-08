@@ -105,6 +105,20 @@ const WhiteboardOverlay = forwardRef<
 
   const excalidrawRef = useRef<any>(null);
   const debounceRef = useRef<number | null>(null);
+  const pendingActionsRef = useRef<Array<() => void>>([]);
+
+  const flushPending = useCallback(() => {
+    if (!excalidrawRef.current) return;
+    const actions = pendingActionsRef.current;
+    pendingActionsRef.current = [];
+    for (const act of actions) {
+      try {
+        act();
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
 
   // Expose export/clear via ref
   useImperativeHandle(ref, () => ({
@@ -150,36 +164,66 @@ const WhiteboardOverlay = forwardRef<
       }
     },
     setTool: (tool) => {
+      const run = () => excalidrawRef.current?.setActiveTool?.({ type: tool });
+      if (!excalidrawRef.current) {
+        pendingActionsRef.current.push(run);
+        return;
+      }
       try {
-        excalidrawRef.current?.setActiveTool?.({ type: tool });
+        run();
       } catch {}
     },
     setKeepToolActive: (locked: boolean) => {
-      try {
+      const run = () => {
         const appState = excalidrawRef.current?.getAppState?.();
         const type = appState?.activeTool?.type || "selection";
         excalidrawRef.current?.setActiveTool?.({ type, locked });
+      };
+      if (!excalidrawRef.current) {
+        pendingActionsRef.current.push(run);
+        return;
+      }
+      try {
+        run();
       } catch {}
     },
     setStrokeColor: (hex: string) => {
-      try {
+      const run = () =>
         excalidrawRef.current?.updateScene?.({
           appState: { currentItemStrokeColor: hex },
         });
+      if (!excalidrawRef.current) {
+        pendingActionsRef.current.push(run);
+        return;
+      }
+      try {
+        run();
       } catch {}
     },
     setBackgroundColor: (hex: string) => {
-      try {
+      const run = () =>
         excalidrawRef.current?.updateScene?.({
           appState: { currentItemBackgroundColor: hex },
         });
+      if (!excalidrawRef.current) {
+        pendingActionsRef.current.push(run);
+        return;
+      }
+      try {
+        run();
       } catch {}
     },
     setStrokeWidth: (px: number) => {
-      try {
+      const run = () =>
         excalidrawRef.current?.updateScene?.({
           appState: { currentItemStrokeWidth: px },
         });
+      if (!excalidrawRef.current) {
+        pendingActionsRef.current.push(run);
+        return;
+      }
+      try {
+        run();
       } catch {}
     },
   }));
@@ -212,11 +256,17 @@ const WhiteboardOverlay = forwardRef<
     <div style={style} className={className}>
       <Suspense fallback={null}>
         <Excalidraw
-          ref={excalidrawRef}
+          ref={(api: any) => {
+            excalidrawRef.current = api;
+            flushPending();
+          }}
           initialData={
             initialData || { appState: { viewBackgroundColor: "transparent" } }
           }
           onChange={handleChange}
+          // Ensure Excalidraw itself is transparent and accepts pointer events only when active
+          UIOptions={{ canvasActions: { changeViewBackgroundColor: false } }}
+          onChangeCapture={() => flushPending()}
         />
       </Suspense>
     </div>

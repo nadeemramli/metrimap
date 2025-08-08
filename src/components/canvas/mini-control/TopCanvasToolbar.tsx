@@ -26,6 +26,7 @@ import {
   ArrowDownUp,
   ArrowLeftRight,
   ArrowRightLeft,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -137,7 +138,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
         top: 8,
         left: "50%",
         transform: "translateX(-50%)",
-        zIndex: 40,
+        zIndex: 1001,
         pointerEvents: "auto",
       }}
       className={cn("pointer-events-auto select-none")}
@@ -220,9 +221,10 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
                       }
                       size="sm"
                       className="justify-start"
-                      onClick={() =>
-                        props.onChangeLayoutDirection(opt.k as any)
-                      }
+                      onClick={() => {
+                        props.onChangeLayoutDirection(opt.k as any);
+                        window.dispatchEvent(new Event("openUnifiedLayout"));
+                      }}
                     >
                       {opt.label}
                     </Button>

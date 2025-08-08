@@ -88,7 +88,7 @@ import {
 
 import SelectionPanel from "@/components/canvas/grouping/SelectionPanel";
 import FilterModal from "@/components/canvas/mini-control/FilterModal";
-import LayoutControls from "@/components/canvas/mini-control/LayoutControls";
+import { UnifiedLayoutControls } from "@/components/canvas/mini-control";
 import DebugPanel from "@/components/canvas/left-sidepanel/DebugPanel";
 import TopCanvasToolbar from "@/components/canvas/mini-control/TopCanvasToolbar";
 import {
@@ -1961,7 +1961,7 @@ function CanvasPageInner() {
             ]}
             minZoom={0.05}
             maxZoom={3}
-            panOnScroll={true}
+            panOnScroll={toolbarMode !== "draw"}
             zoomOnScroll={toolbarMode !== "draw"}
             onMoveEnd={() => {
               try {
@@ -1977,9 +1977,9 @@ function CanvasPageInner() {
             fitViewOptions={{ padding: 0.1 }}
             proOptions={{ hideAttribution: true }}
             // Enable subflow behavior
-            nodesDraggable={true}
-            nodesConnectable={true}
-            elementsSelectable={true}
+            nodesDraggable={toolbarMode !== "draw"}
+            nodesConnectable={toolbarMode !== "draw"}
+            elementsSelectable={toolbarMode !== "draw"}
             // Ensure proper layering
             elevateNodesOnSelect={true}
             elevateEdgesOnSelect={true}
@@ -2135,8 +2135,11 @@ function CanvasPageInner() {
               }}
               onClearWhiteboard={() => whiteboardRef.current?.clear()}
               onSetDrawTool={(tool) => {
-                whiteboardRef.current?.setTool(tool);
                 setDrawActiveTool(tool);
+                whiteboardRef.current?.setTool(tool);
+                if (keepToolActive != null) {
+                  whiteboardRef.current?.setKeepToolActive(keepToolActive);
+                }
               }}
               onSetStrokeColor={(hex) => {
                 setDrawStrokeColor(hex);
@@ -2206,6 +2209,7 @@ function CanvasPageInner() {
             <WhiteboardOverlay
               ref={whiteboardRef as any}
               isActive={isWhiteboardActive}
+              zIndex={30}
               viewport={getViewport?.() || { x: 0, y: 0, zoom: 1 }}
               initialData={
                 whiteboardScene || {
