@@ -11,9 +11,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAppStore } from "@/lib/stores";
+import { isDevelopmentEnvironment } from "@/lib/supabase/client";
 
 export function UserMenu() {
-  const { user } = useUser();
+  const { user: clerkUser } = useUser();
+  const devUser = useAppStore((s) => s.user);
+  const isDev = isDevelopmentEnvironment();
+
+  // Prefer Clerk user when available; otherwise use development user from app store
+  const user =
+    clerkUser ||
+    (isDev && devUser
+      ? {
+          fullName: devUser.name,
+          imageUrl: "",
+          emailAddresses: [{ emailAddress: devUser.email }],
+          firstName: devUser.name?.split(" ")[0] ?? "",
+          lastName: devUser.name?.split(" ").slice(1).join(" ") ?? "",
+        }
+      : null);
 
   if (!user) return null;
 

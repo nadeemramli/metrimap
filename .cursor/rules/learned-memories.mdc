@@ -1,615 +1,73 @@
 # Project Memory
 
-This file stores project-specific knowledge, conventions, and user preferences learned by the AI assistant. It is secondary to the main project goals outlined in `prd.md`.
-
-## Project Understanding
-
-### Core Purpose
-
-Metrimap is a visual-first business intelligence tool that transforms abstract business concepts into structured, analyzable metric trees. The goal is to make an organization's "fundamental formula" (how inputs become value) visible and tractable through interactive canvas-based modeling.
-
-### Key Product Principles
-
-- **Canvas-Centric**: The React Flow canvas is the primary workspace where business models are built
-- **Evidence-Based**: Relationships between metrics must be supported by attached evidence (experiments, analyses)
-- **Progressive Rigor**: Tool guides users from correlation to causation through structured workflows
-- **Live Models**: Canvas state is persistent and auto-saved, creating "living documents" that evolve with the business
-
-## Technical Architecture
-
-### Core Tech Stack
-
-- **Frontend**: React + TypeScript + Vite
-- **Canvas Engine**: React Flow with Dagre auto-layout
-- **UI Framework**: Shadcn + Tailwind CSS + Recharts
-- **State Management**: Zustand
-- **Database**: Supabase with supabase-js client
-- **Client Computation**: Web Workers (with comlink) + math.js + simple-statistics
-- **Deployment**: Vercel
-
-### Key Components
-
-1. **Metric Cards (Nodes)**: 5 category system (Core/Value, Data/Metric, Work/Action, Ideas/Hypothesis, Metadata)
-2. **Relationships (Edges)**: 4 types (Deterministic, Probabilistic, Causal, Compositional)
-3. **Evidence System**: Attach supporting artifacts to validate relationships
-4. **Grouping/Subflows**: Visual organization that powers dashboard generation
-
-## Application Structure
-
-### Beyond Canvas (Navigation)
-
-- **Homepage**: Project management and canvas gallery
-- **Dashboard**: Auto-generated from canvas subflows
-- **Assets**: Centralized repository (Metrics, Relationships, Repo tabs)
-- **Source**: Data governance and instrumentation tracking
-- **Settings**: Project metadata and immutable changelog
-
-### Within Canvas (Core Functionality)
-
-- **Interactive Canvas**: Pan/zoom, multi-select, auto-save
-- **Dynamic Cards**: Category-based views with rich data display
-- **Relationship Management**: Visual confidence levels and evidence repositories
-- **Global Controls**: Date range picker affects all metric cards simultaneously
-
-## User Experience Philosophy
-
-### Business Model Focus
-
-The tool is designed to help teams build coherent business models where:
-
-- Every metric card represents a component of the business system
-- Every relationship explicitly defines logical connections
-- Evidence validates or challenges assumed relationships
-- Dashboards reflect the actual structure of the business model
-
-### Knowledge Management
-
-- Relationships serve as "knowledge hubs" storing institutional learning
-- Evidence items (experiments, analyses) attach to specific connections
-- Changelog provides full audit trail of model evolution
-- Correlation analysis suggests new relationships to investigate
-
-## Development Conventions
-
-### File Organization
-
-- Canvas components use React Flow patterns
-- State management through Zustand stores
-- Supabase integration for persistence
-- Web Workers for heavy computation (correlations, formula calculations)
-
-### Infrastructure Setup
-
-- **Supabase Access**: MCP (Model Context Protocol) access to Supabase project already configured
-- **Database**: Supabase project already created and ready for schema development
-- **UI Components**: Shadcn UI components available - should be used creatively throughout the app
-- **Component Strategy**: Leverage Shadcn's flexibility for custom business-specific UI patterns
-- **CSS Configuration**: PostCSS and Tailwind config properly set up and working - do not modify
+This file captures project-specific knowledge, conventions, and preferences. It is secondary to the main product requirements in `docs/prd.md` (single source of truth).
 
 ## User Preferences
 
-### Development Approach
+- Minimal inline comments; prefer descriptive, feature-based console messages for debugging.
+- Reuse existing `src/components/ui/*` before adding new UI dependencies.
 
-- Utilize existing Supabase project with MCP integration
-- Creative use of Shadcn components for sophisticated business intelligence UI
-- Incremental development starting with Phase 1: Core Foundation & Architecture
-- **Component Strategy**: Check existing Shadcn components in src/components/ui/ before installing new ones
+## Technical Decisions (Canonical)
 
-### Canvas Control Panel Layout
+- Frontend: React 19 + TypeScript + Vite 7
+- Canvas: React Flow (via `@xyflow/react`) + Dagre auto-layout
+- UI: Shadcn + Tailwind CSS v4 + Recharts
+- State: Zustand (stores: `appStore`, `projectsStore`, `canvasStore`, `evidenceStore`)
+- Data/Backend: Supabase (`@supabase/supabase-js`) with RLS in production
+- Auth:
+  - Production/Staging: Clerk auth + Supabase client (Clerk-authenticated)
+  - Local Development: Dev bypass with `createDevSupabaseClient` (service role) for faster iteration
+- Environment detection: based on Supabase URL (localhost/127.0.0.1 ⇒ development)
+- Data Fetching: React Query (TanStack)
+- Workers: Web Workers with Comlink; math.js + simple-statistics
+- Deployment: Vercel
 
-- **Single Comprehensive Panel**: All canvas controls consolidated into one bottom-left panel
-- **Organized Sections**:
-  - Node Creation (Add Node Button)
-  - Group & Subflow Management (Automatic group creation, Subflow creation)
-  - Search & Navigation (Search)
-  - Layout Controls (Comprehensive dropdown with all 4 directions)
-  - Filter Controls (Comprehensive filtering with FilterModal)
-- **Debug Panel**: Left-top position with closeable interface for development troubleshooting
-- **Multi-Selection**: Shift+Click for multi-selection, disabled selection marquee to prevent conflicts with canvas panning
-- **Auto-Layout Integration**: Direct integration with applyAutoLayout utility for automatic node positioning
-- **Filter System**: Comprehensive filtering by categories, tags, owners, confidence levels, relationship types, and date ranges
-- **Improved UX**:
-  - **Automatic Group Creation**: Click Users button creates group with incremental naming ("Untitled Group 1", "Untitled Group 2", etc.)
-  - **Comprehensive Layout Controls**: Dropdown with all 4 layout directions (Top-Bottom, Bottom-Top, Left-Right, Right-Left)
-  - **Layout Persistence**: Layout direction is saved to canvas settings and restored when returning to canvas
-  - **Visual Feedback**: Loading states and current layout indication
-  - **Database Integration**: All group creation automatically saved to database
-  - **Keyboard Shortcuts**: Moved to sidebar above settings button for better accessibility
-  - **Native Toolbar Positioning**: Group nodes now use React Flow's native NodeToolbar for consistent positioning like metric cards
-  - **Bottom Selection Panel**: Replaced floating SelectionToolbar with React Flow's native Panel component for better UX
-  - **Grouping Functionality**: Multi-select nodes and use "Group X Nodes" button to create groups with automatic sizing and positioning
-  - **Visual Group Containment**: Nodes are properly contained within group boundaries using React Flow's subflow system
-  - **Group Interaction Fixes**: Fixed click behavior to prevent duplicate group creation and proper drag behavior
-  - **Group Layering**: Groups now appear above edges with proper z-index configuration
-  - **Node Constraint**: Nodes with parentId are properly constrained within their group boundaries
-  - **Context Menu Removal**: Completely removed context menu functionality to eliminate confusion
-  - **Subflow Cleanup**: Removed "Create Subflow" functionality and consolidated with grouping
-  - **Group Creation Fix**: Removed "Create New Group" button to prevent accidental group creation
-  - **Edge Layering Fix**: Fixed group rendering order and increased z-index to ensure groups appear above edges
-  - **Node Visibility Fix**: Adjusted z-index so nodes appear above groups, and made group background transparent
-  - **Group Interaction**: Added proper cursor states, resize handles, and visual feedback for drag vs resize areas
-  - **Group Duplication Fix**: Fixed group duplication issue by memoizing `updateGroupSize` function to prevent unnecessary re-renders
-  - **Fundamental Layering Fix**: Moved all components (SelectionPanel, Debug Panel) inside React Flow's `Panel` components to ensure proper compositing within the canvas layer instead of rendering as separate DOM layers
-  - **React Flow Layering Optimization**: Removed custom z-index values and added `elevateNodesOnSelect` and `elevateEdgesOnSelect` to let React Flow handle layering naturally
-  - **Edge Z-Index Implementation**: Added proper `edge.zIndex` attribute based on relationship type (Deterministic=1, Probabilistic=2, Causal=3, Compositional=4, Temporal=5) to use React Flow's edge layering system
-  - **Unified Debug Tool**: Created reusable `DebugPanel` component with question mark icon, natural collapse functionality, and consistent styling for all future debug tools
+## Architecture Overview
 
-## Progress Completed
+- Routing: React Router with nested canvas routes under `CanvasLayout`.
+  - `/` → `HomePage`
+  - `/canvas/:canvasId` → `CanvasPage` (index), `dashboard`, `assets`, `evidence`, `source`, `settings`
+  - Evidence pages: `/evidence`, `/evidence/:evidenceId`
+- Supabase client: `src/lib/supabase/client.ts` provides default, Clerk-authenticated, and development clients.
+- Services live under `src/lib/supabase/services/`.
+- Stores: colocated in `src/lib/stores/` with explicit action sets and types.
 
-### Phase 1: Core Foundation ✅ COMPLETE
+## Conventions
 
-- ✅ **React Router Setup**: Full routing structure implemented with nested routes
-  - HomePage (`/`) - Project gallery with canvas cards
-  - CanvasLayout (`/canvas/:id`) - Sidebar layout for canvas views
-  - CanvasPage, DashboardPage, AssetsPage, SourcePage, CanvasSettingsPage
-- ✅ **Shadcn UI Components**: All essential components available and working
-- ✅ **Project Structure**: Clean organization with pages/, components/layout/, lib/ directories
-- ✅ **Mock Data & UI**: Functional pages with realistic business intelligence interfaces
-- ✅ **Basic Tests**: Vitest setup with passing tests for pre-commit hooks
-- ✅ **CSS Configuration**: PostCSS and Tailwind properly configured and working
-- ✅ **Zustand State Management**: Complete store architecture implemented
-  - `appStore`: Global app state, user preferences, current canvas
-  - `canvasStore`: Canvas state, nodes, edges, groups, viewport management
-  - `projectsStore`: Multi-project management with persistence
-  - Full TypeScript type definitions for all business entities
-- ✅ **Store Integration**: Homepage and CanvasPage now use real Zustand data
+- Use Zustand stores as the single source of UI state; persist via Supabase services.
+- Keep console logs high-signal and feature-scoped; avoid noisy logs.
+- Documentation belongs in `/docs`. Link to PRD sections instead of duplicating content.
 
-### Phase 2: Canvas & Metric Cards ✅ COMPLETE
+## Current Status (Concise)
 
-- ✅ **Dynamic MetricCard Component**: Fully functional with PRD-aligned features
-  - 5-category system with visual differentiation (Core/Value, Data/Metric, Work/Action, Ideas/Hypothesis, Metadata)
-  - Enhanced Data/Metric view with time-series data and trend indicators
-  - Interactive elements: Copy, Settings, Tags, Assignees, Comments, Chart controls
-  - Dynamic styling based on category and selection state
-  - Custom React Flow node integration
-- ✅ **Add Node Functionality**: Dropdown menu for creating different card types
-- ✅ **Canvas Integration**: MetricCard components render live project data via CanvasPage
-- ✅ **Card Settings Sheet**: Comprehensive 8-tab configuration panel
-  - Details tab with chart options and identification
-  - Data tab for spreadsheet-like data management
-  - Source tab with calculated/manual/random data options
-  - Events, Key Results, Correlations, Comments, Settings tabs
-  - Full form management with real-time updates
-  - Category-based sub-category selection
-  - Dimensions and causal factors configuration
-- ✅ **Canvas Controls**: Full-featured canvas navigation and layout system
-  - Date range picker with calendar and quick presets (7d, 30d, 90d, 1y)
-  - Auto-layout algorithms (Top-Bottom, Bottom-Top, Left-Right, Right-Left)
-  - Dagre integration for hierarchical node positioning
-  - Zoom controls with presets (25%-200%) and fit-to-view
-  - Reset canvas and pan controls
-  - Responsive overlay design with backdrop blur
-  - Real-time filter indicators and settings persistence
-- ✅ **Node Toolbar**: Contextual action toolbar for metric cards
-  - Quick actions: Settings, Duplicate, Link Creation, Select/Deselect
-  - More actions dropdown: Quick View, Collapse/Expand, Delete
-  - Node info badge showing category and connection count
-  - Positioned above selected nodes with smooth transitions
-  - Click-based activation with visual feedback
-  - Integration with card settings and node management
+- Implemented (aligned with PRD):
+  - Canvas editor (nodes/edges/groups, auto-layout, toolbars, global date range)
+  - Metric Cards + Card Settings (Details, Data, Source, Events, Key Results, Correlations, Comments, Settings)
+  - Relationship workflows (Deterministic/Probabilistic/Causal/Compositional), Evidence repository, relationship history
+  - Beyond-canvas pages: Home, Dashboard, Assets, Evidence Repository, Source, Settings
+  - Supabase persistence (CRUD), Workers-based computations (formula, correlation)
+  - Auth: Clerk + Supabase session sync; protected routes
+- Polishing/auxiliary:
+  - Advanced search, keyboard shortcuts/accessibility, bulk operations
 
-### Phase 3: Relationship Management ✅ COMPLETE
+### Open Priorities
 
-- ✅ **Dynamic Edge Components**: Advanced relationship visualization
-  - 4 relationship types with distinct icons and colors (Deterministic, Probabilistic, Causal, Compositional)
-  - Confidence level visual indicators (High/Medium/Low with different stroke styles)
-  - Interactive edge labels with type and confidence badges
-  - Evidence count display and quick actions (Edit, View, Delete)
-  - Hover and selection states with smooth transitions
-  - Popover action menu with contextual controls
-- ✅ **Relationship Sheet (Knowledge Hub)**: Comprehensive evidence management
-  - 4-tab interface: Details, Evidence, Analysis, Settings
-  - Relationship type selection with descriptions and workflows
-  - Confidence level configuration with visual feedback
-  - Relationship strength slider (0-100%)
-  - Evidence repository with multiple evidence types
-  - Evidence forms: title, type, date, owner, summary, links
-  - Evidence management (add, remove, view external links)
-  - Node context display (source → target)
-  - Metadata tracking and relationship analytics placeholder
-- ✅ **Relationship Type Workflows**: Specialized workflow templates for each relationship type
-  - **Deterministic**: Mathematical formula validation with constraints and input/output ranges
-  - **Probabilistic**: Statistical analysis with correlation coefficients, sample sizes, and p-values
-  - **Causal**: Experimental design validation with treatment/control groups and effect sizes
-  - **Compositional**: Hierarchy definition with aggregation rules and parent-child relationships
-  - Auto-validation and confidence suggestion based on workflow completion
-  - Type-specific evidence generation and validation checklists
-  - Confidence level guidelines and criteria mapping
+1. Canvas version history and restore points
+2. Advanced chart types and visualization options
 
-## Development Strategy
+### Explicit Exclusions
 
-### Build-First, Optimize-Later Approach
+- Real-time collaboration, export/import, templates/blueprints
+- Advanced data connectors, sharing/embedding, AI metric suggestions
 
-- **Decision**: Continue building complete feature set before optimization
-- **Rationale**: Strong foundation with clean architecture, TypeScript safety, and no technical debt
-- **Current Code Quality**: All tests passing, no linting errors, consistent patterns
-- **Architecture**: React Flow + Zustand + Shadcn scales well for remaining features
-- **Optimization Plan**: Focused sprint after Phase 4 completion
+## Operational Notes
 
-### Development Path
+- Tests exist for key parts; broad coverage is deprioritized for now.
+- Supabase CLI: use `npx supabase` for all commands.
 
-```
-✅ Phase 1: Core Foundation & Architecture
-✅ Phase 2: Canvas & Metric Cards
-✅ Phase 3: Relationship Management
-✅ Phase 4: Beyond Canvas Pages (Homepage, Sidebar, Dashboard, Assets, Source, Settings)
-✅ Phase 5: Advanced Features & Polish (Supabase Integration, Web Workers, Formula Engine)
-🔄 Phase 6: Optimization & Performance (Testing, Performance, Accessibility)
-```
+## Source of Truth
 
-### Phase 4: Beyond Canvas Pages ✅ COMPLETE
+- Product requirements: `docs/prd.md`
+- Environment setup: `docs/environment/ENVIRONMENT_GUIDE.md`
 
-Focus on completing the application's navigation and page ecosystem to provide a complete user experience.
-
-#### Completed Features ✅
-
-- **Enhanced Homepage**: Advanced project gallery with tabs (All/Recent/Starred), search/filter, sorting, grid/list views, project management operations
-- **Professional Sidebar Navigation**: Icon-based navigation with tooltips, project context display, breadcrumbs, status indicators, enhanced UX
-- **Sophisticated Dashboard**: 4-tab interface (Overview/Metrics/Insights/Health), KPI cards with trends, AI-powered insights, system health monitoring, time range filtering
-- **Comprehensive Assets Page**: Asset management hub with 3 tabs (Metrics, Relationships, Repo), advanced filtering, table/grid views, real data integration
-- **Data Governance Source Page**: Data instrumentation tracking with 4 tabs (Data Sources, Governance, API Health, Monitoring), compliance monitoring
-- **Canvas Settings Page**: Project configuration with 5 tabs (General, Data, Team, Changelog, Settings), team management, activity tracking
-
-### Phase 5: Advanced Features & Polish ✅ COMPLETE
-
-All advanced computation features and application ecosystem components successfully implemented.
-
-#### Completed Features ✅
-
-1. **Supabase Integration & Persistence** ✅
-   - ✅ Set up database schema for projects, metric cards, relationships, evidence
-   - ✅ Implemented real-time data synchronization
-   - ✅ Connected Zustand stores to Supabase persistence layer
-   - ✅ Database ready for user authentication and project sharing
-2. **Web Workers & Formula Engine** ✅
-   - ✅ Set up Web Workers with Comlink for heavy computations
-   - ✅ Implemented math.js formula engine for calculated metrics
-   - ✅ Built correlation computation using simple-statistics
-   - ✅ Added background processing for metric calculations with fallback support
-3. **Advanced Canvas Features** ✅
-   - ✅ Implemented canvas grouping/subflows functionality with GroupNode and GroupControls
-   - ✅ Built 'Dimension Slice' feature for metric decomposition (PRD-compliant)
-   - ✅ Added auto-dashboard generation from canvas subflows
-   - ✅ Enhanced auto-layout algorithms with Dagre integration
-4. **User Experience & Guidance** ✅
-   - ✅ Empty state handling for dashboards without groups
-   - ✅ Interactive help system for group creation
-   - ✅ Comprehensive user guidance and onboarding flows
-
-**Current Work 🔄**
-**Phase 5 Complete**: All advanced features implemented and ready for Phase 6
-
-**Latest Critical Fix ✅**
-
-- **Data Flow Issue Resolved**: Fixed HomePage test failure by adding proper store initialization
-- **Store Architecture Verified**: Confirmed proper data flow from stores to UI across all pages
-- **All Tests Passing**: HomePage, App, MetricCard, and Worker tests now working correctly
-- **Development Ready**: Solid foundation verified, ready to continue with Phase 5 features
-
-**Latest Completed ✅**
-
-- **🎯 PRD Compliance Features (High Priority)**: Advanced features implementing PRD specifications
-  - **📊 Historical Data Disaggregation Strategy**: Complete implementation of PRD 5.3.c dimension slice options
-    - **Manual Entry**: New slice cards start empty for manual population
-    - **Proportional Split**: Mathematical distribution of historical data based on user-specified percentages (must sum to 100%)
-    - **Forfeit History**: Archive parent data and start fresh from current date
-    - **Enhanced UI**: Interactive percentage controls with real-time validation and visual feedback
-    - **Smart Distribution**: Automatic calculation and distribution of historical values across child metrics
-  - **📈 Relationship Changelog (Influence Drift Analysis)**: Complete implementation of PRD 7.2.c
-    - **Automatic History Tracking**: All relationship changes logged with timestamps and change types
-    - **Visual Timeline**: Beautiful history tab showing evolution of strength, confidence, type, and evidence
-    - **Change Analytics**: Summary statistics and trend analysis for relationship stability over time
-    - **Color-coded Categories**: Visual distinction between different types of changes (strength, confidence, type, evidence)
-  - **✅ Causal Checklist Workflow**: Scientific upgrade path from Probabilistic to Causal relationships
-    - **5 Required Criteria**: Temporal precedence, covariation, experimental evidence, causal mechanisms, alternative explanations ruled out
-    - **2 Optional Criteria**: Replication and dose-response relationship for stronger evidence
-    - **Progress Tracking**: Visual progress bar and requirement validation
-    - **Evidence Integration**: Automatic check of attached evidence and recommendations for causal support
-    - **Systematic Upgrade**: Only allows upgrade when all required criteria are met
-- **🔐 Complete Authentication System**: Full-featured authentication infrastructure for personal use
-  - **Authentication Pages**: Login, hidden signup, forgot password, and reset password pages with clean UI
-  - **Supabase Integration**: Complete auth integration with session management and user state synchronization
-  - **Protected Routes**: ProtectedRoute component with loading states and automatic redirects
-  - **User Session Management**: AppStore integration with real-time auth state listeners and automatic session restoration
-  - **Row Level Security (RLS)**: Comprehensive database security policies implemented for all tables
-    - Users can only access projects they created or are collaborators on
-    - Proper permission-based access control for metric cards, relationships, evidence, and groups
-    - Automated user record creation via database triggers on signup
-  - **Error Boundaries**: Global error handling with ErrorBoundary component and graceful error displays
-  - **Form Validation**: Comprehensive validation utilities for emails, passwords, project names, formulas, and URLs
-  - **User Interface**: User menu with logout functionality in both HomePage and CanvasLayout
-  - **Security Features**: Input sanitization, XSS protection, and secure authentication flows
-- **Auto-Dashboard Generation**: Complete PRD-compliant dashboard system that automatically generates dashboards from canvas groups/subflows
-  - DashboardGenerator utility with comprehensive dashboard configuration generation
-  - Dynamic dashboard selector dropdown populated from group names (as specified in PRD)
-  - Filtered metric display based on selected subflow group
-  - Empty state handling with guidance for users who haven't created groups yet
-  - GroupHelpModal component providing step-by-step instructions for creating groups
-  - Strategic alignment ensuring each named group becomes a dedicated dashboard candidate
-- **Canvas Grouping/Subflows**: Complete grouping functionality with GroupNode and GroupControls components, visual organization of metric cards
-- **Dimension Slice Feature**: PRD-compliant metric decomposition system allowing users to slice Data/Metric cards into constituent dimensions
-  - DimensionSliceModal component for user input and configuration
-  - Canvas store logic for automatic card creation, relationship generation, and parent formula conversion
-  - Integration with NodeToolbar "More Actions" dropdown for Data/Metric cards only
-  - Support for manual entry and forfeit history options as specified in PRD
-  - Automatic creation of Compositional relationships and calculated formulas
-- **Web Workers Infrastructure**: Complete setup with Comlink integration, fallback support, and comprehensive testing
-- **Computation Framework**: Formula validation, statistical analysis, metric processing, and large dataset operations
-- **Formula Engine**: Math.js integration for calculated metrics with real-time evaluation
-- **Statistical Analysis**: Correlation computation, regression analysis, and descriptive statistics
-- **Browser Compatibility**: Automatic fallback to main thread when Web Workers unavailable (test environments)
-
-## ✅ Data Flow Architecture
-
-### Store Initialization Pattern
-
-- **HomePage as Entry Point**: HomePage properly initializes projects store via `useEffect(() => initializeProjects(), [initializeProjects])`
-- **Other Pages**: Use `getProjectById` for specific project lookups, assuming store is already initialized
-- **Fallback Mechanism**: Store automatically falls back to mock data when no user is authenticated
-- **Test Environment**: Supabase auth errors are expected and handled gracefully with mock data fallback
-
-### Verified Data Flow ✅
-
-- **Homepage → Store → UI**: Projects load correctly from store to UI rendering
-- **Store Persistence**: Zustand stores properly integrate with Supabase for real-time data sync
-- **Error Handling**: Auth session missing errors are properly handled with fallback to mock data
-- **Test Coverage**: All core component and page tests are passing
-
-## ✅ PRD Compliance Implementation (MAJOR UPDATE)
-
-### Authentication System - COMPLETED 🔐
-
-- **Status**: Full Supabase Authentication implemented and working
-- **Features Added**:
-  - Login, Signup, Forgot Password, Reset Password pages
-  - Protected routes with ProtectedRoute component
-  - Global auth state management with Zustand
-  - User session management and persistence
-  - Row Level Security (RLS) policies
-  - Comprehensive error boundaries and validation
-- **UI Integration**: Auth flows integrated into CanvasLayout and HomePage
-- **Security**: Form validation utilities and error handling
-
-### Historical Data Disaggregation Strategy - COMPLETED 📊
-
-- **Implementation**: Enhanced Dimension Slice feature with three options:
-  - **Manual Entry**: Empty data for manual input
-  - **Proportional Split**: Mathematical distribution based on percentages
-  - **Forfeit History**: Clears parent data, new cards start fresh
-- **UI Enhancement**: Advanced DimensionSliceModal with percentage controls
-- **Logic**: Complex proportional data distribution in canvasStore.ts
-
-### Relationship Changelog (Influence Drift Analysis) - COMPLETED 📈
-
-- **Feature**: Automatic tracking of relationship property changes
-- **Data Tracked**: Weight, confidence, type, evidence changes over time
-- **UI**: Timeline visualization in RelationshipSheet with change icons
-- **Analytics**: Change summary statistics and historical trend analysis
-
-### Causal Checklist Workflow - COMPLETED 🎯
-
-- **Implementation**: Scientific upgrade path from Probabilistic → Causal relationships
-- **Criteria**: 5 required + 2 optional scientific criteria with progress tracking
-- **Integration**: Built into RelationshipWorkflows component
-- **Validation**: Evidence-based upgrade requirements and automatic validation
-
-### Evidence Repository - COMPLETED 📚
-
-- **Full CRUD System**: Comprehensive evidence management with dedicated store
-- **Features**:
-  - Centralized evidence repository page (/evidence route)
-  - Advanced search and filtering by type, owner, content
-  - Evidence reuse across multiple relationships
-  - Duplication and template functionality
-  - Rich metadata (owner, date, hypothesis, impact analysis)
-- **Integration**: Added to navigation (HomePage + CanvasLayout sidebar)
-- **Storage**: Dedicated Zustand evidenceStore with persistence
-
-### Correlation Analysis with Statistical Significance - COMPLETED 🔬
-
-- **Statistical Engine**: Enhanced worker system with rigorous analysis
-- **Metrics Calculated**:
-  - Pearson correlation with confidence intervals
-  - P-values and significance testing (α = 0.05)
-  - Effect size classification (Cohen's conventions)
-  - Power analysis and sample size recommendations
-- **UI Component**: CorrelationAnalysisPanel with rich statistical visualization
-- **Integration**: Replaces placeholder Analysis tab in RelationshipSheet
-- **Worker Support**: Both web worker and main thread fallback implementations
-
-### Segments Functionality - IN PROGRESS 🏗️
-
-- **Types Added**: Segment and SegmentFilter interfaces in types/index.ts
-- **Data Model**: Support for dimension-based metric decomposition
-- **Status**: CardSettingsSheet partially updated, need to complete segments tab UI
-- **Next**: Complete segments management interface and functionality
-
-## 🎯 Current Task Status
-
-### Completed PRD Features ✅
-
-1. ✅ Authentication System (personal use with hidden signup)
-2. ✅ Historical Data Disaggregation Strategy
-3. ✅ Relationship Changelog (Influence Drift Analysis)
-4. ✅ Causal Checklist Workflow
-5. ✅ Evidence Repository with full CRUD operations
-6. ✅ Correlation computation with statistical significance
-7. ✅ Segments functionality (COMPLETED - Full UI with filters and percentage allocation)
-
-### Completed Polish Features ✅
-
-1. ✅ **Comprehensive keyboard shortcuts and accessibility** - Full keyboard navigation and screen reader support
-2. ✅ **Advanced search across all assets** - Global search with filters and smart results
-3. ✅ **Bulk operations for metric cards and relationships** - Complete bulk editing, deletion, and management
-
-### Remaining Implementation Tasks 📋
-
-1. **Canvas version history and restore points**
-2. **Advanced chart types and visualization options**
-
-### 🎊 Achievement Status
-
-**All Core PRD Features**: ✅ COMPLETED (100%)
-**Polish Features**: 3/5 COMPLETED (60%)
-
-### Excluded Features (Per User Request) ❌
-
-- Real-time collaboration feature
-- Data export/import feature
-- Canvas templates and blueprint systems
-- All tests (removed from task lists)
-- AI-powered metric suggestions
-- Advanced data connectors
-- Advanced sharing and embedding capabilities
-
-## 🛠️ Technical Implementation Notes
-
-### Worker System Enhancement 🔧
-
-- **Statistical Functions**: Added `calculateCorrelationAnalysis` with full statistical rigor
-- **Fallback Support**: Main thread implementations for environments without workers
-- **Hook Integration**: Enhanced useWorker hook with correlation analysis support
-- **Performance**: Efficient calculations using simple-statistics library
-
-### Component Architecture 🏗️
-
-- **Evidence Repository**: Standalone page with full CRUD operations
-- **Correlation Analysis**: Reusable panel component with rich statistical UI
-- **Modal Enhancements**: DimensionSliceModal with proportional split controls
-- **Form Validation**: Reusable validation utilities across components
-
-### Data Model Extensions 📊
-
-- **MetricCard**: Added `segments` field for decomposition support
-- **EvidenceItem**: Extended with `createdAt`, `createdBy`, `tags`, `category`
-- **Relationship**: Added `history` field for change tracking
-- **New Types**: Segment, SegmentFilter, RelationshipHistoryEntry interfaces
-
-### Navigation & Routing 🧭
-
-- **Evidence Repository**: Added /evidence route with protected access
-- **Sidebar Integration**: Evidence tab in CanvasLayout navigation
-- **HomePage Integration**: Evidence Repository button in header
-
-## 🚧 Remaining Technical Debt
-
-### Testing Coverage 📊
-
-- **Status**: Tests were deliberately excluded per user request
-- **Note**: User will handle personal testing and ad-hoc optimization
-
-## 🎉 Recently Completed Features (Current Session)
-
-### 7. Segments Functionality ✅ COMPLETED
-
-- **Location**: `src/components/canvas/CardSettingsSheet.tsx` (New segments tab)
-- **Features**:
-  - Full CRUD operations for segment management
-  - Color-coded segment visualization
-  - Percentage allocation with validation (must sum to 100%)
-  - Advanced filter system with field, operator, and value selection
-  - Dimension-based decomposition (Region, Product, Channel, Customer, Time)
-  - Active/inactive toggle for segments
-  - Real-time summary dashboard with validation warnings
-- **UI**: Complete segments management interface in Card Settings with visual indicators
-- **Validation**: Smart percentage validation ensuring 100% allocation
-
-### 8. Comprehensive Keyboard Shortcuts and Accessibility ✅ COMPLETED
-
-- **Core Hook**: `src/hooks/useKeyboardShortcuts.ts` - Advanced keyboard shortcut management
-- **Accessibility Hook**: `src/hooks/useAccessibility.ts` - Screen reader and focus management
-- **Help Component**: `src/components/ui/KeyboardShortcutsHelp.tsx` - Searchable shortcuts dialog
-- **Features**:
-  - **15+ Keyboard Shortcuts**: Navigation, Canvas operations, Search, Actions
-  - **Global Integration**: Available on CanvasPage and HomePage
-  - **Screen Reader Support**: Live announcements and ARIA labels
-  - **Focus Management**: Smart focus trapping and keyboard navigation
-  - **MetricCard Enhancement**: Full keyboard accessibility for cards
-- **Notable Shortcuts**: Cmd+K (search), Cmd+N (new card), Cmd+D (delete), Escape (close/clear)
-
-### 9. Advanced Search Across All Assets ✅ COMPLETED
-
-- **Quick Search**: `src/components/search/QuickSearchCommand.tsx` - Fast keyboard-driven search
-- **Advanced Search**: `src/components/search/AdvancedSearchModal.tsx` - Full-featured search modal
-- **Search Hook**: `src/hooks/useSearch.ts` - Comprehensive search logic with scoring
-- **Features**:
-  - **Multi-Asset Search**: Unified search across metric cards, relationships, and evidence
-  - **Fuzzy Search**: Intelligent matching with scoring and highlighting
-  - **Advanced Filters**: Type, category, tags, owner, confidence level filtering
-  - **Global Integration**: Available from CanvasPage and HomePage with Cmd+K
-  - **Keyboard Navigation**: Full arrow key navigation and Enter selection
-  - **Result Highlighting**: Visual highlighting of matching terms
-- **Search Capabilities**: Title, description, category, tags, evidence content matching
-
-### 10. Bulk Operations for Metric Cards and Relationships ✅ COMPLETED
-
-- **Core Hook**: `src/hooks/useBulkOperations.ts` - Comprehensive bulk operations logic
-- **UI Component**: `src/components/canvas/BulkOperationsToolbar.tsx` - Smart toolbar interface
-- **Features**:
-  - **Smart Toolbar**: Appears automatically when items are selected
-  - **Bulk Update**: Edit category, tags, owner, relationship type, confidence, weight
-  - **Bulk Delete**: Safe deletion with confirmation dialog and detailed preview
-  - **Bulk Duplicate**: Clone multiple metric cards with smart positioning
-  - **Tag Management**: Add/remove tags across multiple items
-  - **Export Options**: JSON and CSV export of selected items
-  - **Real-time Feedback**: Progress indicators, success/error tracking
-- **Safety Features**: Confirmation dialogs, detailed previews, accessibility announcements
-
-## 🎉 Critical Fixes Implemented (Current Session)
-
-### Fix 1: Removed Mock Data and Implemented Proper Supabase CRUD ✅ COMPLETED
-
-- **Problem**: Hybrid approach with mock data fallbacks instead of proper authentication
-- **Solution**:
-  - **Removed all mock data** from `projectsStore.ts` and recreated with proper authentication requirements
-  - **Updated RelationshipSheet** to use `persistEdgeUpdate/persistEdgeDelete` instead of local `updateEdge/deleteEdge`
-  - **Updated CardSettingsSheet** to use `persistNodeUpdate/persistNodeDelete` instead of local methods
-  - **Updated AddNodeButton** to use `createNode` instead of local `addNode`
-  - **Updated NodeToolbar** to use `persistNodeDelete` instead of local `deleteNode`
-  - **Added error handling** with try-catch blocks and user feedback alerts
-- **Impact**: Ensures all CRUD operations properly persist to Supabase with authentication requirements
-
-### Fix 2: Fixed UI Transparency Issues with Sheets and Dialogs ✅ COMPLETED
-
-- **Problem**: Components becoming transparent despite proper background dimming
-- **Solution**:
-  - **Added CSS fixes** in `src/index.css` targeting Radix Portal components
-  - **Fixed z-index layering** with explicit z-index values (100 for dialogs, 99 for backdrops, 1-2 for ReactFlow)
-  - **Enhanced backdrop styling** with proper `background-color` and `backdrop-filter` properties
-  - **Updated component classes** for RelationshipSheet, CardSettingsSheet, and all search/dialog components
-  - **Added explicit styling** with `bg-background border-border z-[100]` classes
-- **Components Fixed**: RelationshipSheet, CardSettingsSheet, AdvancedSearchModal, QuickSearchCommand, BulkOperationsToolbar dialogs
-- **Impact**: Eliminates transparency issues and ensures proper visual hierarchy
-
-### Fix 3: Implemented Auto-Saved Auto-Layout Mechanism ✅ COMPLETED
-
-- **Problem**: Users had to manually click auto-layout every time instead of having preferences persisted
-- **Solution**:
-  - **Extended existing CanvasSettings** interface (already had `autoLayout` with `algorithm` and `enabled` fields)
-  - **Updated CanvasControls** to use canvas settings instead of local state
-  - **Added auto-layout toggle switch** with immediate persistence via `updateCanvasSettings`
-  - **Implemented auto-application** when nodes change and auto-layout is enabled (with 500ms debounce)
-  - **Added settings initialization** that loads saved preferences when canvas loads
-  - **Persistent algorithm selection** that saves layout direction changes automatically
-- **Features**:
-  - Toggle switch to enable/disable auto-layout
-  - Persistent algorithm selection (TB, BT, LR, RL)
-  - Automatic layout application when nodes are added/changed
-  - Debounced execution to prevent excessive re-layouts
-- **Impact**: Users no longer need to manually apply layout - their preferences are saved and auto-applied
-
-## 🚧 Remaining Technical Debt
-
-### Testing Coverage 📊
-
-- **Status**: Tests were deliberately excluded per user request
-- **Note**: User will handle personal testing and ad-hoc optimization
-
-## Technical Decisions
-
-- **Supabase CLI Usage**: Use `npx supabase` instead of global installation for all Supabase CLI commands in this project.
-
-## Project Conventions
-
-- **Documentation Location**: All documentation should be created in the `/docs` directory for better knowledge organization
-- **Documentation Structure**: Use clear, organized documentation with proper markdown formatting and comprehensive guides
+This memory intentionally avoids duplicating PRD content. It records only decisions, preferences, and live priorities to keep development aligned and unambiguous.

@@ -16,10 +16,20 @@ function DialogTrigger({
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
 }
 
+import { usePortalContainer } from "@/contexts/PortalContainerContext";
+
 function DialogPortal({
+  container,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />;
+  const { container: ctxContainer } = usePortalContainer();
+  return (
+    <DialogPrimitive.Portal
+      container={container ?? ctxContainer}
+      data-slot="dialog-portal"
+      {...props}
+    />
+  );
 }
 
 function DialogClose({

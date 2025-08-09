@@ -1,6 +1,6 @@
 // Core types for Metrimap application based on PRD specifications
 
-export type CardCategory = 
+export type CardCategory =
   | "Core/Value"
   | "Data/Metric"
   | "Work/Action"
@@ -9,21 +9,32 @@ export type CardCategory =
 
 export type CardSubCategory = {
   "Core/Value": "Journey Step" | "Value Chain" | "Critical Path";
-  "Data/Metric": "Input Metric" | "Output Metric" | "Leading KPI" | "Lagging KPI" | "Diagnostic Metric" | "North Star Metric";
-  "Work/Action": "Experiment" | "BAU" | "Initiative" | "Scope/Function" | "Business Driver";
+  "Data/Metric":
+    | "Input Metric"
+    | "Output Metric"
+    | "Leading KPI"
+    | "Lagging KPI"
+    | "Diagnostic Metric"
+    | "North Star Metric";
+  "Work/Action":
+    | "Experiment"
+    | "BAU"
+    | "Initiative"
+    | "Scope/Function"
+    | "Business Driver";
   "Ideas/Hypothesis": "Factor" | "Seller Solution";
-  "Metadata": "Group" | "Subflow" | "Reference";
+  Metadata: "Group" | "Subflow" | "Reference";
 };
 
-export type RelationshipType = 
+export type RelationshipType =
   | "Deterministic"
-  | "Probabilistic" 
+  | "Probabilistic"
   | "Causal"
   | "Compositional";
 
 export type ConfidenceLevel = "High" | "Medium" | "Low";
 
-export type CausalFactor = 
+export type CausalFactor =
   | "Component Drift"
   | "Temporal Variance"
   | "Influence Drift"
@@ -32,7 +43,7 @@ export type CausalFactor =
 
 export type SourceType = "Manual" | "Calculated" | "Random";
 
-export type Dimension = 
+export type Dimension =
   | "Qualitative"
   | "Quantitative"
   | "Vanity"
@@ -61,18 +72,18 @@ export interface MetricCard {
   causalFactors: CausalFactor[];
   dimensions: Dimension[];
   segments?: Segment[];
-  
+
   // Position on canvas
   position: { x: number; y: number };
-  
+
   // React Flow subflow support
   parentId?: string; // ID of the group this node belongs to
-  
+
   // Data for Data/Metric cards
   data?: MetricValue[];
   sourceType?: SourceType;
   formula?: string;
-  
+
   // Metadata
   owner?: string;
   assignees: string[];
@@ -95,7 +106,7 @@ export interface Segment {
 
 export interface SegmentFilter {
   field: string;
-  operator: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'between';
+  operator: "equals" | "contains" | "greater_than" | "less_than" | "between";
   value: string | number | [number, number];
 }
 
@@ -106,14 +117,14 @@ export interface Relationship {
   type: RelationshipType;
   confidence: ConfidenceLevel;
   weight?: number;
-  
+
   // Evidence and knowledge
   evidence: EvidenceItem[];
   notes?: string;
-  
+
   // History for influence drift analysis
   history?: RelationshipHistoryEntry[];
-  
+
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -133,7 +144,12 @@ export interface RelationshipHistoryEntry {
 export interface EvidenceItem {
   id: string;
   title: string;
-  type: "Experiment" | "Analysis" | "Notebook" | "External Research" | "User Interview";
+  type:
+    | "Experiment"
+    | "Analysis"
+    | "Notebook"
+    | "External Research"
+    | "User Interview";
   date: string;
   owner: string;
   link?: string;
@@ -142,8 +158,49 @@ export interface EvidenceItem {
   impactOnConfidence?: string;
   createdAt?: string;
   createdBy?: string;
+  updatedAt?: string;
   tags?: string[];
   category?: string;
+
+  // Editor.js content for rich editing
+  content?: {
+    time: number;
+    blocks: Array<{
+      id: string;
+      type: string;
+      data: any;
+    }>;
+    version: string;
+  };
+
+  // Context tracking - where this evidence belongs
+  context?: {
+    type: "relationship" | "card" | "general";
+    targetId?: string; // relationship ID, card ID, or null for general
+    targetName?: string; // for display purposes
+  };
+
+  // Canvas positioning for general evidence
+  position?: {
+    x: number;
+    y: number;
+  };
+
+  // UI state for canvas evidence cards
+  isVisible?: boolean;
+  isExpanded?: boolean;
+
+  // Comments for evidence (as shown in your image)
+  comments?: EvidenceComment[];
+}
+
+export interface EvidenceComment {
+  id: string;
+  evidenceId: string;
+  content: string;
+  author: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CanvasSettings {
@@ -159,6 +216,13 @@ export interface CanvasSettings {
     zoom: number;
     center: { x: number; y: number };
   };
+  whiteboardScene?: any;
+  whiteboardPrefs?: {
+    keepToolActive?: boolean;
+    lastTool?: string;
+    strokeColor?: string;
+    strokeWidth?: number;
+  };
 }
 
 export interface CanvasProject {
@@ -167,15 +231,15 @@ export interface CanvasProject {
   description: string;
   tags: string[];
   collaborators: string[];
-  
+
   // Canvas content
   nodes: MetricCard[];
   edges: Relationship[];
   groups: GroupNode[];
-  
+
   // Canvas settings
   settings?: CanvasSettings;
-  
+
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -228,14 +292,14 @@ export interface CanvasState {
   selectedEdgeIds: string[];
   isLoading: boolean;
   error?: string;
-  
+
   // Canvas view state
   viewport: {
     x: number;
     y: number;
     zoom: number;
   };
-  
+
   // UI state
   showMiniMap: boolean;
   showControls: boolean;

@@ -39,8 +39,8 @@ import {
 } from "lucide-react";
 import { useCanvasStore, useTagStore } from "@/lib/stores";
 import type { CardCategory, MetricCard, Relationship } from "@/lib/types";
-import CardSettingsSheet from "@/components/canvas/CardSettingsSheet";
-import RelationshipSheet from "@/components/canvas/RelationshipSheet";
+import CardSettingsSheet from "@/components/canvas/right-sidepanel/metric-panel/CardSettingsSheet";
+import RelationshipSheet from "@/components/canvas/right-sidepanel/relationship-panel/RelationshipSheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjectById } from "@/lib/supabase/services/projects";
 import { useAuthenticatedSupabase } from "@/contexts/AuthenticatedSupabaseContext";

@@ -7,6 +7,8 @@ import App from "./App.tsx";
 import UserbackInitializer from "./components/feedback/UserbackInitializer";
 import DevUserbackInitializer from "./components/feedback/DevUserbackInitializer";
 import { isDevelopmentEnvironment } from "@/lib/supabase/client";
+// Excalidraw CSS (package exports index.css, not dist/excalidraw.css)
+import "@excalidraw/excalidraw/index.css";
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

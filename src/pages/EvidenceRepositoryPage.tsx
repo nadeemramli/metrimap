@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -18,21 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
 import {
   Plus,
   Search,
@@ -53,6 +44,7 @@ import {
 import { useCanvasStore } from "@/lib/stores";
 import { useEvidenceStore } from "@/lib/stores/evidenceStore";
 import type { EvidenceItem } from "@/lib/types";
+import EvidenceEditor from "@/components/evidence/EvidenceEditor";
 
 const evidenceTypeOptions = [
   {
@@ -83,21 +75,11 @@ export default function EvidenceRepositoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedOwner, setSelectedOwner] = useState<string>("all");
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(
     null
   );
-  const [formData, setFormData] = useState<Partial<EvidenceItem>>({
-    title: "",
-    type: "Analysis",
-    date: new Date().toISOString().split("T")[0],
-    owner: "",
-    summary: "",
-    link: "",
-    hypothesis: "",
-    impactOnConfidence: "",
-  });
 
   // Combine standalone evidence with relationship evidence
   const allEvidence = useMemo(() => {
@@ -159,59 +141,43 @@ export default function EvidenceRepositoryPage() {
     });
   }, [allEvidence, searchTerm, selectedType, selectedOwner]);
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      type: "Analysis",
-      date: new Date().toISOString().split("T")[0],
-      owner: "",
-      summary: "",
-      link: "",
-      hypothesis: "",
-      impactOnConfidence: "",
-    });
-  };
-
   const handleCreateEvidence = () => {
-    setIsCreateModalOpen(true);
-    resetForm();
+    setSelectedEvidence(null);
+    setIsEditorOpen(true);
   };
 
   const handleEditEvidence = (evidence: EvidenceItem) => {
     setSelectedEvidence(evidence);
-    setFormData({ ...evidence });
-    setIsEditModalOpen(true);
+    setIsEditorOpen(true);
   };
 
-  const handleSaveEvidence = () => {
-    if (!formData.title || !formData.summary) return;
-
-    const evidenceData: EvidenceItem = {
-      id: selectedEvidence?.id || `evidence_${Date.now()}`,
-      title: formData.title!,
-      type: formData.type as any,
-      date: formData.date!,
-      owner: formData.owner || "Unknown",
-      summary: formData.summary!,
-      link: formData.link,
-      hypothesis: formData.hypothesis,
-      impactOnConfidence: formData.impactOnConfidence,
-      createdAt: selectedEvidence?.createdAt || new Date().toISOString(),
-      createdBy: selectedEvidence?.createdBy || "current-user", // TODO: Get from auth
-    };
-
+  const handleSaveEvidence = (
+    evidence: EvidenceItem,
+    options?: { autoSave?: boolean }
+  ) => {
     if (selectedEvidence) {
       // Update existing evidence
-      updateEvidence(selectedEvidence.id, evidenceData);
+      updateEvidence(selectedEvidence.id, evidence);
     } else {
       // Create new evidence
-      addEvidence(evidenceData);
+      addEvidence(evidence);
     }
 
-    setIsCreateModalOpen(false);
-    setIsEditModalOpen(false);
+    // Only close dialog on manual save, not auto-save
+    if (!options?.autoSave) {
+      setIsEditorOpen(false);
+      setSelectedEvidence(null);
+    }
+  };
+
+  const handleCancelEditor = () => {
+    setIsEditorOpen(false);
     setSelectedEvidence(null);
-    resetForm();
+    setIsFullscreen(false);
+  };
+
+  const handleToggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
   };
 
   const handleDeleteEvidence = (evidenceId: string) => {
@@ -228,8 +194,29 @@ export default function EvidenceRepositoryPage() {
   const handleDuplicateEvidence = (evidenceItem: EvidenceItem) => {
     const duplicate = duplicateEvidence(evidenceItem.id);
     if (duplicate) {
-      setFormData({ ...duplicate });
-      setIsEditModalOpen(true);
+      setSelectedEvidence(duplicate);
+      setIsEditorOpen(true);
+    }
+  };
+
+  const handleViewInCanvas = (e: EvidenceItem) => {
+    // Prefer nested canvas route if available
+    const canvasId = canvas?.id;
+    const ctx = e.context as any;
+    const prefix =
+      ctx?.type === "card"
+        ? "card"
+        : ctx?.type === "relationship"
+          ? "rel"
+          : "evidence";
+    const focusId =
+      ctx?.type === "card"
+        ? ctx.targetId
+        : ctx?.type === "relationship"
+          ? ctx.targetId
+          : e.id;
+    if (canvasId) {
+      window.location.href = `/canvas/${canvasId}?focus=${prefix}:${focusId}`;
     }
   };
 
@@ -345,6 +332,12 @@ export default function EvidenceRepositoryPage() {
                           <Edit className="mr-2 h-4 w-4" />
                           Edit Evidence
                         </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to={`/evidence/${evidence.id}`}>
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Open Full Page
+                          </Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDuplicateEvidence(evidence)}
                         >
@@ -361,6 +354,14 @@ export default function EvidenceRepositoryPage() {
                               <ExternalLink className="mr-2 h-4 w-4" />
                               Open Link
                             </a>
+                          </DropdownMenuItem>
+                        )}
+                        {canvas?.id && (
+                          <DropdownMenuItem
+                            onClick={() => handleViewInCanvas(evidence)}
+                          >
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            View in Canvas
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
@@ -433,170 +434,15 @@ export default function EvidenceRepositoryPage() {
         </div>
       )}
 
-      {/* Create/Edit Evidence Modal */}
-      <Dialog
-        open={isCreateModalOpen || isEditModalOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateModalOpen(false);
-            setIsEditModalOpen(false);
-            setSelectedEvidence(null);
-            resetForm();
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedEvidence ? "Edit Evidence" : "Create New Evidence"}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedEvidence
-                ? "Update the evidence details below"
-                : "Add new evidence to support your relationships"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, title: e.target.value }))
-                  }
-                  placeholder="Evidence title"
-                />
-              </div>
-              <div>
-                <Label htmlFor="type">Type *</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, type: value as any }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {evidenceTypeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="owner">Owner</Label>
-                <Input
-                  id="owner"
-                  value={formData.owner}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, owner: e.target.value }))
-                  }
-                  placeholder="Evidence owner"
-                />
-              </div>
-              <div>
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, date: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="summary">Summary *</Label>
-              <Textarea
-                id="summary"
-                value={formData.summary}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, summary: e.target.value }))
-                }
-                placeholder="Evidence summary and key findings"
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="hypothesis">Hypothesis</Label>
-              <Textarea
-                id="hypothesis"
-                value={formData.hypothesis}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    hypothesis: e.target.value,
-                  }))
-                }
-                placeholder="Hypothesis being tested (optional)"
-                rows={2}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="link">External Link</Label>
-              <Input
-                id="link"
-                type="url"
-                value={formData.link}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, link: e.target.value }))
-                }
-                placeholder="https://..."
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="impact">Impact on Confidence</Label>
-              <Textarea
-                id="impact"
-                value={formData.impactOnConfidence}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    impactOnConfidence: e.target.value,
-                  }))
-                }
-                placeholder="How this evidence affects relationship confidence"
-                rows={2}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsCreateModalOpen(false);
-                setIsEditModalOpen(false);
-                setSelectedEvidence(null);
-                resetForm();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEvidence}
-              disabled={!formData.title || !formData.summary}
-            >
-              {selectedEvidence ? "Update Evidence" : "Create Evidence"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Evidence Editor */}
+      <EvidenceEditor
+        evidence={selectedEvidence}
+        onSave={handleSaveEvidence}
+        onCancel={handleCancelEditor}
+        isOpen={isEditorOpen}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={handleToggleFullscreen}
+      />
     </div>
   );
 }

@@ -1,5 +1,8 @@
 import { useEffect, useCallback, useMemo, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import WhiteboardOverlay, {
+  type WhiteboardOverlayHandle,
+} from "@/components/canvas/WhiteboardOverlay";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -15,14 +18,14 @@ import {
   type ConnectionMode,
   Background,
   Controls,
-  ControlButton,
   Panel,
 } from "@xyflow/react";
-import { Search, Save, Clock, Check, AlertCircle, Filter } from "lucide-react";
+import { Save, Clock, Check, AlertCircle } from "lucide-react";
 
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore } from "@/lib/stores";
-import { useClerkSupabase } from "@/hooks/useClerkSupabase";
+import { useEvidenceStore } from "@/lib/stores/evidenceStore";
+import { useClerkSupabase } from "@/lib/hooks/useClerkSupabase";
 import { useCanvasHeader } from "@/contexts/CanvasHeaderContext";
 import type {
   MetricCard as MetricCardType,
@@ -37,39 +40,52 @@ import type {
   Dimension,
   ConfidenceLevel,
   CanvasSettings,
+  EvidenceItem,
 } from "@/lib/types";
 import {
   MetricCard,
-  AddNodeButton,
   CardSettingsSheet,
   DynamicEdge,
+  OperativeEdge,
   RelationshipSheet,
   GroupNode,
+  WhiteboardNode,
 } from "@/components/canvas";
+import CommentNode from "@/components/canvas/node/comment-node";
+import EvidenceNode from "@/components/canvas/node/EvidenceNode";
+import ChartNode from "@/components/canvas/node/chart-node";
+import SourceNode from "@/components/canvas/node/source-node/source-node";
+import OperatorNode from "@/components/canvas/node/operator-node";
 import {
   useKeyboardShortcuts,
   createShortcut,
-} from "@/hooks/useKeyboardShortcuts";
+} from "@/lib/hooks/useKeyboardShortcuts";
 // import { useAccessibility } from "@/hooks/useAccessibility";
 import KeyboardShortcutsHelp from "@/components/ui/KeyboardShortcutsHelp";
 import QuickSearchCommand, {
   useQuickSearch,
-} from "@/components/search/QuickSearchCommand";
-import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
-import useAutoSave from "@/hooks/useAutoSave";
+} from "@/components/canvas/search/QuickSearchCommand";
+import AdvancedSearchModal from "@/components/canvas/search/AdvancedSearchModal";
+import useAutoSave from "@/lib/hooks/useAutoSave";
+import { useCanvasRealtime } from "@/lib/hooks/useCanvasRealtime";
+import { useAutomergeCanvas } from "@/lib/hooks/useAutomergeCanvas";
+import { useCanvasPresence } from "@/lib/hooks/useCanvasPresence";
+import { useAppStore } from "@/lib/stores";
 import { generateUUID } from "@/lib/utils/validation";
 import { applyAutoLayout } from "@/lib/utils/autoLayout";
 import { toast } from "sonner";
+import { PortalContainerProvider } from "@/contexts/PortalContainerContext";
 import {
   getAvailableFilterOptions,
   applyFilters,
   type FilterOptions,
 } from "@/lib/utils/filterUtils";
 
-import SelectionPanel from "@/components/canvas/SelectionPanel";
-import FilterModal from "@/components/canvas/FilterModal";
-import LayoutControls from "@/components/canvas/LayoutControls";
-import DebugPanel from "@/components/canvas/DebugPanel";
+import SelectionPanel from "@/components/canvas/grouping/SelectionPanel";
+import FilterModal from "@/components/canvas/mini-control/FilterModal";
+// import { UnifiedLayoutControls } from "@/components/canvas/mini-control";
+import DebugPanel from "@/components/canvas/left-sidepanel/DebugPanel";
+import TopCanvasToolbar from "@/components/canvas/mini-control/TopCanvasToolbar";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -155,6 +171,22 @@ const convertToEdge = (
 };
 
 // Convert GroupNode to ReactFlow Node
+const convertToEvidenceNode = (
+  evidence: EvidenceItem,
+  onUpdateEvidence: (id: string, updates: Partial<EvidenceItem>) => void,
+  onDeleteEvidence: (id: string) => void
+): Node => ({
+  id: evidence.id,
+  type: "evidenceNode",
+  position: evidence.position || { x: 100, y: 100 },
+  data: {
+    evidence,
+    onUpdateEvidence,
+    onDeleteEvidence,
+  },
+  dragHandle: ".evidence-drag-handle",
+});
+
 const convertToGroupNode = (
   group: GroupNodeType,
   onEditGroup: (groupId: string) => void,
@@ -191,14 +223,22 @@ const convertToGroupNode = (
 const nodeTypes = {
   metricCard: MetricCard,
   groupNode: GroupNode,
+  evidenceNode: EvidenceNode,
+  sourceNode: SourceNode,
+  chartNode: ChartNode,
+  operatorNode: OperatorNode,
+  whiteboardNode: WhiteboardNode,
+  commentNode: CommentNode,
 };
 
 const edgeTypes = {
   dynamicEdge: DynamicEdge,
+  operativeEdge: OperativeEdge,
 };
 
 function CanvasPageInner() {
   const { canvasId } = useParams();
+  const [searchParams] = useSearchParams();
   const supabaseClient = useClerkSupabase();
   const navigate = useNavigate();
   const [settingsCardId, setSettingsCardId] = useState<string | undefined>();
@@ -215,6 +255,10 @@ function CanvasPageInner() {
     position: { x: number; y: number };
     sourceNodeId: string;
   } | null>(null);
+  // Ephemeral nodes for custom node types (source/chart/operator)
+  const [extraNodes, setExtraNodes] = useState<Node[]>([]);
+  // Ephemeral operative edges (UI-only for data flow)
+  const [extraEdges, setExtraEdges] = useState<Edge[]>([]);
 
   // Proximity Connect - REMOVED for better drag/toolbar UX
 
@@ -230,6 +274,29 @@ function CanvasPageInner() {
   const [currentFilters, setCurrentFilters] = useState<FilterOptions>({});
   const [visibleNodeIds, setVisibleNodeIds] = useState<Set<string>>(new Set());
   const [visibleEdgeIds, setVisibleEdgeIds] = useState<Set<string>>(new Set());
+  // Center canvas on a node when collaboration UI requests navigation
+  useEffect(() => {
+    const onCollabNavigate = (e: Event) => {
+      const detail: any = (e as CustomEvent).detail || {};
+      const nodeId = detail?.context?.nodeId as string | undefined;
+      if (!nodeId) return;
+      const node = (useReactFlow() as any).getNode(nodeId);
+      if (!node) return;
+      const abs = (node as any).positionAbsolute || node.position;
+      const width = (node as any).measured?.width ?? node.width ?? 160;
+      const height = (node as any).measured?.height ?? node.height ?? 100;
+      const cx = abs.x + width / 2;
+      const cy = abs.y + height / 2;
+      try {
+        (useReactFlow() as any).setCenter(cx, cy, { zoom: 1.2, duration: 500 });
+      } catch (err) {
+        console.warn("collab:navigate setCenter failed", err);
+      }
+    };
+    window.addEventListener("collab:navigate", onCollabNavigate as any);
+    return () =>
+      window.removeEventListener("collab:navigate", onCollabNavigate as any);
+  }, []);
 
   // Layout state
   const [currentLayoutDirection, setCurrentLayoutDirection] = useState<
@@ -237,18 +304,115 @@ function CanvasPageInner() {
   >("TB");
 
   const reactFlowRef = useRef<HTMLDivElement>(null);
+  // Figma-style navigation tool: Move / Hand / Scale
+  const [navigationTool, setNavigationTool] = useState<
+    "move" | "hand" | "scale"
+  >("move");
+  const prevNavigationToolRef = useRef<"move" | "hand" | "scale">("move");
+  const [isWhiteboardActive, setIsWhiteboardActive] = useState(false);
+  const [toolbarMode, setToolbarMode] = useState<"edit" | "draw">("edit");
+  const whiteboardRef = useRef<WhiteboardOverlayHandle | null>(null);
+  const [wbPassthrough, setWbPassthrough] = useState(false);
+  const [whiteboardScene, setWhiteboardScene] = useState<any | null>(null);
+  const [keepToolActive, setKeepToolActive] = useState(false);
+  const [drawActiveTool, setDrawActiveTool] = useState<
+    | "hand"
+    | "selection"
+    | "rectangle"
+    | "diamond"
+    | "ellipse"
+    | "arrow"
+    | "line"
+    | "freedraw"
+    | "text"
+    | "image"
+    | "eraser"
+    | undefined
+  >(undefined);
+  const [drawStrokeColor, setDrawStrokeColor] = useState<string | undefined>(
+    undefined
+  );
+  const [drawStrokeWidth, setDrawStrokeWidth] = useState<number | undefined>(
+    undefined
+  );
+  const [activeWbTool, setActiveWbTool] = useState<
+    | null
+    | "rect"
+    | "ellipse"
+    | "diamond"
+    | "arrow"
+    | "line"
+    | "freehand"
+    | "image"
+  >(null);
+  // Listen for temp node additions from AddNodeButton
+  useEffect(() => {
+    const handler = (e: any) => {
+      const node = e?.detail as Node | undefined;
+      if (node) {
+        setExtraNodes((prev) => [...prev, node]);
+      }
+    };
+    window.addEventListener("rf:addTempNode", handler as any);
+    return () => window.removeEventListener("rf:addTempNode", handler as any);
+  }, []);
 
   // Initialize auto-save functionality
   useAutoSave();
 
   // Search functionality
   const quickSearch = useQuickSearch();
+  // Realtime subscriptions for current canvas
+  const currentCanvasId = useCanvasStore((s) => s.canvas?.id);
+  useCanvasRealtime(currentCanvasId);
+
+  // React Flow hooks
+  const {
+    screenToFlowPosition,
+    setCenter,
+    getViewport,
+    setViewport: setFlowViewport,
+    zoomIn,
+    zoomOut,
+  } = useReactFlow() as any;
+  const setViewport = useCanvasStore((s) => s.setViewport);
+  const viewport = useCanvasStore((s) => s.viewport);
+
+  // CRDT broadcast wiring (Automerge over WebSocket Broadcast)
+  const { recordLocalMutation } = useAutomergeCanvas(currentCanvasId);
+  const canvasStateForCrdt = useCanvasStore((s) => s.canvas);
+  useEffect(() => {
+    if (!canvasStateForCrdt) return;
+    const handle = setTimeout(() => {
+      recordLocalMutation();
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [
+    canvasStateForCrdt?.id,
+    canvasStateForCrdt?.nodes,
+    canvasStateForCrdt?.edges,
+    canvasStateForCrdt?.groups,
+  ]);
+
+  // Presence wiring (user viewing the canvas + cursor)
+  const userId = useAppStore((s) => s.user?.id || "anonymous");
+  const [cursor, setCursor] = useState<{ x: number; y: number } | undefined>(
+    undefined
+  );
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      try {
+        const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        setCursor({ x: flowPos.x, y: flowPos.y });
+      } catch {}
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [screenToFlowPosition]);
+  useCanvasPresence(currentCanvasId, { userId, status: "viewing", cursor });
 
   // Canvas header context
   const { setHeaderInfo } = useCanvasHeader();
-
-  // React Flow hooks
-  const { screenToFlowPosition } = useReactFlow();
 
   // Accessibility hook - TODO: Implement accessibility announcements
   // const { announce } = useAccessibility();
@@ -278,6 +442,11 @@ function CanvasPageInner() {
     isSaving,
     lastSaved,
   } = useCanvasStore();
+
+  const { addEvidence, updateEvidence, deleteEvidence, getGeneralEvidence } =
+    useEvidenceStore();
+  // Subscribe to evidence list so canvas re-renders when evidence content changes
+  const evidenceList = useEvidenceStore((s) => s.evidence);
 
   const handlePaneClick = useCallback(() => {
     clearSelection(); // Clear node selection when clicking on empty space
@@ -388,6 +557,45 @@ function CanvasPageInner() {
   const handleOpenFilters = useCallback(() => {
     setFilterModalOpen(true);
   }, []);
+
+  const handleAddEvidence = useCallback(() => {
+    // Get current viewport center for better positioning
+    const reactFlowInstance = reactFlowRef.current?.getBoundingClientRect();
+    const centerX = reactFlowInstance ? reactFlowInstance.width / 2 : 400;
+    const centerY = reactFlowInstance ? reactFlowInstance.height / 2 : 300;
+
+    // Create a new general evidence item
+    const newEvidence: EvidenceItem = {
+      id: `evidence_${Date.now()}`,
+      title: "New Evidence",
+      type: "Analysis",
+      date: new Date().toISOString().split("T")[0],
+      owner: "Current User", // TODO: Get from auth
+      summary: "Add your evidence summary here",
+      hypothesis: "",
+      impactOnConfidence: "",
+      createdAt: new Date().toISOString(),
+      createdBy: "current-user", // TODO: Get from auth
+      context: {
+        type: "general",
+        targetName: "Canvas Evidence",
+      },
+      position: { x: centerX, y: centerY }, // Center position
+      isVisible: true,
+      isExpanded: false,
+    };
+
+    try {
+      // Add to evidence store
+      addEvidence(newEvidence);
+
+      // Show success message
+      toast.success("Evidence added to canvas");
+    } catch (error) {
+      console.error("❌ Error adding evidence:", error);
+      toast.error("Failed to add evidence");
+    }
+  }, [addEvidence]);
 
   const handleApplyFilters = useCallback(
     (filters: FilterOptions) => {
@@ -671,6 +879,8 @@ function CanvasPageInner() {
         "Show keyboard shortcuts",
         "Navigation"
       ),
+      // Spacebar Hand Tool (press and hold)
+      // Handled via native key listeners below to get proper keyup behavior
       createShortcut.key(
         "Escape",
         () => {
@@ -990,8 +1200,15 @@ function CanvasPageInner() {
         )
       ) || [];
 
+    // Get general evidence items and convert to nodes
+    const evidenceNodes = getGeneralEvidence()
+      .filter((evidence) => evidence.isVisible !== false)
+      .map((evidence) =>
+        convertToEvidenceNode(evidence, updateEvidence, deleteEvidence)
+      );
+
     // Groups should be rendered last (on top of other nodes)
-    return [...metricNodes, ...groupNodes];
+    return [...metricNodes, ...evidenceNodes, ...groupNodes, ...extraNodes];
   }, [
     canvas?.nodes,
     canvas?.groups,
@@ -1005,9 +1222,14 @@ function CanvasPageInner() {
     handleDeleteGroup,
     handleToggleCollapse,
     handleUpdateGroupSize,
+    getGeneralEvidence,
+    updateEvidence,
+    deleteEvidence,
+    evidenceList,
+    extraNodes,
   ]);
-  const edges = useMemo(
-    () =>
+  const edges = useMemo(() => {
+    const relEdges =
       canvas?.edges
         .filter(
           (edge) => visibleEdgeIds.size === 0 || visibleEdgeIds.has(edge.id)
@@ -1019,15 +1241,58 @@ function CanvasPageInner() {
             handleSwitchToRelationship,
             isRelationshipSheetOpen
           )
-        ) || [],
-    [
-      canvas?.edges,
-      visibleEdgeIds,
-      handleOpenRelationshipSheet,
-      handleSwitchToRelationship,
-      isRelationshipSheetOpen,
-    ]
-  );
+        ) || [];
+    return [...relEdges, ...extraEdges];
+  }, [
+    canvas?.edges,
+    visibleEdgeIds,
+    handleOpenRelationshipSheet,
+    handleSwitchToRelationship,
+    isRelationshipSheetOpen,
+    extraEdges,
+  ]);
+
+  // Focus handling from query param
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    if (!focus) return;
+    const [kind, id] = focus.split(":");
+    if (!id) return;
+    // evidence: focus evidence node id
+    if (kind === "evidence") {
+      const target = nodes.find((n) => n.id === id);
+      if (target && target.position) {
+        setCenter(target.position.x, target.position.y, {
+          zoom: 1.2,
+          duration: 800,
+        });
+        selectNode(id);
+      }
+    }
+    if (kind === "card") {
+      const target = nodes.find((n) => n.id === id);
+      if (target && target.position) {
+        setCenter(target.position.x, target.position.y, {
+          zoom: 1.2,
+          duration: 800,
+        });
+        selectNode(id);
+      }
+    }
+    if (kind === "rel") {
+      const rel = canvas?.edges.find((e) => e.id === id);
+      if (rel) {
+        const a = nodes.find((n) => n.id === rel.sourceId);
+        const b = nodes.find((n) => n.id === rel.targetId);
+        if (a && b) {
+          const cx = (a.position.x + b.position.x) / 2;
+          const cy = (a.position.y + b.position.y) / 2;
+          setCenter(cx, cy, { zoom: 1.0, duration: 800 });
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, nodes, canvas?.edges]);
 
   // Proximity Connect - REMOVED for better drag/toolbar UX
 
@@ -1037,6 +1302,239 @@ function CanvasPageInner() {
       loadCanvasFromDatabase(canvasId);
     }
   }, [canvasId]);
+
+  // After canvas loads, hydrate whiteboard scene from project settings
+  useEffect(() => {
+    if (canvas?.settings?.whiteboardScene) {
+      setWhiteboardScene(canvas.settings.whiteboardScene);
+    }
+  }, [canvas?.settings?.whiteboardScene]);
+
+  // Hydrate draw preferences (keepToolActive, lastTool, stroke)
+  useEffect(() => {
+    const prefs: any = canvas?.settings?.whiteboardPrefs;
+    if (!prefs) return;
+    if (typeof prefs.keepToolActive === "boolean")
+      setKeepToolActive(prefs.keepToolActive);
+    if (prefs.lastTool) setDrawActiveTool(prefs.lastTool);
+    if (prefs.strokeColor) {
+      setDrawStrokeColor(prefs.strokeColor);
+      whiteboardRef.current?.setStrokeColor(prefs.strokeColor);
+    }
+    if (prefs.strokeWidth) {
+      setDrawStrokeWidth(prefs.strokeWidth);
+      whiteboardRef.current?.setStrokeWidth(prefs.strokeWidth);
+    }
+  }, [canvas?.settings?.whiteboardPrefs]);
+
+  // Persist scene when it changes (debounced by overlay). Uses project settings JSON
+  useEffect(() => {
+    if (!canvas?.id) return;
+    if (whiteboardScene == null) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { mergeProjectSettings } = await import(
+          "@/lib/supabase/services/projects"
+        );
+        if (!cancelled) {
+          await mergeProjectSettings(canvas.id, {
+            whiteboardScene: whiteboardScene,
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to persist whiteboard scene", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [canvas?.id, whiteboardScene]);
+
+  // Persist draw preferences per canvas
+  useEffect(() => {
+    if (!canvas?.id) return;
+    (async () => {
+      try {
+        const { mergeProjectSettings } = await import(
+          "@/lib/supabase/services/projects"
+        );
+        await mergeProjectSettings(canvas.id, {
+          whiteboardPrefs: {
+            keepToolActive,
+            lastTool: drawActiveTool,
+            strokeColor: drawStrokeColor,
+            strokeWidth: drawStrokeWidth,
+          },
+        });
+      } catch (e) {
+        console.warn("Failed to persist whiteboard prefs", e);
+      }
+    })();
+  }, [
+    canvas?.id,
+    keepToolActive,
+    drawActiveTool,
+    drawStrokeColor,
+    drawStrokeWidth,
+  ]);
+
+  // Persist React Flow viewport to settings
+  useEffect(() => {
+    if (!canvas?.id) return;
+    if (!viewport) return;
+    (async () => {
+      try {
+        const { mergeProjectSettings } = await import(
+          "@/lib/supabase/services/projects"
+        );
+        await mergeProjectSettings(canvas.id, { reactFlowViewport: viewport });
+      } catch (e) {
+        // non-fatal
+      }
+    })();
+  }, [canvas?.id, viewport?.x, viewport?.y, viewport?.zoom]);
+
+  // Spacebar to temporarily switch to Hand tool
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" && !e.repeat) {
+        prevNavigationToolRef.current = navigationTool;
+        // In draw mode, enable passthrough so React Flow can pan while space is held
+        if (toolbarMode === "draw") {
+          setWbPassthrough(true);
+        }
+        setNavigationTool("hand");
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        setNavigationTool(prevNavigationToolRef.current);
+        if (toolbarMode === "draw") {
+          setWbPassthrough(false);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [navigationTool, toolbarMode]);
+
+  // Draw-mode hotkeys (match Excalidraw)
+  useEffect(() => {
+    if (toolbarMode !== "draw") return;
+    const handler = (e: KeyboardEvent) => {
+      // Support Shift+mousewheel zooming behavior (handled by React Flow options above)
+      // No-op here; documented for clarity.
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (
+        tag === "input" ||
+        tag === "textarea" ||
+        (target as any)?.isContentEditable
+      )
+        return;
+      let handled = true;
+      switch (e.key.toLowerCase()) {
+        case "q":
+          setKeepToolActive((prev) => {
+            const next = !prev;
+            whiteboardRef.current?.setKeepToolActive(next);
+            return next;
+          });
+          break;
+        case "h":
+          whiteboardRef.current?.setTool("hand");
+          setDrawActiveTool("hand");
+          break;
+        case "v":
+        case "1":
+          whiteboardRef.current?.setTool("selection");
+          setDrawActiveTool("selection");
+          break;
+        case "r":
+        case "2":
+          whiteboardRef.current?.setTool("rectangle");
+          setDrawActiveTool("rectangle");
+          break;
+        case "d":
+        case "3":
+          whiteboardRef.current?.setTool("diamond");
+          setDrawActiveTool("diamond");
+          break;
+        case "o":
+        case "4":
+          whiteboardRef.current?.setTool("ellipse");
+          setDrawActiveTool("ellipse");
+          break;
+        case "a":
+        case "5":
+          whiteboardRef.current?.setTool("arrow");
+          setDrawActiveTool("arrow");
+          break;
+        case "l":
+        case "6":
+          whiteboardRef.current?.setTool("line");
+          setDrawActiveTool("line");
+          break;
+        case "p":
+        case "7":
+          whiteboardRef.current?.setTool("freedraw");
+          setDrawActiveTool("freedraw");
+          break;
+        case "t":
+        case "8":
+          whiteboardRef.current?.setTool("text");
+          setDrawActiveTool("text");
+          break;
+        case "9":
+          whiteboardRef.current?.setTool("image");
+          setDrawActiveTool("image");
+          break;
+        case "e":
+        case "0":
+          whiteboardRef.current?.setTool("eraser");
+          setDrawActiveTool("eraser");
+          break;
+        default:
+          handled = false;
+      }
+      if (handled) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("keydown", handler, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", handler, { capture: true } as any);
+  }, [toolbarMode]);
+
+  // Enable Shift+mouse wheel zoom while in draw mode
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      if (toolbarMode === "draw" && e.shiftKey) {
+        e.preventDefault();
+        try {
+          if (e.deltaY < 0) {
+            zoomIn?.({ duration: 0 });
+          } else {
+            zoomOut?.({ duration: 0 });
+          }
+        } catch {
+          const vp = getViewport?.();
+          if (!vp) return;
+          const factor = e.deltaY < 0 ? 1.1 : 0.9;
+          const nextZoom = Math.max(0.05, Math.min(3, vp.zoom * factor));
+          setFlowViewport?.({ x: vp.x, y: vp.y, zoom: nextZoom });
+        }
+      }
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel as any);
+  }, [toolbarMode, zoomIn, zoomOut, setFlowViewport, getViewport]);
 
   // Listen for keyboard shortcuts event from sidebar
   useEffect(() => {
@@ -1056,11 +1554,77 @@ function CanvasPageInner() {
     };
   }, []);
 
+  // Drag & drop images onto canvas to create whiteboard image nodes
+  const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "copy";
+    }
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      // Files first
+      const files = Array.from(event.dataTransfer?.files || []).filter(
+        (f: any) => (f as File).type?.startsWith("image/")
+      ) as File[];
+      if (files.length > 0) {
+        const newNodes: Node[] = files
+          .slice(0, 5)
+          .map((file: File, index: number) => ({
+            id: `wb-image-${Date.now()}-${index}`,
+            type: "whiteboardNode",
+            position: {
+              x: position.x + index * 20,
+              y: position.y + index * 20,
+            },
+            data: { shape: "image", imageSrc: URL.createObjectURL(file) },
+            style: { width: 240, height: 180 },
+          }));
+        setExtraNodes((prev) => [...prev, ...newNodes]);
+        return;
+      }
+
+      // URL drops (e.g., dragging an image from browser)
+      const uriList = event.dataTransfer?.getData("text/uri-list");
+      const plain = event.dataTransfer?.getData("text/plain");
+      const candidate = uriList || plain || "";
+      if (/^(https?:).*\.(png|jpe?g|gif|webp|svg)$/i.test(candidate)) {
+        const node: Node = {
+          id: `wb-image-${Date.now()}`,
+          type: "whiteboardNode",
+          position,
+          data: { shape: "image", imageSrc: candidate },
+          style: { width: 240, height: 180 },
+        };
+        setExtraNodes((prev) => [...prev, node]);
+      }
+    },
+    [screenToFlowPosition]
+  );
+
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       console.log("🎯 onNodesChange called with changes:", changes);
 
       changes.forEach((change) => {
+        // Keep extra (non-persisted) nodes responsive
+        if (change.type === "position") {
+          setExtraNodes((prev) => {
+            const idx = prev.findIndex((n) => n.id === change.id);
+            if (idx === -1 || !change.position) return prev;
+            const copy = [...prev];
+            copy[idx] = { ...copy[idx], position: change.position };
+            return copy;
+          });
+        }
+
         // Handle position changes - BULLETPROOF POSITION SAVING
         if (change.type === "position" && canvas) {
           const canvasNode = canvas.nodes.find((n) => n.id === change.id);
@@ -1106,6 +1670,12 @@ function CanvasPageInner() {
               canvas?.groups?.map((g) => ({ id: g.id, name: g.name })) || [],
             matchingGroup: canvas?.groups?.find((g) => g.id === change.id),
           });
+
+          // Ignore selection propagation for extra (temp) nodes
+          const isExtraNode = extraNodes.some((n) => n.id === change.id);
+          if (isExtraNode) {
+            return;
+          }
 
           if (change.selected) {
             if (isGroupNode) {
@@ -1156,9 +1726,12 @@ function CanvasPageInner() {
   }, [canvas?.groups]);
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
-    // Handle edge changes
-    // For now, we'll implement basic edge deletion
-    console.log("Edge changes:", changes);
+    const removed = changes
+      .filter((c) => c.type === "remove")
+      .map((c: any) => c.id as string);
+    if (removed.length) {
+      setExtraEdges((prev) => prev.filter((e) => !removed.includes(e.id)));
+    }
   }, []);
 
   // Delete Middle Node - automatically reconnect edges when intermediate nodes are deleted
@@ -1306,25 +1879,45 @@ function CanvasPageInner() {
       });
 
       if (params.source && params.target && isValidConnection(params)) {
+        const src = nodes.find((n) => n.id === params.source);
+        const dst = nodes.find((n) => n.id === params.target);
+        const srcType = src?.type;
+        const dstType = dst?.type;
+
+        const isOperative =
+          ((srcType === "sourceNode" || srcType === "operatorNode") &&
+            (dstType === "metricCard" || dstType === "operatorNode")) ||
+          ((dstType === "sourceNode" || dstType === "operatorNode") &&
+            (srcType === "metricCard" || srcType === "operatorNode"));
+
+        if (isOperative) {
+          const opEdge: Edge = {
+            id: `op-${Date.now()}`,
+            source: params.source,
+            target: params.target,
+            type: "operativeEdge",
+            data: { label: "data" },
+          };
+          setExtraEdges((prev) => [...prev, opEdge]);
+          return;
+        }
+
         const newRelationshipData = {
           sourceId: params.source,
           targetId: params.target,
-          type: "Probabilistic" as const, // Default type
-          confidence: "Low" as const, // Default confidence
+          type: "Probabilistic" as const,
+          confidence: "Low" as const,
           evidence: [],
         };
 
-        console.log("🔗 Creating relationship:", newRelationshipData);
-
         try {
           await createEdge(newRelationshipData);
-          console.log("✅ Relationship created and saved to database");
         } catch (error) {
           console.error("❌ Failed to create relationship:", error);
         }
       }
     },
-    [createEdge, isValidConnection]
+    [createEdge, isValidConnection, nodes]
   );
 
   // Handle category selection for dropped node
@@ -1416,192 +2009,426 @@ function CanvasPageInner() {
   return (
     <div className="w-full h-full bg-background">
       {/* React Flow Canvas */}
-      <div className="h-full">
-        <ReactFlow
-          ref={reactFlowRef}
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodesDelete={onNodesDelete}
-          onConnect={onConnect}
-          onConnectEnd={onConnectEnd}
-          onPaneClick={handlePaneClick}
-          isValidConnection={isValidConnection}
-          connectionMode={"strict" as ConnectionMode} // Better for touch devices - requires handle targeting
-          connectOnClick={true} // Enable touch device support - click to connect handles
-          snapToGrid={true}
-          snapGrid={[15, 15]}
-          multiSelectionKeyCode={["Shift"]} // Enable multi-selection with Shift key
-          selectionKeyCode={["Shift"]} // Enable selection with Shift key
-          panOnDrag={[0, 1, 2]} // Allow panning with left, middle, and right mouse buttons
-          selectionOnDrag={false} // Disable selection by dragging to prevent conflicts with panning
-          defaultEdgeOptions={{
-            type: "dynamicEdge",
-            animated: false,
-          }}
-          // Subflow configuration
-          fitViewOptions={{ padding: 0.1 }}
-          proOptions={{ hideAttribution: true }}
-          // Enable subflow behavior
-          nodesDraggable={true}
-          nodesConnectable={true}
-          elementsSelectable={true}
-          // Ensure proper layering
-          elevateNodesOnSelect={true}
-          elevateEdgesOnSelect={true}
-          connectionLineStyle={{
-            strokeWidth: 3,
-            stroke: "#3b82f6",
-          }}
-          connectionLineComponent={({
-            fromX,
-            fromY,
-            toX,
-            toY,
-            connectionStatus,
-          }: {
-            fromX: number;
-            fromY: number;
-            toX: number;
-            toY: number;
-            connectionStatus: string | null;
-          }) => {
-            // Dynamic styling based on connection status
-            const isValid = connectionStatus === "valid";
-            const strokeColor = isValid ? "#10b981" : "#3b82f6"; // green if valid, blue otherwise
+      <div className="h-full relative">
+        <PortalContainerProvider container={reactFlowRef.current as any}>
+          <ReactFlow
+            ref={reactFlowRef}
+            onDragOver={onDragOver as any}
+            onDrop={onDrop as any}
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodesDelete={onNodesDelete}
+            onConnect={onConnect}
+            onConnectEnd={onConnectEnd}
+            onPaneClick={handlePaneClick}
+            isValidConnection={isValidConnection}
+            connectionMode={"strict" as ConnectionMode} // Better for touch devices - requires handle targeting
+            connectOnClick={true} // Enable touch device support - click to connect handles
+            snapToGrid={true}
+            snapGrid={[15, 15]}
+            multiSelectionKeyCode={["Shift"]}
+            selectionKeyCode={["Shift"]}
+            // Figma-style navigation behavior
+            panOnDrag={
+              navigationTool === "hand" && toolbarMode !== "draw"
+                ? [0, 1, 2]
+                : toolbarMode === "draw"
+                  ? false
+                  : [1, 2]
+            }
+            selectionOnDrag={false}
+            // Make the canvas effectively infinite
+            translateExtent={[
+              [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY],
+              [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY],
+            ]}
+            minZoom={0.05}
+            maxZoom={3}
+            // Disable default wheel-zoom in draw mode; Shift+wheel handled globally
+            panOnScroll={toolbarMode !== "draw"}
+            zoomOnScroll={toolbarMode !== "draw"}
+            zoomOnPinch={true}
+            onMoveEnd={() => {
+              try {
+                const vp = getViewport?.();
+                if (vp) setViewport(vp);
+              } catch {}
+            }}
+            defaultEdgeOptions={{
+              type: "dynamicEdge",
+              animated: false,
+            }}
+            // Subflow configuration
+            fitViewOptions={{ padding: 0.1 }}
+            proOptions={{ hideAttribution: true }}
+            // Enable subflow behavior
+            nodesDraggable={toolbarMode !== "draw"}
+            nodesConnectable={toolbarMode !== "draw"}
+            elementsSelectable={toolbarMode !== "draw"}
+            // Ensure proper layering
+            elevateNodesOnSelect={true}
+            elevateEdgesOnSelect={true}
+            connectionLineStyle={{
+              strokeWidth: 3,
+              stroke: "#3b82f6",
+            }}
+            connectionLineComponent={({
+              fromX,
+              fromY,
+              toX,
+              toY,
+              connectionStatus,
+            }: {
+              fromX: number;
+              fromY: number;
+              toX: number;
+              toY: number;
+              connectionStatus: string | null;
+            }) => {
+              // Dynamic styling based on connection status
+              const isValid = connectionStatus === "valid";
+              const strokeColor = isValid ? "#10b981" : "#3b82f6"; // green if valid, blue otherwise
 
-            return (
-              <g>
-                <defs>
-                  <linearGradient
-                    id="easyConnectionGradient"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="0%"
-                  >
-                    <stop
-                      offset="0%"
-                      style={{ stopColor: strokeColor, stopOpacity: 0.8 }}
-                    />
-                    <stop
-                      offset="100%"
-                      style={{ stopColor: strokeColor, stopOpacity: 1 }}
-                    />
-                  </linearGradient>
-                  <filter id="connectionGlow">
-                    <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-                    <feMerge>
-                      <feMergeNode in="coloredBlur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
+              return (
+                <g>
+                  <defs>
+                    <linearGradient
+                      id="easyConnectionGradient"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="0%"
+                    >
+                      <stop
+                        offset="0%"
+                        style={{ stopColor: strokeColor, stopOpacity: 0.8 }}
+                      />
+                      <stop
+                        offset="100%"
+                        style={{ stopColor: strokeColor, stopOpacity: 1 }}
+                      />
+                    </linearGradient>
+                    <filter id="connectionGlow">
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
 
-                {/* Connection line with smooth bezier curve */}
-                <path
-                  d={`M${fromX},${fromY} C${fromX + 50},${fromY} ${toX - 50},${toY} ${toX},${toY}`}
-                  stroke="url(#easyConnectionGradient)"
-                  strokeWidth={3}
-                  fill="none"
-                  filter="url(#connectionGlow)"
-                  className={isValid ? "animate-pulse" : ""}
-                />
+                  {/* Connection line with smooth bezier curve */}
+                  <path
+                    d={`M${fromX},${fromY} C${fromX + 50},${fromY} ${toX - 50},${toY} ${toX},${toY}`}
+                    stroke="url(#easyConnectionGradient)"
+                    strokeWidth={3}
+                    fill="none"
+                    filter="url(#connectionGlow)"
+                    className={isValid ? "animate-pulse" : ""}
+                  />
 
-                {/* Connection endpoint indicator */}
-                <circle
-                  cx={toX}
-                  cy={toY}
-                  r={6}
-                  fill={strokeColor}
-                  stroke="white"
-                  strokeWidth={2}
-                  className={isValid ? "animate-bounce" : "animate-pulse"}
-                />
+                  {/* Connection endpoint indicator */}
+                  <circle
+                    cx={toX}
+                    cy={toY}
+                    r={6}
+                    fill={strokeColor}
+                    stroke="white"
+                    strokeWidth={2}
+                    className={isValid ? "animate-bounce" : "animate-pulse"}
+                  />
 
-                {/* Source point indicator */}
-                <circle
-                  cx={fromX}
-                  cy={fromY}
-                  r={4}
-                  fill={strokeColor}
-                  stroke="white"
-                  strokeWidth={1}
-                />
-              </g>
-            );
-          }}
-          fitView
-          className="bg-background"
-        >
-          <Background />
+                  {/* Source point indicator */}
+                  <circle
+                    cx={fromX}
+                    cy={fromY}
+                    r={4}
+                    fill={strokeColor}
+                    stroke="white"
+                    strokeWidth={1}
+                  />
+                </g>
+              );
+            }}
+            fitView
+            className="bg-background"
+          >
+            <Background />
 
-          {/* Proximity Connect - REMOVED for better drag/toolbar UX */}
-
-          {/* Comprehensive Control Panel - Bottom Left */}
-          <Controls className="bg-card border border-border">
-            {/* Node Creation */}
-            <AddNodeButton
-              position={{ x: 100, y: 100 }}
-              asControlButton={true}
+            {/* Top toolbar */}
+            <TopCanvasToolbar
+              activeTool={activeWbTool}
+              onSelectTool={(t) => {
+                // In drawing mode (Excalidraw overlay), do not create ReactFlow whiteboard nodes
+                if (isWhiteboardActive) return;
+                setActiveWbTool(t);
+              }}
+              onUploadImage={(file) => {
+                const id = `temp-whiteboardNode-${Date.now()}`;
+                const position = { x: 200, y: 200 };
+                const node: Node = {
+                  id,
+                  type: "whiteboardNode",
+                  position,
+                  data: { shape: "image", imageSrc: URL.createObjectURL(file) },
+                  style: { width: 220, height: 160 },
+                };
+                setExtraNodes((prev) => [...prev, node]);
+              }}
+              onOpenSearch={() => quickSearch.open()}
+              onOpenFilters={handleOpenFilters}
+              onAddEvidence={handleAddEvidence}
+              currentLayoutDirection={currentLayoutDirection}
+              onChangeLayoutDirection={(dir) => handleApplyLayout(dir)}
+              navigationTool={navigationTool}
+              onChangeNavigationTool={setNavigationTool}
+              onToggleWhiteboard={() => setIsWhiteboardActive((v) => !v)}
+              isWhiteboardActive={isWhiteboardActive}
+              mode={toolbarMode}
+              onChangeMode={(m) => {
+                setToolbarMode(m);
+                setIsWhiteboardActive(m === "draw");
+              }}
+              drawActiveTool={drawActiveTool}
+              keepToolActive={keepToolActive}
+              onToggleKeepToolActive={(next) => {
+                setKeepToolActive(next);
+                whiteboardRef.current?.setKeepToolActive(next);
+              }}
+              onExportWhiteboardPNG={async () => {
+                const blob = await whiteboardRef.current?.exportPNG();
+                if (!blob) return;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `whiteboard-${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              onExportWhiteboardSVG={async () => {
+                const svg = await whiteboardRef.current?.exportSVG();
+                if (!svg) return;
+                const serializer = new XMLSerializer();
+                const data = serializer.serializeToString(svg);
+                const blob = new Blob([data], { type: "image/svg+xml" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `whiteboard-${Date.now()}.svg`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              onClearWhiteboard={() => whiteboardRef.current?.clear()}
+              onSetDrawTool={(tool) => {
+                setDrawActiveTool(tool);
+                whiteboardRef.current?.setTool(tool);
+                if (keepToolActive != null) {
+                  whiteboardRef.current?.setKeepToolActive(keepToolActive);
+                }
+              }}
+              onSetStrokeColor={(hex) => {
+                setDrawStrokeColor(hex);
+                whiteboardRef.current?.setStrokeColor(hex);
+              }}
+              onSetStrokeWidth={(px) => {
+                setDrawStrokeWidth(px);
+                whiteboardRef.current?.setStrokeWidth(px);
+              }}
+              onAddCustomNode={(
+                type:
+                  | "sourceNode"
+                  | "chartNode"
+                  | "operatorNode"
+                  | "whiteboardNode"
+                  | "commentNode",
+                position?: { x: number; y: number }
+              ) => {
+                console.log("➕ Adding custom node from toolbar:", {
+                  type,
+                  position,
+                });
+                const id = `temp-${type}-${Date.now()}`;
+                let pos = position ?? { x: 100, y: 100 };
+                // If no position provided, try to place at canvas center
+                if (!position && reactFlowRef.current) {
+                  const bounds = reactFlowRef.current.getBoundingClientRect();
+                  const centerScreen = {
+                    x: bounds.left + bounds.width / 2,
+                    y: bounds.top + bounds.height / 2,
+                  };
+                  try {
+                    pos = screenToFlowPosition(centerScreen);
+                  } catch {}
+                }
+                const base: any = { id, position: pos, data: {}, type };
+                if (type === "sourceNode") {
+                  base.data = {
+                    title: "Source",
+                    sourceType: "random",
+                    sample: [],
+                  };
+                } else if (type === "chartNode") {
+                  base.data = {
+                    title: "Chart",
+                    chartType: "bar",
+                    xAxis: null,
+                    yAxis: null,
+                    data: [],
+                  };
+                } else if (type === "operatorNode") {
+                  base.data = {
+                    label: "Operator",
+                    operationType: "formula",
+                    isActive: true,
+                  };
+                } else if (type === "whiteboardNode") {
+                  base.data = { shape: "rect" };
+                } else if (type === "commentNode") {
+                  base.data = {
+                    title: "Comment",
+                    projectId: canvasId,
+                    threadId: null,
+                  };
+                }
+                setExtraNodes((prev) => {
+                  console.log("✅ Custom node queued:", base);
+                  return [...prev, base];
+                });
+              }}
             />
 
-            {/* Search & Navigation */}
-            <ControlButton
-              onClick={() => quickSearch.open()}
-              title="Search (Cmd+F)"
-            >
-              <Search className="h-4 w-4" />
-            </ControlButton>
+            {/* Whiteboard overlay stacked above ReactFlow. */}
+            {/* Whiteboard overlay moved outside ReactFlow to avoid transform/pointer conflicts */}
 
-            {/* Layout Controls */}
-            <LayoutControls
-              onApplyLayout={handleApplyLayout}
-              currentDirection={currentLayoutDirection}
-            />
+            {/* Tool interaction: click to create a whiteboard node with current tool
+                Disable when Excalidraw overlay is active */}
+            {activeWbTool && !isWhiteboardActive && (
+              <div
+                // transparent overlay to capture a single click
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  cursor: "crosshair",
+                  zIndex: 5,
+                }}
+                onClick={(e) => {
+                  // const bounds = (
+                  //   e.currentTarget as HTMLDivElement
+                  // ).getBoundingClientRect();
+                  const position = screenToFlowPosition({
+                    x: e.clientX,
+                    y: e.clientY,
+                  });
+                  const id = `wb-${activeWbTool}-${Date.now()}`;
+                  const node: Node = {
+                    id,
+                    type: "whiteboardNode",
+                    position,
+                    data: { shape: activeWbTool },
+                    style: { width: 160, height: 120 },
+                  };
+                  setExtraNodes((prev) => [...prev, node]);
+                  setActiveWbTool(null);
+                  e.stopPropagation();
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setActiveWbTool(null);
+                }}
+              />
+            )}
 
-            {/* Filter Controls */}
-            <ControlButton onClick={handleOpenFilters} title="Filters">
-              <Filter className="h-4 w-4" />
-            </ControlButton>
-          </Controls>
-          {/* Selection Panel - Inside React Flow */}
-          <Panel position="bottom-center" className="z-10">
-            <SelectionPanel
-              selectedNodeIds={selectedNodeIds}
-              selectedGroupIds={selectedGroupIds}
-              onGroupNodes={handleGroupSelectedNodes}
-              onUngroupNodes={handleUngroupSelectedGroups}
-              onDeleteNodes={handleDeleteSelectedItems}
-              onDuplicateNodes={handleDuplicateSelectedItems}
-              onOpenSettings={handleOpenSelectedSettings}
-            />
-          </Panel>
+            {/* Proximity Connect - REMOVED for better drag/toolbar UX */}
 
-          {/* Unified Debug Tool - Inside React Flow */}
-          <DebugPanel title="Debug State" position="top-left">
-            <div>Selected Nodes: {selectedNodeIds.length}</div>
-            <div>Selected Groups: {selectedGroupIds.length}</div>
-            <div>Selected Node IDs: {selectedNodeIds.join(", ") || "none"}</div>
-            <div>
-              Selected Group IDs: {selectedGroupIds.join(", ") || "none"}
-            </div>
-            <div>
-              Selection Panel:{" "}
-              {selectedNodeIds.length + selectedGroupIds.length > 0
-                ? "visible"
-                : "hidden"}
-            </div>
-            <div>Total Nodes: {canvas?.nodes?.length || 0}</div>
-            <div>Total Groups: {canvas?.groups?.length || 0}</div>
-            <div className="mt-2 text-yellow-300">
-              Shift+Click should work for multi-selection
-            </div>
-          </DebugPanel>
-        </ReactFlow>
+            {/* Minimal React Flow Controls (zoom/fit only) */}
+            <Controls className="bg-card border border-border">
+              {/* keep default zoom/fit/interactive only */}
+            </Controls>
+            {/* Selection Panel - Inside React Flow */}
+            <Panel position="bottom-center" className="z-10">
+              <SelectionPanel
+                selectedNodeIds={selectedNodeIds}
+                selectedGroupIds={selectedGroupIds}
+                onGroupNodes={handleGroupSelectedNodes}
+                onUngroupNodes={handleUngroupSelectedGroups}
+                onDeleteNodes={handleDeleteSelectedItems}
+                onDuplicateNodes={handleDuplicateSelectedItems}
+                onOpenSettings={handleOpenSelectedSettings}
+              />
+            </Panel>
+
+            {/* Unified Debug Tool - Inside React Flow */}
+            <DebugPanel title="Debug State" position="top-left">
+              <div>Selected Nodes: {selectedNodeIds.length}</div>
+              <div>Selected Groups: {selectedGroupIds.length}</div>
+              <div>
+                Selected Node IDs: {selectedNodeIds.join(", ") || "none"}
+              </div>
+              <div>
+                Selected Group IDs: {selectedGroupIds.join(", ") || "none"}
+              </div>
+              <div>
+                Selection Panel:{" "}
+                {selectedNodeIds.length + selectedGroupIds.length > 0
+                  ? "visible"
+                  : "hidden"}
+              </div>
+              <div>Total Nodes: {canvas?.nodes?.length || 0}</div>
+              <div>Total Groups: {canvas?.groups?.length || 0}</div>
+              <div className="mt-2 text-yellow-300">
+                Shift+Click should work for multi-selection
+              </div>
+            </DebugPanel>
+          </ReactFlow>
+
+          {/* Overlay positioned above ReactFlow using the parent relative container */}
+          <WhiteboardOverlay
+            ref={whiteboardRef as any}
+            isActive={isWhiteboardActive}
+            zIndex={100}
+            viewport={getViewport?.() || { x: 0, y: 0, zoom: 1 }}
+            initialData={
+              whiteboardScene || {
+                appState: { viewBackgroundColor: "transparent" },
+              }
+            }
+            onSceneChange={(scene) => setWhiteboardScene(scene)}
+            topOffset={100}
+            passthrough={wbPassthrough}
+            onWheelCapture={(e: WheelEvent) => {
+              // Intercept Shift+wheel at the overlay level to guarantee capture even when overlay has pointer-events: auto
+              if (toolbarMode === "draw" && e.shiftKey) {
+                e.preventDefault();
+                try {
+                  const ax = Math.abs(e.deltaX);
+                  const ay = Math.abs(e.deltaY);
+                  const primary = ay >= ax ? e.deltaY : e.deltaX;
+                  if (primary < 0) {
+                    zoomIn?.({ duration: 0 });
+                  } else {
+                    zoomOut?.({ duration: 0 });
+                  }
+                } catch {
+                  const vp = getViewport?.();
+                  if (!vp) return;
+                  const ax = Math.abs(e.deltaX);
+                  const ay = Math.abs(e.deltaY);
+                  const primary = ay >= ax ? e.deltaY : e.deltaX;
+                  const factor = primary < 0 ? 1.1 : 0.9;
+                  const nextZoom = Math.max(
+                    0.05,
+                    Math.min(3, vp.zoom * factor)
+                  );
+                  setFlowViewport?.({ x: vp.x, y: vp.y, zoom: nextZoom });
+                }
+              }
+            }}
+          />
+        </PortalContainerProvider>
 
         {/* Bulk Operations Toolbar - Removed as we only use the top NodeToolbar */}
       </div>

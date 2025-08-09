@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect } from "react";
 import type { ReactNode } from "react";
-import { useClerkSupabase } from "@/hooks/useClerkSupabase";
+import { useClerkSupabase } from "@/lib/hooks/useClerkSupabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { setAuthenticatedClient } from "@/lib/utils/authenticatedClient";

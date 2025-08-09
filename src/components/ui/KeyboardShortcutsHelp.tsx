@@ -12,8 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Keyboard, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { formatShortcut } from "@/hooks/useKeyboardShortcuts";
-import type { KeyboardShortcut } from "@/hooks/useKeyboardShortcuts";
+import { formatShortcut } from "@/lib/hooks/useKeyboardShortcuts";
+import type { KeyboardShortcut } from "@/lib/hooks/useKeyboardShortcuts";
 
 interface KeyboardShortcutsHelpProps {
   shortcuts: KeyboardShortcut[];

@@ -56,15 +56,15 @@ import { useProjectsStore, useAppStore } from "@/lib/stores";
 import type { CanvasProject } from "@/lib/types";
 import QuickSearchCommand, {
   useQuickSearch,
-} from "@/components/search/QuickSearchCommand";
-import AdvancedSearchModal from "@/components/search/AdvancedSearchModal";
+} from "@/components/canvas/search/QuickSearchCommand";
+import AdvancedSearchModal from "@/components/canvas/search/AdvancedSearchModal";
 import {
   useKeyboardShortcuts,
   createShortcut,
-} from "@/hooks/useKeyboardShortcuts";
+} from "@/lib/hooks/useKeyboardShortcuts";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { getTagColor } from "@/lib/utils/tag-colors";
-import { CanvasPreview } from "@/components/canvas/CanvasPreview";
+import { CanvasPreview } from "@/components/canvas/homepage/CanvasPreview";
 import FeedbackButton from "@/components/feedback/FeedbackButton";
 import { isDevelopmentEnvironment } from "@/lib/supabase/client";
 

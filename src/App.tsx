@@ -20,6 +20,7 @@ import AssetsPage from "./pages/AssetsPage";
 import SourcePage from "./pages/SourcePage";
 import CanvasSettingsPage from "./pages/CanvasSettingsPage";
 import EvidenceRepositoryPage from "./pages/EvidenceRepositoryPage";
+import EvidencePage from "./pages/EvidencePage";
 
 // Auth Pages
 import SignInPage from "./pages/SignInPage";
@@ -65,6 +66,10 @@ export default function App() {
                 />
                 <Route path="/evidence" element={<EvidenceRepositoryPage />} />
                 <Route
+                  path="/evidence/:evidenceId"
+                  element={<EvidencePage />}
+                />
+                <Route
                   path="/canvas/:canvasId"
                   element={
                     <CanvasHeaderProvider>
@@ -76,6 +81,10 @@ export default function App() {
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="assets" element={<AssetsPage />} />
                   <Route path="evidence" element={<EvidenceRepositoryPage />} />
+                  <Route
+                    path="evidence/:evidenceId"
+                    element={<EvidencePage />}
+                  />
                   <Route path="source" element={<SourcePage />} />
                   <Route path="settings" element={<CanvasSettingsPage />} />
                 </Route>
@@ -157,6 +166,14 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/evidence/:evidenceId"
+                  element={
+                    <ProtectedRoute>
+                      <EvidencePage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Canvas routes - With sidebar layout */}
                 <Route
@@ -173,6 +190,10 @@ export default function App() {
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="assets" element={<AssetsPage />} />
                   <Route path="evidence" element={<EvidenceRepositoryPage />} />
+                  <Route
+                    path="evidence/:evidenceId"
+                    element={<EvidencePage />}
+                  />
                   <Route path="source" element={<SourcePage />} />
                   <Route path="settings" element={<CanvasSettingsPage />} />
                 </Route>
