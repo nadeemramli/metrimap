@@ -82,7 +82,7 @@ export default function UnifiedLayoutControls() {
     if (canvas?.settings?.autoLayout) {
       setLayoutOptions((prev) => ({
         ...prev,
-        direction: canvas.settings.autoLayout.algorithm || "TB",
+        direction: canvas?.settings?.autoLayout?.algorithm || "TB",
       }));
     }
   }, [canvas?.settings?.autoLayout]);
@@ -129,7 +129,7 @@ export default function UnifiedLayoutControls() {
             <DropdownMenuItem
               key={direction.value}
               onClick={() => handleApplyLayout(direction.value)}
-              disabled={isApplyingLayout || nodes.length === 0}
+              disabled={isApplyingLayout || rf?.getNodes?.().length === 0}
               className="flex items-center justify-between"
             >
               <span>{direction.label}</span>
@@ -226,7 +226,7 @@ export default function UnifiedLayoutControls() {
 
             <Button
               onClick={() => handleApplyLayout()}
-              disabled={isApplyingLayout || nodes.length === 0}
+              disabled={isApplyingLayout || rf?.getNodes?.().length === 0}
               className="w-full"
             >
               <Play className="h-4 w-4 mr-2" />

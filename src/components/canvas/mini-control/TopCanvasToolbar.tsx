@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ChangeEvent, useMemo } from "react";
+import { useRef } from "react";
 import { Panel } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import {
@@ -11,22 +11,13 @@ import {
   ArrowRight,
   Pencil,
   Image as ImageIcon,
-  Link2,
   LayoutGrid,
   Filter,
   Search,
-  FileText,
-  Hand,
   MousePointer,
-  ZoomIn,
-  Lock,
-  Eraser,
   Type as TypeIcon,
-  ArrowUpDown,
-  ArrowDownUp,
-  ArrowLeftRight,
-  ArrowRightLeft,
   Settings,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -38,12 +29,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 type Tool =
   | null
@@ -67,7 +52,12 @@ interface TopCanvasToolbarProps {
   navigationTool: "move" | "hand" | "scale";
   onChangeNavigationTool: (tool: "move" | "hand" | "scale") => void;
   onAddCustomNode?: (
-    type: "sourceNode" | "chartNode" | "operatorNode" | "whiteboardNode"
+    type:
+      | "sourceNode"
+      | "chartNode"
+      | "operatorNode"
+      | "whiteboardNode"
+      | "commentNode"
   ) => void;
   onToggleWhiteboard?: () => void;
   isWhiteboardActive?: boolean;
@@ -131,6 +121,17 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
       ? "bg-primary/10 text-primary"
       : "hover:bg-muted/60 text-foreground/90";
 
+  const handleImageUpload = () => {
+    fileRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && props.onUploadImage) {
+      props.onUploadImage(file);
+    }
+  };
+
   return (
     <Panel
       position="top-left"
@@ -143,6 +144,15 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
       }}
       className={cn("pointer-events-auto select-none")}
     >
+      {/* Hidden file input for image upload */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        style={{ display: "none" }}
+      />
+
       <div className="flex items-center gap-2 rounded-2xl bg-white/95 backdrop-blur-sm border border-gray-200 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset,0_10px_24px_-12px_rgba(0,0,0,0.25)] px-3 py-2 pointer-events-auto">
         {/* Mode toggle */}
         <div className="flex bg-gray-100 rounded-xl p-1 mr-1">
@@ -191,6 +201,17 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
               asControlButton={false}
               onAddCustomNode={props.onAddCustomNode}
             />
+
+            {/* Comment Pin Node */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-lg"
+              title="Add comment pin"
+              onClick={() => props.onAddCustomNode?.("commentNode")}
+            >
+              <MapPin className="w-4 h-4" />
+            </Button>
 
             <Separator orientation="vertical" className="h-6" />
 
@@ -270,10 +291,16 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
               ).map((t) => (
                 <Button
                   key={t}
-                  variant={props.drawActiveTool === t ? "default" : "ghost"}
+                  variant={isActive(t) ? "default" : "ghost"}
                   size="sm"
-                  className="rounded-lg"
-                  onClick={() => props.onSetDrawTool?.(t)}
+                  className={cn("rounded-lg", activeBtn(isActive(t)))}
+                  onClick={() => {
+                    if (t === "image") {
+                      handleImageUpload();
+                    } else {
+                      props.onSetDrawTool?.(t);
+                    }
+                  }}
                 >
                   {t === "selection" && <MousePointer className="w-4 h-4" />}
                   {t === "rectangle" && <Square className="w-4 h-4" />}

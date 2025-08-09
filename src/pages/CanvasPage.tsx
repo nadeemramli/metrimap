@@ -18,18 +18,9 @@ import {
   type ConnectionMode,
   Background,
   Controls,
-  ControlButton,
   Panel,
 } from "@xyflow/react";
-import {
-  Search,
-  Save,
-  Clock,
-  Check,
-  AlertCircle,
-  Filter,
-  FileText,
-} from "lucide-react";
+import { Save, Clock, Check, AlertCircle } from "lucide-react";
 
 import "@xyflow/react/dist/style.css";
 import { useCanvasStore } from "@/lib/stores";
@@ -53,7 +44,6 @@ import type {
 } from "@/lib/types";
 import {
   MetricCard,
-  AddNodeButton,
   CardSettingsSheet,
   DynamicEdge,
   OperativeEdge,
@@ -61,6 +51,7 @@ import {
   GroupNode,
   WhiteboardNode,
 } from "@/components/canvas";
+import CommentNode from "@/components/canvas/node/comment-node";
 import EvidenceNode from "@/components/canvas/node/EvidenceNode";
 import ChartNode from "@/components/canvas/node/chart-node";
 import SourceNode from "@/components/canvas/node/source-node/source-node";
@@ -76,6 +67,10 @@ import QuickSearchCommand, {
 } from "@/components/canvas/search/QuickSearchCommand";
 import AdvancedSearchModal from "@/components/canvas/search/AdvancedSearchModal";
 import useAutoSave from "@/lib/hooks/useAutoSave";
+import { useCanvasRealtime } from "@/lib/hooks/useCanvasRealtime";
+import { useAutomergeCanvas } from "@/lib/hooks/useAutomergeCanvas";
+import { useCanvasPresence } from "@/lib/hooks/useCanvasPresence";
+import { useAppStore } from "@/lib/stores";
 import { generateUUID } from "@/lib/utils/validation";
 import { applyAutoLayout } from "@/lib/utils/autoLayout";
 import { toast } from "sonner";
@@ -88,7 +83,7 @@ import {
 
 import SelectionPanel from "@/components/canvas/grouping/SelectionPanel";
 import FilterModal from "@/components/canvas/mini-control/FilterModal";
-import { UnifiedLayoutControls } from "@/components/canvas/mini-control";
+// import { UnifiedLayoutControls } from "@/components/canvas/mini-control";
 import DebugPanel from "@/components/canvas/left-sidepanel/DebugPanel";
 import TopCanvasToolbar from "@/components/canvas/mini-control/TopCanvasToolbar";
 import {
@@ -233,6 +228,7 @@ const nodeTypes = {
   chartNode: ChartNode,
   operatorNode: OperatorNode,
   whiteboardNode: WhiteboardNode,
+  commentNode: CommentNode,
 };
 
 const edgeTypes = {
@@ -278,6 +274,29 @@ function CanvasPageInner() {
   const [currentFilters, setCurrentFilters] = useState<FilterOptions>({});
   const [visibleNodeIds, setVisibleNodeIds] = useState<Set<string>>(new Set());
   const [visibleEdgeIds, setVisibleEdgeIds] = useState<Set<string>>(new Set());
+  // Center canvas on a node when collaboration UI requests navigation
+  useEffect(() => {
+    const onCollabNavigate = (e: Event) => {
+      const detail: any = (e as CustomEvent).detail || {};
+      const nodeId = detail?.context?.nodeId as string | undefined;
+      if (!nodeId) return;
+      const node = (useReactFlow() as any).getNode(nodeId);
+      if (!node) return;
+      const abs = (node as any).positionAbsolute || node.position;
+      const width = (node as any).measured?.width ?? node.width ?? 160;
+      const height = (node as any).measured?.height ?? node.height ?? 100;
+      const cx = abs.x + width / 2;
+      const cy = abs.y + height / 2;
+      try {
+        (useReactFlow() as any).setCenter(cx, cy, { zoom: 1.2, duration: 500 });
+      } catch (err) {
+        console.warn("collab:navigate setCenter failed", err);
+      }
+    };
+    window.addEventListener("collab:navigate", onCollabNavigate as any);
+    return () =>
+      window.removeEventListener("collab:navigate", onCollabNavigate as any);
+  }, []);
 
   // Layout state
   const [currentLayoutDirection, setCurrentLayoutDirection] = useState<
@@ -342,15 +361,51 @@ function CanvasPageInner() {
 
   // Search functionality
   const quickSearch = useQuickSearch();
-
-  // Canvas header context
-  const { setHeaderInfo } = useCanvasHeader();
+  // Realtime subscriptions for current canvas
+  const currentCanvasId = useCanvasStore((s) => s.canvas?.id);
+  useCanvasRealtime(currentCanvasId);
 
   // React Flow hooks
   const { screenToFlowPosition, setCenter, getViewport } =
     useReactFlow() as any;
   const setViewport = useCanvasStore((s) => s.setViewport);
   const viewport = useCanvasStore((s) => s.viewport);
+
+  // CRDT broadcast wiring (Automerge over WebSocket Broadcast)
+  const { recordLocalMutation } = useAutomergeCanvas(currentCanvasId);
+  const canvasStateForCrdt = useCanvasStore((s) => s.canvas);
+  useEffect(() => {
+    if (!canvasStateForCrdt) return;
+    const handle = setTimeout(() => {
+      recordLocalMutation();
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [
+    canvasStateForCrdt?.id,
+    canvasStateForCrdt?.nodes,
+    canvasStateForCrdt?.edges,
+    canvasStateForCrdt?.groups,
+  ]);
+
+  // Presence wiring (user viewing the canvas + cursor)
+  const userId = useAppStore((s) => s.user?.id || "anonymous");
+  const [cursor, setCursor] = useState<{ x: number; y: number } | undefined>(
+    undefined
+  );
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      try {
+        const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        setCursor({ x: flowPos.x, y: flowPos.y });
+      } catch {}
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [screenToFlowPosition]);
+  useCanvasPresence(currentCanvasId, { userId, status: "viewing", cursor });
+
+  // Canvas header context
+  const { setHeaderInfo } = useCanvasHeader();
 
   // Accessibility hook - TODO: Implement accessibility announcements
   // const { announce } = useAccessibility();
@@ -385,12 +440,6 @@ function CanvasPageInner() {
     useEvidenceStore();
   // Subscribe to evidence list so canvas re-renders when evidence content changes
   const evidenceList = useEvidenceStore((s) => s.evidence);
-
-  // Debug: Log evidence store initialization
-  console.log(
-    "🔍 Evidence store initialized, addEvidence function:",
-    addEvidence
-  );
 
   const handlePaneClick = useCallback(() => {
     clearSelection(); // Clear node selection when clicking on empty space
@@ -503,9 +552,6 @@ function CanvasPageInner() {
   }, []);
 
   const handleAddEvidence = useCallback(() => {
-    console.log("🔍 Evidence button clicked!");
-    console.log("🔍 addEvidence function:", addEvidence);
-
     // Get current viewport center for better positioning
     const reactFlowInstance = reactFlowRef.current?.getBoundingClientRect();
     const centerX = reactFlowInstance ? reactFlowInstance.width / 2 : 400;
@@ -532,16 +578,12 @@ function CanvasPageInner() {
       isExpanded: false,
     };
 
-    console.log("🔍 Created evidence item:", newEvidence);
-
     try {
       // Add to evidence store
       addEvidence(newEvidence);
-      console.log("✅ Evidence added to store successfully");
 
       // Show success message
       toast.success("Evidence added to canvas");
-      console.log("✅ Toast message shown");
     } catch (error) {
       console.error("❌ Error adding evidence:", error);
       toast.error("Failed to add evidence");
@@ -1927,7 +1969,7 @@ function CanvasPageInner() {
   return (
     <div className="w-full h-full bg-background">
       {/* React Flow Canvas */}
-      <div className="h-full">
+      <div className="h-full relative">
         <PortalContainerProvider container={reactFlowRef.current as any}>
           <ReactFlow
             ref={reactFlowRef}
@@ -1951,8 +1993,13 @@ function CanvasPageInner() {
             multiSelectionKeyCode={["Shift"]}
             selectionKeyCode={["Shift"]}
             // Figma-style navigation behavior
-            panOnDrag={navigationTool === "hand" ? [0, 1, 2] : [1, 2]}
-            nodesDraggable={navigationTool === "move"}
+            panOnDrag={
+              navigationTool === "hand" && toolbarMode !== "draw"
+                ? [0, 1, 2]
+                : toolbarMode === "draw"
+                  ? false
+                  : [1, 2]
+            }
             selectionOnDrag={false}
             // Make the canvas effectively infinite
             translateExtent={[
@@ -2154,7 +2201,8 @@ function CanvasPageInner() {
                   | "sourceNode"
                   | "chartNode"
                   | "operatorNode"
-                  | "whiteboardNode",
+                  | "whiteboardNode"
+                  | "commentNode",
                 position?: { x: number; y: number }
               ) => {
                 console.log("➕ Adding custom node from toolbar:", {
@@ -2197,6 +2245,12 @@ function CanvasPageInner() {
                   };
                 } else if (type === "whiteboardNode") {
                   base.data = { shape: "rect" };
+                } else if (type === "commentNode") {
+                  base.data = {
+                    title: "Comment",
+                    projectId: canvasId,
+                    threadId: null,
+                  };
                 }
                 setExtraNodes((prev) => {
                   console.log("✅ Custom node queued:", base);
@@ -2206,19 +2260,7 @@ function CanvasPageInner() {
             />
 
             {/* Whiteboard overlay stacked above ReactFlow. */}
-            <WhiteboardOverlay
-              ref={whiteboardRef as any}
-              isActive={isWhiteboardActive}
-              zIndex={30}
-              viewport={getViewport?.() || { x: 0, y: 0, zoom: 1 }}
-              initialData={
-                whiteboardScene || {
-                  appState: { viewBackgroundColor: "transparent" },
-                }
-              }
-              onSceneChange={(scene) => setWhiteboardScene(scene)}
-              topOffset={100}
-            />
+            {/* Whiteboard overlay moved outside ReactFlow to avoid transform/pointer conflicts */}
 
             {/* Tool interaction: click to create a whiteboard node with current tool
                 Disable when Excalidraw overlay is active */}
@@ -2232,9 +2274,9 @@ function CanvasPageInner() {
                   zIndex: 5,
                 }}
                 onClick={(e) => {
-                  const bounds = (
-                    e.currentTarget as HTMLDivElement
-                  ).getBoundingClientRect();
+                  // const bounds = (
+                  //   e.currentTarget as HTMLDivElement
+                  // ).getBoundingClientRect();
                   const position = screenToFlowPosition({
                     x: e.clientX,
                     y: e.clientY,
@@ -2300,6 +2342,21 @@ function CanvasPageInner() {
               </div>
             </DebugPanel>
           </ReactFlow>
+
+          {/* Overlay positioned above ReactFlow using the parent relative container */}
+          <WhiteboardOverlay
+            ref={whiteboardRef as any}
+            isActive={isWhiteboardActive}
+            zIndex={100}
+            viewport={getViewport?.() || { x: 0, y: 0, zoom: 1 }}
+            initialData={
+              whiteboardScene || {
+                appState: { viewBackgroundColor: "transparent" },
+              }
+            }
+            onSceneChange={(scene) => setWhiteboardScene(scene)}
+            topOffset={100}
+          />
         </PortalContainerProvider>
 
         {/* Bulk Operations Toolbar - Removed as we only use the top NodeToolbar */}

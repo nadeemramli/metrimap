@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useCallback, useMemo } from "react";
-import ReactFlow, {
+import {
+  ReactFlow,
   addEdge,
   Background,
+  BackgroundVariant,
   useNodesState,
   useEdgesState,
   ReactFlowProvider,
@@ -14,7 +16,7 @@ import ReactFlow, {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import { ChartNode } from "./chart-node";
+import ChartNode from "@/components/canvas/node/chart-node";
 import { ConfigPanel } from "./config-panel";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -45,11 +47,11 @@ const mockDataSources = [
     id: "sales-data",
     name: "Sales Data",
     columns: [
-      { id: "month", name: "Month", type: "string" },
-      { id: "revenue", name: "Revenue", type: "number" },
-      { id: "orders", name: "Orders", type: "number" },
-      { id: "customers", name: "Customers", type: "number" },
-      { id: "region", name: "Region", type: "string" },
+      { id: "month", name: "Month", type: "string" as const },
+      { id: "revenue", name: "Revenue", type: "number" as const },
+      { id: "orders", name: "Orders", type: "number" as const },
+      { id: "customers", name: "Customers", type: "number" as const },
+      { id: "region", name: "Region", type: "string" as const },
     ],
     data: [
       {
@@ -100,10 +102,10 @@ const mockDataSources = [
     id: "user-data",
     name: "User Analytics",
     columns: [
-      { id: "date", name: "Date", type: "string" },
-      { id: "users", name: "Active Users", type: "number" },
-      { id: "sessions", name: "Sessions", type: "number" },
-      { id: "bounceRate", name: "Bounce Rate", type: "number" },
+      { id: "date", name: "Date", type: "string" as const },
+      { id: "users", name: "Active Users", type: "number" as const },
+      { id: "sessions", name: "Sessions", type: "number" as const },
+      { id: "bounceRate", name: "Bounce Rate", type: "number" as const },
     ],
     data: [
       { date: "2024-01", users: 1200, sessions: 1800, bounceRate: 0.35 },
@@ -179,7 +181,7 @@ export function ChartBuilder() {
           fitView
           className="bg-gray-50"
         >
-          <Background variant="dots" gap={20} size={1} />
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls />
         </ReactFlow>
 

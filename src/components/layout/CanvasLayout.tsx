@@ -9,12 +9,18 @@ import {
   Settings,
   ArrowLeft,
   Keyboard,
+  Share2,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useProjectsStore } from "@/lib/stores";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { useCanvasHeader } from "@/contexts/CanvasHeaderContext";
+import { CollaborationDialog } from "@/components/canvas/collaboration/collaboration-dialog";
+import { useAppStore } from "@/lib/stores";
+import { setProjectPublic } from "@/lib/supabase/services/projects";
+import { toast } from "sonner";
 
 const sidebarItems = [
   {
@@ -63,6 +69,7 @@ export default function CanvasLayout() {
   const navigate = useNavigate();
   const { getProjectById } = useProjectsStore();
   const { headerInfo } = useCanvasHeader();
+  const user = useAppStore((s) => s.user);
 
   const project = canvasId ? getProjectById(canvasId) : null;
 
@@ -189,6 +196,8 @@ export default function CanvasLayout() {
         {/* Top Bar */}
         <div className="h-10 bg-background border-b border-border flex items-center justify-between px-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Left header: title/description and collaboration */}
+
             {headerInfo ? (
               <>
                 {/* Canvas Title */}
@@ -205,6 +214,13 @@ export default function CanvasLayout() {
                     </span>
                   </>
                 )}
+                {/* Collaboration Button (left side, after title/desc) */}
+                <CollaborationDialog>
+                  <Button variant="outline" size="sm" className="h-7 px-2">
+                    <Users className="h-3.5 w-3.5 mr-1" />
+                    Collaborate
+                  </Button>
+                </CollaborationDialog>
               </>
             ) : (
               <>
@@ -220,12 +236,50 @@ export default function CanvasLayout() {
                     </span>
                   </>
                 )}
+                <CollaborationDialog>
+                  <Button variant="outline" size="sm" className="h-7 px-2">
+                    <Users className="h-3.5 w-3.5 mr-1" />
+                    Collaborate
+                  </Button>
+                </CollaborationDialog>
               </>
             )}
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Beautiful Auto-save Status */}
+            {/* Share Button should be to the left of Auto-save */}
+            <Button
+              variant="default"
+              size="sm"
+              className="h-7 px-2"
+              onClick={async () => {
+                if (!canvasId) return;
+                try {
+                  // If user is not signed in (prod), send to sign-up/sign-in
+                  if (!user) {
+                    navigate("/auth/sign-in");
+                    return;
+                  }
+                  // Ensure project is public
+                  await setProjectPublic(canvasId, true);
+                  const shareUrl = `${window.location.origin}/canvas/${canvasId}`;
+                  await navigator.clipboard.writeText(shareUrl);
+                  toast.success("Share link copied to clipboard", {
+                    description:
+                      "Canvas is public. Anyone with the link can view.",
+                  });
+                } catch (e) {
+                  console.error("Share failed", e);
+                  toast.error("Failed to prepare share link");
+                }
+              }}
+              title="Share canvas"
+            >
+              <Share2 className="h-3.5 w-3.5 mr-1" />
+              Share
+            </Button>
+
+            {/* Auto-save Status */}
             {headerInfo?.autoSaveStatus && (
               <div
                 className={cn(
@@ -262,6 +316,7 @@ export default function CanvasLayout() {
               </div>
             )}
 
+            {/* User menu at the far right of the header */}
             <UserMenu />
           </div>
         </div>

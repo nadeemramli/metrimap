@@ -1,6 +1,6 @@
 "use client";
 
-import React, {
+import {
   lazy,
   Suspense,
   useEffect,
@@ -8,6 +8,7 @@ import React, {
   useRef,
   forwardRef,
   useImperativeHandle,
+  useCallback,
 } from "react";
 
 // Lazy-load Excalidraw so the app can run even if the package isn't installed yet.
@@ -45,6 +46,8 @@ export interface WhiteboardOverlayProps {
   }) => void;
   // Optional safe area at top where the overlay should not intercept events/cover UI
   topOffset?: number; // pixels
+  // When true, let pointer events pass through to the canvas beneath (used for temporary panning)
+  passthrough?: boolean;
 }
 
 export interface WhiteboardOverlayHandle {
@@ -83,6 +86,7 @@ const WhiteboardOverlay = forwardRef<
     initialData,
     onSceneChange,
     topOffset,
+    passthrough,
   },
   ref
 ) {
@@ -90,17 +94,18 @@ const WhiteboardOverlay = forwardRef<
     () => ({
       position: "absolute" as const,
       // Leave room for top toolbar so it remains clickable while drawing
-      top: isActive ? (topOffset ?? 56) : 0,
+      top: isActive ? (topOffset ?? 56) : (topOffset ?? 56),
       left: 0,
       right: 0,
       bottom: 0,
       zIndex,
-      // Key: disable hit-testing when not drawing so React Flow is fully interactive
-      pointerEvents: isActive ? ("auto" as const) : ("none" as const),
+      // Key: disable hit-testing when not drawing OR when passthrough is enabled
+      pointerEvents:
+        isActive && !passthrough ? ("auto" as const) : ("none" as const),
       // Ensure parent background shows through
       background: "transparent",
     }),
-    [isActive, zIndex, topOffset]
+    [isActive, zIndex, topOffset, passthrough]
   );
 
   const excalidrawRef = useRef<any>(null);
@@ -257,8 +262,23 @@ const WhiteboardOverlay = forwardRef<
       <Suspense fallback={null}>
         <Excalidraw
           ref={(api: any) => {
-            excalidrawRef.current = api;
-            flushPending();
+            if (!api) {
+              excalidrawRef.current = null;
+              return;
+            }
+            // Excalidraw exposes a readyPromise that resolves when imperative API is ready
+            const ready = api.readyPromise
+              ?.then?.(() => api)
+              .catch?.(() => api);
+            if (ready && typeof ready.then === "function") {
+              ready.then((resolvedApi: any) => {
+                excalidrawRef.current = resolvedApi || api;
+                flushPending();
+              });
+            } else {
+              excalidrawRef.current = api;
+              flushPending();
+            }
           }}
           initialData={
             initialData || { appState: { viewBackgroundColor: "transparent" } }

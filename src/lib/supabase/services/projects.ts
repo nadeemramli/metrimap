@@ -394,6 +394,28 @@ export async function updateProject(
   return data;
 }
 
+// Toggle project public visibility
+export async function setProjectPublic(
+  id: string,
+  isPublic: boolean,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase();
+  const { data, error } = await client
+    .from("projects")
+    .update({ is_public: isPublic } as any)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating project visibility:", error);
+    throw error;
+  }
+
+  return data;
+}
+
 // Convenience helpers for settings JSON merges
 export async function mergeProjectSettings(
   projectId: string,

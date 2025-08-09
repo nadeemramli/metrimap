@@ -13,6 +13,7 @@
     "test:rls": "tsx src/tests/run-rls-tests.ts"
   },
   "dependencies": {
+    "@automerge/automerge-wasm": "^1.0.0-preview.0",
     "@calumk/editorjs-nested-checklist": "^1.1.0",
     "@clerk/clerk-react": "^5.38.1",
     "@clerk/react-router": "^1.8.9",
@@ -74,6 +75,7 @@
     "@types/react-router-dom": "^5.3.3",
     "@userback/widget": "^0.3.11",
     "@xyflow/react": "^12.8.2",
+    "automerge": "^0.14.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
