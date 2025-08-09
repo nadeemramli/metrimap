@@ -312,6 +312,7 @@ function CanvasPageInner() {
   const [isWhiteboardActive, setIsWhiteboardActive] = useState(false);
   const [toolbarMode, setToolbarMode] = useState<"edit" | "draw">("edit");
   const whiteboardRef = useRef<WhiteboardOverlayHandle | null>(null);
+  const [wbPassthrough, setWbPassthrough] = useState(false);
   const [whiteboardScene, setWhiteboardScene] = useState<any | null>(null);
   const [keepToolActive, setKeepToolActive] = useState(false);
   const [drawActiveTool, setDrawActiveTool] = useState<
@@ -366,8 +367,14 @@ function CanvasPageInner() {
   useCanvasRealtime(currentCanvasId);
 
   // React Flow hooks
-  const { screenToFlowPosition, setCenter, getViewport } =
-    useReactFlow() as any;
+  const {
+    screenToFlowPosition,
+    setCenter,
+    getViewport,
+    setViewport: setFlowViewport,
+    zoomIn,
+    zoomOut,
+  } = useReactFlow() as any;
   const setViewport = useCanvasStore((s) => s.setViewport);
   const viewport = useCanvasStore((s) => s.viewport);
 
@@ -1393,12 +1400,19 @@ function CanvasPageInner() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space" && !e.repeat) {
         prevNavigationToolRef.current = navigationTool;
+        // In draw mode, enable passthrough so React Flow can pan while space is held
+        if (toolbarMode === "draw") {
+          setWbPassthrough(true);
+        }
         setNavigationTool("hand");
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         setNavigationTool(prevNavigationToolRef.current);
+        if (toolbarMode === "draw") {
+          setWbPassthrough(false);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -1407,12 +1421,14 @@ function CanvasPageInner() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [navigationTool]);
+  }, [navigationTool, toolbarMode]);
 
   // Draw-mode hotkeys (match Excalidraw)
   useEffect(() => {
     if (toolbarMode !== "draw") return;
     const handler = (e: KeyboardEvent) => {
+      // Support Shift+mousewheel zooming behavior (handled by React Flow options above)
+      // No-op here; documented for clarity.
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
       if (
@@ -1495,6 +1511,30 @@ function CanvasPageInner() {
     return () =>
       window.removeEventListener("keydown", handler, { capture: true } as any);
   }, [toolbarMode]);
+
+  // Enable Shift+mouse wheel zoom while in draw mode
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      if (toolbarMode === "draw" && e.shiftKey) {
+        e.preventDefault();
+        try {
+          if (e.deltaY < 0) {
+            zoomIn?.({ duration: 0 });
+          } else {
+            zoomOut?.({ duration: 0 });
+          }
+        } catch {
+          const vp = getViewport?.();
+          if (!vp) return;
+          const factor = e.deltaY < 0 ? 1.1 : 0.9;
+          const nextZoom = Math.max(0.05, Math.min(3, vp.zoom * factor));
+          setFlowViewport?.({ x: vp.x, y: vp.y, zoom: nextZoom });
+        }
+      }
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel as any);
+  }, [toolbarMode, zoomIn, zoomOut, setFlowViewport, getViewport]);
 
   // Listen for keyboard shortcuts event from sidebar
   useEffect(() => {
@@ -2008,8 +2048,10 @@ function CanvasPageInner() {
             ]}
             minZoom={0.05}
             maxZoom={3}
+            // Disable default wheel-zoom in draw mode; Shift+wheel handled globally
             panOnScroll={toolbarMode !== "draw"}
             zoomOnScroll={toolbarMode !== "draw"}
+            zoomOnPinch={true}
             onMoveEnd={() => {
               try {
                 const vp = getViewport?.();
@@ -2356,6 +2398,35 @@ function CanvasPageInner() {
             }
             onSceneChange={(scene) => setWhiteboardScene(scene)}
             topOffset={100}
+            passthrough={wbPassthrough}
+            onWheelCapture={(e: WheelEvent) => {
+              // Intercept Shift+wheel at the overlay level to guarantee capture even when overlay has pointer-events: auto
+              if (toolbarMode === "draw" && e.shiftKey) {
+                e.preventDefault();
+                try {
+                  const ax = Math.abs(e.deltaX);
+                  const ay = Math.abs(e.deltaY);
+                  const primary = ay >= ax ? e.deltaY : e.deltaX;
+                  if (primary < 0) {
+                    zoomIn?.({ duration: 0 });
+                  } else {
+                    zoomOut?.({ duration: 0 });
+                  }
+                } catch {
+                  const vp = getViewport?.();
+                  if (!vp) return;
+                  const ax = Math.abs(e.deltaX);
+                  const ay = Math.abs(e.deltaY);
+                  const primary = ay >= ax ? e.deltaY : e.deltaX;
+                  const factor = primary < 0 ? 1.1 : 0.9;
+                  const nextZoom = Math.max(
+                    0.05,
+                    Math.min(3, vp.zoom * factor)
+                  );
+                  setFlowViewport?.({ x: vp.x, y: vp.y, zoom: nextZoom });
+                }
+              }
+            }}
           />
         </PortalContainerProvider>
 

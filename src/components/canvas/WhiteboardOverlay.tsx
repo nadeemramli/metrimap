@@ -48,6 +48,8 @@ export interface WhiteboardOverlayProps {
   topOffset?: number; // pixels
   // When true, let pointer events pass through to the canvas beneath (used for temporary panning)
   passthrough?: boolean;
+  // Optional wheel capture callback (attached at capture phase with passive: false)
+  onWheelCapture?: (e: WheelEvent) => void;
 }
 
 export interface WhiteboardOverlayHandle {
@@ -87,6 +89,7 @@ const WhiteboardOverlay = forwardRef<
     onSceneChange,
     topOffset,
     passthrough,
+    onWheelCapture,
   },
   ref
 ) {
@@ -109,6 +112,7 @@ const WhiteboardOverlay = forwardRef<
   );
 
   const excalidrawRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const debounceRef = useRef<number | null>(null);
   const pendingActionsRef = useRef<Array<() => void>>([]);
 
@@ -257,8 +261,18 @@ const WhiteboardOverlay = forwardRef<
     }, 500);
   };
 
+  // Attach a wheel listener in capture phase so we can intercept Shift+wheel
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !onWheelCapture) return;
+    const handler = (e: WheelEvent) => onWheelCapture(e);
+    el.addEventListener("wheel", handler, { passive: false, capture: true });
+    return () =>
+      el.removeEventListener("wheel", handler as any, { capture: true } as any);
+  }, [onWheelCapture]);
+
   return (
-    <div style={style} className={className}>
+    <div ref={containerRef} style={style} className={className}>
       <Suspense fallback={null}>
         <Excalidraw
           ref={(api: any) => {
