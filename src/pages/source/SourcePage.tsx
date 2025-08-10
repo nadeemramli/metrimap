@@ -1,55 +1,66 @@
-import { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import {
-  Search,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  Plus,
-  Download,
-  Eye,
-  Edit,
-  Trash2,
-  MoreVertical,
-  Database,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
   Activity,
-  Shield,
-  Link,
-  RefreshCw,
-  TrendingUp,
+  AlertTriangle,
   Calendar,
-  Users,
+  CheckCircle,
+  Clock,
+  Database,
+  Download,
+  Edit,
+  Eye,
+  Link,
+  MoreVertical,
+  Plus,
+  RefreshCw,
+  Search,
   Settings,
+  Shield,
+  TrendingUp,
+  Users,
   Wifi,
   WifiOff,
-} from "lucide-react";
+  XCircle,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
 
-type InstrumentationStatus = "Planned" | "Instrumented" | "Needs QA" | "Live";
+// Types and hooks
+import { useSourceFiltering } from '@/hooks/useSourceFiltering';
+import type {
+  ApiConnection,
+  DataSource,
+  GovernancePolicy,
+  StatusFilter,
+  TabType,
+} from '@/types/source';
+
+// Tab components
+
+type InstrumentationStatus = 'Planned' | 'Instrumented' | 'Needs QA' | 'Live';
 
 interface DataSource {
   id: string;
@@ -72,7 +83,7 @@ interface ApiConnection {
   id: string;
   name: string;
   type: string;
-  status: "Connected" | "Warning" | "Disconnected";
+  status: 'Connected' | 'Warning' | 'Disconnected';
   lastPing: string;
   responseTime: number | null;
   uptime: number;
@@ -85,7 +96,7 @@ interface GovernancePolicy {
   id: string;
   name: string;
   type: string;
-  status: "Active" | "Under Review" | "Inactive";
+  status: 'Active' | 'Under Review' | 'Inactive';
   coverage: number;
   lastReview: string;
   nextReview: string;
@@ -94,72 +105,90 @@ interface GovernancePolicy {
 }
 
 export default function SourcePage() {
-  const [activeTab, setActiveTab] = useState<
-    "sources" | "governance" | "apis" | "monitoring"
-  >("sources");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    InstrumentationStatus | "All"
-  >("All");
-  const [systemFilter, setSystemFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<TabType>('sources');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [systemFilter, setSystemFilter] = useState('all');
 
   // State for CRUD operations
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [apiConnections, setApiConnections] = useState<ApiConnection[]>([]);
   const [governancePolicies] = useState<GovernancePolicy[]>([]);
 
-  // Filtering and data processing
-  const filteredSources = useMemo(() => {
-    return dataSources.filter((source) => {
-      const matchesSearch =
-        source.metricName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        source.sourceSystem.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        source.eventName.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter === "All" || source.status === statusFilter;
-      const matchesSystem =
-        systemFilter === "all" ||
-        source.sourceSystem.toLowerCase() === systemFilter;
-      return matchesSearch && matchesStatus && matchesSystem;
+  // Use filtering hook
+  const { filteredSources, filteredApis, filteredPolicies } =
+    useSourceFiltering({
+      dataSources,
+      apiConnections,
+      governancePolicies,
+      activeTab,
+      searchQuery,
+      statusFilter,
+      systemFilter,
     });
-  }, [dataSources, searchQuery, statusFilter, systemFilter]);
 
-  const filteredApis = useMemo(() => {
-    return apiConnections.filter(
-      (api) =>
-        api.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        api.type.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [apiConnections, searchQuery]);
+  // Get available systems for filtering
+  const availableSystems = useMemo(() => {
+    const systems = new Set(dataSources.map((source) => source.system));
+    return Array.from(systems);
+  }, [dataSources]);
 
-  const filteredPolicies = useMemo(() => {
-    return governancePolicies.filter(
-      (policy) =>
-        policy.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        policy.type.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [governancePolicies, searchQuery]);
+  // Handler functions
+  const handleEdit = (item: DataSource | ApiConnection | GovernancePolicy) => {
+    console.log('Edit item:', item);
+    // TODO: Implement edit functionality
+  };
+
+  const handleDelete = (itemId: string) => {
+    console.log('Delete item:', itemId);
+    // TODO: Implement delete functionality
+  };
+
+  const handleView = (item: DataSource | ApiConnection | GovernancePolicy) => {
+    console.log('View item:', item);
+    // TODO: Implement view functionality
+  };
+
+  const handleExport = () => {
+    console.log('Export data');
+    // TODO: Implement export functionality
+  };
+
+  const handleRefresh = () => {
+    console.log('Refresh monitoring data');
+    // TODO: Implement refresh functionality
+  };
+
+  const handleMonitoringSettings = () => {
+    console.log('Open monitoring settings');
+    // TODO: Implement monitoring settings
+  };
+
+  const handleAddMonitor = () => {
+    console.log('Add new monitor');
+    // TODO: Implement add monitor functionality
+  };
 
   const getStatusIcon = (status: InstrumentationStatus) => {
     switch (status) {
-      case "Live":
+      case 'Live':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case "Instrumented":
+      case 'Instrumented':
         return <CheckCircle className="h-4 w-4 text-blue-500" />;
-      case "Needs QA":
+      case 'Needs QA':
         return <Clock className="h-4 w-4 text-yellow-500" />;
-      case "Planned":
+      case 'Planned':
         return <XCircle className="h-4 w-4 text-gray-400" />;
     }
   };
 
   const getApiStatusIcon = (status: string) => {
     switch (status) {
-      case "Connected":
+      case 'Connected':
         return <Wifi className="h-4 w-4 text-green-500" />;
-      case "Warning":
+      case 'Warning':
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case "Disconnected":
+      case 'Disconnected':
         return <WifiOff className="h-4 w-4 text-red-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-400" />;
@@ -167,10 +196,10 @@ export default function SourcePage() {
   };
 
   const getDataQualityColor = (quality: number | null) => {
-    if (!quality) return "text-gray-500";
-    if (quality >= 95) return "text-green-500";
-    if (quality >= 85) return "text-yellow-500";
-    return "text-red-500";
+    if (!quality) return 'text-gray-500';
+    if (quality >= 95) return 'text-green-500';
+    if (quality >= 85) return 'text-yellow-500';
+    return 'text-red-500';
   };
 
   const uniqueSystems = [...new Set(dataSources.map((s) => s.sourceSystem))];
@@ -186,20 +215,20 @@ export default function SourcePage() {
 
   const tabs = [
     {
-      id: "sources" as const,
-      label: "Data Sources",
+      id: 'sources' as const,
+      label: 'Data Sources',
       count: filteredSources.length,
     },
     {
-      id: "governance" as const,
-      label: "Governance",
+      id: 'governance' as const,
+      label: 'Governance',
       count: filteredPolicies.length,
     },
-    { id: "apis" as const, label: "API Health", count: filteredApis.length },
+    { id: 'apis' as const, label: 'API Health', count: filteredApis.length },
     {
-      id: "monitoring" as const,
-      label: "Monitoring",
-      count: dataSources.filter((s) => s.status === "Live").length,
+      id: 'monitoring' as const,
+      label: 'Monitoring',
+      count: dataSources.filter((s) => s.status === 'Live').length,
     },
   ];
 
@@ -214,22 +243,22 @@ export default function SourcePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <Plus className="h-4 w-4 mr-2" />
             Sync All
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
           <Button>
             <Plus className="h-4 w-4 mr-2" />
-            Add{" "}
-            {activeTab === "sources"
-              ? "Source"
-              : activeTab === "apis"
-                ? "API"
-                : "Policy"}
+            Add{' '}
+            {activeTab === 'sources'
+              ? 'Source'
+              : activeTab === 'apis'
+                ? 'API'
+                : 'Policy'}
           </Button>
         </div>
       </div>
@@ -245,7 +274,7 @@ export default function SourcePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {dataSources.filter((s) => s.status === "Live").length}
+              {dataSources.filter((s) => s.status === 'Live').length}
             </div>
             <p className="text-xs text-muted-foreground">
               {dataSources.length} total configured
@@ -283,7 +312,7 @@ export default function SourcePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {apiConnections.filter((a) => a.status === "Connected").length}/
+              {apiConnections.filter((a) => a.status === 'Connected').length}/
               {apiConnections.length}
             </div>
             <p className="text-xs text-muted-foreground">Connections healthy</p>
@@ -336,12 +365,12 @@ export default function SourcePage() {
             />
           </div>
 
-          {activeTab === "sources" && (
+          {activeTab === 'sources' && (
             <>
               <Select
                 value={statusFilter}
                 onValueChange={(value) =>
-                  setStatusFilter(value as InstrumentationStatus | "All")
+                  setStatusFilter(value as InstrumentationStatus | 'All')
                 }
               >
                 <SelectTrigger className="w-[150px]">
@@ -466,13 +495,13 @@ export default function SourcePage() {
                               {getStatusIcon(source.status)}
                               <Badge
                                 variant={
-                                  source.status === "Live"
-                                    ? "default"
-                                    : source.status === "Instrumented"
-                                      ? "secondary"
-                                      : source.status === "Needs QA"
-                                        ? "destructive"
-                                        : "outline"
+                                  source.status === 'Live'
+                                    ? 'default'
+                                    : source.status === 'Instrumented'
+                                      ? 'secondary'
+                                      : source.status === 'Needs QA'
+                                        ? 'destructive'
+                                        : 'outline'
                                 }
                               >
                                 {source.status}
@@ -502,7 +531,7 @@ export default function SourcePage() {
                               <Clock className="h-3 w-3" />
                               {source.lastSync
                                 ? new Date(source.lastSync).toLocaleTimeString()
-                                : "Never"}
+                                : 'Never'}
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -576,7 +605,7 @@ export default function SourcePage() {
                       <CardTitle className="text-base">{policy.name}</CardTitle>
                       <Badge
                         variant={
-                          policy.status === "Active" ? "default" : "secondary"
+                          policy.status === 'Active' ? 'default' : 'secondary'
                         }
                       >
                         {policy.status}
@@ -612,7 +641,7 @@ export default function SourcePage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          Next review:{" "}
+                          Next review:{' '}
                           {new Date(policy.nextReview).toLocaleDateString()}
                         </div>
                       </div>
@@ -705,11 +734,11 @@ export default function SourcePage() {
                               {getApiStatusIcon(api.status)}
                               <Badge
                                 variant={
-                                  api.status === "Connected"
-                                    ? "default"
-                                    : api.status === "Warning"
-                                      ? "destructive"
-                                      : "secondary"
+                                  api.status === 'Connected'
+                                    ? 'default'
+                                    : api.status === 'Warning'
+                                      ? 'destructive'
+                                      : 'secondary'
                                 }
                               >
                                 {api.status}
@@ -720,7 +749,7 @@ export default function SourcePage() {
                             <div className="text-sm font-medium">
                               {api.responseTime
                                 ? `${api.responseTime}ms`
-                                : "N/A"}
+                                : 'N/A'}
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -735,7 +764,7 @@ export default function SourcePage() {
                           </td>
                           <td className="px-6 py-4">
                             <div
-                              className={`text-sm font-medium ${api.errorRate > 1 ? "text-red-500" : "text-green-500"}`}
+                              className={`text-sm font-medium ${api.errorRate > 1 ? 'text-red-500' : 'text-green-500'}`}
                             >
                               {api.errorRate}%
                             </div>
@@ -794,7 +823,7 @@ export default function SourcePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {dataSources.filter((s) => s.status === "Live").length === 0 ? (
+                {dataSources.filter((s) => s.status === 'Live').length === 0 ? (
                   <div className="text-center py-8">
                     <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">
@@ -804,7 +833,7 @@ export default function SourcePage() {
                 ) : (
                   <div className="space-y-4">
                     {dataSources
-                      .filter((s) => s.status === "Live")
+                      .filter((s) => s.status === 'Live')
                       .map((source) => (
                         <div
                           key={source.id}
@@ -845,7 +874,7 @@ export default function SourcePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {apiConnections.filter((api) => api.status !== "Connected")
+                  {apiConnections.filter((api) => api.status !== 'Connected')
                     .length === 0 ? (
                     <div className="text-center py-8">
                       <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
@@ -855,7 +884,7 @@ export default function SourcePage() {
                     </div>
                   ) : (
                     apiConnections
-                      .filter((api) => api.status !== "Connected")
+                      .filter((api) => api.status !== 'Connected')
                       .map((api) => (
                         <div
                           key={api.id}

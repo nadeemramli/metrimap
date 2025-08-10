@@ -30,3 +30,6 @@ dist-ssr
 
 # Environment secrets (contains actual sensitive values)
 docs/environment/ENVIRONMENT_SECRETS.md
+
+*storybook.log
+storybook-static

@@ -7,7 +7,7 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 
 // Extracted utilities and hooks
@@ -21,6 +21,7 @@ import { useClerkSupabase } from '@/lib/hooks/useClerkSupabase';
 import { useCanvasStore } from '@/lib/stores';
 import { useEvidenceStore } from '@/lib/stores/evidenceStore';
 import { isDevelopmentEnvironment } from '@/lib/supabase/client';
+import { getProjectById } from '@/lib/supabase/services/projects';
 import {
   createExcalidrawInitialData,
   sanitizeExcalidrawData,
@@ -64,6 +65,9 @@ function CanvasPageInner() {
     canvas,
     selectedNodeIds,
     clearSelection,
+    loadCanvas,
+    setLoading,
+    setError,
     // ... other canvas store functions will be passed to events hook
   } = useCanvasStore();
 
@@ -84,6 +88,40 @@ function CanvasPageInner() {
   const currentCanvasId = useCanvasStore((s) => s.canvas?.id);
   useCanvasRealtime(currentCanvasId);
 
+  // Load canvas data from database when component mounts
+  useEffect(() => {
+    const loadCanvasData = async () => {
+      if (!canvasId || canvas?.id === canvasId) return;
+
+      setLoading(true);
+      setError(undefined);
+
+      try {
+        console.log('🔄 Loading canvas data for:', canvasId);
+        const projectData = await getProjectById(canvasId, supabaseClient);
+
+        if (projectData) {
+          console.log('✅ Canvas data loaded:', {
+            nodes: projectData.nodes?.length || 0,
+            edges: projectData.edges?.length || 0,
+            groups: projectData.groups?.length || 0,
+          });
+          loadCanvas(projectData);
+        } else {
+          console.error('❌ No project data returned for canvas:', canvasId);
+          setError('Failed to load canvas data');
+        }
+      } catch (error) {
+        console.error('❌ Error loading canvas data:', error);
+        setError('Failed to load canvas data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCanvasData();
+  }, [canvasId, canvas?.id, supabaseClient, loadCanvas, setLoading, setError]);
+
   // React Flow hooks
   const { getViewport } = useReactFlow() as any;
 
@@ -92,6 +130,15 @@ function CanvasPageInner() {
     const canvasNodes = canvas?.nodes || [];
     const evidenceNodes = evidenceList?.filter((e) => e.position) || [];
     const extraNodes = state.extraNodes || [];
+
+    console.log('🔍 CanvasPage nodes memoization:', {
+      canvasId,
+      hasCanvas: !!canvas,
+      canvasNodesCount: canvasNodes.length,
+      evidenceNodesCount: evidenceNodes.length,
+      extraNodesCount: extraNodes.length,
+      totalNodes: canvasNodes.length + evidenceNodes.length + extraNodes.length,
+    });
 
     const convertedCanvasNodes = canvasNodes.map((card) =>
       convertToNode(
@@ -122,13 +169,23 @@ function CanvasPageInner() {
       )
     );
 
-    return [
+    const allNodes = [
       ...convertedCanvasNodes,
       ...convertedEvidenceNodes,
       ...convertedGroupNodes,
       ...extraNodes,
     ];
+
+    console.log('✅ CanvasPage nodes converted:', {
+      convertedCanvasNodes: convertedCanvasNodes.length,
+      convertedEvidenceNodes: convertedEvidenceNodes.length,
+      convertedGroupNodes: convertedGroupNodes.length,
+      totalConverted: allNodes.length,
+    });
+
+    return allNodes;
   }, [
+    canvasId,
     canvas?.nodes,
     canvas?.groups,
     evidenceList,
@@ -142,6 +199,14 @@ function CanvasPageInner() {
     const canvasEdges = canvas?.edges || [];
     const extraEdges = state.extraEdges || [];
 
+    console.log('🔍 CanvasPage edges memoization:', {
+      canvasId,
+      hasCanvas: !!canvas,
+      canvasEdgesCount: canvasEdges.length,
+      extraEdgesCount: extraEdges.length,
+      totalEdges: canvasEdges.length + extraEdges.length,
+    });
+
     const convertedCanvasEdges = canvasEdges.map((relationship) =>
       convertToEdge(
         relationship,
@@ -151,8 +216,21 @@ function CanvasPageInner() {
       )
     );
 
-    return [...convertedCanvasEdges, ...extraEdges];
-  }, [canvas?.edges, state.extraEdges, state.isRelationshipSheetOpen, events]);
+    const allEdges = [...convertedCanvasEdges, ...extraEdges];
+
+    console.log('✅ CanvasPage edges converted:', {
+      convertedCanvasEdges: convertedCanvasEdges.length,
+      totalConverted: allEdges.length,
+    });
+
+    return allEdges;
+  }, [
+    canvasId,
+    canvas?.edges,
+    state.extraEdges,
+    state.isRelationshipSheetOpen,
+    events,
+  ]);
 
   // Memoized filter options
   const availableFilterOptions = useMemo(() => {
@@ -204,6 +282,16 @@ function CanvasPageInner() {
       <div className="h-full relative" style={{ zIndex: 0 }}>
         <PortalContainerProvider container={state.reactFlowRef.current as any}>
           {/* Layer 2: ReactFlow Canvas */}
+          {console.log('🎨 ReactFlow render:', {
+            canvasId,
+            nodesCount: nodes.length,
+            edgesCount: edges.length,
+            hasCanvas: !!canvas,
+            canvasNodesCount: canvas?.nodes?.length || 0,
+            canvasEdgesCount: canvas?.edges?.length || 0,
+            isLoading: useCanvasStore.getState().isLoading,
+            error: useCanvasStore.getState().error,
+          })}
           <ReactFlow
             ref={state.reactFlowRef}
             nodes={nodes}
