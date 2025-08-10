@@ -16,7 +16,7 @@ function DialogTrigger({
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
 }
 
-import { usePortalContainer } from "@/contexts/PortalContainerContext";
+import { usePortalContainer } from "@/lib/contexts/PortalContainerContext";
 
 function DialogPortal({
   container,

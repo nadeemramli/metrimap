@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { usePortalContainer } from "@/contexts/PortalContainerContext";
+import { usePortalContainer } from "@/lib/contexts/PortalContainerContext";
 
 import { cn } from "@/lib/utils";
 

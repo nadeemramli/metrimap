@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider                    = "prisma-zod-generator"
+  createOptionalDefaultValues = "true"
+  useDecimalJs                = "false"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NOTE: Schema mirrors Supabase for type-safety only. No relations to avoid ORM overhead.
+
+model users {
+  id         String    @id @default(dbgenerated("gen_random_uuid()"))
+  email      String    @unique
+  name       String
+  avatar_url String?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("users")
+}
+
+model projects {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  description      String?
+  tags             String[]  @default([])
+  settings         Json?     @default("{}")
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  last_modified_by String?
+  created_by       String
+  is_public        Boolean   @default(false)
+
+  @@map("projects")
+}
+
+model metric_cards {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id      String?   @db.Uuid
+  title           String
+  description     String?
+  category        String
+  sub_category    String?
+  position_x      Float     @default(0)
+  position_y      Float     @default(0)
+  data            Json?     @default("[]")
+  source_type     String?
+  formula         String?
+  causal_factors  String[]  @default([])
+  dimensions      String[]  @default([])
+  owner_id        String?
+  assignees       String[]  @default([]) @db.Uuid
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+  created_by      String
+
+  @@map("metric_cards")
+}
+
+model relationships {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id  String?   @db.Uuid
+  source_id   String?   @db.Uuid
+  target_id   String?   @db.Uuid
+  type        String
+  confidence  String    @default("Medium")
+  weight      Float?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  created_by  String
+
+  @@map("relationships")
+}
+
+model evidence_items {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  relationship_id      String?   @db.Uuid
+  title                String
+  type                 String
+  date                 DateTime  @db.Date
+  owner_id             String?
+  link                 String?
+  hypothesis           String?
+  summary              String
+  impact_on_confidence String?
+  created_at           DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime? @default(now()) @db.Timestamptz(6)
+  created_by           String
+
+  @@map("evidence_items")
+}
+
+model tags {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  color       String?
+  description String?
+  project_id  String?   @db.Uuid
+  created_by  String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("tags")
+}
+
+model metric_card_tags {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  metric_card_id String?   @db.Uuid
+  tag_id         String?   @db.Uuid
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("metric_card_tags")
+}
+
+model relationship_tags {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  relationship_id String?   @db.Uuid
+  tag_id          String?   @db.Uuid
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("relationship_tags")
+}
+
+model groups {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id  String?   @db.Uuid
+  name        String
+  description String?
+  color       String?   @default("#e5e7eb")
+  position_x  Float     @default(0)
+  position_y  Float     @default(0)
+  width       Float     @default(200)
+  height      Float     @default(150)
+  node_ids    String[]  @default([]) @db.Uuid
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  created_by  String
+
+  @@map("groups")
+}
+
+model project_collaborators {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id  String?   @db.Uuid
+  user_id     String?
+  role        String    @default("member")
+  permissions String[]  @default(["read"])
+  invited_at  DateTime? @default(now()) @db.Timestamptz(6)
+  joined_at   DateTime? @db.Timestamptz(6)
+
+  @@map("project_collaborators")
+}
+
+model changelog {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id  String?   @db.Uuid
+  user_id     String?
+  action      String
+  target      String
+  target_id   String?   @db.Uuid
+  target_name String
+  description String
+  metadata    Json?     @default("{}")
+  timestamp   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("changelog")
+}
+
+model comments {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  thread_id  String   @db.Uuid
+  author_id  String?  @db.Uuid
+  content    String
+  resolved   Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("comments")
+}
+
+model comment_threads {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id  String   @db.Uuid
+  source      String
+  context     Json?
+  is_resolved Boolean  @default(false)
+  created_by  String?  @db.Uuid
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("comment_threads")
+}
+
+model comment_mentions {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  comment_id        String   @db.Uuid
+  mentioned_user_id String   @db.Uuid
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("comment_mentions")
+}
+
+model notifications {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  type        String
+  title       String?
+  description String?
+  read        Boolean  @default(false)
+  metadata    Json?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("notifications")
+}

@@ -1,16 +1,16 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { TagRow } from '../supabase/services/tags';
-import { 
-  getProjectTags,
+import {
   createTag,
-  updateTag,
   deleteTag,
-  searchProjectTags,
+  getProjectTags,
   getTagUsageStats,
+  searchProjectTags,
+  updateTag,
 } from '../supabase/services/tags';
-import { useAppStore } from './appStore';
 import { getClientForEnvironment } from '../utils/authenticatedClient';
+import { useAppStore } from './appStore';
 
 interface TagStoreState {
   // State
@@ -22,8 +22,14 @@ interface TagStoreState {
 
   // Actions
   loadProjectTags: (projectId: string) => Promise<void>;
-  createProjectTag: (projectId: string, tagData: { name: string; color?: string; description?: string }) => Promise<void>;
-  updateProjectTag: (tagId: string, updates: { name?: string; color?: string; description?: string }) => Promise<void>;
+  createProjectTag: (
+    projectId: string,
+    tagData: { name: string; color?: string; description?: string }
+  ) => Promise<void>;
+  updateProjectTag: (
+    tagId: string,
+    updates: { name?: string; color?: string; description?: string }
+  ) => Promise<void>;
   deleteProjectTag: (tagId: string) => Promise<void>;
   searchTags: (projectId: string, query: string) => Promise<void>;
   clearSearchResults: () => void;
@@ -45,68 +51,79 @@ export const useTagStore = create<TagStoreState>()(
     loadProjectTags: async (projectId: string) => {
       set({ isLoading: true, error: undefined });
       try {
-        console.log("🔄 Loading project tags for:", projectId);
+        console.log('🔄 Loading project tags for:', projectId);
         const client = getClientForEnvironment();
         const tags = await getProjectTags(projectId, client);
-        console.log("✅ Project tags loaded:", tags.length, "tags");
-        console.log("📋 Tags:", tags);
+        console.log('✅ Project tags loaded:', tags.length, 'tags');
+        console.log('📋 Tags:', tags);
         set({ tags, isLoading: false });
       } catch (error) {
         console.error('Failed to load project tags:', error);
-        set({ 
-          tags: [], 
-          isLoading: false, 
-          error: error instanceof Error ? error.message : 'Failed to load tags'
+        set({
+          tags: [],
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Failed to load tags',
         });
       }
     },
 
     // Create a new tag for a project
-    createProjectTag: async (projectId: string, tagData: { name: string; color?: string; description?: string }) => {
+    createProjectTag: async (
+      projectId: string,
+      tagData: { name: string; color?: string; description?: string }
+    ) => {
       set({ isLoading: true, error: undefined });
       try {
         const { user } = useAppStore.getState();
         if (!user) throw new Error('User not authenticated');
 
         const client = getClientForEnvironment();
-        const newTag = await createTag({
-          name: tagData.name,
-          color: tagData.color || null,
-          description: tagData.description || null,
-          project_id: projectId,
-          created_by: user.id,
-        }, client);
+        const newTag = await createTag(
+          {
+            name: tagData.name,
+            color: tagData.color || null,
+            description: tagData.description || null,
+            project_id: projectId,
+            created_by: user.id,
+          },
+          client
+        );
 
-        set(state => ({
+        set((state) => ({
           tags: [...state.tags, newTag],
           isLoading: false,
         }));
       } catch (error) {
         console.error('Failed to create tag:', error);
-        set({ 
-          isLoading: false, 
-          error: error instanceof Error ? error.message : 'Failed to create tag'
+        set({
+          isLoading: false,
+          error:
+            error instanceof Error ? error.message : 'Failed to create tag',
         });
         throw error;
       }
     },
 
     // Update a tag
-    updateProjectTag: async (tagId: string, updates: { name?: string; color?: string; description?: string }) => {
+    updateProjectTag: async (
+      tagId: string,
+      updates: { name?: string; color?: string; description?: string }
+    ) => {
       set({ isLoading: true, error: undefined });
       try {
         const client = getClientForEnvironment();
         const updatedTag = await updateTag(tagId, updates, client);
-        
-        set(state => ({
-          tags: state.tags.map(tag => tag.id === tagId ? updatedTag : tag),
+
+        set((state) => ({
+          tags: state.tags.map((tag) => (tag.id === tagId ? updatedTag : tag)),
           isLoading: false,
         }));
       } catch (error) {
         console.error('Failed to update tag:', error);
-        set({ 
-          isLoading: false, 
-          error: error instanceof Error ? error.message : 'Failed to update tag'
+        set({
+          isLoading: false,
+          error:
+            error instanceof Error ? error.message : 'Failed to update tag',
         });
         throw error;
       }
@@ -118,16 +135,17 @@ export const useTagStore = create<TagStoreState>()(
       try {
         const client = getClientForEnvironment();
         await deleteTag(tagId, client);
-        
-        set(state => ({
-          tags: state.tags.filter(tag => tag.id !== tagId),
+
+        set((state) => ({
+          tags: state.tags.filter((tag) => tag.id !== tagId),
           isLoading: false,
         }));
       } catch (error) {
         console.error('Failed to delete tag:', error);
-        set({ 
-          isLoading: false, 
-          error: error instanceof Error ? error.message : 'Failed to delete tag'
+        set({
+          isLoading: false,
+          error:
+            error instanceof Error ? error.message : 'Failed to delete tag',
         });
         throw error;
       }
@@ -142,10 +160,11 @@ export const useTagStore = create<TagStoreState>()(
         set({ searchResults: results, isSearching: false });
       } catch (error) {
         console.error('Failed to search tags:', error);
-        set({ 
-          searchResults: [], 
-          isSearching: false, 
-          error: error instanceof Error ? error.message : 'Failed to search tags'
+        set({
+          searchResults: [],
+          isSearching: false,
+          error:
+            error instanceof Error ? error.message : 'Failed to search tags',
         });
       }
     },
@@ -156,13 +175,13 @@ export const useTagStore = create<TagStoreState>()(
     // Get tag by ID
     getTagById: (tagId: string) => {
       const state = get();
-      return state.tags.find(tag => tag.id === tagId);
+      return state.tags.find((tag) => tag.id === tagId);
     },
 
     // Get tags by names
     getTagsByNames: (names: string[]) => {
       const state = get();
-      return state.tags.filter(tag => names.includes(tag.name));
+      return state.tags.filter((tag) => names.includes(tag.name));
     },
 
     // Get tag usage stats
@@ -176,4 +195,4 @@ export const useTagStore = create<TagStoreState>()(
       }
     },
   }))
-); 
+);

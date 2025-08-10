@@ -1,36 +1,38 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ClerkProvider } from "@clerk/react-router";
-import "./index.css";
-import App from "./App.tsx";
-import UserbackInitializer from "./components/feedback/UserbackInitializer";
-import DevUserbackInitializer from "./components/feedback/DevUserbackInitializer";
-import { isDevelopmentEnvironment } from "@/lib/supabase/client";
+import { isDevelopmentEnvironment } from '@/lib/supabase/client';
+import { ClerkProvider } from '@clerk/react-router';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import App from './App.tsx';
+import DevUserbackInitializer from './components/feedback/DevUserbackInitializer';
+import UserbackInitializer from './components/feedback/UserbackInitializer';
+import './styles/index.css';
 // Excalidraw CSS (package exports index.css, not dist/excalidraw.css)
-import "@excalidraw/excalidraw/index.css";
+import '@excalidraw/excalidraw/index.css';
+// Custom CSS to hide Excalidraw UI and use only our toolbar
+import './components/canvas/excalidraw-custom.css';
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-console.log("Clerk Publishable Key:", PUBLISHABLE_KEY ? "Set" : "Not set");
+console.log('Clerk Publishable Key:', PUBLISHABLE_KEY ? 'Set' : 'Not set');
 
 if (!PUBLISHABLE_KEY) {
   console.error(
-    "Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your .env file"
+    'Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your .env file'
   );
   // Instead of throwing, let's show a helpful error page
-  createRoot(document.getElementById("root")!).render(
+  createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <div
         style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-          fontFamily: "system-ui, sans-serif",
-          padding: "20px",
-          textAlign: "center",
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          fontFamily: 'system-ui, sans-serif',
+          padding: '20px',
+          textAlign: 'center',
         }}
       >
         <div>
@@ -40,7 +42,7 @@ if (!PUBLISHABLE_KEY) {
             Please add <code>VITE_CLERK_PUBLISHABLE_KEY</code> to your .env file
           </p>
           <p>
-            Get your key from the{" "}
+            Get your key from the{' '}
             <a
               href="https://dashboard.clerk.com"
               target="_blank"
@@ -53,10 +55,10 @@ if (!PUBLISHABLE_KEY) {
       </div>
     </StrictMode>
   );
-  throw new Error("Add your Clerk Publishable Key to the .env file");
+  throw new Error('Add your Clerk Publishable Key to the .env file');
 }
 
-createRoot(document.getElementById("root")!).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <ClerkProvider publishableKey={PUBLISHABLE_KEY}>

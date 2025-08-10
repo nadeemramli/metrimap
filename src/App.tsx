@@ -8,28 +8,30 @@ import ClerkSupabaseProvider from "./components/auth/ClerkSupabaseProvider";
 import DevAuthProvider from "./components/auth/DevAuthProvider";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { ErrorBoundary } from "./components/error/ErrorBoundary";
-import { CanvasHeaderProvider } from "./contexts/CanvasHeaderContext";
-import { AuthenticatedSupabaseProvider } from "./contexts/AuthenticatedSupabaseContext";
+import { CanvasHeaderProvider } from "./lib/contexts/CanvasHeaderContext";
+import { AuthenticatedSupabaseProvider } from "./lib/contexts/AuthenticatedSupabaseContext";
 
 // Pages
-import HomePage from "./pages/HomePage";
+import HomePage from "./pages/homepage/HomePage";
 import CanvasLayout from "./components/layout/CanvasLayout";
-import CanvasPage from "./pages/CanvasPage";
-import DashboardPage from "./pages/DashboardPage";
-import AssetsPage from "./pages/AssetsPage";
-import SourcePage from "./pages/SourcePage";
-import CanvasSettingsPage from "./pages/CanvasSettingsPage";
-import EvidenceRepositoryPage from "./pages/EvidenceRepositoryPage";
-import EvidencePage from "./pages/EvidencePage";
+import CanvasPage from "./pages/canvas/CanvasPage";
+import DashboardPage from "./pages/dashboard/DashboardPage";
+import AssetsPage from "./pages/asset/AssetsPage";
+import SourcePage from "./pages/source/SourcePage";
+import CanvasSettingsPage from "./pages/canvas/CanvasSettingsPage";
+import EvidenceRepositoryPage from "./pages/evidence/EvidenceRepositoryPage";
+import EvidencePage from "./pages/evidence/EvidencePage";
+import ExcalidrawTestPage from "./pages/ExcalidrawTestPage";
 
 // Auth Pages
-import SignInPage from "./pages/SignInPage";
+import SignInPage from "./pages/auth/SignInPage";
 
 // Create a client
 const queryClient = new QueryClient();
 
 // Check if we're in development mode (using local Supabase)
 import { isDevelopmentEnvironment } from "@/lib/supabase/client";
+import XStateCanvasDemo from "@/components/canvas/XStateCanvasDemo";
 const isDevelopment = isDevelopmentEnvironment();
 
 export default function App() {
@@ -68,6 +70,10 @@ export default function App() {
                 <Route
                   path="/evidence/:evidenceId"
                   element={<EvidencePage />}
+                />
+                <Route
+                  path="/excalidraw-test"
+                  element={<ExcalidrawTestPage />}
                 />
                 <Route
                   path="/canvas/:canvasId"
@@ -196,6 +202,11 @@ export default function App() {
                   />
                   <Route path="source" element={<SourcePage />} />
                   <Route path="settings" element={<CanvasSettingsPage />} />
+
+                  {/* Development-only routes */}
+                  {isDevelopment && (
+                    <Route path="xstate-demo" element={<XStateCanvasDemo />} />
+                  )}
                 </Route>
 
                 {/* Catch-all route for unauthenticated users */}

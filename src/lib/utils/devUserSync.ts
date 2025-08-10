@@ -1,5 +1,5 @@
-import { supabase } from '../supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../supabase/client';
 import type { Database } from '../supabase/types';
 
 export async function syncDevUserToProduction(
@@ -9,7 +9,7 @@ export async function syncDevUserToProduction(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
-  
+
   try {
     // Check if user already exists
     const { data: existingUser, error: checkError } = await client
@@ -65,7 +65,10 @@ export async function ensureDevUserExists(
     try {
       await syncDevUserToProduction(userId, email, name, authenticatedClient);
     } catch (error) {
-      console.warn('⚠️ Failed to sync development user, continuing anyway:', error);
+      console.warn(
+        '⚠️ Failed to sync development user, continuing anyway:',
+        error
+      );
     }
   }
-} 
+}

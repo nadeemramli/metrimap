@@ -10,23 +10,26 @@ import {
   useImperativeHandle,
   useCallback,
 } from "react";
+import {
+  createExcalidrawInitialData,
+  sanitizeExcalidrawData,
+} from "@/lib/utils/excalidrawDefaults";
 
 // Lazy-load Excalidraw so the app can run even if the package isn't installed yet.
 // When you install the dependency, also import its CSS once in your app root:
 // import "@excalidraw/excalidraw/dist/excalidraw.css";
 const Excalidraw = lazy(async () => {
   try {
-    const moduleName = "@excalidraw/excalidraw";
-    // Prevent Vite from resolving this at transform time if the package isn't installed yet
-    const mod = await import(/* @vite-ignore */ moduleName as any);
-    return { default: (mod as any).Excalidraw } as any;
+    // Direct dynamic import - let Vite handle module resolution normally
+    const mod = await import("@excalidraw/excalidraw");
+    return { default: mod.Excalidraw };
   } catch (err) {
     console.warn(
       "@excalidraw/excalidraw not found. Install it to enable the whiteboard overlay.",
       err
     );
     // Fallback to a no-op component to avoid crashes during development
-    return { default: () => null } as any;
+    return { default: () => null };
   }
 });
 
@@ -44,6 +47,8 @@ export interface WhiteboardOverlayProps {
     appState: any;
     files?: any;
   }) => void;
+  // Viewport change callback for syncing with React Flow
+  onViewportChange?: (viewport: { x: number; y: number; zoom: number }) => void;
   // Optional safe area at top where the overlay should not intercept events/cover UI
   topOffset?: number; // pixels
   // When true, let pointer events pass through to the canvas beneath (used for temporary panning)
@@ -83,10 +88,11 @@ const WhiteboardOverlay = forwardRef<
   {
     isActive,
     className,
-    zIndex = 6,
+    zIndex = 2,
     viewport,
     initialData,
     onSceneChange,
+    onViewportChange,
     topOffset,
     passthrough,
     onWheelCapture,
@@ -136,8 +142,7 @@ const WhiteboardOverlay = forwardRef<
     },
     exportPNG: async () => {
       try {
-        const moduleName = "@excalidraw/excalidraw";
-        const mod: any = await import(/* @vite-ignore */ moduleName as any);
+        const mod = await import("@excalidraw/excalidraw");
         const api = excalidrawRef.current?.getSceneElements
           ? excalidrawRef.current
           : null;
@@ -156,8 +161,7 @@ const WhiteboardOverlay = forwardRef<
     },
     exportSVG: async () => {
       try {
-        const moduleName = "@excalidraw/excalidraw";
-        const mod: any = await import(/* @vite-ignore */ moduleName as any);
+        const mod = await import("@excalidraw/excalidraw");
         const api = excalidrawRef.current?.getSceneElements
           ? excalidrawRef.current
           : null;
@@ -252,13 +256,49 @@ const WhiteboardOverlay = forwardRef<
     });
   }, [viewport?.x, viewport?.y, viewport?.zoom]);
 
-  // Debounced persistence
+  // Track last viewport to prevent unnecessary updates
+  const lastViewportRef = useRef<{ x: number; y: number; zoom: number } | null>(
+    null
+  );
+
+  // Debounced persistence and viewport change detection
   const handleChange = (elements: any[], appState: any, files: any) => {
-    if (!onSceneChange) return;
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      onSceneChange({ elements, appState, files });
-    }, 500);
+    // Ensure collaborators is always a Map before passing to callbacks
+    if (
+      appState &&
+      (!appState.collaborators || !(appState.collaborators instanceof Map))
+    ) {
+      appState.collaborators = new Map();
+    }
+
+    // Handle scene changes
+    if (onSceneChange) {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        onSceneChange({ elements, appState, files });
+      }, 500);
+    }
+
+    // Handle viewport changes with throttling to prevent infinite loops
+    if (onViewportChange && appState) {
+      const currentViewport = {
+        x: -appState.scrollX || 0,
+        y: -appState.scrollY || 0,
+        zoom: appState.zoom?.value || 1,
+      };
+
+      // Only call onViewportChange if viewport has meaningfully changed
+      const lastViewport = lastViewportRef.current;
+      if (
+        !lastViewport ||
+        Math.abs(currentViewport.x - lastViewport.x) > 0.1 ||
+        Math.abs(currentViewport.y - lastViewport.y) > 0.1 ||
+        Math.abs(currentViewport.zoom - lastViewport.zoom) > 0.001
+      ) {
+        lastViewportRef.current = currentViewport;
+        onViewportChange(currentViewport);
+      }
+    }
   };
 
   // Attach a wheel listener in capture phase so we can intercept Shift+wheel
@@ -295,11 +335,29 @@ const WhiteboardOverlay = forwardRef<
             }
           }}
           initialData={
-            initialData || { appState: { viewBackgroundColor: "transparent" } }
+            initialData
+              ? sanitizeExcalidrawData(initialData)
+              : createExcalidrawInitialData()
           }
           onChange={handleChange}
-          // Ensure Excalidraw itself is transparent and accepts pointer events only when active
-          UIOptions={{ canvasActions: { changeViewBackgroundColor: false } }}
+          // Hide all Excalidraw UI - use only our custom toolbar
+          UIOptions={{
+            canvasActions: {
+              changeViewBackgroundColor: false,
+              clearCanvas: false,
+              export: false,
+              loadScene: false,
+              saveToActiveFile: false,
+              toggleTheme: false,
+              saveAsImage: false,
+            },
+            tools: {
+              image: false,
+            },
+          }}
+          // Hide the main menu, help dialog, etc.
+          renderTopRightUI={() => null}
+          renderFooter={() => null}
           onChangeCapture={() => flushPending()}
         />
       </Suspense>
