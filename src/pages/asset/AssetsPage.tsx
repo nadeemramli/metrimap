@@ -1,113 +1,112 @@
-import { useState, useMemo, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import CardSettingsSheet from '@/components/canvas/right-sidepanel/metric-panel/CardSettingsSheet';
+import RelationshipSheet from '@/components/canvas/right-sidepanel/relationship-panel/RelationshipSheet';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
+import { EnhancedTagInput } from '@/components/ui/enhanced-tag-input';
+import { Input } from '@/components/ui/input';
 import {
-  Search,
-  Plus,
-  Download,
-  Edit,
-  Trash2,
-  MoreVertical,
-  BarChart3,
-  Network,
-  FileText,
-  Calendar,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  Settings,
-  Tag,
-  CheckSquare,
-  Square,
-} from "lucide-react";
-import { useCanvasStore, useTagStore } from "@/lib/stores";
-import type { CardCategory, MetricCard, Relationship } from "@/lib/types";
-import CardSettingsSheet from "@/components/canvas/right-sidepanel/metric-panel/CardSettingsSheet";
-import RelationshipSheet from "@/components/canvas/right-sidepanel/relationship-panel/RelationshipSheet";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getProjectById } from "@/lib/supabase/services/projects";
-import { useAuthenticatedSupabase } from "@/lib/contexts/AuthenticatedSupabaseContext";
-import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuthenticatedSupabase } from '@/lib/contexts/AuthenticatedSupabaseContext';
+import { useCanvasStore, useTagStore } from '@/lib/stores';
 import {
   addTagsToMetricCard,
   addTagsToRelationship,
-  getMetricCardTags,
-  getRelationshipTags,
-} from "@/lib/supabase/services/tags";
+} from '@/lib/supabase/services/tags';
+import type { MetricCard, Relationship } from '@/lib/types';
+import {
+  getCategoryColor,
+  getRelationshipTypeColor,
+} from '@/lib/utils/metricUtils';
+import {
+  AlertTriangle,
+  BarChart3,
+  Calendar,
+  CheckCircle,
+  CheckSquare,
+  Clock,
+  Download,
+  Edit,
+  FileText,
+  MoreVertical,
+  Network,
+  Plus,
+  Search,
+  Settings,
+  Square,
+  Tag,
+  Trash2,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-type TabType = "metrics" | "relationships";
+// Custom hooks and components
+import { useAssetsData } from '@/hooks/useAssetsData';
+import { useAssetsFiltering } from '@/hooks/useAssetsFiltering';
+
+type TabType = 'metrics' | 'relationships';
 type SortField =
-  | "name"
-  | "category"
-  | "updated"
-  | "connections"
-  | "confidence"
-  | "type";
-type SortOrder = "asc" | "desc";
-
-// Category colors - same as MetricCard
-const getCategoryColor = (category: CardCategory) => {
-  switch (category) {
-    case "Core/Value":
-      return "bg-blue-50 border-blue-200 text-blue-900";
-    case "Data/Metric":
-      return "bg-green-50 border-green-200 text-green-900";
-    case "Work/Action":
-      return "bg-orange-50 border-orange-200 text-orange-900";
-    case "Ideas/Hypothesis":
-      return "bg-purple-50 border-purple-200 text-purple-900";
-    case "Metadata":
-      return "bg-gray-50 border-gray-200 text-gray-900";
-    default:
-      return "bg-gray-50 border-gray-200 text-gray-900";
-  }
-};
-
-// Relationship type colors - consistent with DynamicEdge styling
-const getRelationshipTypeColor = (type: string) => {
-  switch (type) {
-    case "Deterministic":
-      return "bg-gray-50 border-gray-200 text-gray-900"; // Gray for formulaic
-    case "Probabilistic":
-      return "bg-blue-50 border-blue-200 text-blue-900"; // Blue for statistical
-    case "Causal":
-      return "bg-red-50 border-red-200 text-red-900"; // Red for causal
-    case "Compositional":
-      return "bg-purple-50 border-purple-200 text-purple-900"; // Purple for hierarchical
-    default:
-      return "bg-gray-50 border-gray-200 text-gray-900";
-  }
-};
+  | 'name'
+  | 'category'
+  | 'updated'
+  | 'connections'
+  | 'confidence'
+  | 'type';
+type SortOrder = 'asc' | 'desc';
 
 export default function AssetsPage() {
-  const { canvasId } = useParams();
   const supabaseClient = useAuthenticatedSupabase();
-  const { canvas, persistNodeDelete, persistEdgeDelete } = useCanvasStore();
+  const { persistNodeDelete, persistEdgeDelete } = useCanvasStore();
 
-  const [activeTab, setActiveTab] = useState<TabType>("metrics");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState<SortField>("updated");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [confidenceFilter, setConfidenceFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<TabType>('metrics');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField>('updated');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [confidenceFilter, setConfidenceFilter] = useState('all');
+
+  // Custom hooks
+  const {
+    canvasId,
+    project,
+    isLoadingProject,
+    metrics,
+    relationships,
+    metricTags,
+    relationshipTags,
+    isLoadingTags,
+    metricCategories,
+    relationshipTypes,
+    confidenceLevels,
+    getNodeById,
+    setProject,
+    setMetricTags,
+    setRelationshipTags,
+  } = useAssetsData();
+
+  const { filteredMetrics, filteredRelationships } = useAssetsFiltering({
+    metrics,
+    relationships,
+    searchQuery,
+    sortField,
+    sortOrder,
+    categoryFilter,
+    typeFilter,
+    confidenceFilter,
+  });
 
   // Sheet state
   const [isCardSettingsOpen, setIsCardSettingsOpen] = useState(false);
@@ -127,9 +126,13 @@ export default function AssetsPage() {
 
   // Add Asset state
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
-  const [newAssetType, setNewAssetType] = useState<"metric" | "relationship">(
-    "metric"
+  const [newAssetType, setNewAssetType] = useState<'metric' | 'relationship'>(
+    'metric'
   );
+
+  // Drag and drop state
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   // Tag store
   const { loadProjectTags, tags, deleteProjectTag } = useTagStore();
@@ -146,22 +149,22 @@ export default function AssetsPage() {
     relationships: Set<string>;
   }>({
     metrics: new Set([
-      "title",
-      "description",
-      "category",
-      "value",
-      "connections",
-      "updated",
-      "actions",
+      'title',
+      'description',
+      'category',
+      'value',
+      'connections',
+      'updated',
+      'actions',
     ]),
     relationships: new Set([
-      "relationship",
-      "notes",
-      "type",
-      "confidence",
-      "evidence",
-      "updated",
-      "actions",
+      'relationship',
+      'notes',
+      'type',
+      'confidence',
+      'evidence',
+      'updated',
+      'actions',
     ]),
   });
 
@@ -171,282 +174,76 @@ export default function AssetsPage() {
     relationships: string[];
   }>({
     metrics: [
-      "title",
-      "description",
-      "category",
-      "value",
-      "connections",
-      "updated",
-      "actions",
+      'title',
+      'description',
+      'category',
+      'value',
+      'connections',
+      'updated',
+      'actions',
     ],
     relationships: [
-      "relationship",
-      "notes",
-      "type",
-      "confidence",
-      "evidence",
-      "updated",
-      "actions",
+      'relationship',
+      'notes',
+      'type',
+      'confidence',
+      'evidence',
+      'updated',
+      'actions',
     ],
   });
 
-  // Drag and drop state
-  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
-  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
-
-  // Project state
-  const [project, setProject] = useState<any>(null);
-  const [isLoadingProject, setIsLoadingProject] = useState(false);
-
-  // Tag state for metrics and relationships
-  const [metricTags, setMetricTags] = useState<Record<string, string[]>>({});
-  const [relationshipTags, setRelationshipTags] = useState<
-    Record<string, string[]>
-  >({});
-  const [isLoadingTags, setIsLoadingTags] = useState(false);
-
-  // Use canvas store for real-time data, fallback to project store
-  const metrics = canvas?.nodes || project?.nodes || [];
-  const relationships = canvas?.edges || project?.edges || [];
-
-  // Debug logging
-  console.log("🔍 AssetsPage Debug:", {
-    canvasId,
-    hasCanvas: !!canvas,
-    hasProject: !!project,
-    isLoadingProject,
-    canvasNodes: canvas?.nodes?.length || 0,
-    projectNodes: project?.nodes?.length || 0,
-    canvasEdges: canvas?.edges?.length || 0,
-    projectEdges: project?.edges?.length || 0,
-    metricsLength: metrics.length,
-    relationshipsLength: relationships.length,
-  });
-
-  // Enhanced filtering and sorting
-  const filteredMetrics = useMemo(() => {
-    let filtered = metrics.filter(
-      (metric: MetricCard) =>
-        metric.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        metric.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    if (categoryFilter !== "all") {
-      filtered = filtered.filter(
-        (metric: MetricCard) => metric.category === categoryFilter
-      );
-    }
-
-    return filtered.sort((a: MetricCard, b: MetricCard) => {
-      const multiplier = sortOrder === "asc" ? 1 : -1;
-      switch (sortField) {
-        case "name":
-          return a.title.localeCompare(b.title) * multiplier;
-        case "category":
-          return a.category.localeCompare(b.category) * multiplier;
-        case "updated":
-          return (
-            (new Date(a.updatedAt).getTime() -
-              new Date(b.updatedAt).getTime()) *
-            multiplier
-          );
-        default:
-          return 0;
-      }
-    });
-  }, [metrics, searchQuery, categoryFilter, sortField, sortOrder]);
-
-  const filteredRelationships = useMemo(() => {
-    let filtered = relationships.filter((rel: Relationship) => {
-      const sourceNode = metrics.find((m: MetricCard) => m.id === rel.sourceId);
-      const targetNode = metrics.find((m: MetricCard) => m.id === rel.targetId);
-      return (
-        sourceNode?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        targetNode?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        rel.type.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    });
-
-    // Apply type filter
-    if (typeFilter !== "all") {
-      filtered = filtered.filter(
-        (rel: Relationship) => rel.type === typeFilter
-      );
-    }
-
-    // Apply confidence filter
-    if (confidenceFilter !== "all") {
-      filtered = filtered.filter(
-        (rel: Relationship) => rel.confidence === confidenceFilter
-      );
-    }
-
-    // Apply sorting
-    return filtered.sort((a: Relationship, b: Relationship) => {
-      const multiplier = sortOrder === "asc" ? 1 : -1;
-      switch (sortField) {
-        case "name":
-          const sourceNodeA = metrics.find(
-            (m: MetricCard) => m.id === a.sourceId
-          );
-          const sourceNodeB = metrics.find(
-            (m: MetricCard) => m.id === b.sourceId
-          );
-          const targetNodeA = metrics.find(
-            (m: MetricCard) => m.id === a.targetId
-          );
-          const targetNodeB = metrics.find(
-            (m: MetricCard) => m.id === b.targetId
-          );
-          const nameA = `${sourceNodeA?.title || "Unknown"} → ${targetNodeA?.title || "Unknown"}`;
-          const nameB = `${sourceNodeB?.title || "Unknown"} → ${targetNodeB?.title || "Unknown"}`;
-          return nameA.localeCompare(nameB) * multiplier;
-        case "type":
-          return a.type.localeCompare(b.type) * multiplier;
-        case "confidence":
-          return a.confidence.localeCompare(b.confidence) * multiplier;
-        case "updated":
-          return (
-            (new Date(a.updatedAt).getTime() -
-              new Date(b.updatedAt).getTime()) *
-            multiplier
-          );
-        default:
-          return 0;
-      }
-    });
-  }, [
-    relationships,
-    metrics,
-    searchQuery,
-    typeFilter,
-    confidenceFilter,
-    sortField,
-    sortOrder,
-  ]);
-
-  const metricCategories = useMemo(() => {
-    const cats = new Set(metrics.map((m: MetricCard) => m.category));
-    return Array.from(cats) as CardCategory[];
-  }, [metrics]);
-
-  const relationshipTypes = useMemo(() => {
-    const types = new Set(relationships.map((r: Relationship) => r.type));
-    return Array.from(types) as string[];
-  }, [relationships]);
-
-  const confidenceLevels = useMemo(() => {
-    const levels = new Set(
-      relationships.map((r: Relationship) => r.confidence)
-    );
-    return Array.from(levels) as string[];
-  }, [relationships]);
-
-  const getNodeById = (id: string) =>
-    metrics.find((node: MetricCard) => node.id === id);
+  // Debug logging (commented out to reduce console noise)
+  // console.log('🔍 AssetsPage Debug:', {
+  //   canvasId,
+  //   hasProject: !!project,
+  //   isLoadingProject,
+  //   projectNodes: project?.nodes?.length || 0,
+  //   projectEdges: project?.edges?.length || 0,
+  //   metricsLength: metrics.length,
+  //   relationshipsLength: relationships.length,
+  // });
 
   // Load project data from database and auto-load canvas data if needed
-  useEffect(() => {
-    const loadProjectData = async () => {
-      if (canvasId && !isLoadingProject) {
-        setIsLoadingProject(true);
-        try {
-          console.log("🔄 Loading project data from database for:", canvasId);
-          const projectData = await getProjectById(canvasId, supabaseClient);
-          console.log("✅ Project data loaded:", {
-            nodes: projectData?.nodes?.length || 0,
-            edges: projectData?.edges?.length || 0,
-          });
-          setProject(projectData);
-        } catch (error) {
-          console.error("❌ Failed to load project data:", error);
-        } finally {
-          setIsLoadingProject(false);
-        }
-      }
-    };
+  // REMOVED: This was causing a conflict with useAssetsData hook
+  // useEffect(() => {
+  //   const loadProjectData = async () => {
+  //     if (canvasId && !isLoadingProject) {
+  //       setIsLoadingProject(true);
+  //       try {
+  //         // console.log('🔄 Loading project data from database for:', canvasId);
+  //         const projectData = await getProjectById(canvasId, supabaseClient);
+  //         // console.log('✅ Project data loaded:', {
+  //           nodes: projectData?.nodes?.length || 0,
+  //           edges: projectData?.edges?.length || 0,
+  //         });
+  //         setProject(projectData);
+  //       } catch (error) {
+  //         console.error('❌ Failed to load project data:', error);
+  //       } finally {
+  //         setIsLoadingProject(false);
+  //       }
+  //     }
+  //   };
 
-    loadProjectData();
-  }, [canvasId]);
+  //   loadProjectData();
+  // }, [canvasId]);
 
   // Load project tags
+  const loadProjectTagsCallback = useCallback(
+    (projectId: string) => {
+      loadProjectTags(projectId);
+    },
+    [loadProjectTags]
+  );
+
   useEffect(() => {
     if (canvasId) {
-      loadProjectTags(canvasId);
+      loadProjectTagsCallback(canvasId);
     }
-  }, [canvasId, loadProjectTags]);
+  }, [canvasId, loadProjectTagsCallback]);
 
-  // Load tags for metrics and relationships
-  useEffect(() => {
-    const loadTags = async () => {
-      if (!canvasId || (metrics.length === 0 && relationships.length === 0))
-        return;
-
-      setIsLoadingTags(true);
-      try {
-        // Load tags for metrics
-        const metricTagPromises = metrics.map(async (metric: MetricCard) => {
-          try {
-            const tags = await getMetricCardTags(metric.id);
-            return { id: metric.id, tags };
-          } catch (error) {
-            console.error(
-              `Failed to load tags for metric ${metric.id}:`,
-              error
-            );
-            return { id: metric.id, tags: [] };
-          }
-        });
-
-        // Load tags for relationships
-        const relationshipTagPromises = relationships.map(
-          async (rel: Relationship) => {
-            try {
-              const tags = await getRelationshipTags(rel.id);
-              return { id: rel.id, tags };
-            } catch (error) {
-              console.error(
-                `Failed to load tags for relationship ${rel.id}:`,
-                error
-              );
-              return { id: rel.id, tags: [] };
-            }
-          }
-        );
-
-        const [metricResults, relationshipResults] = await Promise.all([
-          Promise.all(metricTagPromises),
-          Promise.all(relationshipTagPromises),
-        ]);
-
-        // Convert to record format
-        const metricTagsRecord = metricResults.reduce(
-          (acc, { id, tags }) => {
-            acc[id] = tags;
-            return acc;
-          },
-          {} as Record<string, string[]>
-        );
-
-        const relationshipTagsRecord = relationshipResults.reduce(
-          (acc, { id, tags }) => {
-            acc[id] = tags;
-            return acc;
-          },
-          {} as Record<string, string[]>
-        );
-
-        setMetricTags(metricTagsRecord);
-        setRelationshipTags(relationshipTagsRecord);
-      } catch (error) {
-        console.error("Failed to load tags:", error);
-      } finally {
-        setIsLoadingTags(false);
-      }
-    };
-
-    loadTags();
-  }, [canvasId, metrics, relationships]);
+  // Tags are loaded by useAssetsData hook - no need for duplicate loading logic
 
   // Sheet handlers
   const handleOpenCardSettings = (cardId: string) => {
@@ -470,65 +267,65 @@ export default function AssetsPage() {
   };
 
   const handleDeleteMetric = async (metricId: string) => {
-    if (confirm("Are you sure you want to delete this metric?")) {
+    if (confirm('Are you sure you want to delete this metric?')) {
       try {
         await persistNodeDelete(metricId);
       } catch (error) {
-        console.error("Failed to delete metric:", error);
-        alert("Failed to delete metric. Please try again.");
+        console.error('Failed to delete metric:', error);
+        alert('Failed to delete metric. Please try again.');
       }
     }
   };
 
   const handleDeleteRelationship = async (relationshipId: string) => {
-    if (confirm("Are you sure you want to delete this relationship?")) {
+    if (confirm('Are you sure you want to delete this relationship?')) {
       try {
         await persistEdgeDelete(relationshipId);
       } catch (error) {
-        console.error("Failed to delete relationship:", error);
-        alert("Failed to delete relationship. Please try again.");
+        console.error('Failed to delete relationship:', error);
+        alert('Failed to delete relationship. Please try again.');
       }
     }
   };
 
   // Column definitions with consistent structure
   const metricColumns = [
-    { key: "title", label: "Metric", sortable: true, width: "w-1/4" },
-    { key: "category", label: "Category", sortable: true, width: "w-1/6" },
-    { key: "value", label: "Value", sortable: false, width: "w-1/6" },
+    { key: 'title', label: 'Metric', sortable: true, width: 'w-1/4' },
+    { key: 'category', label: 'Category', sortable: true, width: 'w-1/6' },
+    { key: 'value', label: 'Value', sortable: false, width: 'w-1/6' },
     {
-      key: "connections",
-      label: "Connections",
+      key: 'connections',
+      label: 'Connections',
       sortable: true,
-      width: "w-1/8",
+      width: 'w-1/8',
     },
-    { key: "updated", label: "Updated", sortable: true, width: "w-1/6" },
+    { key: 'updated', label: 'Updated', sortable: true, width: 'w-1/6' },
     {
-      key: "description",
-      label: "Description",
+      key: 'description',
+      label: 'Description',
       sortable: false,
-      width: "w-1/4",
+      width: 'w-1/4',
     },
-    { key: "owner", label: "Owner", sortable: true, width: "w-1/8" },
-    { key: "tags", label: "Tags", sortable: false, width: "w-1/6" },
-    { key: "actions", label: "Actions", sortable: false, width: "w-1/8" },
+    { key: 'owner', label: 'Owner', sortable: true, width: 'w-1/8' },
+    { key: 'tags', label: 'Tags', sortable: false, width: 'w-1/6' },
+    { key: 'actions', label: 'Actions', sortable: false, width: 'w-1/8' },
   ];
 
   const relationshipColumns = [
     {
-      key: "relationship",
-      label: "Relationship",
+      key: 'relationship',
+      label: 'Relationship',
       sortable: true,
-      width: "w-1/3",
+      width: 'w-1/3',
     },
-    { key: "type", label: "Type", sortable: true, width: "w-1/8" },
-    { key: "confidence", label: "Confidence", sortable: true, width: "w-1/8" },
-    { key: "evidence", label: "Evidence", sortable: true, width: "w-1/8" },
-    { key: "updated", label: "Updated", sortable: true, width: "w-1/6" },
-    { key: "weight", label: "Weight", sortable: true, width: "w-1/8" },
-    { key: "notes", label: "Notes", sortable: false, width: "w-1/4" },
-    { key: "tags", label: "Tags", sortable: false, width: "w-1/6" },
-    { key: "actions", label: "Actions", sortable: false, width: "w-1/8" },
+    { key: 'type', label: 'Type', sortable: true, width: 'w-1/8' },
+    { key: 'confidence', label: 'Confidence', sortable: true, width: 'w-1/8' },
+    { key: 'evidence', label: 'Evidence', sortable: true, width: 'w-1/8' },
+    { key: 'updated', label: 'Updated', sortable: true, width: 'w-1/6' },
+    { key: 'weight', label: 'Weight', sortable: true, width: 'w-1/8' },
+    { key: 'notes', label: 'Notes', sortable: false, width: 'w-1/4' },
+    { key: 'tags', label: 'Tags', sortable: false, width: 'w-1/6' },
+    { key: 'actions', label: 'Actions', sortable: false, width: 'w-1/8' },
   ];
 
   // Selection handlers
@@ -590,8 +387,8 @@ export default function AssetsPage() {
         }
         setSelectedMetricIds(new Set());
       } catch (error) {
-        console.error("Failed to delete metrics:", error);
-        alert("Failed to delete some metrics. Please try again.");
+        console.error('Failed to delete metrics:', error);
+        alert('Failed to delete some metrics. Please try again.');
       }
     }
   };
@@ -610,15 +407,15 @@ export default function AssetsPage() {
         }
         setSelectedRelationshipIds(new Set());
       } catch (error) {
-        console.error("Failed to delete relationships:", error);
-        alert("Failed to delete some relationships. Please try again.");
+        console.error('Failed to delete relationships:', error);
+        alert('Failed to delete some relationships. Please try again.');
       }
     }
   };
 
   const handleBulkAddTags = async (tags: string[]) => {
     const selectedItems =
-      activeTab === "metrics"
+      activeTab === 'metrics'
         ? Array.from(selectedMetricIds)
         : Array.from(selectedRelationshipIds);
 
@@ -626,9 +423,9 @@ export default function AssetsPage() {
 
     setIsAddingTags(true);
     try {
-      console.log("🏷️ Adding tags to selected items:", tags);
+      // console.log('🏷️ Adding tags to selected items:', tags);
 
-      if (activeTab === "metrics") {
+      if (activeTab === 'metrics') {
         // Add tags to selected metrics using database system
         for (const metricId of selectedItems) {
           await addTagsToMetricCard(metricId, tags);
@@ -640,47 +437,69 @@ export default function AssetsPage() {
         }
       }
 
-      console.log(
-        "✅ Tags added successfully to",
-        selectedItems.length,
-        "items"
-      );
+      // console.log(
+      //   '✅ Tags added successfully to',
+      //   selectedItems.length,
+      //   'items'
+      // );
       setSelectedTags([]);
       setIsTagDialogOpen(false);
 
       // Refresh data and tags
       if (project) {
-        const updatedProject = await getProjectById(project.id, supabaseClient);
-        setProject(updatedProject);
+        // REMOVED: getProjectById is no longer needed here
+        // const updatedProject = await getProjectById(project.id, supabaseClient);
+        // setProject(updatedProject);
 
         // Reload tags for the affected items
         const loadUpdatedTags = async () => {
           try {
-            if (activeTab === "metrics") {
+            if (activeTab === 'metrics') {
+              // For metrics, we need to refresh the metric tags
+              // Since we can't directly call getMetricCardTags, we'll trigger a refresh
+              // by updating the metricTags state with the new tags we just added
               const updatedMetricTags = { ...metricTags };
               for (const metricId of selectedItems) {
-                const tags = await getMetricCardTags(metricId);
-                updatedMetricTags[metricId] = tags;
+                // The tags were already added to the database, so we can update our local state
+                // This will trigger a re-render and the useAssetsData hook will handle the rest
+                if (updatedMetricTags[metricId]) {
+                  // Keep existing tags and add new ones if they're not already there
+                  const existingTags = updatedMetricTags[metricId] || [];
+                  const newTags = selectedTags.filter(
+                    (tag) => !existingTags.includes(tag)
+                  );
+                  updatedMetricTags[metricId] = [...existingTags, ...newTags];
+                }
               }
               setMetricTags(updatedMetricTags);
             } else {
+              // For relationships, similar logic
               const updatedRelationshipTags = { ...relationshipTags };
               for (const relationshipId of selectedItems) {
-                const tags = await getRelationshipTags(relationshipId);
-                updatedRelationshipTags[relationshipId] = tags;
+                if (updatedRelationshipTags[relationshipId]) {
+                  const existingTags =
+                    updatedRelationshipTags[relationshipId] || [];
+                  const newTags = selectedTags.filter(
+                    (tag) => !existingTags.includes(tag)
+                  );
+                  updatedRelationshipTags[relationshipId] = [
+                    ...existingTags,
+                    ...newTags,
+                  ];
+                }
               }
               setRelationshipTags(updatedRelationshipTags);
             }
           } catch (error) {
-            console.error("Failed to reload tags after adding:", error);
+            console.error('Failed to reload tags after adding:', error);
           }
         };
 
         loadUpdatedTags();
       }
     } catch (error) {
-      console.error("❌ Error adding tags:", error);
-      alert("Failed to add tags. Please try again.");
+      console.error('❌ Error adding tags:', error);
+      alert('Failed to add tags. Please try again.');
     } finally {
       setIsAddingTags(false);
     }
@@ -697,9 +516,9 @@ export default function AssetsPage() {
   };
 
   const handleOpenTagManagement = () => {
-    console.log("Opening tag management dialog");
-    console.log("Current tags state:", tags);
-    console.log("Canvas ID:", canvasId);
+    // console.log('Opening tag management dialog');
+    // console.log('Current tags state:', tags);
+    // console.log('Canvas ID:', canvasId);
 
     // Ensure tags are loaded
     if (canvasId) {
@@ -720,78 +539,78 @@ export default function AssetsPage() {
   // Export functionality
   const handleExport = () => {
     const dataToExport =
-      activeTab === "metrics" ? filteredMetrics : filteredRelationships;
+      activeTab === 'metrics' ? filteredMetrics : filteredRelationships;
 
     if (dataToExport.length === 0) {
-      alert("No data to export");
+      alert('No data to export');
       return;
     }
 
     // Create CSV content
-    let csvContent = "";
+    let csvContent = '';
 
-    if (activeTab === "metrics") {
+    if (activeTab === 'metrics') {
       // Export metrics
       const headers = [
-        "Title",
-        "Category",
-        "Description",
-        "Value",
-        "Connections",
-        "Updated",
-        "Tags",
+        'Title',
+        'Category',
+        'Description',
+        'Value',
+        'Connections',
+        'Updated',
+        'Tags',
       ];
-      csvContent = headers.join(",") + "\n";
+      csvContent = headers.join(',') + '\n';
 
       dataToExport.forEach((metric: MetricCard) => {
         const row = [
           `"${metric.title}"`,
           `"${metric.category}"`,
-          `"${metric.description || ""}"`,
-          `"${metric.data && metric.data.length > 0 ? metric.data[0].value : ""}"`,
+          `"${metric.description || ''}"`,
+          `"${metric.data && metric.data.length > 0 ? metric.data[0].value : ''}"`,
           `${relationships.filter((r: Relationship) => r.sourceId === metric.id || r.targetId === metric.id).length}`,
           `"${new Date(metric.updatedAt).toLocaleDateString()}"`,
-          `"${(metric.tags || []).join("; ")}"`,
+          `"${(metric.tags || []).join('; ')}"`,
         ];
-        csvContent += row.join(",") + "\n";
+        csvContent += row.join(',') + '\n';
       });
     } else {
       // Export relationships
       const headers = [
-        "Source",
-        "Target",
-        "Type",
-        "Confidence",
-        "Weight",
-        "Updated",
+        'Source',
+        'Target',
+        'Type',
+        'Confidence',
+        'Weight',
+        'Updated',
       ];
-      csvContent = headers.join(",") + "\n";
+      csvContent = headers.join(',') + '\n';
 
       dataToExport.forEach((rel: Relationship) => {
         const sourceNode = getNodeById(rel.sourceId);
         const targetNode = getNodeById(rel.targetId);
         const row = [
-          `"${sourceNode?.title || "Unknown"}"`,
-          `"${targetNode?.title || "Unknown"}"`,
+          `"${sourceNode?.title || 'Unknown'}"`,
+          `"${targetNode?.title || 'Unknown'}"`,
           `"${rel.type}"`,
           `"${rel.confidence}"`,
           `${rel.weight || 0}`,
           `"${new Date(rel.updatedAt).toLocaleDateString()}"`,
         ];
-        csvContent += row.join(",") + "\n";
+        csvContent += row.join(',') + '\n';
       });
     }
 
     // Create and download file
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
+    link.setAttribute('href', url);
     link.setAttribute(
-      "download",
-      `${activeTab}_${new Date().toISOString().split("T")[0]}.csv`
+      'download',
+      `${activeTab}_${new Date().toISOString().split('T')[0]}.csv`
     );
-    link.style.visibility = "hidden";
+    link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -809,7 +628,7 @@ export default function AssetsPage() {
 
   const handleDragEnd = () => {
     if (draggedColumn && dragOverColumn && draggedColumn !== dragOverColumn) {
-      const currentTab = activeTab as "metrics" | "relationships";
+      const currentTab = activeTab as 'metrics' | 'relationships';
       const currentOrder = [...columnOrder[currentTab]];
 
       // Remove dragged column from current position
@@ -831,17 +650,17 @@ export default function AssetsPage() {
   };
 
   // Get ordered visible columns
-  const getOrderedVisibleColumns = (type: "metrics" | "relationships") => {
+  const getOrderedVisibleColumns = (type: 'metrics' | 'relationships') => {
     const order = columnOrder[type];
     const visible = visibleColumns[type];
     return order.filter((col) => visible.has(col));
   };
 
   const tabs = [
-    { id: "metrics" as const, label: "Metrics", count: filteredMetrics.length },
+    { id: 'metrics' as const, label: 'Metrics', count: filteredMetrics.length },
     {
-      id: "relationships" as const,
-      label: "Relationships",
+      id: 'relationships' as const,
+      label: 'Relationships',
       count: filteredRelationships.length,
     },
   ];
@@ -897,9 +716,9 @@ export default function AssetsPage() {
             <p className="text-xs text-muted-foreground">
               {
                 relationships.filter(
-                  (r: Relationship) => r.confidence === "High"
+                  (r: Relationship) => r.confidence === 'High'
                 ).length
-              }{" "}
+              }{' '}
               high confidence
             </p>
           </CardContent>
@@ -940,7 +759,7 @@ export default function AssetsPage() {
             />
           </div>
 
-          {activeTab === "metrics" && (
+          {activeTab === 'metrics' && (
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
@@ -956,7 +775,7 @@ export default function AssetsPage() {
             </Select>
           )}
 
-          {activeTab === "relationships" && (
+          {activeTab === 'relationships' && (
             <div className="flex items-center gap-2">
               <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-[160px]">
@@ -994,7 +813,7 @@ export default function AssetsPage() {
           <Select
             value={`${sortField}-${sortOrder}`}
             onValueChange={(value) => {
-              const [field, order] = value.split("-");
+              const [field, order] = value.split('-');
               setSortField(field as SortField);
               setSortOrder(order as SortOrder);
             }}
@@ -1007,10 +826,10 @@ export default function AssetsPage() {
               <SelectItem value="updated-asc">Oldest First</SelectItem>
               <SelectItem value="name-asc">Name A-Z</SelectItem>
               <SelectItem value="name-desc">Name Z-A</SelectItem>
-              {activeTab === "metrics" && (
+              {activeTab === 'metrics' && (
                 <SelectItem value="category-asc">Category A-Z</SelectItem>
               )}
-              {activeTab === "relationships" && (
+              {activeTab === 'relationships' && (
                 <>
                   <SelectItem value="type-asc">Type A-Z</SelectItem>
                   <SelectItem value="type-desc">Type Z-A</SelectItem>
@@ -1034,17 +853,17 @@ export default function AssetsPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
             <DropdownMenuItem className="font-medium">
-              {activeTab === "metrics"
-                ? "Metric Columns"
-                : "Relationship Columns"}
+              {activeTab === 'metrics'
+                ? 'Metric Columns'
+                : 'Relationship Columns'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <div className="p-2 space-y-1">
               {getOrderedVisibleColumns(
-                activeTab as "metrics" | "relationships"
+                activeTab as 'metrics' | 'relationships'
               ).map((columnKey) => {
                 const column = (
-                  activeTab === "metrics" ? metricColumns : relationshipColumns
+                  activeTab === 'metrics' ? metricColumns : relationshipColumns
                 ).find((c) => c.key === columnKey);
                 if (!column) return null;
 
@@ -1058,7 +877,7 @@ export default function AssetsPage() {
                     onClick={() => {
                       // Remove column from visible columns
                       const currentColumns =
-                        activeTab === "metrics"
+                        activeTab === 'metrics'
                           ? visibleColumns.metrics
                           : visibleColumns.relationships;
                       const newColumns = new Set(currentColumns);
@@ -1067,7 +886,7 @@ export default function AssetsPage() {
                       // Remove from column order
                       const currentOrder = [
                         ...columnOrder[
-                          activeTab as "metrics" | "relationships"
+                          activeTab as 'metrics' | 'relationships'
                         ],
                       ];
                       const filteredOrder = currentOrder.filter(
@@ -1075,22 +894,22 @@ export default function AssetsPage() {
                       );
                       setColumnOrder((prev) => ({
                         ...prev,
-                        [activeTab === "metrics" ? "metrics" : "relationships"]:
+                        [activeTab === 'metrics' ? 'metrics' : 'relationships']:
                           filteredOrder,
                       }));
 
                       setVisibleColumns((prev) => ({
                         ...prev,
-                        [activeTab === "metrics" ? "metrics" : "relationships"]:
+                        [activeTab === 'metrics' ? 'metrics' : 'relationships']:
                           newColumns,
                       }));
                     }}
                     className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-muted ${
-                      draggedColumn === column.key ? "opacity-50" : ""
+                      draggedColumn === column.key ? 'opacity-50' : ''
                     } ${
                       dragOverColumn === column.key
-                        ? "bg-blue-100 border-l-2 border-blue-500"
-                        : ""
+                        ? 'bg-blue-100 border-l-2 border-blue-500'
+                        : ''
                     }`}
                   >
                     <div className="w-4 h-4 flex items-center justify-center">
@@ -1102,11 +921,11 @@ export default function AssetsPage() {
                 );
               })}
               <DropdownMenuSeparator />
-              {(activeTab === "metrics" ? metricColumns : relationshipColumns)
+              {(activeTab === 'metrics' ? metricColumns : relationshipColumns)
                 .filter(
                   (col) =>
                     !visibleColumns[
-                      activeTab === "metrics" ? "metrics" : "relationships"
+                      activeTab === 'metrics' ? 'metrics' : 'relationships'
                     ].has(col.key)
                 )
                 .map((column) => (
@@ -1114,7 +933,7 @@ export default function AssetsPage() {
                     key={column.key}
                     onClick={() => {
                       const currentColumns =
-                        activeTab === "metrics"
+                        activeTab === 'metrics'
                           ? visibleColumns.metrics
                           : visibleColumns.relationships;
                       const newColumns = new Set(currentColumns);
@@ -1123,22 +942,22 @@ export default function AssetsPage() {
                       // Add to column order
                       const currentOrder = [
                         ...columnOrder[
-                          activeTab as "metrics" | "relationships"
+                          activeTab as 'metrics' | 'relationships'
                         ],
                       ];
                       if (!currentOrder.includes(column.key)) {
                         currentOrder.push(column.key);
                         setColumnOrder((prev) => ({
                           ...prev,
-                          [activeTab === "metrics"
-                            ? "metrics"
-                            : "relationships"]: currentOrder,
+                          [activeTab === 'metrics'
+                            ? 'metrics'
+                            : 'relationships']: currentOrder,
                         }));
                       }
 
                       setVisibleColumns((prev) => ({
                         ...prev,
-                        [activeTab === "metrics" ? "metrics" : "relationships"]:
+                        [activeTab === 'metrics' ? 'metrics' : 'relationships']:
                           newColumns,
                       }));
                     }}
@@ -1157,22 +976,22 @@ export default function AssetsPage() {
       </div>
 
       {/* Selection Toolbar */}
-      {((activeTab === "metrics" && selectedMetricIds.size > 0) ||
-        (activeTab === "relationships" &&
+      {((activeTab === 'metrics' && selectedMetricIds.size > 0) ||
+        (activeTab === 'relationships' &&
           selectedRelationshipIds.size > 0)) && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium text-blue-900">
-                {activeTab === "metrics"
-                  ? `${selectedMetricIds.size} metric${selectedMetricIds.size > 1 ? "s" : ""} selected`
-                  : `${selectedRelationshipIds.size} relationship${selectedRelationshipIds.size > 1 ? "s" : ""} selected`}
+                {activeTab === 'metrics'
+                  ? `${selectedMetricIds.size} metric${selectedMetricIds.size > 1 ? 's' : ''} selected`
+                  : `${selectedRelationshipIds.size} relationship${selectedRelationshipIds.size > 1 ? 's' : ''} selected`}
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  if (activeTab === "metrics") {
+                  if (activeTab === 'metrics') {
                     setSelectedMetricIds(new Set());
                   } else {
                     setSelectedRelationshipIds(new Set());
@@ -1197,7 +1016,7 @@ export default function AssetsPage() {
                 variant="destructive"
                 size="sm"
                 onClick={() => {
-                  if (activeTab === "metrics") {
+                  if (activeTab === 'metrics') {
                     handleBulkDeleteMetrics();
                   } else {
                     handleBulkDeleteRelationships();
@@ -1219,11 +1038,11 @@ export default function AssetsPage() {
                     onClick={() => {
                       // Open sheet for first selected item
                       const selectedIds =
-                        activeTab === "metrics"
+                        activeTab === 'metrics'
                           ? Array.from(selectedMetricIds)
                           : Array.from(selectedRelationshipIds);
                       if (selectedIds.length > 0) {
-                        if (activeTab === "metrics") {
+                        if (activeTab === 'metrics') {
                           handleOpenCardSettings(selectedIds[0]);
                         } else {
                           handleOpenRelationshipSheet(selectedIds[0]);
@@ -1242,7 +1061,7 @@ export default function AssetsPage() {
                   <DropdownMenuItem
                     className="text-destructive"
                     onClick={() => {
-                      if (activeTab === "metrics") {
+                      if (activeTab === 'metrics') {
                         handleBulkDeleteMetrics();
                       } else {
                         handleBulkDeleteRelationships();
@@ -1279,7 +1098,7 @@ export default function AssetsPage() {
                       <input
                         type="checkbox"
                         checked={
-                          activeTab === "metrics"
+                          activeTab === 'metrics'
                             ? selectedMetricIds.size ===
                                 filteredMetrics.length &&
                               filteredMetrics.length > 0
@@ -1288,7 +1107,7 @@ export default function AssetsPage() {
                               filteredRelationships.length > 0
                         }
                         onChange={(e) =>
-                          activeTab === "metrics"
+                          activeTab === 'metrics'
                             ? handleSelectAllMetrics(e.target.checked)
                             : handleSelectAllRelationships(e.target.checked)
                         }
@@ -1296,10 +1115,10 @@ export default function AssetsPage() {
                       />
                     </th>
                     {getOrderedVisibleColumns(
-                      activeTab as "metrics" | "relationships"
+                      activeTab as 'metrics' | 'relationships'
                     ).map((columnKey) => {
                       const columns =
-                        activeTab === "metrics"
+                        activeTab === 'metrics'
                           ? metricColumns
                           : relationshipColumns;
                       const column = columns.find((c) => c.key === columnKey);
@@ -1317,7 +1136,7 @@ export default function AssetsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {activeTab === "metrics" ? (
+                  {activeTab === 'metrics' ? (
                     filteredMetrics.length > 0 ? (
                       filteredMetrics.map((metric: MetricCard) => (
                         <tr
@@ -1337,7 +1156,7 @@ export default function AssetsPage() {
                               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                           </td>
-                          {getOrderedVisibleColumns("metrics").map(
+                          {getOrderedVisibleColumns('metrics').map(
                             (columnKey) => {
                               const column = metricColumns.find(
                                 (c) => c.key === columnKey
@@ -1349,12 +1168,12 @@ export default function AssetsPage() {
                                   key={columnKey}
                                   className={`px-6 py-4 ${column.width}`}
                                 >
-                                  {columnKey === "title" && (
+                                  {columnKey === 'title' && (
                                     <div className="font-medium text-foreground">
                                       {metric.title}
                                     </div>
                                   )}
-                                  {columnKey === "category" && (
+                                  {columnKey === 'category' && (
                                     <Badge
                                       variant="outline"
                                       className={getCategoryColor(
@@ -1364,21 +1183,21 @@ export default function AssetsPage() {
                                       {metric.category}
                                     </Badge>
                                   )}
-                                  {columnKey === "value" && (
+                                  {columnKey === 'value' && (
                                     <div className="min-h-[2.5rem] flex flex-col justify-center">
                                       <div className="text-sm font-medium">
                                         {metric.data && metric.data.length > 0
                                           ? `${metric.data[0].value}`
-                                          : "No data"}
+                                          : 'No data'}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
                                         {metric.data && metric.data.length > 0
                                           ? `Period: ${metric.data[0].period}`
-                                          : ""}
+                                          : ''}
                                       </div>
                                     </div>
                                   )}
-                                  {columnKey === "connections" && (
+                                  {columnKey === 'connections' && (
                                     <div className="flex items-center gap-1 min-h-[2.5rem]">
                                       <Network className="h-3 w-3 text-muted-foreground" />
                                       <span className="text-sm">
@@ -1392,7 +1211,7 @@ export default function AssetsPage() {
                                       </span>
                                     </div>
                                   )}
-                                  {columnKey === "updated" && (
+                                  {columnKey === 'updated' && (
                                     <div className="flex items-center gap-1 text-sm text-muted-foreground min-h-[2.5rem]">
                                       <Calendar className="h-3 w-3" />
                                       {new Date(
@@ -1400,17 +1219,17 @@ export default function AssetsPage() {
                                       ).toLocaleDateString()}
                                     </div>
                                   )}
-                                  {columnKey === "description" && (
+                                  {columnKey === 'description' && (
                                     <div className="text-sm text-muted-foreground max-w-xs truncate min-h-[2.5rem] flex items-center">
-                                      {metric.description || "No description"}
+                                      {metric.description || 'No description'}
                                     </div>
                                   )}
-                                  {columnKey === "owner" && (
+                                  {columnKey === 'owner' && (
                                     <div className="text-sm text-muted-foreground min-h-[2.5rem] flex items-center">
-                                      {metric.assignees?.[0] || "Unassigned"}
+                                      {metric.assignees?.[0] || 'Unassigned'}
                                     </div>
                                   )}
-                                  {columnKey === "tags" && (
+                                  {columnKey === 'tags' && (
                                     <div className="flex flex-wrap gap-1 min-h-[2.5rem] items-center">
                                       {isLoadingTags ? (
                                         <span className="text-xs text-muted-foreground">
@@ -1447,7 +1266,7 @@ export default function AssetsPage() {
                                       )}
                                     </div>
                                   )}
-                                  {columnKey === "actions" && (
+                                  {columnKey === 'actions' && (
                                     <div className="flex items-center justify-center min-h-[2.5rem]">
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -1488,7 +1307,7 @@ export default function AssetsPage() {
                       <tr>
                         <td
                           colSpan={
-                            getOrderedVisibleColumns("metrics").length + 1
+                            getOrderedVisibleColumns('metrics').length + 1
                           }
                           className="px-6 py-8 text-center text-muted-foreground"
                         >
@@ -1524,7 +1343,7 @@ export default function AssetsPage() {
                               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                           </td>
-                          {getOrderedVisibleColumns("relationships").map(
+                          {getOrderedVisibleColumns('relationships').map(
                             (columnKey) => {
                               const column = relationshipColumns.find(
                                 (c) => c.key === columnKey
@@ -1536,25 +1355,25 @@ export default function AssetsPage() {
                                   key={columnKey}
                                   className={`px-6 py-4 ${column.width}`}
                                 >
-                                  {columnKey === "relationship" && (
+                                  {columnKey === 'relationship' && (
                                     <div className="flex items-center gap-2 min-h-[2.5rem]">
                                       <div className="text-sm font-medium">
-                                        {sourceNode?.title || "Unknown"}
+                                        {sourceNode?.title || 'Unknown'}
                                       </div>
                                       <div className="text-muted-foreground">
                                         →
                                       </div>
                                       <div className="text-sm font-medium">
-                                        {targetNode?.title || "Unknown"}
+                                        {targetNode?.title || 'Unknown'}
                                       </div>
                                     </div>
                                   )}
-                                  {columnKey === "notes" && (
+                                  {columnKey === 'notes' && (
                                     <div className="text-sm text-muted-foreground max-w-xs truncate min-h-[2.5rem] flex items-center">
-                                      {rel.notes || "No notes"}
+                                      {rel.notes || 'No notes'}
                                     </div>
                                   )}
-                                  {columnKey === "type" && (
+                                  {columnKey === 'type' && (
                                     <div className="min-h-[2.5rem] flex items-center">
                                       <Badge
                                         variant="outline"
@@ -1566,15 +1385,15 @@ export default function AssetsPage() {
                                       </Badge>
                                     </div>
                                   )}
-                                  {columnKey === "confidence" && (
+                                  {columnKey === 'confidence' && (
                                     <div className="flex items-center gap-2 min-h-[2.5rem]">
-                                      {rel.confidence === "High" && (
+                                      {rel.confidence === 'High' && (
                                         <CheckCircle className="h-4 w-4 text-green-500" />
                                       )}
-                                      {rel.confidence === "Medium" && (
+                                      {rel.confidence === 'Medium' && (
                                         <AlertTriangle className="h-4 w-4 text-yellow-500" />
                                       )}
-                                      {rel.confidence === "Low" && (
+                                      {rel.confidence === 'Low' && (
                                         <Clock className="h-4 w-4 text-red-500" />
                                       )}
                                       <span className="text-sm">
@@ -1582,7 +1401,7 @@ export default function AssetsPage() {
                                       </span>
                                     </div>
                                   )}
-                                  {columnKey === "evidence" && (
+                                  {columnKey === 'evidence' && (
                                     <div className="flex items-center gap-1 min-h-[2.5rem]">
                                       <FileText className="h-3 w-3 text-muted-foreground" />
                                       <span className="text-sm">
@@ -1590,7 +1409,7 @@ export default function AssetsPage() {
                                       </span>
                                     </div>
                                   )}
-                                  {columnKey === "updated" && (
+                                  {columnKey === 'updated' && (
                                     <div className="flex items-center gap-1 text-sm text-muted-foreground min-h-[2.5rem]">
                                       <Calendar className="h-3 w-3" />
                                       {new Date(
@@ -1598,12 +1417,12 @@ export default function AssetsPage() {
                                       ).toLocaleDateString()}
                                     </div>
                                   )}
-                                  {columnKey === "weight" && (
+                                  {columnKey === 'weight' && (
                                     <div className="text-sm font-medium min-h-[2.5rem] flex items-center">
                                       {rel.weight || 0}
                                     </div>
                                   )}
-                                  {columnKey === "tags" && (
+                                  {columnKey === 'tags' && (
                                     <div className="flex flex-wrap gap-1 min-h-[2.5rem] items-center">
                                       {isLoadingTags ? (
                                         <span className="text-xs text-muted-foreground">
@@ -1640,7 +1459,7 @@ export default function AssetsPage() {
                                       )}
                                     </div>
                                   )}
-                                  {columnKey === "actions" && (
+                                  {columnKey === 'actions' && (
                                     <div className="flex items-center justify-center min-h-[2.5rem]">
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -1684,7 +1503,7 @@ export default function AssetsPage() {
                     <tr>
                       <td
                         colSpan={
-                          getOrderedVisibleColumns("relationships").length + 1
+                          getOrderedVisibleColumns('relationships').length + 1
                         }
                         className="px-6 py-8 text-center text-muted-foreground"
                       >
@@ -1738,11 +1557,11 @@ export default function AssetsPage() {
               <EnhancedTagInput
                 tags={selectedTags}
                 onAdd={(tag) => {
-                  console.log("Adding tag:", tag);
+                  console.log('Adding tag:', tag);
                   setSelectedTags([...new Set([...selectedTags, tag])]);
                 }}
                 onRemove={(tag) => {
-                  console.log("Removing tag:", tag);
+                  console.log('Removing tag:', tag);
                   setSelectedTags(selectedTags.filter((t) => t !== tag));
                 }}
                 placeholder="Add tags..."
@@ -1751,17 +1570,17 @@ export default function AssetsPage() {
 
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">
-                  Adding to{" "}
-                  {activeTab === "metrics"
+                  Adding to{' '}
+                  {activeTab === 'metrics'
                     ? selectedMetricIds.size
-                    : selectedRelationshipIds.size}{" "}
-                  selected{" "}
-                  {activeTab === "metrics" ? "metrics" : "relationships"}
+                    : selectedRelationshipIds.size}{' '}
+                  selected{' '}
+                  {activeTab === 'metrics' ? 'metrics' : 'relationships'}
                 </span>
               </div>
 
               <div className="text-sm text-gray-500">
-                Selected tags: {selectedTags.length} - {selectedTags.join(", ")}
+                Selected tags: {selectedTags.length} - {selectedTags.join(', ')}
               </div>
 
               <div className="flex gap-2 justify-end">
@@ -1782,7 +1601,7 @@ export default function AssetsPage() {
                       Adding...
                     </>
                   ) : (
-                    "Add Tags"
+                    'Add Tags'
                   )}
                 </Button>
               </div>
@@ -1837,7 +1656,7 @@ export default function AssetsPage() {
                         size="sm"
                         onClick={() => {
                           // TODO: Implement tag editing
-                          console.log("Edit tag:", tag);
+                          console.log('Edit tag:', tag);
                         }}
                       >
                         Edit
@@ -1854,8 +1673,8 @@ export default function AssetsPage() {
                             try {
                               await deleteProjectTag(tag.id);
                             } catch (error) {
-                              console.error("Failed to delete tag:", error);
-                              alert("Failed to delete tag. Please try again.");
+                              console.error('Failed to delete tag:', error);
+                              alert('Failed to delete tag. Please try again.');
                             }
                           }
                         }}
@@ -1913,7 +1732,7 @@ export default function AssetsPage() {
                 <Select
                   value={newAssetType}
                   onValueChange={(value) =>
-                    setNewAssetType(value as "metric" | "relationship")
+                    setNewAssetType(value as 'metric' | 'relationship')
                   }
                 >
                   <SelectTrigger>
@@ -1927,7 +1746,7 @@ export default function AssetsPage() {
               </div>
 
               <div className="text-sm text-muted-foreground">
-                {newAssetType === "metric" ? (
+                {newAssetType === 'metric' ? (
                   <p>
                     Create a new metric card that will appear on the canvas and
                     in the metrics table.
@@ -1950,14 +1769,14 @@ export default function AssetsPage() {
                 <Button
                   onClick={() => {
                     // TODO: Implement actual asset creation
-                    console.log("Creating new", newAssetType);
+                    console.log('Creating new', newAssetType);
                     alert(
                       `${newAssetType} creation functionality coming soon!`
                     );
                     setIsAddAssetOpen(false);
                   }}
                 >
-                  Create {newAssetType === "metric" ? "Metric" : "Relationship"}
+                  Create {newAssetType === 'metric' ? 'Metric' : 'Relationship'}
                 </Button>
               </div>
             </div>

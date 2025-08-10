@@ -1,7 +1,6 @@
-import { supabase } from '../client';
-import type { Tables, TablesInsert, TablesUpdate } from '../types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../types';
+import { supabase } from '../client';
+import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 
 export type TagRow = Tables<'tags'>;
 export type TagInsert = TablesInsert<'tags'>;
@@ -12,8 +11,8 @@ export async function getProjectTags(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log("🔍 Fetching project tags for projectId:", projectId);
-  
+  // console.log("🔍 Fetching project tags for projectId:", projectId);
+
   const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('tags')
@@ -21,14 +20,18 @@ export async function getProjectTags(
     .eq('project_id', projectId)
     .order('name');
 
-  console.log("🔍 Supabase query result:", { data, error });
+  console.log('🔍 Supabase query result:', { data, error });
 
   if (error) {
     console.error('Error fetching project tags:', error);
     throw error;
   }
 
-  console.log("✅ Project tags fetched successfully:", data?.length || 0, "tags");
+  console.log(
+    '✅ Project tags fetched successfully:',
+    data?.length || 0,
+    'tags'
+  );
   return data || [];
 }
 
@@ -58,7 +61,7 @@ export async function createTag(
 
 // Update a tag
 export async function updateTag(
-  tagId: string, 
+  tagId: string,
   updates: TagUpdate,
   authenticatedClient?: SupabaseClient<Database>
 ) {
@@ -87,10 +90,7 @@ export async function deleteTag(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
-  const { error } = await client
-    .from('tags')
-    .delete()
-    .eq('id', tagId);
+  const { error } = await client.from('tags').delete().eq('id', tagId);
 
   if (error) {
     console.error('Error deleting tag:', error);
@@ -100,7 +100,7 @@ export async function deleteTag(
 
 // Search tags by name (for autocomplete)
 export async function searchProjectTags(
-  projectId: string, 
+  projectId: string,
   query: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
@@ -130,11 +130,13 @@ export async function getTagUsageStats(
   const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('tags')
-    .select(`
+    .select(
+      `
       *,
       metric_cards!inner(project_id),
       relationships!inner(project_id)
-    `)
+    `
+    )
     .eq('project_id', projectId);
 
   if (error) {
@@ -150,16 +152,18 @@ export async function getMetricCardTags(
   metricCardId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log("🔍 Getting database tags for metric card:", metricCardId);
-  
+  // console.log("🔍 Getting database tags for metric card:", metricCardId);
+
   try {
     const client = authenticatedClient || supabase();
     const { data, error } = await client
       .from('metric_card_tags')
-      .select(`
+      .select(
+        `
         tag_id,
         tags!inner(id, name, color, description)
-      `)
+      `
+      )
       .eq('metric_card_id', metricCardId);
 
     if (error) {
@@ -167,8 +171,8 @@ export async function getMetricCardTags(
       return [];
     }
 
-    const tagNames = data?.map(item => item.tags.name) || [];
-    console.log("✅ Database tags found:", tagNames);
+    const tagNames = data?.map((item) => item.tags.name) || [];
+    // console.log("✅ Database tags found:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error in getMetricCardTags:', error);
@@ -178,12 +182,12 @@ export async function getMetricCardTags(
 
 // Add tags to metric card (database system)
 export async function addTagsToMetricCard(
-  metricCardId: string, 
+  metricCardId: string,
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log("🏷️ Adding database tags to metric card:", metricCardId, tagNames);
-  
+  // console.log("🏷️ Adding database tags to metric card:", metricCardId, tagNames);
+
   try {
     const client = authenticatedClient || supabase();
     // Get project ID for the metric card
@@ -198,19 +202,23 @@ export async function addTagsToMetricCard(
     }
 
     // Get tag IDs for the tag names
-    const tagIds = await getTagIdsByNames(metricCard.project_id, tagNames, authenticatedClient);
-    
+    const tagIds = await getTagIdsByNames(
+      metricCard.project_id,
+      tagNames,
+      authenticatedClient
+    );
+
     if (tagIds.length === 0) {
-      console.log("⚠️ No database tags found for names:", tagNames);
+      console.log('⚠️ No database tags found for names:', tagNames);
       return [];
     }
 
     // Create metric_card_tags relationships
     const relationships = tagIds
-      .filter(tagId => tagId !== undefined)
-      .map(tagId => ({
+      .filter((tagId) => tagId !== undefined)
+      .map((tagId) => ({
         metric_card_id: metricCardId,
-        tag_id: tagId!
+        tag_id: tagId!,
       }));
 
     const { error: insertError } = await client
@@ -218,11 +226,14 @@ export async function addTagsToMetricCard(
       .insert(relationships);
 
     if (insertError) {
-      console.error('Error creating metric card tag relationships:', insertError);
+      console.error(
+        'Error creating metric card tag relationships:',
+        insertError
+      );
       throw insertError;
     }
 
-    console.log("✅ Database tags added to metric card:", tagNames);
+    // console.log("✅ Database tags added to metric card:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error adding tags to metric card:', error);
@@ -232,12 +243,12 @@ export async function addTagsToMetricCard(
 
 // Remove tags from metric card (database system)
 export async function removeTagsFromMetricCard(
-  metricCardId: string, 
+  metricCardId: string,
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log("🗑️ Removing database tags from metric card:", metricCardId, tagNames);
-  
+  // console.log("🗑️ Removing database tags from metric card:", metricCardId, tagNames);
+
   try {
     const client = authenticatedClient || supabase();
     // Get project ID for the metric card
@@ -252,15 +263,21 @@ export async function removeTagsFromMetricCard(
     }
 
     // Get tag IDs for the tag names
-    const tagIds = await getTagIdsByNames(metricCard.project_id, tagNames, authenticatedClient);
-    
+    const tagIds = await getTagIdsByNames(
+      metricCard.project_id,
+      tagNames,
+      authenticatedClient
+    );
+
     if (tagIds.length === 0) {
-      console.log("⚠️ No database tags found for names:", tagNames);
+      console.log('⚠️ No database tags found for names:', tagNames);
       return [];
     }
 
     // Remove metric_card_tags relationships
-    const filteredTagIds = tagIds.filter(tagId => tagId !== undefined) as string[];
+    const filteredTagIds = tagIds.filter(
+      (tagId) => tagId !== undefined
+    ) as string[];
     const { error: deleteError } = await client
       .from('metric_card_tags')
       .delete()
@@ -268,11 +285,14 @@ export async function removeTagsFromMetricCard(
       .in('tag_id', filteredTagIds);
 
     if (deleteError) {
-      console.error('Error removing metric card tag relationships:', deleteError);
+      console.error(
+        'Error removing metric card tag relationships:',
+        deleteError
+      );
       throw deleteError;
     }
 
-    console.log("✅ Database tags removed from metric card:", tagNames);
+    // console.log("✅ Database tags removed from metric card:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error removing tags from metric card:', error);
@@ -285,16 +305,18 @@ export async function getRelationshipTags(
   relationshipId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log("🔍 Getting database tags for relationship:", relationshipId);
-  
+  // console.log("🔍 Getting database tags for relationship:", relationshipId);
+
   try {
     const client = authenticatedClient || supabase();
     const { data, error } = await client
       .from('relationship_tags')
-      .select(`
+      .select(
+        `
         tag_id,
         tags!inner(id, name, color, description)
-      `)
+      `
+      )
       .eq('relationship_id', relationshipId);
 
     if (error) {
@@ -302,8 +324,8 @@ export async function getRelationshipTags(
       return [];
     }
 
-    const tagNames = data?.map(item => item.tags.name) || [];
-    console.log("✅ Database tags found for relationship:", tagNames);
+    const tagNames = data?.map((item) => item.tags.name) || [];
+    // console.log("✅ Database tags found for relationship:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error in getRelationshipTags:', error);
@@ -313,12 +335,12 @@ export async function getRelationshipTags(
 
 // Add tags to relationship (database system)
 export async function addTagsToRelationship(
-  relationshipId: string, 
+  relationshipId: string,
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log("🏷️ Adding database tags to relationship:", relationshipId, tagNames);
-  
+  // console.log("🏷️ Adding database tags to relationship:", relationshipId, tagNames);
+
   try {
     const client = authenticatedClient || supabase();
     // Get project ID for the relationship
@@ -333,19 +355,23 @@ export async function addTagsToRelationship(
     }
 
     // Get tag IDs for the tag names
-    const tagIds = await getTagIdsByNames(relationship.project_id, tagNames, authenticatedClient);
-    
+    const tagIds = await getTagIdsByNames(
+      relationship.project_id,
+      tagNames,
+      authenticatedClient
+    );
+
     if (tagIds.length === 0) {
-      console.log("⚠️ No database tags found for names:", tagNames);
+      console.log('⚠️ No database tags found for names:', tagNames);
       return [];
     }
 
     // Create relationship_tags relationships
     const relationships = tagIds
-      .filter(tagId => tagId !== undefined)
-      .map(tagId => ({
+      .filter((tagId) => tagId !== undefined)
+      .map((tagId) => ({
         relationship_id: relationshipId,
-        tag_id: tagId!
+        tag_id: tagId!,
       }));
 
     const { error: insertError } = await client
@@ -353,11 +379,14 @@ export async function addTagsToRelationship(
       .insert(relationships);
 
     if (insertError) {
-      console.error('Error creating relationship tag relationships:', insertError);
+      console.error(
+        'Error creating relationship tag relationships:',
+        insertError
+      );
       throw insertError;
     }
 
-    console.log("✅ Database tags added to relationship:", tagNames);
+    // console.log("✅ Database tags added to relationship:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error adding tags to relationship:', error);
@@ -367,12 +396,12 @@ export async function addTagsToRelationship(
 
 // Remove tags from relationship (database system)
 export async function removeTagsFromRelationship(
-  relationshipId: string, 
+  relationshipId: string,
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log("🗑️ Removing database tags from relationship:", relationshipId, tagNames);
-  
+  // console.log("🗑️ Removing database tags from relationship:", relationshipId, tagNames);
+
   try {
     const client = authenticatedClient || supabase();
     // Get project ID for the relationship
@@ -387,15 +416,21 @@ export async function removeTagsFromRelationship(
     }
 
     // Get tag IDs for the tag names
-    const tagIds = await getTagIdsByNames(relationship.project_id, tagNames, authenticatedClient);
-    
+    const tagIds = await getTagIdsByNames(
+      relationship.project_id,
+      tagNames,
+      authenticatedClient
+    );
+
     if (tagIds.length === 0) {
-      console.log("⚠️ No database tags found for names:", tagNames);
+      console.log('⚠️ No database tags found for names:', tagNames);
       return [];
     }
 
     // Remove relationship_tags relationships
-    const filteredTagIds = tagIds.filter(tagId => tagId !== undefined) as string[];
+    const filteredTagIds = tagIds.filter(
+      (tagId) => tagId !== undefined
+    ) as string[];
     const { error: deleteError } = await client
       .from('relationship_tags')
       .delete()
@@ -403,11 +438,14 @@ export async function removeTagsFromRelationship(
       .in('tag_id', filteredTagIds);
 
     if (deleteError) {
-      console.error('Error removing relationship tag relationships:', deleteError);
+      console.error(
+        'Error removing relationship tag relationships:',
+        deleteError
+      );
       throw deleteError;
     }
 
-    console.log("✅ Database tags removed from relationship:", tagNames);
+    // console.log("✅ Database tags removed from relationship:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error removing tags from relationship:', error);
@@ -417,12 +455,12 @@ export async function removeTagsFromRelationship(
 
 // Convert legacy tag names to database tag IDs
 export async function getTagIdsByNames(
-  projectId: string, 
+  projectId: string,
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log("🔄 Converting tag names to IDs:", tagNames);
-  
+  // console.log("🔄 Converting tag names to IDs:", tagNames);
+
   try {
     const client = authenticatedClient || supabase();
     const { data: tags, error } = await client
@@ -435,10 +473,10 @@ export async function getTagIdsByNames(
       throw error;
     }
 
-    const tagMap = new Map(tags.map(tag => [tag.name, tag.id]));
-    const tagIds = tagNames.map(name => tagMap.get(name)).filter(Boolean);
-    
-    console.log("✅ Tag IDs found:", tagIds);
+    const tagMap = new Map(tags.map((tag) => [tag.name, tag.id]));
+    const tagIds = tagNames.map((name) => tagMap.get(name)).filter(Boolean);
+
+    console.log('✅ Tag IDs found:', tagIds);
     return tagIds;
   } catch (error) {
     console.error('Error converting tag names to IDs:', error);
