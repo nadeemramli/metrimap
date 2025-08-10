@@ -1,31 +1,31 @@
-import { create } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
-import type {
-  MetricCard,
-  Relationship,
-  GroupNode,
-  CanvasProject,
-  CanvasState,
-  CanvasSettings,
-} from "../types";
+import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 import {
   createMetricCard,
-  updateMetricCard as updateMetricCardInSupabase,
   deleteMetricCard as deleteMetricCardInSupabase,
-} from "../supabase/services/metric-cards";
-import {
-  createRelationship,
-  updateRelationship as updateRelationshipInSupabase,
-  deleteRelationship as deleteRelationshipInSupabase,
-} from "../supabase/services/relationships";
+  updateMetricCard as updateMetricCardInSupabase,
+} from '../supabase/services/metric-cards';
 import {
   createGroup,
-  updateGroup as updateGroupInSupabase,
   deleteGroup as deleteGroupInSupabase,
-} from "../supabase/services/projects";
-import { useAppStore } from "./appStore";
-import { getClientForEnvironment } from "../utils/authenticatedClient";
-import { generateUUID } from "../utils/validation";
+  updateGroup as updateGroupInSupabase,
+} from '../supabase/services/projects';
+import {
+  createRelationship,
+  deleteRelationship as deleteRelationshipInSupabase,
+  updateRelationship as updateRelationshipInSupabase,
+} from '../supabase/services/relationships';
+import type {
+  CanvasProject,
+  CanvasSettings,
+  CanvasState,
+  GroupNode,
+  MetricCard,
+  Relationship,
+} from '../types';
+import { getClientForEnvironment } from '../utils/authenticatedClient';
+import { generateUUID } from '../utils/validation';
+import { useAppStore } from './appStore';
 
 interface CanvasStoreState extends CanvasState {
   // Auto-save state
@@ -41,7 +41,7 @@ interface CanvasStoreState extends CanvasState {
 
   // Async Node management (Supabase)
   createNode: (
-    node: Omit<MetricCard, "id" | "createdAt" | "updatedAt">
+    node: Omit<MetricCard, 'id' | 'createdAt' | 'updatedAt'>
   ) => Promise<void>;
   persistNodeUpdate: (
     nodeId: string,
@@ -66,7 +66,7 @@ interface CanvasStoreState extends CanvasState {
 
   // Async Edge management (Supabase)
   createEdge: (
-    edge: Omit<Relationship, "id" | "createdAt" | "updatedAt">
+    edge: Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>
   ) => Promise<void>;
   persistEdgeUpdate: (
     edgeId: string,
@@ -114,12 +114,12 @@ interface CanvasStoreState extends CanvasState {
   sliceMetricByDimensions: (
     parentCardId: string,
     dimensions: string[],
-    historyOption: "manual" | "proportional" | "forfeit",
+    historyOption: 'manual' | 'proportional' | 'forfeit',
     percentages?: number[]
   ) => Promise<string[]>;
 
   // Canvas view
-  setViewport: (viewport: CanvasState["viewport"]) => void;
+  setViewport: (viewport: CanvasState['viewport']) => void;
   setDateRange: (start: string, end: string) => void;
   toggleMiniMap: () => void;
   toggleControls: () => void;
@@ -130,7 +130,7 @@ interface CanvasStoreState extends CanvasState {
   getEdgeById: (edgeId: string) => Relationship | undefined;
   getGroupById: (groupId: string) => GroupNode | undefined;
   getConnectedNodes: (nodeId: string) => MetricCard[];
-  getNodesByCategory: (category: MetricCard["category"]) => MetricCard[];
+  getNodesByCategory: (category: MetricCard['category']) => MetricCard[];
 }
 
 export const useCanvasStore = create<CanvasStoreState>()(
@@ -147,8 +147,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
     dateRange: {
       start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
         .toISOString()
-        .split("T")[0],
-      end: new Date().toISOString().split("T")[0],
+        .split('T')[0],
+      end: new Date().toISOString().split('T')[0],
     },
 
     // Auto-save state
@@ -158,7 +158,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
     // Canvas management
     loadCanvas: (canvas: CanvasProject) => {
-      console.log("🎨 Canvas loaded with:", {
+      console.log('🎨 Canvas loaded with:', {
         nodes: canvas.nodes.length,
         edges: canvas.edges.length,
         groups: canvas.groups?.length || 0,
@@ -179,15 +179,15 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
     // Async Node management (Supabase) - Using enhanced client utility
     createNode: async (
-      nodeData: Omit<MetricCard, "id" | "createdAt" | "updatedAt">
+      nodeData: Omit<MetricCard, 'id' | 'createdAt' | 'updatedAt'>
     ) => {
       const state = get();
       if (!state.canvas) {
-        console.error("❌ No canvas loaded");
+        console.error('❌ No canvas loaded');
         return;
       }
 
-      console.log("🔍 createNode called with:", {
+      console.log('🔍 createNode called with:', {
         canvasId: state.canvas.id,
         nodeData: nodeData.title,
         user: useAppStore.getState().user?.id,
@@ -196,13 +196,13 @@ export const useCanvasStore = create<CanvasStoreState>()(
       set({ isLoading: true, error: undefined });
       try {
         const { user } = useAppStore.getState();
-        if (!user) throw new Error("User not authenticated");
+        if (!user) throw new Error('User not authenticated');
 
         const client = getClientForEnvironment();
-        console.log("🔍 Using client:", client ? "authenticated" : "default");
+        console.log('🔍 Using client:', client ? 'authenticated' : 'default');
 
         const newNode = await createMetricCard(
-          { ...nodeData, owner: user.id, id: "", createdAt: "", updatedAt: "" },
+          { ...nodeData, owner: user.id, id: '', createdAt: '', updatedAt: '' },
           state.canvas.id,
           user.id,
           client
@@ -219,10 +219,10 @@ export const useCanvasStore = create<CanvasStoreState>()(
           isLoading: false,
         }));
 
-        console.log("✅ New metric card created and saved:", newNode.title);
+        console.log('✅ New metric card created and saved:', newNode.title);
       } catch (error) {
-        console.error("❌ Error creating node:", error);
-        set({ error: "Failed to create node", isLoading: false });
+        console.error('❌ Error creating node:', error);
+        set({ error: 'Failed to create node', isLoading: false });
       }
     },
 
@@ -252,8 +252,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
           isLoading: false,
         }));
       } catch (error) {
-        console.error("Error updating node:", error);
-        set({ error: "Failed to update node", isLoading: false });
+        console.error('Error updating node:', error);
+        set({ error: 'Failed to update node', isLoading: false });
       }
     },
 
@@ -279,14 +279,14 @@ export const useCanvasStore = create<CanvasStoreState>()(
           isLoading: false,
         }));
       } catch (error) {
-        console.error("Error deleting node:", error);
-        set({ error: "Failed to delete node", isLoading: false });
+        console.error('Error deleting node:', error);
+        set({ error: 'Failed to delete node', isLoading: false });
       }
     },
 
     // Async Edge management (Supabase)
     createEdge: async (
-      edgeData: Omit<Relationship, "id" | "createdAt" | "updatedAt">
+      edgeData: Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>
     ) => {
       const state = get();
       if (!state.canvas) return;
@@ -294,11 +294,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
       set({ isLoading: true, error: undefined });
       try {
         const { user } = useAppStore.getState();
-        if (!user) throw new Error("User not authenticated");
+        if (!user) throw new Error('User not authenticated');
 
         const client = getClientForEnvironment();
         const newEdge = await createRelationship(
-          { ...edgeData, id: "", createdAt: "", updatedAt: "" },
+          { ...edgeData, id: '', createdAt: '', updatedAt: '' },
           state.canvas.id,
           user.id,
           client
@@ -315,10 +315,10 @@ export const useCanvasStore = create<CanvasStoreState>()(
           isLoading: false,
         }));
 
-        console.log("✅ New relationship created and saved:", newEdge.type);
+        console.log('✅ New relationship created and saved:', newEdge.type);
       } catch (error) {
-        console.error("Error creating edge:", error);
-        set({ error: "Failed to create relationship", isLoading: false });
+        console.error('Error creating edge:', error);
+        set({ error: 'Failed to create relationship', isLoading: false });
       }
     },
 
@@ -351,8 +351,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
           isLoading: false,
         }));
       } catch (error) {
-        console.error("Error updating edge:", error);
-        set({ error: "Failed to update relationship", isLoading: false });
+        console.error('Error updating edge:', error);
+        set({ error: 'Failed to update relationship', isLoading: false });
       }
     },
 
@@ -375,8 +375,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
           isLoading: false,
         }));
       } catch (error) {
-        console.error("Error deleting edge:", error);
-        set({ error: "Failed to delete relationship", isLoading: false });
+        console.error('Error deleting edge:', error);
+        set({ error: 'Failed to delete relationship', isLoading: false });
       }
     },
 
@@ -479,7 +479,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             try {
               console.log(`💾 Saving node ${nodeId}:`, {
                 position: node.position,
-                title: node.title?.substring(0, 20) + "...",
+                title: node.title?.substring(0, 20) + '...',
               });
 
               await updateMetricCardInSupabase(nodeId, {
@@ -544,7 +544,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
               //   updatedAt: new Date().toISOString(),
               // });
             } catch (error) {
-              console.warn("Failed to sync with projects store:", error);
+              console.warn('Failed to sync with projects store:', error);
             }
           }
         }
@@ -565,8 +565,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
           }, 5000);
         }
       } catch (error) {
-        console.error("❌ Bulletproof save system failed:", error);
-        set({ isSaving: false, error: "Critical save failure" });
+        console.error('❌ Bulletproof save system failed:', error);
+        set({ isSaving: false, error: 'Critical save failure' });
       }
     },
 
@@ -655,11 +655,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
           historyEntries.push({
             id: `history_${edgeId}_${Date.now()}_weight`,
             timestamp,
-            changeType: "strength",
+            changeType: 'strength',
             oldValue: existingEdge.weight,
             newValue: updates.weight,
             description: `Relationship strength changed from ${existingEdge.weight}% to ${updates.weight}%`,
-            userId: "current-user", // TODO: Get from auth context
+            userId: 'current-user', // TODO: Get from auth context
           });
         }
 
@@ -670,11 +670,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
           historyEntries.push({
             id: `history_${edgeId}_${Date.now()}_confidence`,
             timestamp,
-            changeType: "confidence",
+            changeType: 'confidence',
             oldValue: existingEdge.confidence,
             newValue: updates.confidence,
             description: `Confidence level changed from ${existingEdge.confidence} to ${updates.confidence}`,
-            userId: "current-user",
+            userId: 'current-user',
           });
         }
 
@@ -682,11 +682,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
           historyEntries.push({
             id: `history_${edgeId}_${Date.now()}_type`,
             timestamp,
-            changeType: "type",
+            changeType: 'type',
             oldValue: existingEdge.type,
             newValue: updates.type,
             description: `Relationship type changed from ${existingEdge.type} to ${updates.type}`,
-            userId: "current-user",
+            userId: 'current-user',
           });
         }
 
@@ -700,11 +700,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
           historyEntries.push({
             id: `history_${edgeId}_${Date.now()}_evidence`,
             timestamp,
-            changeType: "evidence",
+            changeType: 'evidence',
             oldValue: oldCount,
             newValue: newCount,
             description: `Evidence updated: ${oldCount} → ${newCount} items`,
-            userId: "current-user",
+            userId: 'current-user',
           });
         }
 
@@ -752,7 +752,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     addGroup: async (group: GroupNode) => {
       const state = get();
       if (!state.canvas?.id) {
-        console.error("No canvas loaded");
+        console.error('No canvas loaded');
         return;
       }
 
@@ -760,7 +760,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         // Get current user for created_by field
         const { user } = useAppStore.getState();
         if (!user) {
-          throw new Error("User not authenticated");
+          throw new Error('User not authenticated');
         }
 
         // Persist to database
@@ -800,12 +800,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
           // }
         } catch (error) {
           console.warn(
-            "Failed to sync group creation with projects store:",
+            'Failed to sync group creation with projects store:',
             error
           );
         }
       } catch (error) {
-        console.error("Failed to create group:", error);
+        console.error('Failed to create group:', error);
         throw error;
       }
     },
@@ -848,12 +848,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
           // }
         } catch (error) {
           console.warn(
-            "Failed to sync group update with projects store:",
+            'Failed to sync group update with projects store:',
             error
           );
         }
       } catch (error) {
-        console.error("Failed to update group:", error);
+        console.error('Failed to update group:', error);
         throw error;
       }
     },
@@ -898,12 +898,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
           // }
         } catch (error) {
           console.warn(
-            "Failed to sync group deletion with projects store:",
+            'Failed to sync group deletion with projects store:',
             error
           );
         }
       } catch (error) {
-        console.error("Failed to delete group:", error);
+        console.error('Failed to delete group:', error);
         throw error;
       }
     },
@@ -1032,15 +1032,15 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
     // Selection-based grouping
     groupSelectedNodes: async (nodeIds: string[]) => {
-      console.log("🎯 groupSelectedNodes called with:", nodeIds);
+      console.log('🎯 groupSelectedNodes called with:', nodeIds);
 
       if (nodeIds.length < 2) {
-        throw new Error("At least 2 nodes must be selected to create a group");
+        throw new Error('At least 2 nodes must be selected to create a group');
       }
 
       const state = get();
       if (!state.canvas?.id) {
-        throw new Error("No canvas loaded");
+        throw new Error('No canvas loaded');
       }
 
       try {
@@ -1050,7 +1050,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         );
 
         if (selectedNodes.length === 0) {
-          throw new Error("No valid nodes found");
+          throw new Error('No valid nodes found');
         }
 
         // Calculate bounding box
@@ -1068,7 +1068,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
           height: maxY - minY + 150 + padding * 2,
         };
 
-        console.log("🎯 Group creation details:", {
+        console.log('🎯 Group creation details:', {
           selectedNodes: selectedNodes.map((n) => ({
             id: n.id,
             position: n.position,
@@ -1098,7 +1098,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         // Get current user for created_by field
         const { user } = useAppStore.getState();
         if (!user) {
-          throw new Error("User not authenticated");
+          throw new Error('User not authenticated');
         }
 
         // Persist to database
@@ -1129,7 +1129,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             : undefined,
         }));
 
-        console.log("✅ Group created successfully:", {
+        console.log('✅ Group created successfully:', {
           groupId,
           nodeIds,
           totalGroups: get().canvas?.groups.length,
@@ -1152,14 +1152,14 @@ export const useCanvasStore = create<CanvasStoreState>()(
           // }
         } catch (error) {
           console.warn(
-            "Failed to sync group creation with projects store:",
+            'Failed to sync group creation with projects store:',
             error
           );
         }
 
         return groupId;
       } catch (error) {
-        console.error("Failed to group nodes:", error);
+        console.error('Failed to group nodes:', error);
         throw error;
       }
     },
@@ -1167,7 +1167,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     ungroupSelectedGroups: async (groupIds: string[]) => {
       const state = get();
       if (!state.canvas?.id) {
-        throw new Error("No canvas loaded");
+        throw new Error('No canvas loaded');
       }
 
       try {
@@ -1211,12 +1211,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
           // }
         } catch (error) {
           console.warn(
-            "Failed to sync group deletion with projects store:",
+            'Failed to sync group deletion with projects store:',
             error
           );
         }
       } catch (error) {
-        console.error("Failed to ungroup nodes:", error);
+        console.error('Failed to ungroup nodes:', error);
         throw error;
       }
     },
@@ -1225,7 +1225,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     sliceMetricByDimensions: async (
       parentCardId: string,
       dimensions: string[],
-      historyOption: "manual" | "proportional" | "forfeit",
+      historyOption: 'manual' | 'proportional' | 'forfeit',
       percentages?: number[]
     ) => {
       const state = get();
@@ -1236,16 +1236,16 @@ export const useCanvasStore = create<CanvasStoreState>()(
       if (!parentCard) return [];
 
       // Validate percentages for proportional split
-      if (historyOption === "proportional") {
+      if (historyOption === 'proportional') {
         if (!percentages || percentages.length !== dimensions.length) {
           throw new Error(
-            "Percentages array must match dimensions array length for proportional split"
+            'Percentages array must match dimensions array length for proportional split'
           );
         }
         const total = percentages.reduce((sum, p) => sum + p, 0);
         if (Math.abs(total - 100) > 0.001) {
           // Allow for floating point precision
-          throw new Error("Percentages must sum to exactly 100%");
+          throw new Error('Percentages must sum to exactly 100%');
         }
       }
 
@@ -1274,10 +1274,10 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
         // Calculate data based on history option
         let cardData: any[] = [];
-        if (historyOption === "manual") {
+        if (historyOption === 'manual') {
           cardData = []; // Empty for manual entry
         } else if (
-          historyOption === "proportional" &&
+          historyOption === 'proportional' &&
           percentages &&
           parentCard.data
         ) {
@@ -1285,7 +1285,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             parentCard.data,
             percentages[index]
           );
-        } else if (historyOption === "forfeit") {
+        } else if (historyOption === 'forfeit') {
           cardData = []; // Start fresh
         }
 
@@ -1293,12 +1293,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
           id: newCardId,
           title: `${parentCard.title} (${dimension})`,
           description: `${dimension} component of ${parentCard.title}${
-            historyOption === "proportional" && percentages
+            historyOption === 'proportional' && percentages
               ? ` (${percentages[index]}% of original data)`
-              : ""
+              : ''
           }`,
-          category: "Data/Metric",
-          subCategory: parentCard.subCategory || "Input Metric",
+          category: 'Data/Metric',
+          subCategory: parentCard.subCategory || 'Input Metric',
           tags: [...parentCard.tags, dimension],
           causalFactors: [],
           dimensions: parentCard.dimensions,
@@ -1308,7 +1308,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
               (index - Math.floor(dimensions.length / 2)) * 350,
             y: parentCard.position.y + 200,
           },
-          sourceType: historyOption === "proportional" ? "Manual" : "Manual", // All start as manual, can be changed later
+          sourceType: historyOption === 'proportional' ? 'Manual' : 'Manual', // All start as manual, can be changed later
           data: cardData,
           assignees: parentCard.assignees,
           createdAt: new Date().toISOString(),
@@ -1321,7 +1321,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         // Create relationship from dimension card to parent
         const relationshipId = generateUUID();
         const evidenceSummary =
-          historyOption === "proportional" && percentages
+          historyOption === 'proportional' && percentages
             ? `Created through dimension slice operation with proportional split (${percentages[index]}%). ${dimension} is a component of ${parentCard.title}.`
             : `Created through dimension slice operation. ${dimension} is a component of ${parentCard.title}.`;
 
@@ -1329,24 +1329,24 @@ export const useCanvasStore = create<CanvasStoreState>()(
           id: relationshipId,
           sourceId: newCardId,
           targetId: parentCardId,
-          type: "Compositional", // As specified in PRD
-          confidence: "High",
+          type: 'Compositional', // As specified in PRD
+          confidence: 'High',
           weight:
-            historyOption === "proportional" && percentages
+            historyOption === 'proportional' && percentages
               ? percentages[index] / 100
               : 1,
           evidence: [
             {
               id: generateUUID(),
-              title: "Automatic Dimension Decomposition",
-              type: "Analysis",
+              title: 'Automatic Dimension Decomposition',
+              type: 'Analysis',
               date: new Date().toISOString(),
-              owner: "system", // TODO: Use actual user ID
+              owner: 'system', // TODO: Use actual user ID
               summary: evidenceSummary,
               impactOnConfidence:
-                "This relationship was automatically generated during metric decomposition.",
+                'This relationship was automatically generated during metric decomposition.',
               createdAt: new Date().toISOString(),
-              createdBy: "system", // TODO: Use actual user ID
+              createdBy: 'system', // TODO: Use actual user ID
             },
           ],
           createdAt: new Date().toISOString(),
@@ -1359,28 +1359,28 @@ export const useCanvasStore = create<CanvasStoreState>()(
       // Generate formula for parent card
       const formulaReferences = dimensions
         .map((_, index) => `[${newCardIds[index]}].value`)
-        .join(" + ");
+        .join(' + ');
 
       // Update parent card data based on history option
       let parentCardData = parentCard.data;
-      let parentDescription = `${parentCard.description} (Calculated from: ${dimensions.join(", ")})`;
+      let parentDescription = `${parentCard.description} (Calculated from: ${dimensions.join(', ')})`;
 
-      if (historyOption === "forfeit") {
+      if (historyOption === 'forfeit') {
         parentCardData = []; // Archive data, start fresh
-        parentDescription += " - Historical data archived";
-      } else if (historyOption === "proportional") {
+        parentDescription += ' - Historical data archived';
+      } else if (historyOption === 'proportional') {
         // Keep original data as the parent maintains its complete dataset
         parentDescription += ` - Data distributed proportionally: ${dimensions
           .map((d, i) => `${d}(${percentages?.[i] || 0}%)`)
-          .join(", ")}`;
+          .join(', ')}`;
       } else {
         // Manual - keep original data
-        parentDescription += " - Original data maintained";
+        parentDescription += ' - Original data maintained';
       }
 
       const updatedParentCard: MetricCard = {
         ...parentCard,
-        sourceType: "Calculated",
+        sourceType: 'Calculated',
         formula: formulaReferences,
         description: parentDescription,
         data: parentCardData,
@@ -1405,7 +1405,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     },
 
     // Canvas view
-    setViewport: (viewport: CanvasState["viewport"]) => set({ viewport }),
+    setViewport: (viewport: CanvasState['viewport']) => set({ viewport }),
     setDateRange: (start: string, end: string) =>
       set({ dateRange: { start, end } }),
     toggleMiniMap: () => set((state) => ({ showMiniMap: !state.showMiniMap })),
@@ -1457,7 +1457,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       return state.canvas.nodes.filter((node) => connectedNodeIds.has(node.id));
     },
 
-    getNodesByCategory: (category: MetricCard["category"]) => {
+    getNodesByCategory: (category: MetricCard['category']) => {
       const state = get();
       return (
         state.canvas?.nodes.filter((node) => node.category === category) || []

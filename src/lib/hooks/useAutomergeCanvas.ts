@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import * as Automerge from "automerge";
+import * as Automerge from "@automerge/automerge";
 import { useCanvasStore } from "@/lib/stores";
 import { useCanvasBroadcast } from "@/lib/hooks/useCanvasPresence";
 
@@ -64,8 +64,11 @@ export function useAutomergeCanvas(projectId?: string) {
         if (!binArray) return;
         const bin = new Uint8Array(binArray);
         if (!docRef.current) return;
-        const [next] = Automerge.applyChanges(docRef.current, [bin]);
-        docRef.current = next;
+        // Automerge v2 applyChanges returns a new doc; older signatures returned tuple.
+        const applied: any = (Automerge as any).applyChanges(docRef.current, [
+          bin,
+        ]);
+        docRef.current = Array.isArray(applied) ? applied[0] : applied;
         // Consumers can read from docRef if needed and reconcile to store
         // For now we keep Supabase as source of truth; Automerge is additive layer for future
       } catch (e) {

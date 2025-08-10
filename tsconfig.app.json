@@ -26,7 +26,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "src/types/**/*"],
+  "include": ["src", "src/types/**/*", "src/test-setup.ts", "src/lib/supabase"],
   "exclude": [
     "src/**/*.test.ts",
     "src/**/*.test.tsx",

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useProjectsStore } from "@/lib/stores";
 import { UserMenu } from "@/components/layout/UserMenu";
-import { useCanvasHeader } from "@/contexts/CanvasHeaderContext";
+import { useCanvasHeader } from "@/lib/contexts/CanvasHeaderContext";
 import { CollaborationDialog } from "@/components/canvas/collaboration/collaboration-dialog";
 import { useAppStore } from "@/lib/stores";
 import { setProjectPublic } from "@/lib/supabase/services/projects";

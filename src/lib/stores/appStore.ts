@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AppState } from '../types';
 import { supabase } from '../supabase/client';
+import type { AppState } from '../types';
 
 interface AppStoreState extends AppState {
   // Auth state
   isAuthLoading: boolean;
   isInitialized: boolean;
-  
+
   // Actions
   setCurrentCanvas: (canvasId: string) => void;
   setUser: (user: AppState['user']) => void;
@@ -28,7 +28,9 @@ export const useAppStore = create<AppStoreState>()(
       isInitialized: false,
       preferences: {
         dateRange: {
-          start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
+          start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0], // 30 days ago
           end: new Date().toISOString().split('T')[0], // today
         },
         theme: 'system',
@@ -38,8 +40,7 @@ export const useAppStore = create<AppStoreState>()(
       setCurrentCanvas: (canvasId: string) =>
         set({ currentCanvasId: canvasId }),
 
-      setUser: (user: AppState['user']) =>
-        set({ user }),
+      setUser: (user: AppState['user']) => set({ user }),
 
       setDateRange: (start: string, end: string) =>
         set((state) => ({
@@ -57,15 +58,14 @@ export const useAppStore = create<AppStoreState>()(
           },
         })),
 
-      clearCurrentCanvas: () =>
-        set({ currentCanvasId: undefined }),
+      clearCurrentCanvas: () => set({ currentCanvasId: undefined }),
 
       signOut: async () => {
         try {
           await supabase().auth.signOut();
-          set({ 
-            user: undefined, 
-            currentCanvasId: undefined 
+          set({
+            user: undefined,
+            currentCanvasId: undefined,
           });
         } catch (error) {
           console.error('Error signing out:', error);
@@ -75,17 +75,22 @@ export const useAppStore = create<AppStoreState>()(
       initializeAuth: async () => {
         try {
           set({ isAuthLoading: true });
-          
+
           // Get current session
-          const { data: { session } } = await supabase().auth.getSession();
-          
+          const {
+            data: { session },
+          } = await supabase().auth.getSession();
+
           if (session?.user) {
             set({
               user: {
                 id: session.user.id,
                 email: session.user.email || '',
-                name: session.user.user_metadata?.name || session.user.email || 'User',
-              }
+                name:
+                  session.user.user_metadata?.name ||
+                  session.user.email ||
+                  'User',
+              },
             });
           }
 
@@ -96,23 +101,25 @@ export const useAppStore = create<AppStoreState>()(
                 user: {
                   id: session.user.id,
                   email: session.user.email || '',
-                  name: session.user.user_metadata?.name || session.user.email || 'User',
-                }
+                  name:
+                    session.user.user_metadata?.name ||
+                    session.user.email ||
+                    'User',
+                },
               });
             } else if (event === 'SIGNED_OUT') {
-              set({ 
-                user: undefined, 
-                currentCanvasId: undefined 
+              set({
+                user: undefined,
+                currentCanvasId: undefined,
               });
             }
           });
-
         } catch (error) {
           console.error('Error initializing auth:', error);
         } finally {
-          set({ 
-            isAuthLoading: false, 
-            isInitialized: true 
+          set({
+            isAuthLoading: false,
+            isInitialized: true,
           });
         }
       },
