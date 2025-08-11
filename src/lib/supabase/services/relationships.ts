@@ -1,8 +1,13 @@
-import { supabase } from '../client';
-import type { Tables, TablesInsert, TablesUpdate } from '../types';
-import type { Relationship, EvidenceItem } from '../../types';
+import {
+  CreateEvidenceItemSchema,
+  CreateRelationshipSchema,
+  UpdateEvidenceItemSchema,
+  UpdateRelationshipSchema,
+} from '@/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../types';
+import type { EvidenceItem, Relationship } from '../../types';
+import { supabase } from '../client';
+import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 
 export type RelationshipRow = Tables<'relationships'>;
 export type RelationshipInsert = TablesInsert<'relationships'>;
@@ -13,7 +18,10 @@ export type EvidenceItemInsert = TablesInsert<'evidence_items'>;
 export type EvidenceItemUpdate = TablesUpdate<'evidence_items'>;
 
 // Transform database row to Relationship
-function transformRelationship(rel: RelationshipRow, evidence: EvidenceItemRow[] = []): Relationship {
+function transformRelationship(
+  rel: RelationshipRow,
+  evidence: EvidenceItemRow[] = []
+): Relationship {
   return {
     id: rel.id,
     sourceId: rel.source_id || '',
@@ -43,7 +51,11 @@ function transformEvidenceItem(evidence: EvidenceItemRow): EvidenceItem {
 }
 
 // Transform Relationship to database insert
-function transformToInsert(rel: Relationship, projectId: string, userId: string): RelationshipInsert {
+function transformToInsert(
+  rel: Relationship,
+  projectId: string,
+  userId: string
+): RelationshipInsert {
   return {
     project_id: projectId,
     source_id: rel.sourceId,
@@ -57,14 +69,20 @@ function transformToInsert(rel: Relationship, projectId: string, userId: string)
 
 // Create a new relationship
 export async function createRelationship(
-  relationship: Relationship, 
-  projectId: string, 
+  relationship: Relationship,
+  projectId: string,
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const insertData = transformToInsert(relationship, projectId, userId);
+  try {
+    CreateRelationshipSchema.parse(insertData as unknown);
+  } catch (error) {
+    console.error('Validation error creating relationship:', error);
+    throw error;
+  }
   const client = authenticatedClient || supabase();
-  
+
   const { data, error } = await client
     .from('relationships')
     .insert(insertData)
@@ -81,17 +99,24 @@ export async function createRelationship(
 
 // Update a relationship
 export async function updateRelationship(
-  id: string, 
+  id: string,
   updates: Partial<Relationship>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const updateData: RelationshipUpdate = {};
-  
+
   if (updates.type !== undefined) updateData.type = updates.type;
-  if (updates.confidence !== undefined) updateData.confidence = updates.confidence;
+  if (updates.confidence !== undefined)
+    updateData.confidence = updates.confidence;
   if (updates.weight !== undefined) updateData.weight = updates.weight;
 
   const client = authenticatedClient || supabase();
+  try {
+    UpdateRelationshipSchema.parse(updateData as unknown);
+  } catch (error) {
+    console.error('Validation error updating relationship:', error);
+    throw error;
+  }
   const { data, error } = await client
     .from('relationships')
     .update(updateData)
@@ -113,10 +138,7 @@ export async function deleteRelationship(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
-  const { error } = await client
-    .from('relationships')
-    .delete()
-    .eq('id', id);
+  const { error } = await client.from('relationships').delete().eq('id', id);
 
   if (error) {
     console.error('Error deleting relationship:', error);
@@ -132,10 +154,12 @@ export async function getProjectRelationships(
   const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('relationships')
-    .select(`
+    .select(
+      `
       *,
       evidence_items(*)
-    `)
+    `
+    )
     .eq('project_id', projectId);
 
   if (error) {
@@ -143,15 +167,18 @@ export async function getProjectRelationships(
     throw error;
   }
 
-  return data?.map((rel: any) => transformRelationship(rel, rel.evidence_items)) || [];
+  return (
+    data?.map((rel: any) => transformRelationship(rel, rel.evidence_items)) ||
+    []
+  );
 }
 
 // Evidence Items
 
 // Create evidence item
 export async function createEvidenceItem(
-  evidence: EvidenceItem, 
-  relationshipId: string, 
+  evidence: EvidenceItem,
+  relationshipId: string,
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
@@ -167,7 +194,13 @@ export async function createEvidenceItem(
     impact_on_confidence: evidence.impactOnConfidence,
     created_by: userId,
   };
-  
+  try {
+    CreateEvidenceItemSchema.parse(insertData as unknown);
+  } catch (error) {
+    console.error('Validation error creating evidence item:', error);
+    throw error;
+  }
+
   const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('evidence_items')
@@ -185,22 +218,30 @@ export async function createEvidenceItem(
 
 // Update evidence item
 export async function updateEvidenceItem(
-  id: string, 
+  id: string,
   updates: Partial<EvidenceItem>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const updateData: EvidenceItemUpdate = {};
-  
+
   if (updates.title !== undefined) updateData.title = updates.title;
   if (updates.type !== undefined) updateData.type = updates.type;
   if (updates.date !== undefined) updateData.date = updates.date;
   if (updates.owner !== undefined) updateData.owner_id = updates.owner;
   if (updates.link !== undefined) updateData.link = updates.link;
-  if (updates.hypothesis !== undefined) updateData.hypothesis = updates.hypothesis;
+  if (updates.hypothesis !== undefined)
+    updateData.hypothesis = updates.hypothesis;
   if (updates.summary !== undefined) updateData.summary = updates.summary;
-  if (updates.impactOnConfidence !== undefined) updateData.impact_on_confidence = updates.impactOnConfidence;
+  if (updates.impactOnConfidence !== undefined)
+    updateData.impact_on_confidence = updates.impactOnConfidence;
 
   const client = authenticatedClient || supabase();
+  try {
+    UpdateEvidenceItemSchema.parse(updateData as unknown);
+  } catch (error) {
+    console.error('Validation error updating evidence item:', error);
+    throw error;
+  }
   const { data, error } = await client
     .from('evidence_items')
     .update(updateData)
@@ -222,10 +263,7 @@ export async function deleteEvidenceItem(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
-  const { error } = await client
-    .from('evidence_items')
-    .delete()
-    .eq('id', id);
+  const { error } = await client.from('evidence_items').delete().eq('id', id);
 
   if (error) {
     console.error('Error deleting evidence item:', error);

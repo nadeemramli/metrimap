@@ -94,11 +94,11 @@ const isDevelopmentEnvironment = () => {
 
   // Check for local development URLs
   const isLocal =
-    supabaseUrl.includes("127.0.0.1") ||
-    supabaseUrl.includes("localhost") ||
-    supabaseUrl.includes("0.0.0.0");
+    supabaseUrl.includes('127.0.0.1') ||
+    supabaseUrl.includes('localhost') ||
+    supabaseUrl.includes('0.0.0.0');
 
-  console.log("🔧 Environment detection:", {
+  console.log('🔧 Environment detection:', {
     supabaseUrl,
     isLocal,
     isDevelopment: isLocal,
@@ -173,6 +173,7 @@ const isDevelopmentEnvironment = () => {
     VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_development_clerk_key
     VITE_SUPABASE_URL=http://127.0.0.1:54321
     VITE_SUPABASE_ANON_KEY=your_local_supabase_anon_key
+    VITE_SUPABASE_SERVICE_ROLE_KEY=your_local_supabase_service_role_key
 
     ```
 
@@ -249,6 +250,14 @@ supabase start
 # Check logs for "🔧 Development mode detected"
 ```
 
+**Problem**: "VITE_SUPABASE_SERVICE_ROLE_KEY is required for local development"
+
+```bash
+# Solution: Add service role key to .env file
+# Get from local Supabase instance: supabase status
+# Or from Supabase Studio: http://localhost:54323
+```
+
 ### Staging/Production Issues
 
 **Problem**: "Supabase URL is required"
@@ -296,6 +305,7 @@ supabase start
 - [ ] Local Supabase running (`supabase start`)
 - [ ] `.env` file with development values
 - [ ] Development Clerk key (`pk_test_*`)
+- [ ] Supabase service role key configured
 - [ ] Authentication bypass working
 - [ ] Debug features available
 

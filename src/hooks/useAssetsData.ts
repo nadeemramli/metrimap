@@ -77,8 +77,10 @@ export function useAssetsData() {
       if (isLoadingTags) return;
 
       // Check if we've already loaded tags for this exact data
-      const currentMetricIds = new Set(metrics.map((m) => m.id));
-      const currentRelationshipIds = new Set(relationships.map((r) => r.id));
+      const currentMetricIds = new Set(metrics.map((m: MetricCard) => m.id));
+      const currentRelationshipIds = new Set(
+        relationships.map((r: Relationship) => r.id)
+      );
 
       if (
         loadedTagsRef.current.canvasId === canvasId &&
@@ -156,8 +158,8 @@ export function useAssetsData() {
         // Update the ref to track what we've loaded
         loadedTagsRef.current = {
           canvasId,
-          metricIds: currentMetricIds,
-          relationshipIds: currentRelationshipIds,
+          metricIds: new Set(currentMetricIds) as Set<string>,
+          relationshipIds: new Set(currentRelationshipIds) as Set<string>,
         };
       } catch (error) {
         console.error('Failed to load tags:', error);

@@ -1,65 +1,65 @@
 // Core types for Metrimap application based on PRD specifications
 
 export type CardCategory =
-  | "Core/Value"
-  | "Data/Metric"
-  | "Work/Action"
-  | "Ideas/Hypothesis"
-  | "Metadata";
+  | 'Core/Value'
+  | 'Data/Metric'
+  | 'Work/Action'
+  | 'Ideas/Hypothesis'
+  | 'Metadata';
 
 export type CardSubCategory = {
-  "Core/Value": "Journey Step" | "Value Chain" | "Critical Path";
-  "Data/Metric":
-    | "Input Metric"
-    | "Output Metric"
-    | "Leading KPI"
-    | "Lagging KPI"
-    | "Diagnostic Metric"
-    | "North Star Metric";
-  "Work/Action":
-    | "Experiment"
-    | "BAU"
-    | "Initiative"
-    | "Scope/Function"
-    | "Business Driver";
-  "Ideas/Hypothesis": "Factor" | "Seller Solution";
-  Metadata: "Group" | "Subflow" | "Reference";
+  'Core/Value': 'Journey Step' | 'Value Chain' | 'Critical Path';
+  'Data/Metric':
+    | 'Input Metric'
+    | 'Output Metric'
+    | 'Leading KPI'
+    | 'Lagging KPI'
+    | 'Diagnostic Metric'
+    | 'North Star Metric';
+  'Work/Action':
+    | 'Experiment'
+    | 'BAU'
+    | 'Initiative'
+    | 'Scope/Function'
+    | 'Business Driver';
+  'Ideas/Hypothesis': 'Factor' | 'Seller Solution';
+  Metadata: 'Group' | 'Subflow' | 'Reference';
 };
 
 export type RelationshipType =
-  | "Deterministic"
-  | "Probabilistic"
-  | "Causal"
-  | "Compositional";
+  | 'Deterministic'
+  | 'Probabilistic'
+  | 'Causal'
+  | 'Compositional';
 
-export type ConfidenceLevel = "High" | "Medium" | "Low";
+export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
 
 export type CausalFactor =
-  | "Component Drift"
-  | "Temporal Variance"
-  | "Influence Drift"
-  | "Dimension Drift"
-  | "Event Shocks";
+  | 'Component Drift'
+  | 'Temporal Variance'
+  | 'Influence Drift'
+  | 'Dimension Drift'
+  | 'Event Shocks';
 
-export type SourceType = "Manual" | "Calculated" | "Random";
+export type SourceType = 'Manual' | 'Calculated' | 'Random';
 
 export type Dimension =
-  | "Qualitative"
-  | "Quantitative"
-  | "Vanity"
-  | "Actionable"
-  | "Efficiency"
-  | "Effectiveness"
-  | "Strategic"
-  | "Tactical"
-  | "Operational";
+  | 'Qualitative'
+  | 'Quantitative'
+  | 'Vanity'
+  | 'Actionable'
+  | 'Efficiency'
+  | 'Effectiveness'
+  | 'Strategic'
+  | 'Tactical'
+  | 'Operational';
 
 // Data structures
 export interface MetricValue {
   period: string;
   value: number;
   change_percent: number;
-  trend: "up" | "down" | "neutral";
+  trend: 'up' | 'down' | 'neutral';
 }
 
 export interface MetricCard {
@@ -106,7 +106,7 @@ export interface Segment {
 
 export interface SegmentFilter {
   field: string;
-  operator: "equals" | "contains" | "greater_than" | "less_than" | "between";
+  operator: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'between';
   value: string | number | [number, number];
 }
 
@@ -133,7 +133,7 @@ export interface Relationship {
 export interface RelationshipHistoryEntry {
   id: string;
   timestamp: string;
-  changeType: "strength" | "confidence" | "type" | "evidence";
+  changeType: 'strength' | 'confidence' | 'type' | 'evidence';
   oldValue: any;
   newValue: any;
   description: string;
@@ -145,11 +145,11 @@ export interface EvidenceItem {
   id: string;
   title: string;
   type:
-    | "Experiment"
-    | "Analysis"
-    | "Notebook"
-    | "External Research"
-    | "User Interview";
+    | 'Experiment'
+    | 'Analysis'
+    | 'Notebook'
+    | 'External Research'
+    | 'User Interview';
   date: string;
   owner: string;
   link?: string;
@@ -175,7 +175,7 @@ export interface EvidenceItem {
 
   // Context tracking - where this evidence belongs
   context?: {
-    type: "relationship" | "card" | "general";
+    type: 'relationship' | 'card' | 'general';
     targetId?: string; // relationship ID, card ID, or null for general
     targetName?: string; // for display purposes
   };
@@ -209,7 +209,7 @@ export interface CanvasSettings {
     to: string;
   };
   autoLayout?: {
-    algorithm: "TB" | "BT" | "LR" | "RL";
+    algorithm: 'TB' | 'BT' | 'LR' | 'RL';
     enabled: boolean;
   };
   viewport?: {
@@ -263,7 +263,7 @@ export interface ChangelogEntry {
   timestamp: string;
   user: string;
   action: string;
-  target: "card" | "relationship" | "subflow";
+  target: 'card' | 'relationship' | 'subflow';
   targetName: string;
   description: string;
   canvasId: string;
@@ -282,7 +282,7 @@ export interface AppState {
       start: string;
       end: string;
     };
-    theme: "light" | "dark" | "system";
+    theme: 'light' | 'dark' | 'system';
   };
 }
 
@@ -308,3 +308,6 @@ export interface CanvasState {
     end: string;
   };
 }
+
+// Version history types
+export type * from './version-history';

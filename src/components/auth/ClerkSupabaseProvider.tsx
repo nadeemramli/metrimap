@@ -1,7 +1,8 @@
-import { useEffect } from "react";
-import { useUser, useAuth } from "@clerk/react-router";
-import { useAppStore } from "@/lib/stores";
-import { createClerkSupabaseClient } from "@/lib/supabase/client";
+import { useAppStore } from '@/lib/stores';
+import { createClerkSupabaseClient } from '@/lib/supabase/client';
+import { CreateUserSchema } from '@/lib/validation/zod';
+import { useAuth, useUser } from '@clerk/react-router';
+import { useEffect } from 'react';
 
 interface ClerkSupabaseProviderProps {
   children: React.ReactNode;
@@ -10,7 +11,7 @@ interface ClerkSupabaseProviderProps {
 export default function ClerkSupabaseProvider({
   children,
 }: ClerkSupabaseProviderProps) {
-  console.log("ClerkSupabaseProvider rendering");
+  console.log('ClerkSupabaseProvider rendering');
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
   const { setUser, signOut } = useAppStore();
@@ -24,19 +25,19 @@ export default function ClerkSupabaseProvider({
 
       if (user) {
         try {
-          console.log("Syncing Clerk user with app store:", user.id);
+          console.log('Syncing Clerk user with app store:', user.id);
 
           // Update the app store with Clerk user info
           setUser({
             id: user.id,
             name:
-              user.fullName || user.emailAddresses[0]?.emailAddress || "User",
-            email: user.emailAddresses[0]?.emailAddress || "",
+              user.fullName || user.emailAddresses[0]?.emailAddress || 'User',
+            email: user.emailAddresses[0]?.emailAddress || '',
           });
 
           // Create Supabase client with Clerk authentication using NATIVE integration
           console.log(
-            "Creating authenticated Supabase client with NATIVE Clerk integration"
+            'Creating authenticated Supabase client with NATIVE Clerk integration'
           );
 
           // Create a function to get the Clerk session token (native approach)
@@ -47,7 +48,7 @@ export default function ClerkSupabaseProvider({
               const token = await getToken();
               return token;
             } catch (error) {
-              console.error("Error getting Clerk session token:", error);
+              console.error('Error getting Clerk session token:', error);
               return null;
             }
           };
@@ -57,37 +58,43 @@ export default function ClerkSupabaseProvider({
             createClerkSupabaseClient(getClerkSessionToken);
 
           // Create or update user in Supabase using Clerk authentication
+          // Validate user payload with Prisma/Zod before upsert
+          const userPayload = {
+            id: user.id,
+            email: user.emailAddresses[0]?.emailAddress || '',
+            name:
+              user.fullName || user.emailAddresses[0]?.emailAddress || 'User',
+            avatar_url: user.imageUrl || null,
+            updated_at: new Date().toISOString(),
+          } as const;
+          try {
+            // Prisma create schema doesn't include id/updated_at; validate subset
+            CreateUserSchema.parse({
+              email: userPayload.email,
+              name: userPayload.name,
+              avatar_url: userPayload.avatar_url,
+            } as unknown);
+          } catch (e) {
+            console.error('Validation error for user upsert:', e);
+          }
+
           const { error: upsertError } = await supabaseClient
-            .from("users")
-            .upsert(
-              {
-                id: user.id,
-                email: user.emailAddresses[0]?.emailAddress || "",
-                name:
-                  user.fullName ||
-                  user.emailAddresses[0]?.emailAddress ||
-                  "User",
-                avatar_url: user.imageUrl || null,
-                updated_at: new Date().toISOString(),
-              },
-              {
-                onConflict: "id",
-              }
-            );
+            .from('users')
+            .upsert(userPayload, { onConflict: 'id' });
 
           if (upsertError) {
-            console.error("Error upserting user to Supabase:", upsertError);
+            console.error('Error upserting user to Supabase:', upsertError);
           } else {
             console.log(
-              "User successfully synced to Supabase using NATIVE Clerk integration"
+              'User successfully synced to Supabase using NATIVE Clerk integration'
             );
           }
         } catch (error) {
-          console.error("Error syncing user with Supabase:", error);
+          console.error('Error syncing user with Supabase:', error);
         }
       } else {
         // User is signed out, clear app store
-        console.log("User signed out, clearing app store");
+        console.log('User signed out, clearing app store');
         await signOut();
       }
     };

@@ -1,35 +1,36 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import EditorJS from "@editorjs/editorjs";
-import {
-  createEditorJSInstance,
-  validateAndMigrateEditorData,
-} from "@/lib/editorjs-config";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from '@/components/ui/button';
+import { EnhancedTagInput } from '@/components/ui/enhanced-tag-input';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
+} from '@/components/ui/select';
 import {
-  FileText,
-  Calendar,
-  User,
-  FlaskConical,
+  createEditorJSInstance,
+  validateAndMigrateEditorData,
+} from '@/lib/editorjs-config';
+import { useAppStore } from '@/lib/stores/appStore';
+import type { EvidenceItem } from '@/lib/types';
+import EditorJS from '@editorjs/editorjs';
+import {
   BookOpen,
+  Calendar,
+  FileText,
+  FlaskConical,
   Globe,
-  Users,
-  Save,
-  X,
   Maximize2,
   Minimize2,
-} from "lucide-react";
-import type { EvidenceItem } from "@/lib/types";
-import { toast } from "sonner";
+  Save,
+  User,
+  Users,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 interface EvidenceEditorProps {
   evidence: EvidenceItem | null;
@@ -42,18 +43,18 @@ interface EvidenceEditorProps {
 
 const evidenceTypeOptions = [
   {
-    value: "Experiment",
+    value: 'Experiment',
     icon: FlaskConical,
-    color: "bg-blue-50 text-blue-700",
+    color: 'bg-blue-50 text-blue-700',
   },
-  { value: "Analysis", icon: FileText, color: "bg-green-50 text-green-700" },
-  { value: "Notebook", icon: BookOpen, color: "bg-purple-50 text-purple-700" },
+  { value: 'Analysis', icon: FileText, color: 'bg-green-50 text-green-700' },
+  { value: 'Notebook', icon: BookOpen, color: 'bg-purple-50 text-purple-700' },
   {
-    value: "External Research",
+    value: 'External Research',
     icon: Globe,
-    color: "bg-orange-50 text-orange-700",
+    color: 'bg-orange-50 text-orange-700',
   },
-  { value: "User Interview", icon: Users, color: "bg-pink-50 text-pink-700" },
+  { value: 'User Interview', icon: Users, color: 'bg-pink-50 text-pink-700' },
 ];
 
 // Debounce function for auto-save
@@ -76,6 +77,7 @@ export default function EvidenceEditor({
   isFullscreen = false,
   onToggleFullscreen,
 }: EvidenceEditorProps) {
+  const { user } = useAppStore();
   const editorRef = useRef<EditorJS | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -83,13 +85,13 @@ export default function EvidenceEditor({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [formData, setFormData] = useState<Partial<EvidenceItem>>({
     id: evidence?.id || `evidence_${Date.now()}`,
-    title: evidence?.title || "",
-    type: evidence?.type || "Analysis",
-    date: evidence?.date || new Date().toISOString().split("T")[0],
-    owner: evidence?.owner || "",
-    link: evidence?.link || "",
-    hypothesis: evidence?.hypothesis || "",
-    impactOnConfidence: evidence?.impactOnConfidence || "",
+    title: evidence?.title || '',
+    type: evidence?.type || 'Analysis',
+    date: evidence?.date || new Date().toISOString().split('T')[0],
+    owner: evidence?.owner || '',
+    link: evidence?.link || '',
+    hypothesis: evidence?.hypothesis || '',
+    impactOnConfidence: evidence?.impactOnConfidence || '',
     tags: evidence?.tags || [],
   });
 
@@ -115,20 +117,20 @@ export default function EvidenceEditor({
 
         const updatedEvidence: EvidenceItem = {
           id: evidence?.id || formData.id || `evidence_${Date.now()}`,
-          title: metadata.title || "",
-          type: metadata.type || "Analysis",
-          date: metadata.date || new Date().toISOString().split("T")[0],
-          owner: metadata.owner || "",
-          link: metadata.link || "",
-          hypothesis: metadata.hypothesis || "",
-          impactOnConfidence: metadata.impactOnConfidence || "",
-          summary: metadata.title || "",
-          createdBy: "current-user",
+          title: metadata.title || '',
+          type: metadata.type || 'Analysis',
+          date: metadata.date || new Date().toISOString().split('T')[0],
+          owner: metadata.owner || '',
+          link: metadata.link || '',
+          hypothesis: metadata.hypothesis || '',
+          impactOnConfidence: metadata.impactOnConfidence || '',
+          summary: metadata.title || '',
+          createdBy: user?.id || 'anonymous-user',
           createdAt: evidence?.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           content: validatedContent,
           context: evidence?.context || {
-            type: "general",
+            type: 'general',
             targetId: undefined,
             targetName: undefined,
           },
@@ -146,9 +148,9 @@ export default function EvidenceEditor({
       } catch (error) {
         const errorTime = new Date().toLocaleTimeString();
         console.error(`[${errorTime}] ❌ AUTO-SAVE ERROR:`, error);
-        toast.error("Auto-save failed", {
+        toast.error('Auto-save failed', {
           duration: 2000,
-          position: "bottom-right",
+          position: 'bottom-right',
         });
       } finally {
         setIsAutoSaving(false);
@@ -226,7 +228,7 @@ export default function EvidenceEditor({
     if (isOpen && editorContainerRef.current && !editorRef.current) {
       const container = editorContainerRef.current;
       if (!container) {
-        console.warn("Editor container not found");
+        console.warn('Editor container not found');
         return;
       }
 
@@ -244,53 +246,53 @@ export default function EvidenceEditor({
           onReady: () => {
             const readyTime = new Date().toLocaleTimeString();
             console.log(`[${readyTime}] 🎉 INIT: Editor ready and operational`);
-            toast.success("📝 Editor ready!", {
+            toast.success('📝 Editor ready!', {
               duration: 1500,
-              position: "bottom-right",
+              position: 'bottom-right',
             });
           },
           onError: (error: unknown) => {
-            console.error("❌ EditorJS error:", error);
+            console.error('❌ EditorJS error:', error);
 
             // Enhanced error handling
-            if (error && typeof error === "string") {
-              if (error.includes("paragraph") && error.includes("skipped")) {
+            if (error && typeof error === 'string') {
+              if (error.includes('paragraph') && error.includes('skipped')) {
                 console.warn(
-                  "🔄 Block validation error detected, content will be migrated"
+                  '🔄 Block validation error detected, content will be migrated'
                 );
-                toast.warning("Content migrated to new format", {
+                toast.warning('Content migrated to new format', {
                   duration: 2000,
-                  position: "bottom-right",
+                  position: 'bottom-right',
                 });
                 return;
               }
 
-              if (error.includes("Tool") && error.includes("not found")) {
+              if (error.includes('Tool') && error.includes('not found')) {
                 console.warn(
-                  "🔧 Tool configuration issue, attempting recovery"
+                  '🔧 Tool configuration issue, attempting recovery'
                 );
-                toast.warning("Some content features were updated", {
+                toast.warning('Some content features were updated', {
                   duration: 2000,
-                  position: "bottom-right",
+                  position: 'bottom-right',
                 });
                 return;
               }
             }
 
-            toast.error("Editor error occurred. Auto-saving is still active.", {
+            toast.error('Editor error occurred. Auto-saving is still active.', {
               duration: 3000,
-              position: "bottom-right",
+              position: 'bottom-right',
             });
           },
         });
 
         editorRef.current = editor;
       } catch (error) {
-        console.error("❌ Failed to initialize stable EditorJS:", error);
+        console.error('❌ Failed to initialize stable EditorJS:', error);
 
         // Enhanced fallback with better UX
         try {
-          console.log("🔄 Attempting fallback initialization...");
+          console.log('🔄 Attempting fallback initialization...');
 
           const fallbackEditor = createEditorJSInstance({
             holder: container,
@@ -298,34 +300,34 @@ export default function EvidenceEditor({
               time: Date.now(),
               blocks: [
                 {
-                  type: "paragraph",
+                  type: 'paragraph',
                   data: {
-                    text: "✨ Welcome to your evidence notebook! Editor loaded successfully.",
+                    text: '✨ Welcome to your evidence notebook! Editor loaded successfully.',
                   },
                 },
               ],
-              version: "2.30.8",
+              version: '2.30.8',
             },
             placeholder: "Start writing... Press '/' for the full command menu",
             minHeight: 300,
             onChange: handleEditorChange,
-            onReady: () => console.log("✅ Fallback EditorJS ready"),
+            onReady: () => console.log('✅ Fallback EditorJS ready'),
             onError: (error: unknown) =>
-              console.error("Fallback error:", error),
+              console.error('Fallback error:', error),
           });
 
           editorRef.current = fallbackEditor;
-          toast.success("Editor initialized with clean state", {
+          toast.success('Editor initialized with clean state', {
             duration: 3000,
-            position: "bottom-right",
+            position: 'bottom-right',
           });
         } catch (fallbackError) {
-          console.error("💥 Complete initialization failure:", fallbackError);
+          console.error('💥 Complete initialization failure:', fallbackError);
           toast.error(
-            "Editor initialization failed. Please refresh the page.",
+            'Editor initialization failed. Please refresh the page.',
             {
               duration: 5000,
-              position: "bottom-right",
+              position: 'bottom-right',
             }
           );
         }
@@ -338,7 +340,7 @@ export default function EvidenceEditor({
           editorRef.current.destroy();
           editorRef.current = null;
         } catch (error) {
-          console.warn("Error destroying editor:", error);
+          console.warn('Error destroying editor:', error);
           editorRef.current = null;
         }
       }
@@ -348,15 +350,15 @@ export default function EvidenceEditor({
   // Keyboard shortcut for save (Ctrl+S or Cmd+S)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
         handleSave();
       }
     };
 
     if (isOpen) {
-      document.addEventListener("keydown", handleKeyDown);
-      return () => document.removeEventListener("keydown", handleKeyDown);
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [isOpen]);
 
@@ -372,20 +374,20 @@ export default function EvidenceEditor({
 
       const updatedEvidence: EvidenceItem = {
         id: evidence?.id || formData.id || `evidence_${Date.now()}`,
-        title: formData.title || "",
-        type: formData.type || "Analysis",
-        date: formData.date || new Date().toISOString().split("T")[0],
-        owner: formData.owner || "",
-        link: formData.link || "",
-        hypothesis: formData.hypothesis || "",
-        impactOnConfidence: formData.impactOnConfidence || "",
-        summary: formData.title || "",
-        createdBy: "current-user", // TODO: Get from auth context
+        title: formData.title || '',
+        type: formData.type || 'Analysis',
+        date: formData.date || new Date().toISOString().split('T')[0],
+        owner: formData.owner || '',
+        link: formData.link || '',
+        hypothesis: formData.hypothesis || '',
+        impactOnConfidence: formData.impactOnConfidence || '',
+        summary: formData.title || '',
+        createdBy: user?.id || 'anonymous-user',
         createdAt: evidence?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         content: validatedContent,
         context: evidence?.context || {
-          type: "general",
+          type: 'general',
           targetId: undefined,
           targetName: undefined,
         },
@@ -397,10 +399,10 @@ export default function EvidenceEditor({
 
       onSave(updatedEvidence);
       setLastSaved(new Date());
-      toast.success("Evidence saved successfully!");
+      toast.success('Evidence saved successfully!');
     } catch (error) {
-      console.error("Error saving evidence:", error);
-      toast.error("Failed to save evidence");
+      console.error('Error saving evidence:', error);
+      toast.error('Failed to save evidence');
     } finally {
       setIsLoading(false);
     }
@@ -413,25 +415,25 @@ export default function EvidenceEditor({
 
   const getTypeColor = (type: string) => {
     const option = evidenceTypeOptions.find((opt) => opt.value === type);
-    return option?.color || "bg-gray-50 text-gray-700";
+    return option?.color || 'bg-gray-50 text-gray-700';
   };
 
   if (!isOpen) return null;
 
-  const TypeIcon = getTypeIcon(formData.type || "Analysis");
+  const TypeIcon = getTypeIcon(formData.type || 'Analysis');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div
         className={`w-full h-[90vh] bg-white rounded-lg shadow-xl flex flex-col ${
-          isFullscreen ? "max-w-[95vw]" : "max-w-6xl"
+          isFullscreen ? 'max-w-[95vw]' : 'max-w-6xl'
         } transition-all duration-300`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-4">
             <div
-              className={`p-2 rounded-lg ${getTypeColor(formData.type || "Analysis")}`}
+              className={`p-2 rounded-lg ${getTypeColor(formData.type || 'Analysis')}`}
             >
               <TypeIcon className="h-5 w-5" />
             </div>
@@ -498,7 +500,7 @@ export default function EvidenceEditor({
               <Button
                 variant="outline"
                 onClick={onToggleFullscreen}
-                title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
               >
                 {isFullscreen ? (
                   <Minimize2 className="h-4 w-4" />
@@ -529,7 +531,7 @@ export default function EvidenceEditor({
                 disabled={isLoading || !formData.title}
               >
                 <Save className="h-4 w-4 mr-2" />
-                {isLoading ? "Saving..." : "Save"}
+                {isLoading ? 'Saving...' : 'Save'}
               </Button>
             </div>
           </div>
@@ -556,10 +558,10 @@ export default function EvidenceEditor({
 
         {/* Metadata Section */}
         <div
-          className={`px-6 py-4 border-b bg-gray-50 ${isFullscreen ? "py-2" : "py-4"}`}
+          className={`px-6 py-4 border-b bg-gray-50 ${isFullscreen ? 'py-2' : 'py-4'}`}
         >
           <div
-            className={`grid gap-4 ${isFullscreen ? "grid-cols-1 md:grid-cols-6" : "grid-cols-1 md:grid-cols-3"}`}
+            className={`grid gap-4 ${isFullscreen ? 'grid-cols-1 md:grid-cols-6' : 'grid-cols-1 md:grid-cols-3'}`}
           >
             <div>
               <Label className="text-xs font-medium text-gray-600">
@@ -634,7 +636,7 @@ export default function EvidenceEditor({
             <div
               ref={editorContainerRef}
               className="h-full codex-editor"
-              style={{ minHeight: "400px" }}
+              style={{ minHeight: '400px' }}
             />
           </div>
         </div>

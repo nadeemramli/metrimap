@@ -1,7 +1,4 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -9,32 +6,36 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { FlaskConical, FileText, BookOpen, Globe, Users } from "lucide-react";
-import type { EvidenceItem } from "@/lib/types";
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useAppStore } from '@/lib/stores/appStore';
+import type { EvidenceItem } from '@/lib/types';
+import { BookOpen, FileText, FlaskConical, Globe, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const evidenceTypeOptions = [
   {
-    value: "Experiment",
+    value: 'Experiment',
     icon: FlaskConical,
-    color: "bg-blue-50 text-blue-700",
+    color: 'bg-blue-50 text-blue-700',
   },
-  { value: "Analysis", icon: FileText, color: "bg-green-50 text-green-700" },
-  { value: "Notebook", icon: BookOpen, color: "bg-purple-50 text-purple-700" },
+  { value: 'Analysis', icon: FileText, color: 'bg-green-50 text-green-700' },
+  { value: 'Notebook', icon: BookOpen, color: 'bg-purple-50 text-purple-700' },
   {
-    value: "External Research",
+    value: 'External Research',
     icon: Globe,
-    color: "bg-orange-50 text-orange-700",
+    color: 'bg-orange-50 text-orange-700',
   },
-  { value: "User Interview", icon: Users, color: "bg-pink-50 text-pink-700" },
+  { value: 'User Interview', icon: Users, color: 'bg-pink-50 text-pink-700' },
 ];
 
 interface EvidenceDialogProps {
@@ -54,15 +55,16 @@ export default function EvidenceDialog({
   title,
   description,
 }: EvidenceDialogProps) {
+  const { user } = useAppStore();
   const [formData, setFormData] = useState<Partial<EvidenceItem>>({
-    title: "",
-    type: "Analysis",
-    date: new Date().toISOString().split("T")[0],
-    owner: "",
-    summary: "",
-    link: "",
-    hypothesis: "",
-    impactOnConfidence: "",
+    title: '',
+    type: 'Analysis',
+    date: new Date().toISOString().split('T')[0],
+    owner: '',
+    summary: '',
+    link: '',
+    hypothesis: '',
+    impactOnConfidence: '',
   });
 
   // Reset form when evidence changes or dialog opens
@@ -81,14 +83,14 @@ export default function EvidenceDialog({
     } else if (isOpen) {
       // Reset to default values when creating new evidence
       setFormData({
-        title: "",
-        type: "Analysis",
-        date: new Date().toISOString().split("T")[0],
-        owner: "",
-        summary: "",
-        link: "",
-        hypothesis: "",
-        impactOnConfidence: "",
+        title: '',
+        type: 'Analysis',
+        date: new Date().toISOString().split('T')[0],
+        owner: '',
+        summary: '',
+        link: '',
+        hypothesis: '',
+        impactOnConfidence: '',
       });
     }
   }, [evidence, isOpen]);
@@ -101,13 +103,13 @@ export default function EvidenceDialog({
       title: formData.title!,
       type: formData.type as any,
       date: formData.date!,
-      owner: formData.owner || "Unknown",
+      owner: formData.owner || 'Unknown',
       summary: formData.summary!,
       link: formData.link,
       hypothesis: formData.hypothesis,
       impactOnConfidence: formData.impactOnConfidence,
       createdAt: evidence?.createdAt || new Date().toISOString(),
-      createdBy: evidence?.createdBy || "current-user", // TODO: Get from auth
+      createdBy: evidence?.createdBy || user?.id || 'anonymous-user',
     };
 
     onSave(evidenceData);
@@ -123,13 +125,13 @@ export default function EvidenceDialog({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
-            {title || (evidence ? "Edit Evidence" : "Create New Evidence")}
+            {title || (evidence ? 'Edit Evidence' : 'Create New Evidence')}
           </DialogTitle>
           <DialogDescription>
             {description ||
               (evidence
-                ? "Update the evidence details below"
-                : "Add new evidence to support your relationships")}
+                ? 'Update the evidence details below'
+                : 'Add new evidence to support your relationships')}
           </DialogDescription>
         </DialogHeader>
 
@@ -260,7 +262,7 @@ export default function EvidenceDialog({
             onClick={handleSave}
             disabled={!formData.title || !formData.summary}
           >
-            {evidence ? "Update Evidence" : "Create Evidence"}
+            {evidence ? 'Update Evidence' : 'Create Evidence'}
           </Button>
         </DialogFooter>
       </DialogContent>

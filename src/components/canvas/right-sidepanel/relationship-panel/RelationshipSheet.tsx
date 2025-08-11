@@ -1,67 +1,67 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
 import {
+  AlertCircle,
+  BarChart3,
+  BookOpen,
+  Calendar,
+  CheckSquare,
+  Clock,
+  Copy,
+  Edit,
+  ExternalLink,
+  FileText,
+  FlaskConical,
+  Globe,
+  HelpCircle,
+  Layers,
+  MoreVertical,
+  Plus,
+  RotateCcw,
   Save,
   Trash2,
-  Plus,
-  FileText,
-  ExternalLink,
-  BarChart3,
-  Zap,
   TrendingUp,
-  Layers,
-  Clock,
-  HelpCircle,
-  RotateCcw,
-  CheckSquare,
-  MoreVertical,
-  Edit,
-  Copy,
-  FlaskConical,
-  BookOpen,
-  Globe,
-  Users,
-  Calendar,
   User,
-  AlertCircle,
-} from "lucide-react";
+  Users,
+  Zap,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 
-import EvidenceDialog from "@/components/evidence/EvidenceDialog";
-import { useCanvasStore } from "@/lib/stores";
-import { useEvidenceStore } from "@/lib/stores/evidenceStore";
-import { useProjectsStore } from "@/lib/stores/projectsStore";
-import { useWorker } from "@/lib/hooks/useWorker";
-import { EnhancedTagInput } from "@/components/ui/enhanced-tag-input";
-import {
-  getRelationshipTags,
-  addTagsToRelationship,
-  removeTagsFromRelationship,
-} from "@/lib/supabase/services/tags";
+import EvidenceDialog from '@/components/evidence/EvidenceDialog';
+import { EnhancedTagInput } from '@/components/ui/enhanced-tag-input';
+import { useWorker } from '@/lib/hooks/useWorker';
+import { useAppStore, useCanvasStore } from '@/lib/stores';
+import { useEvidenceStore } from '@/lib/stores/evidenceStore';
+import { useProjectsStore } from '@/lib/stores/projectsStore';
 import {
   getChangelogForTarget,
-  logRelationshipUpdated,
+  logAnalysisRun,
   logEvidenceAdded,
   logEvidenceRemoved,
-  logAnalysisRun,
+  logRelationshipUpdated,
   type ChangelogEntry,
-} from "@/lib/supabase/services/changelog";
+} from '@/lib/supabase/services/changelog';
+import {
+  addTagsToRelationship,
+  getRelationshipTags,
+  removeTagsFromRelationship,
+} from '@/lib/supabase/services/tags';
 import type {
-  Relationship,
-  RelationshipType,
   ConfidenceLevel,
   EvidenceItem,
-} from "@/lib/types";
+  Relationship,
+  RelationshipType,
+} from '@/lib/types';
 
 interface RelationshipSheetProps {
   isOpen: boolean;
@@ -77,45 +77,45 @@ const relationshipTypeOptions: Array<{
   icon: any;
 }> = [
   {
-    value: "Deterministic",
-    label: "Deterministic",
-    description: "Direct causal relationship with predictable outcomes",
+    value: 'Deterministic',
+    label: 'Deterministic',
+    description: 'Direct causal relationship with predictable outcomes',
     icon: Zap,
   },
   {
-    value: "Probabilistic",
-    label: "Probabilistic",
-    description: "Statistical correlation with probabilistic outcomes",
+    value: 'Probabilistic',
+    label: 'Probabilistic',
+    description: 'Statistical correlation with probabilistic outcomes',
     icon: TrendingUp,
   },
   {
-    value: "Causal",
-    label: "Causal",
-    description: "Proven causal influence through experimentation",
+    value: 'Causal',
+    label: 'Causal',
+    description: 'Proven causal influence through experimentation',
     icon: BarChart3,
   },
   {
-    value: "Compositional",
-    label: "Compositional",
-    description: "Part-of or hierarchical relationship",
+    value: 'Compositional',
+    label: 'Compositional',
+    description: 'Part-of or hierarchical relationship',
     icon: Layers,
   },
 ];
 
 const evidenceTypeOptions = [
   {
-    value: "Experiment",
+    value: 'Experiment',
     icon: FlaskConical,
-    color: "bg-blue-50 text-blue-700",
+    color: 'bg-blue-50 text-blue-700',
   },
-  { value: "Analysis", icon: FileText, color: "bg-green-50 text-green-700" },
-  { value: "Notebook", icon: BookOpen, color: "bg-purple-50 text-purple-700" },
+  { value: 'Analysis', icon: FileText, color: 'bg-green-50 text-green-700' },
+  { value: 'Notebook', icon: BookOpen, color: 'bg-purple-50 text-purple-700' },
   {
-    value: "External Research",
+    value: 'External Research',
     icon: Globe,
-    color: "bg-orange-50 text-orange-700",
+    color: 'bg-orange-50 text-orange-700',
   },
-  { value: "User Interview", icon: Users, color: "bg-pink-50 text-pink-700" },
+  { value: 'User Interview', icon: Users, color: 'bg-pink-50 text-pink-700' },
 ];
 
 export default function RelationshipSheet({
@@ -129,6 +129,7 @@ export default function RelationshipSheet({
     useCanvasStore();
   const { addEvidence, updateEvidence, deleteEvidence } = useEvidenceStore();
   const { getProjectById } = useProjectsStore();
+  const { user } = useAppStore();
   const currentProject = canvasId ? getProjectById(canvasId) : null;
   const relationship = relationshipId ? getEdgeById(relationshipId) : null;
 
@@ -145,16 +146,16 @@ export default function RelationshipSheet({
       }
     >
   >(() => ({
-    type: relationship?.type || "Probabilistic",
-    confidence: relationship?.confidence || "Medium",
+    type: relationship?.type || 'Probabilistic',
+    confidence: relationship?.confidence || 'Medium',
     weight: relationship?.weight || 0,
     evidence: relationship?.evidence || [],
-    notes: relationship?.notes || "",
+    notes: relationship?.notes || '',
     analysisResults: null,
     causalChecklist: [],
   }));
 
-  const [activeTab, setActiveTab] = useState("settings");
+  const [activeTab, setActiveTab] = useState('settings');
   const [isModified, setIsModified] = useState(false);
 
   // Evidence dialog state
@@ -174,7 +175,7 @@ export default function RelationshipSheet({
     confidenceInterval: [number, number];
     sampleSize: number;
     isSignificant: boolean;
-    effectSize: "small" | "medium" | "large";
+    effectSize: 'small' | 'medium' | 'large';
     powerAnalysis: {
       power: number;
       requiredSampleSize: number;
@@ -191,33 +192,33 @@ export default function RelationshipSheet({
   // Causal checklist state
   const [causalChecklist, setCausalChecklist] = useState([
     {
-      id: "temporal",
-      label: "Temporal Precedence",
-      description: "Does the cause happen before the effect?",
+      id: 'temporal',
+      label: 'Temporal Precedence',
+      description: 'Does the cause happen before the effect?',
       checked: false,
-      notes: "",
+      notes: '',
     },
     {
-      id: "covariation",
-      label: "Covariation",
-      description: "Is there a clear statistical relationship?",
+      id: 'covariation',
+      label: 'Covariation',
+      description: 'Is there a clear statistical relationship?',
       checked: false,
-      notes: "",
+      notes: '',
     },
     {
-      id: "spuriousness",
-      label: "Non-Spuriousness",
-      description: "Have potential confounding variables been considered?",
+      id: 'spuriousness',
+      label: 'Non-Spuriousness',
+      description: 'Have potential confounding variables been considered?',
       checked: false,
-      notes: "",
+      notes: '',
     },
     {
-      id: "mechanism",
-      label: "Mechanism",
+      id: 'mechanism',
+      label: 'Mechanism',
       description:
-        "Is there a logical reason why this cause leads to this effect?",
+        'Is there a logical reason why this cause leads to this effect?',
       checked: false,
-      notes: "",
+      notes: '',
     },
   ]);
 
@@ -226,26 +227,26 @@ export default function RelationshipSheet({
 
   // Get available tabs based on relationship type
   const getAvailableTabs = (type: RelationshipType) => {
-    const baseTabs = ["settings", "evidence", "history"];
+    const baseTabs = ['settings', 'evidence', 'history'];
 
     switch (type) {
-      case "Probabilistic":
-        return [...baseTabs, "analysis"];
-      case "Causal":
-        return [...baseTabs, "checklist"];
-      case "Deterministic":
-      case "Compositional":
+      case 'Probabilistic':
+        return [...baseTabs, 'analysis'];
+      case 'Causal':
+        return [...baseTabs, 'checklist'];
+      case 'Deterministic':
+      case 'Compositional':
       default:
         return baseTabs;
     }
   };
 
-  const availableTabs = getAvailableTabs(formData.type || "Probabilistic");
+  const availableTabs = getAvailableTabs(formData.type || 'Probabilistic');
 
   // Ensure active tab is valid for current relationship type
   useEffect(() => {
     if (!availableTabs.includes(activeTab)) {
-      setActiveTab("settings");
+      setActiveTab('settings');
     }
   }, [formData.type, availableTabs, activeTab]);
 
@@ -276,11 +277,11 @@ export default function RelationshipSheet({
   useEffect(() => {
     if (relationship) {
       setFormData({
-        type: relationship.type || "Probabilistic",
-        confidence: relationship.confidence || "Medium",
+        type: relationship.type || 'Probabilistic',
+        confidence: relationship.confidence || 'Medium',
         weight: relationship.weight || 0,
         evidence: relationship.evidence || [],
-        notes: relationship.notes || "",
+        notes: relationship.notes || '',
       });
     }
   }, [relationship]);
@@ -293,11 +294,11 @@ export default function RelationshipSheet({
         try {
           const entries = await getChangelogForTarget(
             relationship.id,
-            "relationship"
+            'relationship'
           );
           setChangelog(entries);
         } catch (error) {
-          console.error("Failed to fetch changelog:", error);
+          console.error('Failed to fetch changelog:', error);
         } finally {
           setIsLoadingChangelog(false);
         }
@@ -325,7 +326,7 @@ export default function RelationshipSheet({
       const updatedTags = await getRelationshipTags(relationshipId);
       setRelationshipTags(updatedTags);
     } catch (error) {
-      console.error("Failed to add tag:", error);
+      console.error('Failed to add tag:', error);
     } finally {
       setIsSavingTags(false);
     }
@@ -341,7 +342,7 @@ export default function RelationshipSheet({
       const updatedTags = await getRelationshipTags(relationshipId);
       setRelationshipTags(updatedTags);
     } catch (error) {
-      console.error("Failed to remove tag:", error);
+      console.error('Failed to remove tag:', error);
     } finally {
       setIsSavingTags(false);
     }
@@ -366,20 +367,20 @@ export default function RelationshipSheet({
       const updatedEvidence =
         formData.evidence?.map((e) => (e.id === evidence.id ? evidence : e)) ||
         [];
-      handleFieldChange("evidence", updatedEvidence);
+      handleFieldChange('evidence', updatedEvidence);
     } else {
       // Add new evidence to global store with relationship context
       const evidenceWithContext: EvidenceItem = {
         ...evidence,
         context: {
-          type: "relationship",
+          type: 'relationship',
           targetId: relationship?.id,
           targetName: `${sourceNode?.title} → ${targetNode?.title}`,
         },
       };
       addEvidence(evidenceWithContext);
       // Add evidence to relationship
-      handleFieldChange("evidence", [
+      handleFieldChange('evidence', [
         ...(formData.evidence || []),
         evidenceWithContext,
       ]);
@@ -393,17 +394,17 @@ export default function RelationshipSheet({
             evidence.title,
             evidence.type,
             currentProject.id,
-            "current-user" // TODO: Get from auth context
+            user?.id || 'anonymous-user'
           );
 
           // Refresh changelog
           const entries = await getChangelogForTarget(
             relationship.id,
-            "relationship"
+            'relationship'
           );
           setChangelog(entries);
         } catch (error) {
-          console.error("Failed to log evidence addition:", error);
+          console.error('Failed to log evidence addition:', error);
         }
       }
     }
@@ -418,7 +419,7 @@ export default function RelationshipSheet({
     deleteEvidence(evidenceId);
     // Remove from relationship
     handleFieldChange(
-      "evidence",
+      'evidence',
       formData.evidence?.filter((e) => e.id !== evidenceId) || []
     );
 
@@ -430,17 +431,17 @@ export default function RelationshipSheet({
           `${sourceNode?.title} → ${targetNode?.title}`,
           evidenceToRemove.title,
           currentProject.id,
-          "current-user" // TODO: Get from auth context
+          'current-user' // TODO: Get from auth context
         );
 
         // Refresh changelog
         const entries = await getChangelogForTarget(
           relationship.id,
-          "relationship"
+          'relationship'
         );
         setChangelog(entries);
       } catch (error) {
-        console.error("Failed to log evidence removal:", error);
+        console.error('Failed to log evidence removal:', error);
       }
     }
   };
@@ -453,7 +454,7 @@ export default function RelationshipSheet({
       createdAt: new Date().toISOString(),
     };
     addEvidence(duplicate);
-    handleFieldChange("evidence", [...(formData.evidence || []), duplicate]);
+    handleFieldChange('evidence', [...(formData.evidence || []), duplicate]);
   };
 
   // Helper functions for evidence display
@@ -464,7 +465,7 @@ export default function RelationshipSheet({
 
   const getTypeColor = (type: string) => {
     const option = evidenceTypeOptions.find((opt) => opt.value === type);
-    return option ? option.color : "bg-gray-50 text-gray-700";
+    return option ? option.color : 'bg-gray-50 text-gray-700';
   };
 
   // Function to log analysis runs
@@ -480,17 +481,17 @@ export default function RelationshipSheet({
           analysisType,
           results,
           currentProject.id,
-          "current-user" // TODO: Get from auth context
+          'current-user' // TODO: Get from auth context
         );
 
         // Refresh changelog
         const entries = await getChangelogForTarget(
           relationship.id,
-          "relationship"
+          'relationship'
         );
         setChangelog(entries);
       } catch (error) {
-        console.error("Failed to log analysis run:", error);
+        console.error('Failed to log analysis run:', error);
       }
     }
   };
@@ -515,7 +516,7 @@ export default function RelationshipSheet({
   // Function to run statistical analysis
   const handleRunAnalysis = async () => {
     if (!sourceNode || !targetNode) {
-      setAnalysisError("Source and target nodes are required for analysis");
+      setAnalysisError('Source and target nodes are required for analysis');
       return;
     }
 
@@ -530,7 +531,7 @@ export default function RelationshipSheet({
       // Check if we have enough data
       if (sourceData.length < 3 || targetData.length < 3) {
         throw new Error(
-          "Insufficient data for statistical analysis. At least 3 data points required."
+          'Insufficient data for statistical analysis. At least 3 data points required.'
         );
       }
 
@@ -538,7 +539,7 @@ export default function RelationshipSheet({
       const results = await analyzeCorrelation(sourceData, targetData);
 
       if (!results) {
-        throw new Error("Analysis failed to return results");
+        throw new Error('Analysis failed to return results');
       }
 
       setAnalysisResults(results);
@@ -548,7 +549,7 @@ export default function RelationshipSheet({
       // but we store it locally for UI display
 
       // Log the analysis run
-      await handleAnalysisRun("Statistical Analysis", {
+      await handleAnalysisRun('Statistical Analysis', {
         correlation: results.correlation,
         pValue: results.pValue,
         sampleSize: results.sampleSize,
@@ -556,9 +557,9 @@ export default function RelationshipSheet({
         effectSize: results.effectSize,
       });
     } catch (error) {
-      console.error("Analysis failed:", error);
+      console.error('Analysis failed:', error);
       setAnalysisError(
-        error instanceof Error ? error.message : "Analysis failed"
+        error instanceof Error ? error.message : 'Analysis failed'
       );
     } finally {
       setIsRunningAnalysis(false);
@@ -568,7 +569,7 @@ export default function RelationshipSheet({
   // Function to update checklist item
   const updateChecklistItem = (
     id: string,
-    field: "checked" | "notes",
+    field: 'checked' | 'notes',
     value: boolean | string
   ) => {
     setCausalChecklist((prev) => {
@@ -609,8 +610,8 @@ export default function RelationshipSheet({
         }
         if (formData.notes !== relationship.notes) {
           changes.notes = {
-            from: relationship.notes || "",
-            to: formData.notes || "",
+            from: relationship.notes || '',
+            to: formData.notes || '',
           };
         }
 
@@ -628,25 +629,25 @@ export default function RelationshipSheet({
               `${sourceNode?.title} → ${targetNode?.title}`,
               changes,
               currentProject.id,
-              "current-user" // TODO: Get from auth context
+              user?.id || 'anonymous-user'
             );
 
             // Refresh changelog
             const entries = await getChangelogForTarget(
               relationship.id,
-              "relationship"
+              'relationship'
             );
             setChangelog(entries);
           } catch (error) {
-            console.error("Failed to log relationship update:", error);
+            console.error('Failed to log relationship update:', error);
           }
         }
 
         setIsModified(false);
         onClose();
       } catch (error) {
-        console.error("Failed to save relationship:", error);
-        alert("Failed to save relationship. Please try again.");
+        console.error('Failed to save relationship:', error);
+        alert('Failed to save relationship. Please try again.');
       }
     }
   };
@@ -656,15 +657,15 @@ export default function RelationshipSheet({
       relationship &&
       relationshipId &&
       confirm(
-        "Are you sure you want to delete this relationship? This action cannot be undone."
+        'Are you sure you want to delete this relationship? This action cannot be undone.'
       )
     ) {
       try {
         await persistEdgeDelete(relationshipId);
         onClose();
       } catch (error) {
-        console.error("Failed to delete relationship:", error);
-        alert("Failed to delete relationship. Please try again.");
+        console.error('Failed to delete relationship:', error);
+        alert('Failed to delete relationship. Please try again.');
       }
     }
   };
@@ -678,9 +679,9 @@ export default function RelationshipSheet({
   );
 
   const getStrengthColor = (value: number) => {
-    if (value > 0) return "text-green-600";
-    if (value < 0) return "text-red-600";
-    return "text-gray-600";
+    if (value > 0) return 'text-green-600';
+    if (value < 0) return 'text-red-600';
+    return 'text-gray-600';
   };
 
   return (
@@ -704,7 +705,7 @@ export default function RelationshipSheet({
                 </h2>
                 <p className="text-sm text-gray-600">
                   {selectedTypeConfig?.description ||
-                    "Configure relationship properties and evidence"}
+                    'Configure relationship properties and evidence'}
                 </p>
               </div>
             </div>
@@ -712,7 +713,7 @@ export default function RelationshipSheet({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => window.open("https://nadeemramli.com", "_blank")}
+                onClick={() => window.open('https://nadeemramli.com', '_blank')}
                 className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
                 title="Get help with relationships"
               >
@@ -728,61 +729,61 @@ export default function RelationshipSheet({
             {/* Tabs */}
             <div className="mb-6">
               <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-                {availableTabs.includes("settings") && (
+                {availableTabs.includes('settings') && (
                   <button
-                    onClick={() => setActiveTab("settings")}
+                    onClick={() => setActiveTab('settings')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
-                      activeTab === "settings"
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
+                      activeTab === 'settings'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     Settings
                   </button>
                 )}
-                {availableTabs.includes("evidence") && (
+                {availableTabs.includes('evidence') && (
                   <button
-                    onClick={() => setActiveTab("evidence")}
+                    onClick={() => setActiveTab('evidence')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
-                      activeTab === "evidence"
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
+                      activeTab === 'evidence'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     Evidence ({formData.evidence?.length || 0})
                   </button>
                 )}
-                {availableTabs.includes("history") && (
+                {availableTabs.includes('history') && (
                   <button
-                    onClick={() => setActiveTab("history")}
+                    onClick={() => setActiveTab('history')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
-                      activeTab === "history"
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
+                      activeTab === 'history'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     History ({relationship?.history?.length || 0})
                   </button>
                 )}
-                {formData.type === "Probabilistic" && (
+                {formData.type === 'Probabilistic' && (
                   <button
-                    onClick={() => setActiveTab("analysis")}
+                    onClick={() => setActiveTab('analysis')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
-                      activeTab === "analysis"
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
+                      activeTab === 'analysis'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     Analysis
                   </button>
                 )}
-                {formData.type === "Causal" && (
+                {formData.type === 'Causal' && (
                   <button
-                    onClick={() => setActiveTab("checklist")}
+                    onClick={() => setActiveTab('checklist')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
-                      activeTab === "checklist"
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
+                      activeTab === 'checklist'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     Checklist
@@ -793,7 +794,7 @@ export default function RelationshipSheet({
 
             {/* Tab Content */}
             {/* Settings Tab */}
-            {activeTab === "settings" && (
+            {activeTab === 'settings' && (
               <div className="space-y-6">
                 {/* Relationship Type */}
                 <div className="space-y-3">
@@ -806,11 +807,11 @@ export default function RelationshipSheet({
                       return (
                         <button
                           key={type.value}
-                          onClick={() => handleFieldChange("type", type.value)}
+                          onClick={() => handleFieldChange('type', type.value)}
                           className={`p-3 rounded-lg border-2 text-left transition-all ${
                             formData.type === type.value
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 hover:border-gray-300"
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1">
@@ -838,7 +839,7 @@ export default function RelationshipSheet({
                       value={formData.confidence}
                       onChange={(e) =>
                         handleFieldChange(
-                          "confidence",
+                          'confidence',
                           e.target.value as ConfidenceLevel
                         )
                       }
@@ -869,7 +870,7 @@ export default function RelationshipSheet({
                       max="100"
                       value={formData.weight || 0}
                       onChange={(e) =>
-                        handleFieldChange("weight", parseInt(e.target.value))
+                        handleFieldChange('weight', parseInt(e.target.value))
                       }
                       className="w-full"
                     />
@@ -888,8 +889,8 @@ export default function RelationshipSheet({
                   </label>
                   <textarea
                     placeholder="Add notes about this relationship..."
-                    value={formData.notes || ""}
-                    onChange={(e) => handleFieldChange("notes", e.target.value)}
+                    value={formData.notes || ''}
+                    onChange={(e) => handleFieldChange('notes', e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     rows={3}
                   />
@@ -963,7 +964,7 @@ export default function RelationshipSheet({
             )}
 
             {/* Evidence Tab */}
-            {activeTab === "evidence" && (
+            {activeTab === 'evidence' && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1022,7 +1023,7 @@ export default function RelationshipSheet({
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <User className="h-3 w-3" />
-                                      {evidence.owner || "Unknown"}
+                                      {evidence.owner || 'Unknown'}
                                     </div>
                                   </div>
                                 </div>
@@ -1143,7 +1144,7 @@ export default function RelationshipSheet({
             )}
 
             {/* History Tab */}
-            {activeTab === "history" && (
+            {activeTab === 'history' && (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold">Audit Trail</h3>
@@ -1163,32 +1164,32 @@ export default function RelationshipSheet({
                     {changelog.map((entry, index) => {
                       const getActionColor = (action: string) => {
                         switch (action) {
-                          case "created":
-                            return "bg-green-500";
-                          case "updated":
-                            return "bg-blue-500";
-                          case "evidence_added":
-                            return "bg-purple-500";
-                          case "evidence_removed":
-                            return "bg-red-500";
-                          case "analysis_run":
-                            return "bg-orange-500";
+                          case 'created':
+                            return 'bg-green-500';
+                          case 'updated':
+                            return 'bg-blue-500';
+                          case 'evidence_added':
+                            return 'bg-purple-500';
+                          case 'evidence_removed':
+                            return 'bg-red-500';
+                          case 'analysis_run':
+                            return 'bg-orange-500';
                           default:
-                            return "bg-gray-500";
+                            return 'bg-gray-500';
                         }
                       };
 
                       const getActionIcon = (action: string) => {
                         switch (action) {
-                          case "created":
+                          case 'created':
                             return <Plus className="h-3 w-3" />;
-                          case "updated":
+                          case 'updated':
                             return <Edit className="h-3 w-3" />;
-                          case "evidence_added":
+                          case 'evidence_added':
                             return <FileText className="h-3 w-3" />;
-                          case "evidence_removed":
+                          case 'evidence_removed':
                             return <Trash2 className="h-3 w-3" />;
-                          case "analysis_run":
+                          case 'analysis_run':
                             return <BarChart3 className="h-3 w-3" />;
                           default:
                             return <Clock className="h-3 w-3" />;
@@ -1201,13 +1202,13 @@ export default function RelationshipSheet({
                           date.toDateString() === new Date().toDateString();
 
                         if (isToday) {
-                          return `Today at ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+                          return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
                         } else {
                           return date.toLocaleDateString([], {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
                           });
                         }
                       };
@@ -1235,7 +1236,7 @@ export default function RelationshipSheet({
                                 {entry.description}
                               </p>
                               <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 capitalize">
-                                {entry.action.replace("_", " ")}
+                                {entry.action.replace('_', ' ')}
                               </span>
                             </div>
                             <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -1246,7 +1247,7 @@ export default function RelationshipSheet({
                             {/* Show metadata if available */}
                             {entry.metadata && (
                               <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs">
-                                {entry.action === "updated" &&
+                                {entry.action === 'updated' &&
                                   entry.metadata.changes && (
                                     <div className="space-y-1">
                                       <strong>Changes:</strong>
@@ -1257,11 +1258,11 @@ export default function RelationshipSheet({
                                           <div key={field} className="text-xs">
                                             <span className="font-medium capitalize">
                                               {field}:
-                                            </span>{" "}
+                                            </span>{' '}
                                             <span className="text-red-600">
                                               {change.from}
-                                            </span>{" "}
-                                            →{" "}
+                                            </span>{' '}
+                                            →{' '}
                                             <span className="text-green-600">
                                               {change.to}
                                             </span>
@@ -1270,10 +1271,10 @@ export default function RelationshipSheet({
                                       )}
                                     </div>
                                   )}
-                                {(entry.action === "evidence_added" ||
-                                  entry.action === "evidence_removed") && (
+                                {(entry.action === 'evidence_added' ||
+                                  entry.action === 'evidence_removed') && (
                                   <div>
-                                    <strong>Evidence:</strong>{" "}
+                                    <strong>Evidence:</strong>{' '}
                                     {entry.metadata.evidenceTitle}
                                     {entry.metadata.evidenceType && (
                                       <span className="ml-2 px-1 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
@@ -1282,9 +1283,9 @@ export default function RelationshipSheet({
                                     )}
                                   </div>
                                 )}
-                                {entry.action === "analysis_run" && (
+                                {entry.action === 'analysis_run' && (
                                   <div>
-                                    <strong>Analysis Type:</strong>{" "}
+                                    <strong>Analysis Type:</strong>{' '}
                                     {entry.metadata.analysisType}
                                     {entry.metadata.results && (
                                       <div className="mt-1 text-xs text-gray-600">
@@ -1322,7 +1323,7 @@ export default function RelationshipSheet({
                         <div className="text-lg font-semibold text-gray-900">
                           {
                             changelog.filter(
-                              (e) => e.action === "evidence_added"
+                              (e) => e.action === 'evidence_added'
                             ).length
                           }
                         </div>
@@ -1333,7 +1334,7 @@ export default function RelationshipSheet({
                       <div>
                         <div className="text-lg font-semibold text-gray-900">
                           {
-                            changelog.filter((e) => e.action === "updated")
+                            changelog.filter((e) => e.action === 'updated')
                               .length
                           }
                         </div>
@@ -1344,7 +1345,7 @@ export default function RelationshipSheet({
                       <div>
                         <div className="text-lg font-semibold text-gray-900">
                           {
-                            changelog.filter((e) => e.action === "analysis_run")
+                            changelog.filter((e) => e.action === 'analysis_run')
                               .length
                           }
                         </div>
@@ -1359,7 +1360,7 @@ export default function RelationshipSheet({
             )}
 
             {/* Analysis Tab (Probabilistic only) */}
-            {activeTab === "analysis" && formData.type === "Probabilistic" && (
+            {activeTab === 'analysis' && formData.type === 'Probabilistic' && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1382,8 +1383,8 @@ export default function RelationshipSheet({
                       <RotateCcw className="w-4 h-4" />
                     )}
                     {isRunningAnalysis
-                      ? "Running Analysis..."
-                      : "Re-run Analysis"}
+                      ? 'Running Analysis...'
+                      : 'Re-run Analysis'}
                   </Button>
                 </div>
 
@@ -1417,11 +1418,11 @@ export default function RelationshipSheet({
                               <span
                                 className={`text-sm font-medium px-2 py-1 rounded ${
                                   Math.abs(analysisResults.correlation) > 0.5
-                                    ? "text-green-600 bg-green-50"
+                                    ? 'text-green-600 bg-green-50'
                                     : Math.abs(analysisResults.correlation) >
                                         0.3
-                                      ? "text-yellow-600 bg-yellow-50"
-                                      : "text-red-600 bg-red-50"
+                                      ? 'text-yellow-600 bg-yellow-50'
+                                      : 'text-red-600 bg-red-50'
                                 }`}
                               >
                                 {analysisResults.correlation.toFixed(3)}
@@ -1434,12 +1435,12 @@ export default function RelationshipSheet({
                               <span
                                 className={`text-sm font-medium px-2 py-1 rounded ${
                                   analysisResults.isSignificant
-                                    ? "text-green-600 bg-green-50"
-                                    : "text-red-600 bg-red-50"
+                                    ? 'text-green-600 bg-green-50'
+                                    : 'text-red-600 bg-red-50'
                                 }`}
                               >
                                 {analysisResults.pValue < 0.001
-                                  ? "< 0.001"
+                                  ? '< 0.001'
                                   : analysisResults.pValue.toFixed(3)}
                               </span>
                             </div>
@@ -1457,11 +1458,11 @@ export default function RelationshipSheet({
                               </span>
                               <span
                                 className={`text-sm font-medium px-2 py-1 rounded capitalize ${
-                                  analysisResults.effectSize === "large"
-                                    ? "text-green-600 bg-green-50"
-                                    : analysisResults.effectSize === "medium"
-                                      ? "text-yellow-600 bg-yellow-50"
-                                      : "text-gray-600 bg-gray-100"
+                                  analysisResults.effectSize === 'large'
+                                    ? 'text-green-600 bg-green-50'
+                                    : analysisResults.effectSize === 'medium'
+                                      ? 'text-yellow-600 bg-yellow-50'
+                                      : 'text-gray-600 bg-gray-100'
                                 }`}
                               >
                                 {analysisResults.effectSize}
@@ -1474,13 +1475,13 @@ export default function RelationshipSheet({
                               <span
                                 className={`text-sm font-medium px-2 py-1 rounded ${
                                   analysisResults.isSignificant
-                                    ? "text-green-600 bg-green-50"
-                                    : "text-red-600 bg-red-50"
+                                    ? 'text-green-600 bg-green-50'
+                                    : 'text-red-600 bg-red-50'
                                 }`}
                               >
                                 {analysisResults.isSignificant
-                                  ? "Significant"
-                                  : "Not Significant"}
+                                  ? 'Significant'
+                                  : 'Not Significant'}
                               </span>
                             </div>
                           </div>
@@ -1500,7 +1501,7 @@ export default function RelationshipSheet({
                                 {analysisResults.confidenceInterval[0].toFixed(
                                   3
                                 )}
-                                ,{" "}
+                                ,{' '}
                                 {analysisResults.confidenceInterval[1].toFixed(
                                   3
                                 )}
@@ -1539,9 +1540,9 @@ export default function RelationshipSheet({
                             <p className="text-xs text-blue-800">
                               {analysisResults.isSignificant
                                 ? `There is a statistically significant ${analysisResults.effectSize} correlation between the variables.`
-                                : "No statistically significant correlation was found between the variables."}
+                                : 'No statistically significant correlation was found between the variables.'}
                               {analysisResults.powerAnalysis.power < 0.8 &&
-                                " Consider collecting more data to increase statistical power."}
+                                ' Consider collecting more data to increase statistical power.'}
                             </p>
                           </div>
                         </div>
@@ -1568,7 +1569,7 @@ export default function RelationshipSheet({
             )}
 
             {/* Causal Checklist Tab (Causal only) */}
-            {activeTab === "checklist" && formData.type === "Causal" && (
+            {activeTab === 'checklist' && formData.type === 'Causal' && (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold">
@@ -1586,8 +1587,8 @@ export default function RelationshipSheet({
                       key={item.id}
                       className={`bg-white border-l-4 rounded-lg p-4 ${
                         item.checked
-                          ? "border-l-green-500"
-                          : "border-l-gray-300"
+                          ? 'border-l-green-500'
+                          : 'border-l-gray-300'
                       }`}
                     >
                       <div className="flex items-start space-x-3">
@@ -1597,7 +1598,7 @@ export default function RelationshipSheet({
                           onChange={(e) =>
                             updateChecklistItem(
                               item.id,
-                              "checked",
+                              'checked',
                               e.target.checked
                             )
                           }
@@ -1618,7 +1619,7 @@ export default function RelationshipSheet({
                             onChange={(e) =>
                               updateChecklistItem(
                                 item.id,
-                                "notes",
+                                'notes',
                                 e.target.value
                               )
                             }
@@ -1639,7 +1640,7 @@ export default function RelationshipSheet({
                     </span>
                   </div>
                   <p className="text-sm text-blue-700 mb-2">
-                    {causalChecklist.filter((item) => item.checked).length} of{" "}
+                    {causalChecklist.filter((item) => item.checked).length} of{' '}
                     {causalChecklist.length} criteria validated
                   </p>
                   <div className="w-full bg-blue-200 rounded-full h-2">
@@ -1671,12 +1672,12 @@ export default function RelationshipSheet({
         onSave={handleSaveEvidence}
         evidence={selectedEvidence}
         title={
-          selectedEvidence ? "Edit Evidence" : "Add Evidence to Relationship"
+          selectedEvidence ? 'Edit Evidence' : 'Add Evidence to Relationship'
         }
         description={
           selectedEvidence
-            ? "Update the evidence details below"
-            : "Add new evidence to support this relationship"
+            ? 'Update the evidence details below'
+            : 'Add new evidence to support this relationship'
         }
       />
     </Sheet>

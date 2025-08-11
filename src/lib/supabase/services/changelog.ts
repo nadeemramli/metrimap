@@ -1,7 +1,7 @@
-import { supabase } from '../client';
-import type { Tables, TablesInsert } from '../types';
+import { CreateChangelogSchema } from '@/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../types';
+import { supabase } from '../client';
+import type { Database, Tables, TablesInsert } from '../types';
 
 export type ChangelogRow = Tables<'changelog'>;
 export type ChangelogInsert = TablesInsert<'changelog'>;
@@ -31,7 +31,7 @@ function transformChangelogEntry(row: ChangelogRow): ChangelogEntry {
     description: row.description,
     userId: row.user_id || undefined,
     projectId: row.project_id || undefined,
-    metadata: row.metadata as Record<string, any> || undefined,
+    metadata: (row.metadata as Record<string, any>) || undefined,
   };
 }
 
@@ -56,8 +56,14 @@ export async function logChangelogEntry(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const insertData = transformToInsert(entry);
+  try {
+    CreateChangelogSchema.parse(insertData as unknown);
+  } catch (e) {
+    console.error('Validation error creating changelog entry:', e);
+    throw e;
+  }
   const client = authenticatedClient || supabase();
-  
+
   const { data, error } = await client
     .from('changelog')
     .insert(insertData)
@@ -74,7 +80,7 @@ export async function logChangelogEntry(
 
 // Get changelog entries for a specific target
 export async function getChangelogForTarget(
-  targetId: string, 
+  targetId: string,
   target: string = 'relationship',
   authenticatedClient?: SupabaseClient<Database>
 ) {
@@ -96,7 +102,7 @@ export async function getChangelogForTarget(
 
 // Get changelog entries for a project
 export async function getProjectChangelog(
-  projectId: string, 
+  projectId: string,
   limit?: number,
   authenticatedClient?: SupabaseClient<Database>
 ) {
@@ -130,16 +136,19 @@ export async function logRelationshipCreated(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  return logChangelogEntry({
-    timestamp: new Date().toISOString(),
-    action: 'created',
-    target: 'relationship',
-    targetId: relationshipId,
-    targetName: relationshipName,
-    description: `Relationship "${relationshipName}" was created`,
-    userId,
-    projectId,
-  }, authenticatedClient);
+  return logChangelogEntry(
+    {
+      timestamp: new Date().toISOString(),
+      action: 'created',
+      target: 'relationship',
+      targetId: relationshipId,
+      targetName: relationshipName,
+      description: `Relationship "${relationshipName}" was created`,
+      userId,
+      projectId,
+    },
+    authenticatedClient
+  );
 }
 
 export async function logRelationshipUpdated(
@@ -154,17 +163,20 @@ export async function logRelationshipUpdated(
     .map(([field, { from, to }]) => `${field}: ${from} → ${to}`)
     .join(', ');
 
-  return logChangelogEntry({
-    timestamp: new Date().toISOString(),
-    action: 'updated',
-    target: 'relationship',
-    targetId: relationshipId,
-    targetName: relationshipName,
-    description: `Relationship settings updated: ${changeDescriptions}`,
-    userId,
-    projectId,
-    metadata: { changes },
-  }, authenticatedClient);
+  return logChangelogEntry(
+    {
+      timestamp: new Date().toISOString(),
+      action: 'updated',
+      target: 'relationship',
+      targetId: relationshipId,
+      targetName: relationshipName,
+      description: `Relationship settings updated: ${changeDescriptions}`,
+      userId,
+      projectId,
+      metadata: { changes },
+    },
+    authenticatedClient
+  );
 }
 
 export async function logEvidenceAdded(
@@ -176,17 +188,20 @@ export async function logEvidenceAdded(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  return logChangelogEntry({
-    timestamp: new Date().toISOString(),
-    action: 'evidence_added',
-    target: 'relationship',
-    targetId: relationshipId,
-    targetName: relationshipName,
-    description: `Evidence "${evidenceTitle}" (${evidenceType}) was added to relationship`,
-    userId,
-    projectId,
-    metadata: { evidenceTitle, evidenceType },
-  }, authenticatedClient);
+  return logChangelogEntry(
+    {
+      timestamp: new Date().toISOString(),
+      action: 'evidence_added',
+      target: 'relationship',
+      targetId: relationshipId,
+      targetName: relationshipName,
+      description: `Evidence "${evidenceTitle}" (${evidenceType}) was added to relationship`,
+      userId,
+      projectId,
+      metadata: { evidenceTitle, evidenceType },
+    },
+    authenticatedClient
+  );
 }
 
 export async function logAnalysisRun(
@@ -198,17 +213,20 @@ export async function logAnalysisRun(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  return logChangelogEntry({
-    timestamp: new Date().toISOString(),
-    action: 'analysis_run',
-    target: 'relationship',
-    targetId: relationshipId,
-    targetName: relationshipName,
-    description: `${analysisType} analysis was performed on relationship`,
-    userId,
-    projectId,
-    metadata: { analysisType, results },
-  }, authenticatedClient);
+  return logChangelogEntry(
+    {
+      timestamp: new Date().toISOString(),
+      action: 'analysis_run',
+      target: 'relationship',
+      targetId: relationshipId,
+      targetName: relationshipName,
+      description: `${analysisType} analysis was performed on relationship`,
+      userId,
+      projectId,
+      metadata: { analysisType, results },
+    },
+    authenticatedClient
+  );
 }
 
 export async function logEvidenceRemoved(
@@ -219,15 +237,18 @@ export async function logEvidenceRemoved(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  return logChangelogEntry({
-    timestamp: new Date().toISOString(),
-    action: 'evidence_removed',
-    target: 'relationship',
-    targetId: relationshipId,
-    targetName: relationshipName,
-    description: `Evidence "${evidenceTitle}" was removed from relationship`,
-    userId,
-    projectId,
-    metadata: { evidenceTitle },
-  }, authenticatedClient);
+  return logChangelogEntry(
+    {
+      timestamp: new Date().toISOString(),
+      action: 'evidence_removed',
+      target: 'relationship',
+      targetId: relationshipId,
+      targetName: relationshipName,
+      description: `Evidence "${evidenceTitle}" was removed from relationship`,
+      userId,
+      projectId,
+      metadata: { evidenceTitle },
+    },
+    authenticatedClient
+  );
 }

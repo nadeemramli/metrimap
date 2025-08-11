@@ -1,20 +1,28 @@
-import { supabase } from "../client";
-import type { Tables, TablesInsert, TablesUpdate } from "../types";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "../types";
+import {
+  CreateCommentMentionSchema,
+  CreateCommentSchema,
+  CreateCommentThreadSchema,
+  CreateNotificationSchema,
+  UpdateCommentSchema,
+  UpdateCommentThreadSchema,
+  UpdateNotificationSchema,
+} from '@/lib/validation/zod';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../client';
+import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 
-export type CommentThreadRow = Tables<"comment_threads">;
-export type CommentRow = Tables<"comments">;
-export type CommentMentionRow = Tables<"comment_mentions">;
-export type NotificationRow = Tables<"notifications">;
+export type CommentThreadRow = Tables<'comment_threads'>;
+export type CommentRow = Tables<'comments'>;
+export type CommentMentionRow = Tables<'comment_mentions'>;
+export type NotificationRow = Tables<'notifications'>;
 
-export type CommentThreadInsert = TablesInsert<"comment_threads">;
-export type CommentInsert = TablesInsert<"comments">;
-export type CommentUpdate = TablesUpdate<"comments">;
+export type CommentThreadInsert = TablesInsert<'comment_threads'>;
+export type CommentInsert = TablesInsert<'comments'>;
+export type CommentUpdate = TablesUpdate<'comments'>;
 
 export interface CreateThreadParams {
   projectId: string;
-  source: "canvas" | "evidence" | "node";
+  source: 'canvas' | 'evidence' | 'node';
   context?: Record<string, unknown> | null;
   createdBy?: string | null;
 }
@@ -30,15 +38,21 @@ export async function createCommentThread(
     context: (params.context as any) ?? null,
     created_by: params.createdBy ?? null,
   };
+  try {
+    CreateCommentThreadSchema.parse(insert as unknown);
+  } catch (e) {
+    console.error('Validation error creating comment thread:', e);
+    throw e;
+  }
 
   const { data, error } = await client
-    .from("comment_threads")
+    .from('comment_threads')
     .insert(insert)
-    .select("*")
+    .select('*')
     .single();
 
   if (error) {
-    console.error("Error creating comment thread:", error);
+    console.error('Error creating comment thread:', error);
     throw error;
   }
   return data as CommentThreadRow;
@@ -50,13 +64,13 @@ export async function listCommentThreads(
 ) {
   const client = authenticatedClient || supabase();
   const { data, error } = await client
-    .from("comment_threads")
-    .select("*")
-    .eq("project_id", projectId)
-    .order("updated_at", { ascending: false });
+    .from('comment_threads')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('updated_at', { ascending: false });
 
   if (error) {
-    console.error("Error fetching comment threads:", error);
+    console.error('Error fetching comment threads:', error);
     throw error;
   }
   return (data || []) as CommentThreadRow[];
@@ -64,23 +78,30 @@ export async function listCommentThreads(
 
 export async function updateCommentThread(
   threadId: string,
-  updates: Partial<Pick<CommentThreadRow, "is_resolved" | "context">>,
+  updates: Partial<Pick<CommentThreadRow, 'is_resolved' | 'context'>>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
+  const patch = {
+    is_resolved: updates.is_resolved ?? undefined,
+    context: (updates.context as any) ?? undefined,
+    updated_at: new Date().toISOString(),
+  } as const;
+  try {
+    UpdateCommentThreadSchema.parse(patch as unknown);
+  } catch (e) {
+    console.error('Validation error updating comment thread:', e);
+    throw e;
+  }
   const { data, error } = await client
-    .from("comment_threads")
-    .update({
-      is_resolved: updates.is_resolved ?? undefined,
-      context: (updates.context as any) ?? undefined,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", threadId)
-    .select("*")
+    .from('comment_threads')
+    .update(patch)
+    .eq('id', threadId)
+    .select('*')
     .single();
 
   if (error) {
-    console.error("Error updating comment thread:", error);
+    console.error('Error updating comment thread:', error);
     throw error;
   }
   return data as CommentThreadRow;
@@ -92,12 +113,12 @@ export async function deleteCommentThread(
 ) {
   const client = authenticatedClient || supabase();
   const { error } = await client
-    .from("comment_threads")
+    .from('comment_threads')
     .delete()
-    .eq("id", threadId);
+    .eq('id', threadId);
 
   if (error) {
-    console.error("Error deleting comment thread:", error);
+    console.error('Error deleting comment thread:', error);
     throw error;
   }
 }
@@ -118,15 +139,21 @@ export async function createComment(
     author_id: params.authorId ?? null,
     content: params.content,
   };
+  try {
+    CreateCommentSchema.parse(insert as unknown);
+  } catch (e) {
+    console.error('Validation error creating comment:', e);
+    throw e;
+  }
 
   const { data, error } = await client
-    .from("comments")
+    .from('comments')
     .insert(insert)
-    .select("*")
+    .select('*')
     .single();
 
   if (error) {
-    console.error("Error creating comment:", error);
+    console.error('Error creating comment:', error);
     throw error;
   }
   return data as CommentRow;
@@ -138,13 +165,13 @@ export async function listComments(
 ) {
   const client = authenticatedClient || supabase();
   const { data, error } = await client
-    .from("comments")
-    .select("*")
-    .eq("thread_id", threadId)
-    .order("created_at", { ascending: true });
+    .from('comments')
+    .select('*')
+    .eq('thread_id', threadId)
+    .order('created_at', { ascending: true });
 
   if (error) {
-    console.error("Error fetching comments:", error);
+    console.error('Error fetching comments:', error);
     throw error;
   }
   return (data || []) as CommentRow[];
@@ -152,7 +179,7 @@ export async function listComments(
 
 export async function updateComment(
   commentId: string,
-  updates: Partial<Pick<CommentRow, "content" | "resolved">>,
+  updates: Partial<Pick<CommentRow, 'content' | 'resolved'>>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
@@ -161,16 +188,22 @@ export async function updateComment(
     resolved: updates.resolved ?? undefined,
     updated_at: new Date().toISOString(),
   } as any;
+  try {
+    UpdateCommentSchema.parse(patch as unknown);
+  } catch (e) {
+    console.error('Validation error updating comment:', e);
+    throw e;
+  }
 
   const { data, error } = await client
-    .from("comments")
+    .from('comments')
     .update(patch)
-    .eq("id", commentId)
-    .select("*")
+    .eq('id', commentId)
+    .select('*')
     .single();
 
   if (error) {
-    console.error("Error updating comment:", error);
+    console.error('Error updating comment:', error);
     throw error;
   }
   return data as CommentRow;
@@ -181,10 +214,10 @@ export async function deleteComment(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
-  const { error } = await client.from("comments").delete().eq("id", commentId);
+  const { error } = await client.from('comments').delete().eq('id', commentId);
 
   if (error) {
-    console.error("Error deleting comment:", error);
+    console.error('Error deleting comment:', error);
     throw error;
   }
 }
@@ -195,14 +228,24 @@ export async function addMention(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
+  const payload = {
+    comment_id: commentId,
+    mentioned_user_id: mentionedUserId,
+  } as const;
+  try {
+    CreateCommentMentionSchema.parse(payload as unknown);
+  } catch (e) {
+    console.error('Validation error adding mention:', e);
+    throw e;
+  }
   const { data, error } = await client
-    .from("comment_mentions")
-    .insert({ comment_id: commentId, mentioned_user_id: mentionedUserId })
-    .select("*")
+    .from('comment_mentions')
+    .insert(payload)
+    .select('*')
     .single();
 
   if (error) {
-    console.error("Error adding mention:", error);
+    console.error('Error adding mention:', error);
     throw error;
   }
   return data as CommentMentionRow;
@@ -214,13 +257,13 @@ export async function listMentionsForUser(
 ) {
   const client = authenticatedClient || supabase();
   const { data, error } = await client
-    .from("comment_mentions")
-    .select("*")
-    .eq("mentioned_user_id", userId)
-    .order("created_at", { ascending: false });
+    .from('comment_mentions')
+    .select('*')
+    .eq('mentioned_user_id', userId)
+    .order('created_at', { ascending: false });
 
   if (error) {
-    console.error("Error fetching mentions:", error);
+    console.error('Error fetching mentions:', error);
     throw error;
   }
   return (data || []) as CommentMentionRow[];
@@ -239,20 +282,27 @@ export async function createNotification(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
+  const payload = {
+    user_id: params.userId,
+    type: params.type,
+    title: params.title ?? null,
+    description: params.description ?? null,
+    metadata: (params.metadata as any) ?? null,
+  } as const;
+  try {
+    CreateNotificationSchema.parse(payload as unknown);
+  } catch (e) {
+    console.error('Validation error creating notification:', e);
+    throw e;
+  }
   const { data, error } = await client
-    .from("notifications")
-    .insert({
-      user_id: params.userId,
-      type: params.type,
-      title: params.title ?? null,
-      description: params.description ?? null,
-      metadata: (params.metadata as any) ?? null,
-    })
-    .select("*")
+    .from('notifications')
+    .insert(payload)
+    .select('*')
     .single();
 
   if (error) {
-    console.error("Error creating notification:", error);
+    console.error('Error creating notification:', error);
     throw error;
   }
   return data as NotificationRow;
@@ -265,19 +315,19 @@ export async function listNotifications(
 ) {
   const client = authenticatedClient || supabase();
   let query = client
-    .from("notifications")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
   if (options?.unreadOnly) {
-    query = query.eq("read", false);
+    query = query.eq('read', false);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error("Error fetching notifications:", error);
+    console.error('Error fetching notifications:', error);
     throw error;
   }
   return (data || []) as NotificationRow[];
@@ -289,15 +339,22 @@ export async function markNotificationRead(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
+  const patch = { read } as const;
+  try {
+    UpdateNotificationSchema.parse(patch as unknown);
+  } catch (e) {
+    console.error('Validation error updating notification:', e);
+    throw e;
+  }
   const { data, error } = await client
-    .from("notifications")
-    .update({ read })
-    .eq("id", notificationId)
-    .select("*")
+    .from('notifications')
+    .update(patch)
+    .eq('id', notificationId)
+    .select('*')
     .single();
 
   if (error) {
-    console.error("Error updating notification:", error);
+    console.error('Error updating notification:', error);
     throw error;
   }
   return data as NotificationRow;

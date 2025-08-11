@@ -1,8 +1,11 @@
-import { supabase } from '../client';
-import type { Tables, TablesInsert, TablesUpdate } from '../types';
-import type { MetricCard } from '../../types';
+import {
+  CreateMetricCardSchema,
+  UpdateMetricCardSchema,
+} from '@/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../types';
+import type { MetricCard } from '../../types';
+import { supabase } from '../client';
+import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 
 export type MetricCardRow = Tables<'metric_cards'>;
 export type MetricCardInsert = TablesInsert<'metric_cards'>;
@@ -31,7 +34,11 @@ function transformMetricCard(card: MetricCardRow): MetricCard {
 }
 
 // Transform MetricCard to database insert
-function transformToInsert(card: MetricCard, projectId: string, userId: string): MetricCardInsert {
+function transformToInsert(
+  card: MetricCard,
+  projectId: string,
+  userId: string
+): MetricCardInsert {
   return {
     project_id: projectId,
     title: card.title,
@@ -53,8 +60,8 @@ function transformToInsert(card: MetricCard, projectId: string, userId: string):
 
 // Create a new metric card
 export async function createMetricCard(
-  card: MetricCard, 
-  projectId: string, 
+  card: MetricCard,
+  projectId: string,
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
@@ -62,14 +69,21 @@ export async function createMetricCard(
     projectId,
     userId,
     cardTitle: card.title,
-    hasAuthenticatedClient: !!authenticatedClient
+    hasAuthenticatedClient: !!authenticatedClient,
   });
-  
-  const insertData = transformToInsert(card, projectId, userId);
+
+  // Validate using Prisma-generated Zod schema
+  let insertData = transformToInsert(card, projectId, userId);
+  try {
+    CreateMetricCardSchema.parse(insertData as unknown);
+  } catch (error) {
+    console.error('Validation error creating metric card:', error);
+    throw error;
+  }
   console.log('🔍 Insert data:', insertData);
-  
+
   const client = authenticatedClient || supabase();
-  
+
   const { data, error } = await client
     .from('metric_cards')
     .insert(insertData)
@@ -87,34 +101,49 @@ export async function createMetricCard(
 
 // Update a metric card
 export async function updateMetricCard(
-  id: string, 
+  id: string,
   updates: Partial<MetricCard>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const updateData: MetricCardUpdate = {};
-  
+
   if (updates.title !== undefined) updateData.title = updates.title;
-  if (updates.description !== undefined) updateData.description = updates.description;
+  if (updates.description !== undefined)
+    updateData.description = updates.description;
   if (updates.category !== undefined) updateData.category = updates.category;
-  if (updates.subCategory !== undefined) updateData.sub_category = updates.subCategory;
+  if (updates.subCategory !== undefined)
+    updateData.sub_category = updates.subCategory;
   if (updates.position !== undefined) {
     updateData.position_x = updates.position.x;
     updateData.position_y = updates.position.y;
   }
   if (updates.data !== undefined) updateData.data = updates.data as any;
-  if (updates.sourceType !== undefined) updateData.source_type = updates.sourceType;
+  if (updates.sourceType !== undefined)
+    updateData.source_type = updates.sourceType;
   if (updates.formula !== undefined) updateData.formula = updates.formula;
-  if (updates.causalFactors !== undefined) updateData.causal_factors = updates.causalFactors;
-  if (updates.dimensions !== undefined) updateData.dimensions = updates.dimensions;
+  if (updates.causalFactors !== undefined)
+    updateData.causal_factors = updates.causalFactors;
+  if (updates.dimensions !== undefined)
+    updateData.dimensions = updates.dimensions;
   if (updates.assignees !== undefined) updateData.assignees = updates.assignees;
-  if (updates.owner !== undefined && updates.owner && updates.owner.trim() !== '') {
+  if (
+    updates.owner !== undefined &&
+    updates.owner &&
+    updates.owner.trim() !== ''
+  ) {
     updateData.owner_id = updates.owner;
   }
-  
+
   // Always update the timestamp
   updateData.updated_at = new Date().toISOString();
 
   const client = authenticatedClient || supabase();
+  try {
+    UpdateMetricCardSchema.parse(updateData as unknown);
+  } catch (error) {
+    console.error('Validation error updating metric card:', error);
+    throw error;
+  }
   const { data, error } = await client
     .from('metric_cards')
     .update(updateData)
@@ -136,10 +165,7 @@ export async function deleteMetricCard(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
-  const { error } = await client
-    .from('metric_cards')
-    .delete()
-    .eq('id', id);
+  const { error } = await client.from('metric_cards').delete().eq('id', id);
 
   if (error) {
     console.error('Error deleting metric card:', error);
@@ -168,16 +194,16 @@ export async function getProjectMetricCards(
 
 // Update metric card position
 export async function updateMetricCardPosition(
-  id: string, 
+  id: string,
   position: { x: number; y: number },
   authenticatedClient?: SupabaseClient<Database>
 ) {
   console.log(`💾 Updating position for metric card ${id}:`, position);
-  
+
   const client = authenticatedClient || supabase();
   const { data, error } = await client
     .from('metric_cards')
-    .update({ 
+    .update({
       position_x: position.x,
       position_y: position.y,
       updated_at: new Date().toISOString(),

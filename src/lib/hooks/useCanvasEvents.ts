@@ -3,20 +3,19 @@
  * Centralized event handling logic for the CanvasPage component
  */
 
-import { useCallback, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import type { Node, Edge, Connection } from "@xyflow/react";
-import { useReactFlow } from "@xyflow/react";
-import { toast } from "sonner";
-import { useCanvasStore } from "@/lib/stores";
-import { useEvidenceStore } from "@/lib/stores/evidenceStore";
-import { useCanvasStateMachine } from "@/lib/hooks/useCanvasStateMachine";
-import { useCanvasViewportSync } from "@/lib/hooks/useCanvasViewportSync";
-import { generateUUID } from "@/lib/utils/validation";
-import { applyAutoLayout } from "@/lib/utils/autoLayout";
-import { applyFilters, type FilterOptions } from "@/lib/utils/filterUtils";
-import type { CanvasPageState } from "./useCanvasPageState";
-import type { EvidenceItem, WhiteboardOverlayHandle } from "@/lib/types";
+import { useCanvasStateMachine } from '@/lib/hooks/useCanvasStateMachine';
+import { useCanvasViewportSync } from '@/lib/hooks/useCanvasViewportSync';
+import { useAppStore, useCanvasStore } from '@/lib/stores';
+import { useEvidenceStore } from '@/lib/stores/evidenceStore';
+import type { EvidenceItem } from '@/lib/types';
+import { applyAutoLayout } from '@/lib/utils/autoLayout';
+import { applyFilters, type FilterOptions } from '@/lib/utils/filterUtils';
+import type { Node } from '@xyflow/react';
+import { useReactFlow } from '@xyflow/react';
+import { useCallback, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import type { CanvasPageState } from './useCanvasPageState';
 
 interface UseCanvasEventsProps {
   state: CanvasPageState;
@@ -51,6 +50,9 @@ export function useCanvasEvents({
   // Evidence store functions
   const { addEvidence } = useEvidenceStore();
 
+  // App store functions
+  const { user } = useAppStore();
+
   // React Flow functions
   const {
     screenToFlowPosition,
@@ -82,10 +84,10 @@ export function useCanvasEvents({
 
   // Selection Panel handlers
   const handleGroupSelectedNodes = useCallback(async () => {
-    console.log("🎯 handleGroupSelectedNodes called with:", selectedNodeIds);
+    console.log('🎯 handleGroupSelectedNodes called with:', selectedNodeIds);
 
     if (selectedNodeIds.length < 2) {
-      toast.error("At least 2 nodes must be selected to create a group");
+      toast.error('At least 2 nodes must be selected to create a group');
       return;
     }
 
@@ -95,14 +97,14 @@ export function useCanvasEvents({
       clearSelection();
       state.setSelectedGroupIds([]);
     } catch (error) {
-      console.error("❌ Failed to group nodes:", error);
-      toast.error("Failed to group nodes. Please try again.");
+      console.error('❌ Failed to group nodes:', error);
+      toast.error('Failed to group nodes. Please try again.');
     }
   }, [groupSelectedNodes, selectedNodeIds, clearSelection, state]);
 
   const handleUngroupSelectedGroups = useCallback(async () => {
     if (state.selectedGroupIds.length === 0) {
-      toast.error("No groups selected for ungrouping");
+      toast.error('No groups selected for ungrouping');
       return;
     }
 
@@ -114,8 +116,8 @@ export function useCanvasEvents({
       clearSelection();
       state.setSelectedGroupIds([]);
     } catch (error) {
-      console.error("❌ Failed to ungroup nodes:", error);
-      toast.error("Failed to ungroup nodes. Please try again.");
+      console.error('❌ Failed to ungroup nodes:', error);
+      toast.error('Failed to ungroup nodes. Please try again.');
     }
   }, [ungroupSelectedGroups, state, clearSelection]);
 
@@ -137,14 +139,14 @@ export function useCanvasEvents({
       const totalDeleted =
         allSelectedIds.length + state.selectedGroupIds.length;
       toast.success(
-        `✅ Deleted ${totalDeleted} item${totalDeleted !== 1 ? "s" : ""} successfully`
+        `✅ Deleted ${totalDeleted} item${totalDeleted !== 1 ? 's' : ''} successfully`
       );
 
       clearSelection();
       state.setSelectedGroupIds([]);
     } catch (error) {
-      console.error("❌ Failed to delete selected items:", error);
-      toast.error("Failed to delete selected items. Please try again.");
+      console.error('❌ Failed to delete selected items:', error);
+      toast.error('Failed to delete selected items. Please try again.');
     }
   }, [
     selectedNodeIds,
@@ -158,7 +160,7 @@ export function useCanvasEvents({
 
   const handleDuplicateSelectedItems = useCallback(() => {
     // TODO: Implement duplicate functionality
-    console.log("Duplicate functionality not yet implemented");
+    console.log('Duplicate functionality not yet implemented');
   }, []);
 
   const handleOpenSelectedSettings = useCallback(() => {
@@ -182,18 +184,18 @@ export function useCanvasEvents({
     // Create a new general evidence item
     const newEvidence: EvidenceItem = {
       id: `evidence_${Date.now()}`,
-      title: "New Evidence",
-      type: "Analysis",
-      date: new Date().toISOString().split("T")[0],
-      owner: "Current User", // TODO: Get from auth
-      summary: "Add your evidence summary here",
-      hypothesis: "",
-      impactOnConfidence: "",
+      title: 'New Evidence',
+      type: 'Analysis',
+      date: new Date().toISOString().split('T')[0],
+      owner: user?.email || 'Anonymous User',
+      summary: 'Add your evidence summary here',
+      hypothesis: '',
+      impactOnConfidence: '',
       createdAt: new Date().toISOString(),
-      createdBy: "current-user", // TODO: Get from auth
+      createdBy: user?.id || 'anonymous-user',
       context: {
-        type: "general",
-        targetName: "Canvas Evidence",
+        type: 'general',
+        targetName: 'Canvas Evidence',
       },
       position: { x: centerX, y: centerY }, // Center position
       isVisible: true,
@@ -205,10 +207,10 @@ export function useCanvasEvents({
       addEvidence(newEvidence);
 
       // Show success message
-      toast.success("Evidence added to canvas");
+      toast.success('Evidence added to canvas');
     } catch (error) {
-      console.error("❌ Error adding evidence:", error);
-      toast.error("Failed to add evidence");
+      console.error('❌ Error adding evidence:', error);
+      toast.error('Failed to add evidence');
     }
   }, [addEvidence, state]);
 
@@ -231,7 +233,7 @@ export function useCanvasEvents({
 
   // Layout application
   const handleApplyLayout = useCallback(
-    (direction: "TB" | "BT" | "LR" | "RL") => {
+    (direction: 'TB' | 'BT' | 'LR' | 'RL') => {
       state.setCurrentLayoutDirection(direction);
 
       // Persist layout direction to canvas settings
@@ -248,7 +250,7 @@ export function useCanvasEvents({
             id: node.id,
             position: node.position,
             data: { card: node },
-            type: "metricCard",
+            type: 'metricCard',
           })),
           canvas.edges.map((edge) => ({
             id: edge.id,
@@ -280,7 +282,7 @@ export function useCanvasEvents({
 
   // Settings and sheets handlers
   const handleOpenSettingsSheet = useCallback(
-    (cardId: string, tab: string = "data") => {
+    (cardId: string, tab: string = 'data') => {
       state.setSettingsCardId(cardId);
       state.setSettingsInitialTab(tab);
       state.setIsSettingsSheetOpen(true);
@@ -294,7 +296,7 @@ export function useCanvasEvents({
   }, [state]);
 
   const handleSwitchToCard = useCallback(
-    (cardId: string, tab: string = "data") => {
+    (cardId: string, tab: string = 'data') => {
       state.setSettingsCardId(cardId);
       state.setSettingsInitialTab(tab);
     },
@@ -338,13 +340,13 @@ export function useCanvasEvents({
         const cy = abs.y + height / 2;
         setCenter(cx, cy, { zoom: 1.2, duration: 500 });
       } catch (err) {
-        console.warn("collab:navigate setCenter failed", err);
+        console.warn('collab:navigate setCenter failed', err);
       }
     };
 
-    window.addEventListener("collab:navigate", onCollabNavigate as any);
+    window.addEventListener('collab:navigate', onCollabNavigate as any);
     return () =>
-      window.removeEventListener("collab:navigate", onCollabNavigate as any);
+      window.removeEventListener('collab:navigate', onCollabNavigate as any);
   }, [setCenter]);
 
   // Listen for temp node additions from AddNodeButton
@@ -355,8 +357,8 @@ export function useCanvasEvents({
         state.setExtraNodes((prev) => [...prev, node]);
       }
     };
-    window.addEventListener("rf:addTempNode", handler as any);
-    return () => window.removeEventListener("rf:addTempNode", handler as any);
+    window.addEventListener('rf:addTempNode', handler as any);
+    return () => window.removeEventListener('rf:addTempNode', handler as any);
   }, [state]);
 
   return {

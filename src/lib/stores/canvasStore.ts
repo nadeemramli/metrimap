@@ -659,7 +659,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             oldValue: existingEdge.weight,
             newValue: updates.weight,
             description: `Relationship strength changed from ${existingEdge.weight}% to ${updates.weight}%`,
-            userId: 'current-user', // TODO: Get from auth context
+            userId: useAppStore.getState().user?.id || 'anonymous-user',
           });
         }
 
@@ -674,7 +674,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             oldValue: existingEdge.confidence,
             newValue: updates.confidence,
             description: `Confidence level changed from ${existingEdge.confidence} to ${updates.confidence}`,
-            userId: 'current-user',
+            userId: useAppStore.getState().user?.id || 'anonymous-user',
           });
         }
 
@@ -686,7 +686,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             oldValue: existingEdge.type,
             newValue: updates.type,
             description: `Relationship type changed from ${existingEdge.type} to ${updates.type}`,
-            userId: 'current-user',
+            userId: useAppStore.getState().user?.id || 'anonymous-user',
           });
         }
 
@@ -704,7 +704,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             oldValue: oldCount,
             newValue: newCount,
             description: `Evidence updated: ${oldCount} → ${newCount} items`,
-            userId: 'current-user',
+            userId: useAppStore.getState().user?.id || 'anonymous-user',
           });
         }
 
@@ -1341,12 +1341,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
               title: 'Automatic Dimension Decomposition',
               type: 'Analysis',
               date: new Date().toISOString(),
-              owner: 'system', // TODO: Use actual user ID
+              owner: 'system',
               summary: evidenceSummary,
               impactOnConfidence:
                 'This relationship was automatically generated during metric decomposition.',
               createdAt: new Date().toISOString(),
-              createdBy: 'system', // TODO: Use actual user ID
+              createdBy: 'system',
             },
           ],
           createdAt: new Date().toISOString(),

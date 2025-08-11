@@ -1,29 +1,31 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import EditorJS from "@editorjs/editorjs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Save, ArrowLeft, Maximize2, Minimize2 } from "lucide-react";
-import { useEvidenceStore } from "@/lib/stores/evidenceStore";
-import type { EvidenceItem } from "@/lib/types";
+} from '@/components/ui/select';
 import {
   createEditorJSInstance,
   validateAndMigrateEditorData,
-} from "@/lib/editorjs-config";
-import { toast } from "sonner";
+} from '@/lib/editorjs-config';
+import { useAppStore } from '@/lib/stores/appStore';
+import { useEvidenceStore } from '@/lib/stores/evidenceStore';
+import type { EvidenceItem } from '@/lib/types';
+import EditorJS from '@editorjs/editorjs';
+import { ArrowLeft, Maximize2, Minimize2, Save } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export default function EvidencePage() {
   const { evidenceId } = useParams();
   const navigate = useNavigate();
   const { getEvidenceById, addEvidence, updateEvidence } = useEvidenceStore();
+  const { user } = useAppStore();
 
   const initialEvidence = evidenceId ? getEvidenceById(evidenceId) : null;
 
@@ -34,13 +36,13 @@ export default function EvidencePage() {
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [formData, setFormData] = useState<Partial<EvidenceItem>>({
     id: initialEvidence?.id || `evidence_${Date.now()}`,
-    title: initialEvidence?.title || "",
-    type: initialEvidence?.type || "Analysis",
-    date: initialEvidence?.date || new Date().toISOString().split("T")[0],
-    owner: initialEvidence?.owner || "",
-    link: initialEvidence?.link || "",
-    hypothesis: initialEvidence?.hypothesis || "",
-    impactOnConfidence: initialEvidence?.impactOnConfidence || "",
+    title: initialEvidence?.title || '',
+    type: initialEvidence?.type || 'Analysis',
+    date: initialEvidence?.date || new Date().toISOString().split('T')[0],
+    owner: initialEvidence?.owner || '',
+    link: initialEvidence?.link || '',
+    hypothesis: initialEvidence?.hypothesis || '',
+    impactOnConfidence: initialEvidence?.impactOnConfidence || '',
   });
 
   const handleSave = useCallback(async () => {
@@ -52,19 +54,19 @@ export default function EvidencePage() {
 
       const updated: EvidenceItem = {
         id: initialEvidence?.id || (formData.id as string),
-        title: formData.title || "",
-        type: formData.type || "Analysis",
-        date: formData.date || new Date().toISOString().split("T")[0],
-        owner: formData.owner || "",
-        link: formData.link || "",
-        hypothesis: formData.hypothesis || "",
-        impactOnConfidence: formData.impactOnConfidence || "",
-        summary: formData.title || "",
-        createdBy: initialEvidence?.createdBy || "current-user",
+        title: formData.title || '',
+        type: formData.type || 'Analysis',
+        date: formData.date || new Date().toISOString().split('T')[0],
+        owner: formData.owner || '',
+        link: formData.link || '',
+        hypothesis: formData.hypothesis || '',
+        impactOnConfidence: formData.impactOnConfidence || '',
+        summary: formData.title || '',
+        createdBy: initialEvidence?.createdBy || user?.id || 'anonymous-user',
         createdAt: initialEvidence?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         content: validatedContent,
-        context: initialEvidence?.context || { type: "general" },
+        context: initialEvidence?.context || { type: 'general' },
         position: initialEvidence?.position,
         isVisible: initialEvidence?.isVisible ?? true,
         isExpanded: initialEvidence?.isExpanded ?? false,
@@ -77,10 +79,10 @@ export default function EvidencePage() {
         addEvidence(updated);
       }
 
-      toast.success("Evidence saved successfully");
+      toast.success('Evidence saved successfully');
     } catch (error) {
-      console.error("Error saving evidence:", error);
-      toast.error("Failed to save evidence");
+      console.error('Error saving evidence:', error);
+      toast.error('Failed to save evidence');
     } finally {
       setIsLoading(false);
     }
@@ -101,12 +103,12 @@ export default function EvidencePage() {
         data: initialEvidence?.content,
         placeholder: "Write your evidence... Press '/' for commands",
         minHeight: 400,
-        onReady: () => console.log("Evidence full page editor ready"),
-        onError: (e) => console.error("Editor error:", e),
+        onReady: () => console.log('Evidence full page editor ready'),
+        onError: (e) => console.error('Editor error:', e),
       });
       editorRef.current = editor;
     } catch (e) {
-      console.error("Failed to init editor:", e);
+      console.error('Failed to init editor:', e);
     }
 
     return () => {
@@ -147,11 +149,11 @@ export default function EvidencePage() {
             </SelectTrigger>
             <SelectContent>
               {[
-                "Experiment",
-                "Analysis",
-                "Notebook",
-                "External Research",
-                "User Interview",
+                'Experiment',
+                'Analysis',
+                'Notebook',
+                'External Research',
+                'User Interview',
               ].map((t) => (
                 <SelectItem key={t} value={t}>
                   {t}
@@ -162,7 +164,7 @@ export default function EvidencePage() {
           <Button
             variant="outline"
             onClick={() => setIsFullscreen((s) => !s)}
-            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >
             {isFullscreen ? (
               <Minimize2 className="h-4 w-4" />
@@ -172,7 +174,7 @@ export default function EvidencePage() {
           </Button>
           <Button onClick={handleSave} disabled={isLoading || !formData.title}>
             <Save className="h-4 w-4 mr-2" />
-            {isLoading ? "Saving..." : "Save"}
+            {isLoading ? 'Saving...' : 'Save'}
           </Button>
         </div>
       </div>
@@ -221,7 +223,7 @@ export default function EvidencePage() {
         <div
           ref={containerRef}
           className="h-full codex-editor"
-          style={{ minHeight: "70vh" }}
+          style={{ minHeight: '70vh' }}
         />
       </div>
     </div>

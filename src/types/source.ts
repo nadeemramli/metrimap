@@ -1,44 +1,55 @@
 export interface DataSource {
   id: string;
-  name: string;
-  system: string;
-  status: 'connected' | 'disconnected' | 'syncing' | 'error';
-  quality: 'high' | 'medium' | 'low';
+  metricName: string;
+  sourceSystem: string;
+  eventName: string;
+  actor: string;
+  trigger: string;
+  status: 'Planned' | 'Instrumented' | 'Needs QA' | 'Live';
+  lastSync: string | null;
+  dataQuality: number | null;
   recordsToday: number;
-  lastSync: string;
-  description?: string;
+  owner: string;
+  description: string;
+  tags: string[];
+  compliance: string[];
 }
 
 export interface ApiConnection {
   id: string;
   name: string;
-  endpoint: string;
-  status: 'active' | 'inactive' | 'error';
-  method: string;
-  responseTime: number;
-  successRate: number;
-  lastCall: string;
-  rateLimit?: string;
+  type: string;
+  status: 'Connected' | 'Warning' | 'Disconnected';
+  lastPing: string;
+  responseTime: number | null;
+  uptime: number;
+  requestsToday: number;
+  errorRate: number;
+  version: string;
 }
 
 export interface GovernancePolicy {
   id: string;
   name: string;
-  type: 'privacy' | 'security' | 'compliance' | 'quality';
-  status: 'active' | 'draft' | 'archived';
+  type: string;
+  status: 'Active' | 'Under Review' | 'Inactive';
+  coverage: number;
   lastReview: string;
+  nextReview: string;
   owner: string;
-  description?: string;
+  compliance: string[];
 }
 
 export type TabType = 'sources' | 'apis' | 'governance' | 'monitoring';
 export type StatusFilter =
   | 'all'
+  | 'planned'
+  | 'instrumented'
+  | 'needs qa'
+  | 'live'
   | 'connected'
+  | 'warning'
   | 'disconnected'
-  | 'syncing'
-  | 'error'
   | 'active'
-  | 'inactive'
-  | 'draft'
-  | 'archived';
+  | 'under review'
+  | 'inactive';

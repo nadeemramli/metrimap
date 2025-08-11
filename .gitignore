@@ -33,3 +33,7 @@ docs/environment/ENVIRONMENT_SECRETS.md
 
 *storybook.log
 storybook-static
+
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc

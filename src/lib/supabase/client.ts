@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "./types";
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from './types';
 
 // Get environment variables with validation
 const getSupabaseConfig = () => {
@@ -16,36 +16,36 @@ const getSupabaseConfig = () => {
   const supabaseUrl = viteSupabaseUrl || nextPublicSupabaseUrl;
   const supabaseAnonKey = viteSupabaseAnonKey || nextPublicSupabaseAnonKey;
 
-  console.log("🔧 Environment variables check:", {
-    VITE_SUPABASE_URL: viteSupabaseUrl ? "Set" : "Not set",
-    VITE_SUPABASE_ANON_KEY: viteSupabaseAnonKey ? "Set" : "Not set",
-    NEXT_PUBLIC_SUPABASE_URL: nextPublicSupabaseUrl ? "Set" : "Not set",
+  console.log('🔧 Environment variables check:', {
+    VITE_SUPABASE_URL: viteSupabaseUrl ? 'Set' : 'Not set',
+    VITE_SUPABASE_ANON_KEY: viteSupabaseAnonKey ? 'Set' : 'Not set',
+    NEXT_PUBLIC_SUPABASE_URL: nextPublicSupabaseUrl ? 'Set' : 'Not set',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: nextPublicSupabaseAnonKey
-      ? "Set"
-      : "Not set",
-    finalUrl: supabaseUrl ? "Set" : "Not set",
-    finalKey: supabaseAnonKey ? "Set" : "Not set",
+      ? 'Set'
+      : 'Not set',
+    finalUrl: supabaseUrl ? 'Set' : 'Not set',
+    finalKey: supabaseAnonKey ? 'Set' : 'Not set',
   });
 
   if (!supabaseUrl) {
     console.error(
-      "❌ Supabase URL is required. Please check your environment variables."
+      '❌ Supabase URL is required. Please check your environment variables.'
     );
     throw new Error(
-      "Supabase URL is required. Please check your environment variables."
+      'Supabase URL is required. Please check your environment variables.'
     );
   }
 
   if (!supabaseAnonKey) {
     console.error(
-      "❌ Supabase anon key is required. Please check your environment variables."
+      '❌ Supabase anon key is required. Please check your environment variables.'
     );
     throw new Error(
-      "Supabase anon key is required. Please check your environment variables."
+      'Supabase anon key is required. Please check your environment variables.'
     );
   }
 
-  console.log("✅ Environment variables loaded successfully");
+  console.log('✅ Environment variables loaded successfully');
   return { supabaseUrl, supabaseAnonKey };
 };
 
@@ -60,13 +60,13 @@ const isDevelopmentEnvironment = () => {
 
   // Check for local development URLs
   const isLocal =
-    supabaseUrl.includes("127.0.0.1") ||
-    supabaseUrl.includes("localhost") ||
-    supabaseUrl.includes("0.0.0.0");
+    supabaseUrl.includes('127.0.0.1') ||
+    supabaseUrl.includes('localhost') ||
+    supabaseUrl.includes('0.0.0.0');
 
   // Only log once to avoid spam
   if (!_environmentDetected) {
-    console.log("🔧 Environment detection:", {
+    console.log('🔧 Environment detection:', {
       supabaseUrl,
       isLocal,
       isDevelopment: isLocal,
@@ -85,7 +85,7 @@ let clerkClient: ReturnType<typeof createClient<Database>> | null = null;
 // Create the default Supabase client (singleton)
 export const supabase = () => {
   if (!defaultClient) {
-    console.log("🔧 Creating default Supabase client (singleton)");
+    console.log('🔧 Creating default Supabase client (singleton)');
     const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
     defaultClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
   }
@@ -97,7 +97,7 @@ export const supabase = () => {
 export const createClerkSupabaseClient = (
   getToken: () => Promise<string | null>
 ) => {
-  console.log("🔧 Creating Clerk Supabase client with NATIVE integration");
+  console.log('🔧 Creating Clerk Supabase client with NATIVE integration');
   const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
 
   return createClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -108,7 +108,7 @@ export const createClerkSupabaseClient = (
         const token = await getToken();
         return token;
       } catch (error) {
-        console.error("Error getting Clerk access token:", error);
+        console.error('Error getting Clerk access token:', error);
         return null;
       }
     },
@@ -118,7 +118,7 @@ export const createClerkSupabaseClient = (
 // Alternative: Create a single Clerk client without function dependency
 export const getClerkSupabaseClient = () => {
   if (!clerkClient) {
-    console.log("🔧 Creating Clerk Supabase client (singleton)");
+    console.log('🔧 Creating Clerk Supabase client (singleton)');
     const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
     clerkClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
   }
@@ -128,7 +128,7 @@ export const getClerkSupabaseClient = () => {
 // Development-specific client that bypasses Clerk authentication and RLS (singleton)
 export const createDevSupabaseClient = () => {
   if (!devClient) {
-    console.log("🔧 Creating development Supabase client (singleton)");
+    console.log('🔧 Creating development Supabase client (singleton)');
     const { supabaseUrl } = getSupabaseConfig();
 
     // For local development, use service role key to bypass RLS
@@ -137,8 +137,17 @@ export const createDevSupabaseClient = () => {
 
     if (isLocal) {
       // Use service role key for local development to bypass RLS
-      const serviceRoleKey =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
+      // Get from environment variable instead of hardcoded value
+      const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+      if (!serviceRoleKey) {
+        console.error(
+          '❌ VITE_SUPABASE_SERVICE_ROLE_KEY is required for local development'
+        );
+        throw new Error(
+          'VITE_SUPABASE_SERVICE_ROLE_KEY is required for local development. Please add it to your .env file.'
+        );
+      }
 
       devClient = createClient<Database>(supabaseUrl, serviceRoleKey, {
         auth: {
@@ -163,19 +172,19 @@ export const createDevSupabaseClient = () => {
 // Test function to verify Supabase connection
 export const testSupabaseConnection = async () => {
   try {
-    console.log("🧪 Testing Supabase connection...");
+    console.log('🧪 Testing Supabase connection...');
     const client = supabase();
-    const { error } = await client.from("users").select("count").limit(1);
+    const { error } = await client.from('users').select('count').limit(1);
 
     if (error) {
-      console.error("❌ Supabase connection test failed:", error);
+      console.error('❌ Supabase connection test failed:', error);
       return false;
     }
 
-    console.log("✅ Supabase connection test successful");
+    console.log('✅ Supabase connection test successful');
     return true;
   } catch (error) {
-    console.error("❌ Supabase connection test failed:", error);
+    console.error('❌ Supabase connection test failed:', error);
     return false;
   }
 };
@@ -185,19 +194,19 @@ export const testEnvironmentDetection = () => {
   const currentUrl = import.meta.env.VITE_SUPABASE_URL;
   const isLocal = isDevelopmentEnvironment();
 
-  console.log("🧪 Environment detection test:", {
+  console.log('🧪 Environment detection test:', {
     currentUrl,
     isLocal,
-    environment: isLocal ? "Local Development" : "Remote (Staging/Production)",
+    environment: isLocal ? 'Local Development' : 'Remote (Staging/Production)',
     expectedBehavior: isLocal
-      ? "Authentication bypassed, RLS bypassed"
-      : "Clerk auth required, normal RLS",
+      ? 'Authentication bypassed, RLS bypassed'
+      : 'Clerk auth required, normal RLS',
   });
 
   return {
     url: currentUrl,
     isLocal,
-    environment: isLocal ? "Local Development" : "Remote (Staging/Production)",
+    environment: isLocal ? 'Local Development' : 'Remote (Staging/Production)',
   };
 };
 
@@ -208,7 +217,7 @@ export const getCurrentUser = async () => {
     error,
   } = await supabase().auth.getUser();
   if (error) {
-    console.error("Error getting current user:", error);
+    console.error('Error getting current user:', error);
     return null;
   }
   return user;

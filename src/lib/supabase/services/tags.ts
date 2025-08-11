@@ -1,3 +1,4 @@
+import { CreateTagSchema, UpdateTagSchema } from '@/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../client';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
@@ -41,6 +42,12 @@ export async function createTag(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
+  try {
+    CreateTagSchema.parse(tag as unknown);
+  } catch (error) {
+    console.error('Validation error creating tag:', error);
+    throw error;
+  }
   const { data, error } = await client
     .from('tags')
     .insert({
@@ -66,6 +73,12 @@ export async function updateTag(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
+  try {
+    UpdateTagSchema.parse(updates as unknown);
+  } catch (error) {
+    console.error('Validation error updating tag:', error);
+    throw error;
+  }
   const { data, error } = await client
     .from('tags')
     .update({
