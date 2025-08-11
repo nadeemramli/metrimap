@@ -14,8 +14,8 @@ export const projectsCreateManyInputObjectSchema: z.ZodType<Prisma.projectsCreat
   description: z.string().optional().nullable(),
   tags: z.union([z.lazy(() => projectsCreatetagsInputObjectSchema), z.string().array()]).optional(),
   settings: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   last_modified_by: z.string().optional().nullable(),
   created_by: z.string(),
   is_public: z.boolean().optional()
@@ -25,8 +25,8 @@ export const projectsCreateManyInputObjectZodSchema = z.object({
   description: z.string().optional().nullable(),
   tags: z.union([z.lazy(() => projectsCreatetagsInputObjectSchema), z.string().array()]).optional(),
   settings: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   last_modified_by: z.string().optional().nullable(),
   created_by: z.string(),
   is_public: z.boolean().optional()

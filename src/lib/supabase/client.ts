@@ -140,6 +140,19 @@ export const createDevSupabaseClient = () => {
       // Get from environment variable instead of hardcoded value
       const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
+      // Non-secret diagnostics to help during local setup
+      // Do NOT log the actual key; only indicate presence
+      if (!serviceRoleKey) {
+        console.warn('🔎 Vite env debug:', {
+          VITE_SUPABASE_URL: Boolean(import.meta.env.VITE_SUPABASE_URL),
+          VITE_SUPABASE_ANON_KEY: Boolean(
+            import.meta.env.VITE_SUPABASE_ANON_KEY
+          ),
+          VITE_SUPABASE_SERVICE_ROLE_KEY: false,
+          note: 'If false, ensure .env is at project root, the dev server was restarted after editing .env, and the variable name is exact.',
+        });
+      }
+
       if (!serviceRoleKey) {
         console.error(
           '❌ VITE_SUPABASE_SERVICE_ROLE_KEY is required for local development'

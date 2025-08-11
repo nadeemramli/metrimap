@@ -9,7 +9,7 @@ export const relationship_tagsWhereInputObjectSchema: z.ZodType<Prisma.relations
   NOT: z.union([z.lazy(() => relationship_tagsWhereInputObjectSchema), z.lazy(() => relationship_tagsWhereInputObjectSchema).array()]).optional(),
   relationship_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   tag_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();
 export const relationship_tagsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => relationship_tagsWhereInputObjectSchema), z.lazy(() => relationship_tagsWhereInputObjectSchema).array()]).optional(),
@@ -17,5 +17,5 @@ export const relationship_tagsWhereInputObjectZodSchema = z.object({
   NOT: z.union([z.lazy(() => relationship_tagsWhereInputObjectSchema), z.lazy(() => relationship_tagsWhereInputObjectSchema).array()]).optional(),
   relationship_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   tag_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();

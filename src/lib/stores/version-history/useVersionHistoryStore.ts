@@ -8,13 +8,13 @@ import {
 import type { CanvasProject } from '../../types';
 import type {
   CanvasSnapshot,
-  DEFAULT_VERSION_HISTORY_CONFIG,
   HistoryStats,
   SnapshotComparison,
   SnapshotMetadata,
   VersionHistoryConfig,
   VersionHistoryStore,
 } from '../../types/version-history';
+import { DEFAULT_VERSION_HISTORY_CONFIG } from '../../types/version-history';
 import { useAppStore } from '../appStore';
 import { useCanvasStore } from '../canvas/useCanvasStore';
 

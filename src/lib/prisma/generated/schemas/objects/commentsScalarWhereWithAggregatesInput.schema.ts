@@ -14,8 +14,8 @@ export const commentsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Prism
   author_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   content: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   resolved: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
-  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional(),
-  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();
 export const commentsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => commentsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => commentsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -25,6 +25,6 @@ export const commentsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   author_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   content: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   resolved: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
-  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional(),
-  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();

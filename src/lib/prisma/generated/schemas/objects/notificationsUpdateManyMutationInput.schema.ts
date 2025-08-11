@@ -19,7 +19,7 @@ export const notificationsUpdateManyMutationInputObjectSchema: z.ZodType<Prisma.
   description: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   read: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputObjectSchema)]).optional(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.union([z.date(), z.iso.datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional()
+  created_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional()
 }).strict();
 export const notificationsUpdateManyMutationInputObjectZodSchema = z.object({
   user_id: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
@@ -28,5 +28,5 @@ export const notificationsUpdateManyMutationInputObjectZodSchema = z.object({
   description: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   read: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputObjectSchema)]).optional(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.union([z.date(), z.iso.datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional()
+  created_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional()
 }).strict();

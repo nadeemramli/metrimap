@@ -14,8 +14,8 @@ export const project_collaboratorsScalarWhereWithAggregatesInputObjectSchema: z.
   user_id: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   role: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   permissions: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  invited_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  joined_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  invited_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  joined_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();
 export const project_collaboratorsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => project_collaboratorsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => project_collaboratorsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -25,6 +25,6 @@ export const project_collaboratorsScalarWhereWithAggregatesInputObjectZodSchema 
   user_id: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   role: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   permissions: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  invited_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  joined_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  invited_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  joined_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();

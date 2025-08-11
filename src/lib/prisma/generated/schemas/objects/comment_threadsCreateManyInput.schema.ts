@@ -14,8 +14,8 @@ export const comment_threadsCreateManyInputObjectSchema: z.ZodType<Prisma.commen
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.boolean().optional(),
   created_by: z.string().optional().nullable(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional()
+  created_at: z.union([z.date(), z.string().datetime()]).optional(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional()
 }).strict();
 export const comment_threadsCreateManyInputObjectZodSchema = z.object({
   project_id: z.string(),
@@ -23,6 +23,6 @@ export const comment_threadsCreateManyInputObjectZodSchema = z.object({
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.boolean().optional(),
   created_by: z.string().optional().nullable(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional()
+  created_at: z.union([z.date(), z.string().datetime()]).optional(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional()
 }).strict();

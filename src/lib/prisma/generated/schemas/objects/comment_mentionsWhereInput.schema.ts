@@ -9,7 +9,7 @@ export const comment_mentionsWhereInputObjectSchema: z.ZodType<Prisma.comment_me
   NOT: z.union([z.lazy(() => comment_mentionsWhereInputObjectSchema), z.lazy(() => comment_mentionsWhereInputObjectSchema).array()]).optional(),
   comment_id: z.union([z.lazy(() => UuidFilterObjectSchema), z.string()]).optional(),
   mentioned_user_id: z.union([z.lazy(() => UuidFilterObjectSchema), z.string()]).optional(),
-  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();
 export const comment_mentionsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => comment_mentionsWhereInputObjectSchema), z.lazy(() => comment_mentionsWhereInputObjectSchema).array()]).optional(),
@@ -17,5 +17,5 @@ export const comment_mentionsWhereInputObjectZodSchema = z.object({
   NOT: z.union([z.lazy(() => comment_mentionsWhereInputObjectSchema), z.lazy(() => comment_mentionsWhereInputObjectSchema).array()]).optional(),
   comment_id: z.union([z.lazy(() => UuidFilterObjectSchema), z.string()]).optional(),
   mentioned_user_id: z.union([z.lazy(() => UuidFilterObjectSchema), z.string()]).optional(),
-  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();

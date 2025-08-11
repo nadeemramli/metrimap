@@ -12,7 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   AlertCircle,
   BarChart3,
-  BookOpen,
   Calendar,
   CheckSquare,
   Clock,
@@ -20,19 +19,13 @@ import {
   Edit,
   ExternalLink,
   FileText,
-  FlaskConical,
-  Globe,
   HelpCircle,
-  Layers,
   MoreVertical,
   Plus,
   RotateCcw,
   Save,
   Trash2,
-  TrendingUp,
   User,
-  Users,
-  Zap,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -40,28 +33,24 @@ import { useParams } from 'react-router-dom';
 import EvidenceDialog from '@/components/evidence/EvidenceDialog';
 import { EnhancedTagInput } from '@/components/ui/enhanced-tag-input';
 import { useWorker } from '@/lib/hooks/useWorker';
-import { useAppStore, useCanvasStore } from '@/lib/stores';
-import { useEvidenceStore } from '@/lib/stores/evidenceStore';
+import { useCanvasStore } from '@/lib/stores';
 import { useProjectsStore } from '@/lib/stores/projectsStore';
 import {
-  getChangelogForTarget,
   logAnalysisRun,
-  logEvidenceAdded,
-  logEvidenceRemoved,
   logRelationshipUpdated,
-  type ChangelogEntry,
 } from '@/lib/supabase/services/changelog';
-import {
-  addTagsToRelationship,
-  getRelationshipTags,
-  removeTagsFromRelationship,
-} from '@/lib/supabase/services/tags';
+
 import type {
   ConfidenceLevel,
-  EvidenceItem,
   Relationship,
   RelationshipType,
 } from '@/lib/types';
+import {
+  getEvidenceTypeIcon,
+  getTypeColor,
+  relationshipTypeOptions,
+} from './constants';
+import { useRelationshipEvidence, useRelationshipTags } from './hooks';
 
 interface RelationshipSheetProps {
   isOpen: boolean;
@@ -69,54 +58,6 @@ interface RelationshipSheetProps {
   relationshipId?: string;
   onSwitchToRelationship?: (relationshipId: string) => void;
 }
-
-const relationshipTypeOptions: Array<{
-  value: RelationshipType;
-  label: string;
-  description: string;
-  icon: any;
-}> = [
-  {
-    value: 'Deterministic',
-    label: 'Deterministic',
-    description: 'Direct causal relationship with predictable outcomes',
-    icon: Zap,
-  },
-  {
-    value: 'Probabilistic',
-    label: 'Probabilistic',
-    description: 'Statistical correlation with probabilistic outcomes',
-    icon: TrendingUp,
-  },
-  {
-    value: 'Causal',
-    label: 'Causal',
-    description: 'Proven causal influence through experimentation',
-    icon: BarChart3,
-  },
-  {
-    value: 'Compositional',
-    label: 'Compositional',
-    description: 'Part-of or hierarchical relationship',
-    icon: Layers,
-  },
-];
-
-const evidenceTypeOptions = [
-  {
-    value: 'Experiment',
-    icon: FlaskConical,
-    color: 'bg-blue-50 text-blue-700',
-  },
-  { value: 'Analysis', icon: FileText, color: 'bg-green-50 text-green-700' },
-  { value: 'Notebook', icon: BookOpen, color: 'bg-purple-50 text-purple-700' },
-  {
-    value: 'External Research',
-    icon: Globe,
-    color: 'bg-orange-50 text-orange-700',
-  },
-  { value: 'User Interview', icon: Users, color: 'bg-pink-50 text-pink-700' },
-];
 
 export default function RelationshipSheet({
   isOpen,
@@ -127,9 +68,7 @@ export default function RelationshipSheet({
   const { canvasId } = useParams();
   const { getEdgeById, persistEdgeUpdate, persistEdgeDelete, getNodeById } =
     useCanvasStore();
-  const { addEvidence, updateEvidence, deleteEvidence } = useEvidenceStore();
   const { getProjectById } = useProjectsStore();
-  const { user } = useAppStore();
   const currentProject = canvasId ? getProjectById(canvasId) : null;
   const relationship = relationshipId ? getEdgeById(relationshipId) : null;
 
@@ -158,15 +97,24 @@ export default function RelationshipSheet({
   const [activeTab, setActiveTab] = useState('settings');
   const [isModified, setIsModified] = useState(false);
 
-  // Evidence dialog state
-  const [isEvidenceDialogOpen, setIsEvidenceDialogOpen] = useState(false);
-  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(
-    null
+  // Evidence management using hook
+  const {
+    selectedEvidence,
+    isDialogOpen: isEvidenceDialogOpen,
+    openDialog: handleOpenEvidenceDialog,
+    closeDialog: handleCloseEvidenceDialog,
+    saveEvidence: handleSaveEvidence,
+    removeEvidence: handleRemoveEvidence,
+    duplicateEvidence: handleDuplicateEvidence,
+    changelog,
+    isLoadingChangelog,
+    refetchChangelog,
+  } = useRelationshipEvidence(
+    relationshipId,
+    canvasId,
+    formData.evidence || [],
+    (evidence) => handleFieldChange('evidence', evidence)
   );
-
-  // Changelog state
-  const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
-  const [isLoadingChangelog, setIsLoadingChangelog] = useState(false);
 
   // Analysis state
   const [analysisResults, setAnalysisResults] = useState<{
@@ -184,10 +132,14 @@ export default function RelationshipSheet({
   const [isRunningAnalysis, setIsRunningAnalysis] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  // Tag state for the new database system
-  const [relationshipTags, setRelationshipTags] = useState<string[]>([]);
-  const [isLoadingTags, setIsLoadingTags] = useState(false);
-  const [isSavingTags, setIsSavingTags] = useState(false);
+  // Tag management using hook
+  const {
+    tags: relationshipTags,
+    isLoading: isLoadingTags,
+    isSaving: isSavingTags,
+    addTag: handleAddTag,
+    removeTag: handleRemoveTag,
+  } = useRelationshipTags(relationshipId);
 
   // Causal checklist state
   const [causalChecklist, setCausalChecklist] = useState([
@@ -250,28 +202,7 @@ export default function RelationshipSheet({
     }
   }, [formData.type, availableTabs, activeTab]);
 
-  // Load tags for this relationship
-  useEffect(() => {
-    const loadTags = async () => {
-      if (!relationshipId) return;
-
-      setIsLoadingTags(true);
-      try {
-        const tags = await getRelationshipTags(relationshipId);
-        setRelationshipTags(tags);
-      } catch (error) {
-        console.error(
-          `Failed to load tags for relationship ${relationshipId}:`,
-          error
-        );
-        setRelationshipTags([]);
-      } finally {
-        setIsLoadingTags(false);
-      }
-    };
-
-    loadTags();
-  }, [relationshipId]);
+  // Tags are now loaded by the useRelationshipTags hook
 
   // Update form data when relationship changes
   useEffect(() => {
@@ -286,187 +217,18 @@ export default function RelationshipSheet({
     }
   }, [relationship]);
 
-  // Fetch changelog when relationship changes
-  useEffect(() => {
-    const fetchChangelog = async () => {
-      if (relationship?.id) {
-        setIsLoadingChangelog(true);
-        try {
-          const entries = await getChangelogForTarget(
-            relationship.id,
-            'relationship'
-          );
-          setChangelog(entries);
-        } catch (error) {
-          console.error('Failed to fetch changelog:', error);
-        } finally {
-          setIsLoadingChangelog(false);
-        }
-      }
-    };
-
-    if (isOpen && relationship?.id) {
-      fetchChangelog();
-    }
-  }, [isOpen, relationship?.id]);
+  // Changelog is now loaded by the useRelationshipEvidence hook
 
   const handleFieldChange = (field: keyof Relationship, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setIsModified(true);
   };
 
-  // Tag management functions
-  const handleAddTag = async (tag: string) => {
-    if (!relationshipId) return;
+  // Tag management functions are now provided by useRelationshipTags hook
 
-    setIsSavingTags(true);
-    try {
-      await addTagsToRelationship(relationshipId, [tag]);
-      // Reload tags to get the updated list
-      const updatedTags = await getRelationshipTags(relationshipId);
-      setRelationshipTags(updatedTags);
-    } catch (error) {
-      console.error('Failed to add tag:', error);
-    } finally {
-      setIsSavingTags(false);
-    }
-  };
+  // Evidence management functions are now provided by useRelationshipEvidence hook
 
-  const handleRemoveTag = async (tagToRemove: string) => {
-    if (!relationshipId) return;
-
-    setIsSavingTags(true);
-    try {
-      await removeTagsFromRelationship(relationshipId, [tagToRemove]);
-      // Reload tags to get the updated list
-      const updatedTags = await getRelationshipTags(relationshipId);
-      setRelationshipTags(updatedTags);
-    } catch (error) {
-      console.error('Failed to remove tag:', error);
-    } finally {
-      setIsSavingTags(false);
-    }
-  };
-
-  // Evidence management functions
-  const handleOpenEvidenceDialog = (evidence?: EvidenceItem) => {
-    setSelectedEvidence(evidence || null);
-    setIsEvidenceDialogOpen(true);
-  };
-
-  const handleCloseEvidenceDialog = () => {
-    setIsEvidenceDialogOpen(false);
-    setSelectedEvidence(null);
-  };
-
-  const handleSaveEvidence = async (evidence: EvidenceItem) => {
-    if (selectedEvidence) {
-      // Update existing evidence
-      updateEvidence(evidence.id, evidence);
-      // Update the evidence in the relationship
-      const updatedEvidence =
-        formData.evidence?.map((e) => (e.id === evidence.id ? evidence : e)) ||
-        [];
-      handleFieldChange('evidence', updatedEvidence);
-    } else {
-      // Add new evidence to global store with relationship context
-      const evidenceWithContext: EvidenceItem = {
-        ...evidence,
-        context: {
-          type: 'relationship',
-          targetId: relationship?.id,
-          targetName: `${sourceNode?.title} → ${targetNode?.title}`,
-        },
-      };
-      addEvidence(evidenceWithContext);
-      // Add evidence to relationship
-      handleFieldChange('evidence', [
-        ...(formData.evidence || []),
-        evidenceWithContext,
-      ]);
-
-      // Log evidence addition
-      if (relationship && currentProject) {
-        try {
-          await logEvidenceAdded(
-            relationship.id,
-            `${sourceNode?.title} → ${targetNode?.title}`,
-            evidence.title,
-            evidence.type,
-            currentProject.id,
-            user?.id || 'anonymous-user'
-          );
-
-          // Refresh changelog
-          const entries = await getChangelogForTarget(
-            relationship.id,
-            'relationship'
-          );
-          setChangelog(entries);
-        } catch (error) {
-          console.error('Failed to log evidence addition:', error);
-        }
-      }
-    }
-  };
-
-  const handleRemoveEvidence = async (evidenceId: string) => {
-    const evidenceToRemove = formData.evidence?.find(
-      (e) => e.id === evidenceId
-    );
-
-    // Remove from global evidence store
-    deleteEvidence(evidenceId);
-    // Remove from relationship
-    handleFieldChange(
-      'evidence',
-      formData.evidence?.filter((e) => e.id !== evidenceId) || []
-    );
-
-    // Log evidence removal
-    if (relationship && currentProject && evidenceToRemove) {
-      try {
-        await logEvidenceRemoved(
-          relationship.id,
-          `${sourceNode?.title} → ${targetNode?.title}`,
-          evidenceToRemove.title,
-          currentProject.id,
-          'current-user' // TODO: Get from auth context
-        );
-
-        // Refresh changelog
-        const entries = await getChangelogForTarget(
-          relationship.id,
-          'relationship'
-        );
-        setChangelog(entries);
-      } catch (error) {
-        console.error('Failed to log evidence removal:', error);
-      }
-    }
-  };
-
-  const handleDuplicateEvidence = (evidence: EvidenceItem) => {
-    const duplicate = {
-      ...evidence,
-      id: `evidence_${Date.now()}`,
-      title: `${evidence.title} (Copy)`,
-      createdAt: new Date().toISOString(),
-    };
-    addEvidence(duplicate);
-    handleFieldChange('evidence', [...(formData.evidence || []), duplicate]);
-  };
-
-  // Helper functions for evidence display
-  const getTypeIcon = (type: string) => {
-    const option = evidenceTypeOptions.find((opt) => opt.value === type);
-    return option ? option.icon : FileText;
-  };
-
-  const getTypeColor = (type: string) => {
-    const option = evidenceTypeOptions.find((opt) => opt.value === type);
-    return option ? option.color : 'bg-gray-50 text-gray-700';
-  };
+  // Helper functions for evidence display - now imported from constants
 
   // Function to log analysis runs
   const handleAnalysisRun = async (
@@ -485,11 +247,7 @@ export default function RelationshipSheet({
         );
 
         // Refresh changelog
-        const entries = await getChangelogForTarget(
-          relationship.id,
-          'relationship'
-        );
-        setChangelog(entries);
+        refetchChangelog();
       } catch (error) {
         console.error('Failed to log analysis run:', error);
       }
@@ -633,11 +391,7 @@ export default function RelationshipSheet({
             );
 
             // Refresh changelog
-            const entries = await getChangelogForTarget(
-              relationship.id,
-              'relationship'
-            );
-            setChangelog(entries);
+            refetchChangelog();
           } catch (error) {
             console.error('Failed to log relationship update:', error);
           }
@@ -988,7 +742,7 @@ export default function RelationshipSheet({
                 <div className="space-y-4">
                   {formData.evidence && formData.evidence.length > 0 ? (
                     formData.evidence.map((evidence) => {
-                      const TypeIcon = getTypeIcon(evidence.type);
+                      const TypeIcon = getEvidenceTypeIcon(evidence.type);
                       return (
                         <div
                           key={evidence.id}

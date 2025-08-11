@@ -16,8 +16,8 @@ export const comment_threadsScalarWhereWithAggregatesInputObjectSchema: z.ZodTyp
   context: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
   is_resolved: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
   created_by: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional(),
-  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();
 export const comment_threadsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => comment_threadsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => comment_threadsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -28,6 +28,6 @@ export const comment_threadsScalarWhereWithAggregatesInputObjectZodSchema = z.ob
   context: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
   is_resolved: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
   created_by: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional(),
-  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();

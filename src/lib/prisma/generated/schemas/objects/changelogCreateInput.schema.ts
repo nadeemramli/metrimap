@@ -17,7 +17,7 @@ export const changelogCreateInputObjectSchema: z.ZodType<Prisma.changelogCreateI
   target_name: z.string(),
   description: z.string(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  timestamp: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  timestamp: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();
 export const changelogCreateInputObjectZodSchema = z.object({
   project_id: z.string().optional().nullable(),
@@ -28,5 +28,5 @@ export const changelogCreateInputObjectZodSchema = z.object({
   target_name: z.string(),
   description: z.string(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  timestamp: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  timestamp: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();

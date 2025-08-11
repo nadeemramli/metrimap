@@ -40,6 +40,7 @@ import {
   Search,
   Settings,
   Shield,
+  Trash2,
   TrendingUp,
   Users,
   Wifi,
@@ -145,7 +146,13 @@ export default function SourcePage() {
 
   // Get available systems for filtering
   const availableSystems = useMemo(() => {
-    const systems = new Set(dataSources.map((source) => source.sourceSystem));
+    const systems = new Set(
+      dataSources
+        .map((source) => source.sourceSystem)
+        .filter(
+          (sys): sys is string => typeof sys === 'string' && sys.length > 0
+        )
+    );
     return Array.from(systems);
   }, [dataSources]);
 
@@ -325,7 +332,19 @@ export default function SourcePage() {
     return 'text-red-500';
   };
 
-  const uniqueSystems = [...new Set(dataSources.map((s) => s.sourceSystem))];
+  const uniqueSystems = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          dataSources
+            .map((s) => s.sourceSystem)
+            .filter(
+              (sys): sys is string => typeof sys === 'string' && sys.length > 0
+            )
+        )
+      ),
+    [dataSources]
+  );
 
   // CRUD Operations - Now handled by the unified handlers above
 

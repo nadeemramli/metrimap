@@ -26,8 +26,8 @@ export const metric_cardsWhereInputObjectSchema: z.ZodType<Prisma.metric_cardsWh
   dimensions: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   owner_id: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   assignees: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();
 export const metric_cardsWhereInputObjectZodSchema = z.object({
@@ -48,7 +48,7 @@ export const metric_cardsWhereInputObjectZodSchema = z.object({
   dimensions: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   owner_id: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   assignees: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();

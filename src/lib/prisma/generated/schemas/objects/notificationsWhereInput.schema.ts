@@ -17,7 +17,7 @@ export const notificationsWhereInputObjectSchema: z.ZodType<Prisma.notifications
   description: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   read: z.union([z.lazy(() => BoolFilterObjectSchema), z.boolean()]).optional(),
   metadata: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();
 export const notificationsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => notificationsWhereInputObjectSchema), z.lazy(() => notificationsWhereInputObjectSchema).array()]).optional(),
@@ -29,5 +29,5 @@ export const notificationsWhereInputObjectZodSchema = z.object({
   description: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   read: z.union([z.lazy(() => BoolFilterObjectSchema), z.boolean()]).optional(),
   metadata: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();

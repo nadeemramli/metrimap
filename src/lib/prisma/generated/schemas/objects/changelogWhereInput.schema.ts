@@ -18,7 +18,7 @@ export const changelogWhereInputObjectSchema: z.ZodType<Prisma.changelogWhereInp
   target_name: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   description: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   metadata: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  timestamp: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  timestamp: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();
 export const changelogWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => changelogWhereInputObjectSchema), z.lazy(() => changelogWhereInputObjectSchema).array()]).optional(),
@@ -32,5 +32,5 @@ export const changelogWhereInputObjectZodSchema = z.object({
   target_name: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   description: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   metadata: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  timestamp: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  timestamp: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();

@@ -14,8 +14,8 @@ export const commentsWhereInputObjectSchema: z.ZodType<Prisma.commentsWhereInput
   author_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   content: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   resolved: z.union([z.lazy(() => BoolFilterObjectSchema), z.boolean()]).optional(),
-  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional(),
-  updated_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  updated_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();
 export const commentsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => commentsWhereInputObjectSchema), z.lazy(() => commentsWhereInputObjectSchema).array()]).optional(),
@@ -25,6 +25,6 @@ export const commentsWhereInputObjectZodSchema = z.object({
   author_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   content: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   resolved: z.union([z.lazy(() => BoolFilterObjectSchema), z.boolean()]).optional(),
-  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional(),
-  updated_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  updated_at: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();

@@ -26,8 +26,8 @@ export const metric_cardsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<P
   dimensions: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   owner_id: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   assignees: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
 }).strict();
 export const metric_cardsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
@@ -48,7 +48,7 @@ export const metric_cardsScalarWhereWithAggregatesInputObjectZodSchema = z.objec
   dimensions: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   owner_id: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   assignees: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
 }).strict();

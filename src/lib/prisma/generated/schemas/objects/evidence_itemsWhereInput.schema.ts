@@ -13,14 +13,14 @@ export const evidence_itemsWhereInputObjectSchema: z.ZodType<Prisma.evidence_ite
   relationship_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   title: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   type: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
-  date: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional(),
+  date: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
   owner_id: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   link: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   hypothesis: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   summary: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   impact_on_confidence: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();
 export const evidence_itemsWhereInputObjectZodSchema = z.object({
@@ -30,13 +30,13 @@ export const evidence_itemsWhereInputObjectZodSchema = z.object({
   relationship_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   title: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   type: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
-  date: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional(),
+  date: z.union([z.lazy(() => DateTimeFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
   owner_id: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   link: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   hypothesis: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   summary: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   impact_on_confidence: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();

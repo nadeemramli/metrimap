@@ -17,7 +17,7 @@ export const notificationsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<
   description: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   read: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
   metadata: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();
 export const notificationsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -29,5 +29,5 @@ export const notificationsScalarWhereWithAggregatesInputObjectZodSchema = z.obje
   description: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   read: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
   metadata: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();

@@ -9,7 +9,7 @@ export const relationship_tagsScalarWhereWithAggregatesInputObjectSchema: z.ZodT
   NOT: z.union([z.lazy(() => relationship_tagsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => relationship_tagsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
   relationship_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   tag_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();
 export const relationship_tagsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => relationship_tagsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => relationship_tagsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -17,5 +17,5 @@ export const relationship_tagsScalarWhereWithAggregatesInputObjectZodSchema = z.
   NOT: z.union([z.lazy(() => relationship_tagsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => relationship_tagsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
   relationship_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   tag_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();

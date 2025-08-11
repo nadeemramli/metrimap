@@ -14,8 +14,8 @@ export const project_collaboratorsWhereInputObjectSchema: z.ZodType<Prisma.proje
   user_id: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   role: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   permissions: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  invited_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  joined_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  invited_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  joined_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();
 export const project_collaboratorsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => project_collaboratorsWhereInputObjectSchema), z.lazy(() => project_collaboratorsWhereInputObjectSchema).array()]).optional(),
@@ -25,6 +25,6 @@ export const project_collaboratorsWhereInputObjectZodSchema = z.object({
   user_id: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   role: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   permissions: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  invited_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  joined_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  invited_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  joined_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();

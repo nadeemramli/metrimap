@@ -27,35 +27,45 @@ export function useSourceFiltering({
 }: UseSourceFilteringProps) {
   const filteredSources = useMemo(() => {
     return dataSources.filter((source) => {
-      const matchesSearch =
-        source.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        source.system.toLowerCase().includes(searchQuery.toLowerCase());
+      const name = (source.metricName ?? '').toLowerCase();
+      const system = (source.sourceSystem ?? '').toLowerCase();
+      const search = (searchQuery ?? '').toLowerCase();
+      const matchesSearch = name.includes(search) || system.includes(search);
       const matchesStatus =
-        statusFilter === 'all' || source.status === statusFilter;
+        (statusFilter ?? 'all').toLowerCase() === 'all' ||
+        (source.status ?? '').toLowerCase() ===
+          (statusFilter as string).toLowerCase();
       const matchesSystem =
-        systemFilter === 'all' || source.system === systemFilter;
+        (systemFilter ?? 'all').toLowerCase() === 'all' ||
+        system === (systemFilter as string).toLowerCase();
       return matchesSearch && matchesStatus && matchesSystem;
     });
   }, [dataSources, searchQuery, statusFilter, systemFilter]);
 
   const filteredApis = useMemo(() => {
     return apiConnections.filter((api) => {
-      const matchesSearch =
-        api.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        api.endpoint.toLowerCase().includes(searchQuery.toLowerCase());
+      const name = (api.name ?? '').toLowerCase();
+      const type = (api.type ?? '').toLowerCase();
+      const search = (searchQuery ?? '').toLowerCase();
+      const matchesSearch = name.includes(search) || type.includes(search);
       const matchesStatus =
-        statusFilter === 'all' || api.status === statusFilter;
+        (statusFilter ?? 'all').toLowerCase() === 'all' ||
+        (api.status ?? '').toLowerCase() ===
+          (statusFilter as string).toLowerCase();
       return matchesSearch && matchesStatus;
     });
   }, [apiConnections, searchQuery, statusFilter]);
 
   const filteredPolicies = useMemo(() => {
     return governancePolicies.filter((policy) => {
-      const matchesSearch =
-        policy.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        policy.type.toLowerCase().includes(searchQuery.toLowerCase());
+      const name = (policy.name ?? '').toLowerCase();
+      const type = (policy.type ?? '').toLowerCase();
+      const search = (searchQuery ?? '').toLowerCase();
+      const matchesSearch = name.includes(search) || type.includes(search);
       const matchesStatus =
-        statusFilter === 'all' || policy.status === statusFilter;
+        (statusFilter ?? 'all').toLowerCase() === 'all' ||
+        (policy.status ?? '').toLowerCase() ===
+          (statusFilter as string).toLowerCase();
       return matchesSearch && matchesStatus;
     });
   }, [governancePolicies, searchQuery, statusFilter]);

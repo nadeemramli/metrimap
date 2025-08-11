@@ -9,7 +9,7 @@ export const comment_mentionsScalarWhereWithAggregatesInputObjectSchema: z.ZodTy
   NOT: z.union([z.lazy(() => comment_mentionsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => comment_mentionsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
   comment_id: z.union([z.lazy(() => UuidWithAggregatesFilterObjectSchema), z.string()]).optional(),
   mentioned_user_id: z.union([z.lazy(() => UuidWithAggregatesFilterObjectSchema), z.string()]).optional(),
-  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();
 export const comment_mentionsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => comment_mentionsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => comment_mentionsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -17,5 +17,5 @@ export const comment_mentionsScalarWhereWithAggregatesInputObjectZodSchema = z.o
   NOT: z.union([z.lazy(() => comment_mentionsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => comment_mentionsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
   comment_id: z.union([z.lazy(() => UuidWithAggregatesFilterObjectSchema), z.string()]).optional(),
   mentioned_user_id: z.union([z.lazy(() => UuidWithAggregatesFilterObjectSchema), z.string()]).optional(),
-  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();

@@ -9,7 +9,7 @@ export const metric_card_tagsWhereInputObjectSchema: z.ZodType<Prisma.metric_car
   NOT: z.union([z.lazy(() => metric_card_tagsWhereInputObjectSchema), z.lazy(() => metric_card_tagsWhereInputObjectSchema).array()]).optional(),
   metric_card_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   tag_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();
 export const metric_card_tagsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => metric_card_tagsWhereInputObjectSchema), z.lazy(() => metric_card_tagsWhereInputObjectSchema).array()]).optional(),
@@ -17,5 +17,5 @@ export const metric_card_tagsWhereInputObjectZodSchema = z.object({
   NOT: z.union([z.lazy(() => metric_card_tagsWhereInputObjectSchema), z.lazy(() => metric_card_tagsWhereInputObjectSchema).array()]).optional(),
   metric_card_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   tag_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();

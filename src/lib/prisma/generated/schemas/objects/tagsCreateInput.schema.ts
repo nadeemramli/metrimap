@@ -8,8 +8,8 @@ export const tagsCreateInputObjectSchema: z.ZodType<Prisma.tagsCreateInput, Pris
   description: z.string().optional().nullable(),
   project_id: z.string().optional().nullable(),
   created_by: z.string().optional().nullable(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();
 export const tagsCreateInputObjectZodSchema = z.object({
   name: z.string(),
@@ -17,6 +17,6 @@ export const tagsCreateInputObjectZodSchema = z.object({
   description: z.string().optional().nullable(),
   project_id: z.string().optional().nullable(),
   created_by: z.string().optional().nullable(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();

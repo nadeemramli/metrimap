@@ -20,8 +20,8 @@ export const groupsWhereInputObjectSchema: z.ZodType<Prisma.groupsWhereInput, Pr
   width: z.union([z.lazy(() => FloatFilterObjectSchema), z.number()]).optional(),
   height: z.union([z.lazy(() => FloatFilterObjectSchema), z.number()]).optional(),
   node_ids: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();
 export const groupsWhereInputObjectZodSchema = z.object({
@@ -37,7 +37,7 @@ export const groupsWhereInputObjectZodSchema = z.object({
   width: z.union([z.lazy(() => FloatFilterObjectSchema), z.number()]).optional(),
   height: z.union([z.lazy(() => FloatFilterObjectSchema), z.number()]).optional(),
   node_ids: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();

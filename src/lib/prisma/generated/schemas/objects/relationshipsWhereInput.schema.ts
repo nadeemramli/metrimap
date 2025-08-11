@@ -15,8 +15,8 @@ export const relationshipsWhereInputObjectSchema: z.ZodType<Prisma.relationships
   type: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   confidence: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   weight: z.union([z.lazy(() => FloatNullableFilterObjectSchema), z.number()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();
 export const relationshipsWhereInputObjectZodSchema = z.object({
@@ -29,7 +29,7 @@ export const relationshipsWhereInputObjectZodSchema = z.object({
   type: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   confidence: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   weight: z.union([z.lazy(() => FloatNullableFilterObjectSchema), z.number()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();
