@@ -5,8 +5,8 @@ import {
   CanvasStateMachineProvider,
   useEnhancedToolbarProps,
   useLegacyCanvasState,
-} from '../components/canvas/CanvasStateMachineProvider';
-import { useCanvasStateMachine } from '../lib/hooks/useCanvasStateMachine';
+} from '@/features/canvas/components/canvas/CanvasStateMachineProvider';
+import { useCanvasStateMachine } from '@/features/canvas/lib/hooks/useCanvasStateMachine';
 
 // Test component that uses the legacy interface
 function LegacyTestComponent() {

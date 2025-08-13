@@ -1,43 +1,42 @@
-import { Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SignedOut, SignUp, SignedIn } from "@clerk/react-router";
-import { Navigate } from "react-router-dom";
+import { SignedIn, SignedOut, SignUp } from '@clerk/react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 // Components
-import ClerkSupabaseProvider from "./components/auth/ClerkSupabaseProvider";
-import DevAuthProvider from "./components/auth/DevAuthProvider";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import { ErrorBoundary } from "./components/error/ErrorBoundary";
-import { CanvasHeaderProvider } from "./lib/contexts/CanvasHeaderContext";
-import { AuthenticatedSupabaseProvider } from "./lib/contexts/AuthenticatedSupabaseContext";
+import ClerkSupabaseProvider from './features/auth/components/ClerkSupabaseProvider';
+import DevAuthProvider from './features/auth/components/DevAuthProvider';
+import ProtectedRoute from './features/auth/components/ProtectedRoute';
+import { ErrorBoundary } from './shared/components/common/error/ErrorBoundary';
+import { AuthenticatedSupabaseProvider } from './shared/contexts/AuthenticatedSupabaseContext';
+import { CanvasHeaderProvider } from './shared/contexts/CanvasHeaderContext';
 
 // Pages
-import HomePage from "./pages/homepage/HomePage";
-import CanvasLayout from "./components/layout/CanvasLayout";
-import CanvasPage from "./pages/canvas/CanvasPage";
-import DashboardPage from "./pages/dashboard/DashboardPage";
-import AssetsPage from "./pages/asset/AssetsPage";
-import SourcePage from "./pages/source/SourcePage";
-import CanvasSettingsPage from "./pages/canvas/CanvasSettingsPage";
-import EvidenceRepositoryPage from "./pages/evidence/EvidenceRepositoryPage";
-import EvidencePage from "./pages/evidence/EvidencePage";
-import ExcalidrawTestPage from "./pages/ExcalidrawTestPage";
+import AssetsPage from './features/assets/pages/AssetsPage';
+import CanvasLayout from './features/canvas/components/CanvasLayout';
+import CanvasPage from './features/canvas/pages/CanvasPage';
+import CanvasSettingsPage from './features/canvas/pages/CanvasSettingsPage';
+import EnhancedCanvasPage from './features/canvas/pages/EnhancedCanvasPage';
+import ExcalidrawTestPage from './features/canvas/pages/ExcalidrawTestPage';
+import DashboardPage from './features/dashboard/pages/DashboardPage';
+import EvidencePage from './features/evidence/pages/EvidencePage';
+import EvidenceRepositoryPage from './features/evidence/pages/EvidenceRepositoryPage';
+import HomePage from './features/projects/pages/HomePage';
+import SourcePage from './features/sources/pages/SourcePage';
 
 // Auth Pages
-import SignInPage from "./pages/auth/SignInPage";
+import SignInPage from './features/auth/pages/SignInPage';
 
 // Create a client
 const queryClient = new QueryClient();
 
 // Check if we're in development mode (using local Supabase)
-import { isDevelopmentEnvironment } from "@/lib/supabase/client";
-import XStateCanvasDemo from "@/components/canvas/XStateCanvasDemo";
+import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
 const isDevelopment = isDevelopmentEnvironment();
 
 export default function App() {
-  console.log("App component rendering");
-  console.log("VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL);
-  console.log("isDevelopment:", isDevelopment);
+  console.log('App component rendering');
+  console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
+  console.log('isDevelopment:', isDevelopment);
 
   return (
     <ErrorBoundary>
@@ -84,6 +83,7 @@ export default function App() {
                   }
                 >
                   <Route index element={<CanvasPage />} />
+                  <Route path="enhanced" element={<EnhancedCanvasPage />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="assets" element={<AssetsPage />} />
                   <Route path="evidence" element={<EvidenceRepositoryPage />} />
@@ -193,6 +193,7 @@ export default function App() {
                   }
                 >
                   <Route index element={<CanvasPage />} />
+                  <Route path="enhanced" element={<EnhancedCanvasPage />} />
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="assets" element={<AssetsPage />} />
                   <Route path="evidence" element={<EvidenceRepositoryPage />} />
@@ -204,9 +205,7 @@ export default function App() {
                   <Route path="settings" element={<CanvasSettingsPage />} />
 
                   {/* Development-only routes */}
-                  {isDevelopment && (
-                    <Route path="xstate-demo" element={<XStateCanvasDemo />} />
-                  )}
+                  {/* TODO: Re-add XStateCanvasDemo when component is recreated */}
                 </Route>
 
                 {/* Catch-all route for unauthenticated users */}

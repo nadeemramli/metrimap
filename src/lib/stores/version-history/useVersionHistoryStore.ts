@@ -1,11 +1,11 @@
-import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { useCanvasStore } from '@/features/canvas/stores/useCanvasStore';
 import {
   createCanvasSnapshot,
   deleteCanvasSnapshot,
   getCanvasSnapshots,
-} from '../../supabase/services/version-history';
-import type { CanvasProject } from '../../types';
+} from '@/shared/lib/supabase/services/version-history';
+import { useAppStore } from '@/shared/stores/useAppStore';
+import type { CanvasProject } from '@/shared/types';
 import type {
   CanvasSnapshot,
   HistoryStats,
@@ -13,10 +13,10 @@ import type {
   SnapshotMetadata,
   VersionHistoryConfig,
   VersionHistoryStore,
-} from '../../types/version-history';
-import { DEFAULT_VERSION_HISTORY_CONFIG } from '../../types/version-history';
-import { useAppStore } from '../appStore';
-import { useCanvasStore } from '../canvas/useCanvasStore';
+} from '@/shared/types/version-history';
+import { DEFAULT_VERSION_HISTORY_CONFIG } from '@/shared/types/version-history';
+import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 
 export const useVersionHistoryStore = create<VersionHistoryStore>()(
   subscribeWithSelector((set, get) => ({

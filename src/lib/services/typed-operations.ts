@@ -30,7 +30,7 @@ import {
   ProjectWhereSchema,
   MetricCardWhereSchema,
   RelationshipWhereSchema,
-} from "@/lib/validation/zod";
+} from "@/shared/lib/validation/zod";
 
 // Re-export Prisma types for use throughout the app
 export type {

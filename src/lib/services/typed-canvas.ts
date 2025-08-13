@@ -1,7 +1,7 @@
 // Typed canvas operations that integrate with existing CanvasPage functionality
 // Provides validation and type safety for canvas operations
 
-import type { CanvasProject } from "@/lib/types";
+import type { CanvasProject } from "@/shared/types";
 import {
   validate,
   type MetricCard,

@@ -1,0 +1,1113 @@
+/* Editor.js Styles - Separate from Tailwind to avoid conflicts */
+
+.codex-editor {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+  background: white;
+  border-radius: 0.5rem;
+  min-height: 200px;
+  padding: 1rem;
+}
+
+/* Header Blocks - Clear Visual Hierarchy */
+.ce-block--header .ce-header {
+  font-weight: 700;
+  margin: 1.5rem 0 1rem 0;
+  line-height: 1.2;
+  color: rgb(15 23 42);
+}
+
+.ce-block--header h1 {
+  font-size: 2.25rem;
+  border-bottom: 2px solid rgb(59 130 246);
+  padding-bottom: 0.5rem;
+}
+
+.ce-block--header h2 {
+  font-size: 1.875rem;
+  color: rgb(59 130 246);
+}
+
+.ce-block--header h3 {
+  font-size: 1.5rem;
+  color: rgb(75 85 99);
+}
+
+.ce-block--header h4 {
+  font-size: 1.25rem;
+  color: rgb(107 114 128);
+}
+
+.ce-block--header h5 {
+  font-size: 1.125rem;
+  color: rgb(107 114 128);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ce-block--header h6 {
+  font-size: 1rem;
+  color: rgb(107 114 128);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+
+/* Paragraph Blocks - Clear Distinction */
+.ce-block--paragraph .ce-paragraph {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: rgb(55 65 81);
+  margin: 0.75rem 0;
+}
+
+.codex-editor--readonly {
+  background: transparent;
+  padding: 0;
+}
+
+.codex-editor__redactor {
+  padding-bottom: 1rem;
+  min-height: 150px;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock {
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock:last-child {
+  margin-bottom: 0;
+}
+
+/* Ensure editor blocks are visible */
+.codex-editor__redactor .codex-editor__redactorBlock {
+  position: relative;
+  min-height: 1.5em;
+}
+
+/* Make sure the editor content is visible */
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .codex-editor__redactorBlockContent {
+  min-height: 1.5em;
+  display: block;
+  width: 100%;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .codex-editor__redactorBlockContent {
+  outline: none;
+  min-height: 1.5em;
+  display: block;
+}
+
+/* Header blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-header {
+  font-weight: 700;
+  color: rgb(17 24 39);
+  margin: 0;
+  padding: 0;
+  min-height: 1.5em;
+  display: block;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-header[contenteditable="true"] {
+  outline: none;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-header[contenteditable="true"]:empty::before {
+  color: rgb(156 163 175);
+}
+
+/* Paragraph blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-paragraph {
+  color: rgb(55 65 81);
+  line-height: 1.625;
+  margin: 0;
+  padding: 0;
+  min-height: 1.5em;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-paragraph[contenteditable="true"] {
+  outline: none;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-paragraph[contenteditable="true"]:empty::before {
+  color: rgb(156 163 175);
+  content: "Start writing your evidence...";
+}
+
+/* Code blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-code {
+  background-color: rgb(243 244 246);
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo,
+    monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-code__textarea {
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  min-height: 100px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: rgb(55 65 81);
+  resize: vertical;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-code__caption {
+  font-size: 0.75rem;
+  color: rgb(107 114 128);
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+/* Table of Contents */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toc {
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  background-color: rgb(249 250 251);
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toc__title {
+  font-weight: 600;
+  color: rgb(17 24 39);
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toc__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toc__item {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgb(229 231 235);
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toc__item:last-child {
+  border-bottom: none;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toc__link {
+  color: rgb(59 130 246);
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toc__link:hover {
+  text-decoration: underline;
+}
+
+/* Text Variant Tunes */
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-paragraph--variant-normal {
+  font-weight: normal;
+  font-style: normal;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-paragraph--variant-bold {
+  font-weight: bold;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-paragraph--variant-italic {
+  font-style: italic;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-paragraph--variant-underline {
+  text-decoration: underline;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-paragraph--variant-strikethrough {
+  text-decoration: line-through;
+}
+
+/* List blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-list {
+  color: rgb(55 65 81);
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-list__item {
+  margin-bottom: 0.25rem;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-list__item[contenteditable="true"] {
+  outline: none;
+}
+
+/* Quote blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-quote {
+  border-left: 4px solid rgb(209 213 219);
+  padding-left: 1rem;
+  font-style: italic;
+  color: rgb(55 65 81);
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-quote__text {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-quote__caption {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: rgb(107 114 128);
+  margin-top: 0.5rem;
+}
+
+/* Table blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-table__cell {
+  border: 1px solid rgb(209 213 219);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-table__cell--selected {
+  background-color: rgb(239 246 255);
+}
+
+/* Checklist blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-checklist__item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-checklist__item__checkbox {
+  margin-right: 0.5rem;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-checklist__item__text {
+  color: rgb(55 65 81);
+}
+
+/* Marker blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-marker {
+  background-color: rgb(254 240 138);
+}
+
+/* Warning blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-warning {
+  background-color: rgb(254 243 199);
+  border: 1px solid rgb(251 191 36);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-warning__title {
+  font-weight: 600;
+  color: rgb(146 64 14);
+  margin-bottom: 0.5rem;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-warning__message {
+  color: rgb(120 53 15);
+}
+
+/* Delimiter blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-delimiter {
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-delimiter::before {
+  content: "***";
+  font-size: 2rem;
+  color: rgb(156 163 175);
+}
+
+/* Alert blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-alert {
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-left: 4px solid;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-alert--primary {
+  background-color: rgb(219 234 254);
+  border-left-color: rgb(59 130 246);
+  color: rgb(30 58 138);
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-alert--success {
+  background-color: rgb(220 252 231);
+  border-left-color: rgb(34 197 94);
+  color: rgb(21 128 61);
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-alert--warning {
+  background-color: rgb(254 243 199);
+  border-left-color: rgb(251 191 36);
+  color: rgb(146 64 14);
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-alert--error {
+  background-color: rgb(254 226 226);
+  border-left-color: rgb(239 68 68);
+  color: rgb(153 27 27);
+}
+
+/* Toggle blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toggle {
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.375rem;
+  margin: 1rem 0;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toggle__title {
+  background-color: rgb(249 250 251);
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px solid rgb(229 231 235);
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-toggle__content {
+  padding: 1rem;
+}
+
+/* Image blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-image {
+  margin: 1rem 0;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-image__picture {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-image__caption {
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgb(107 114 128);
+  margin-top: 0.5rem;
+}
+
+/* Attaches blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-attaches {
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-attaches__title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-attaches__item {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-attaches__item:last-child {
+  margin-bottom: 0;
+}
+
+/* Inline code */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-inline-code {
+  background-color: rgb(243 244 246);
+  color: rgb(239 68 68);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo,
+    monospace;
+  font-size: 0.875em;
+}
+
+/* Underline */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-underline {
+  text-decoration: underline;
+}
+
+/* Hyperlink */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-hyperlink {
+  color: rgb(59 130 246);
+  text-decoration: underline;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-hyperlink:hover {
+  color: rgb(37 99 235);
+}
+
+/* Style blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-style {
+  margin: 0.5rem 0;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-style--normal {
+  font-weight: normal;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-style--bold {
+  font-weight: bold;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-style--italic {
+  font-style: italic;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-style--underline {
+  text-decoration: underline;
+}
+
+/* Color picker */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-color-picker {
+  margin: 0.5rem 0;
+}
+
+/* Nested checklist */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-nested-checklist {
+  margin: 0.5rem 0;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-nested-checklist__item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.25rem;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-nested-checklist__item__checkbox {
+  margin-right: 0.5rem;
+  margin-top: 0.125rem;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-nested-checklist__item__text {
+  color: rgb(55 65 81);
+  flex: 1;
+}
+
+.codex-editor__redactor
+  .codex-editor__redactorBlock
+  .ce-nested-checklist__item__children {
+  margin-left: 1.5rem;
+  margin-top: 0.25rem;
+}
+
+/* Toolbar */
+.codex-editor__toolbar {
+  background-color: white;
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.codex-editor__toolbar .codex-editor__toolbarButton {
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.codex-editor__toolbar .codex-editor__toolbarButton:hover {
+  background-color: rgb(243 244 246);
+}
+
+.codex-editor__toolbar .codex-editor__toolbarButton--active {
+  background-color: rgb(219 234 254);
+  color: rgb(29 78 216);
+}
+
+/* Inline toolbar */
+.codex-editor__inlineToolbar {
+  background-color: white;
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.codex-editor__inlineToolbar .codex-editor__inlineToolbarButton {
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.codex-editor__inlineToolbar .codex-editor__inlineToolbarButton:hover {
+  background-color: rgb(243 244 246);
+}
+
+.codex-editor__inlineToolbar .codex-editor__inlineToolbarButton--active {
+  background-color: rgb(219 234 254);
+  color: rgb(29 78 216);
+}
+
+/* LaTeX Math blocks */
+.codex-editor__redactor .codex-editor__redactorBlock .ce-math {
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: rgb(249 250 251);
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.375rem;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-math__input {
+  width: 100%;
+  min-height: 60px;
+  padding: 0.5rem;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.25rem;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo,
+    monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+  background-color: white;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-math__input:focus {
+  outline: none;
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 3px rgb(147 197 253 / 0.1);
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-math__preview {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: white;
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.25rem;
+  text-align: center;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.codex-editor__redactor .codex-editor__redactorBlock .ce-math__preview .katex {
+  font-size: 1.125rem;
+}
+
+/* Math input wrapper styling */
+.math-input-wrapper {
+  padding: 0.5rem;
+  background-color: rgb(249 250 251);
+  border-radius: 0.25rem;
+}
+
+/* Read-only mode */
+.codex-editor--readonly .codex-editor__redactor {
+  pointer-events: none;
+}
+
+.codex-editor--readonly
+  .codex-editor__redactor
+  .codex-editor__redactorBlock[contenteditable="true"] {
+  pointer-events: none;
+}
+
+/* ================================
+   COMPREHENSIVE TOOL STYLING
+   ================================ */
+
+/* Toggle Block Styles */
+.ce-block--toggle {
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.ce-block--toggle .ce-toggle__header {
+  padding: 0.75rem 1rem;
+  background-color: rgb(249 250 251);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ce-block--toggle .ce-toggle__icon {
+  transition: transform 0.2s ease;
+}
+
+.ce-block--toggle.ce-toggle--collapsed .ce-toggle__icon {
+  transform: rotate(-90deg);
+}
+
+.ce-block--toggle .ce-toggle__content {
+  padding: 1rem;
+  border-top: 1px solid rgb(229 231 235);
+}
+
+/* Alert Block Styles */
+.ce-block--alert {
+  border-left: 4px solid;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 0 0.25rem 0.25rem 0;
+}
+
+.ce-block--alert.alert-info {
+  border-color: rgb(59 130 246);
+  background-color: rgb(239 246 255);
+  color: rgb(30 64 175);
+}
+
+.ce-block--alert.alert-warning {
+  border-color: rgb(245 158 11);
+  background-color: rgb(255 251 235);
+  color: rgb(146 64 14);
+}
+
+.ce-block--alert.alert-error {
+  border-color: rgb(239 68 68);
+  background-color: rgb(254 242 242);
+  color: rgb(153 27 27);
+}
+
+.ce-block--alert.alert-success {
+  border-color: rgb(34 197 94);
+  background-color: rgb(240 253 244);
+  color: rgb(21 128 61);
+}
+
+/* Color Picker Styles */
+.ce-block--color-picker {
+  position: relative;
+}
+
+.color-picker-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.25rem;
+  background: white;
+  cursor: pointer;
+}
+
+.color-picker-tool:hover {
+  background-color: rgb(249 250 251);
+}
+
+.color-picker-preview {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid rgb(209 213 219);
+}
+
+/* Image and Media Styles */
+.ce-block--image,
+.ce-block--simpleImage {
+  text-align: center;
+}
+
+.ce-block--image img,
+.ce-block--simpleImage img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.ce-block--image .image-tool__caption,
+.ce-block--simpleImage .simple-image__caption {
+  margin-top: 0.5rem;
+  font-style: italic;
+  color: rgb(107 114 128);
+  text-align: center;
+}
+
+/* Attachment Styles */
+.ce-block--attaches {
+  padding: 0.75rem;
+  border: 1px dashed rgb(209 213 219);
+  border-radius: 0.5rem;
+  background-color: rgb(249 250 251);
+}
+
+.attaches-tool__file {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.25rem;
+  background: white;
+}
+
+.attaches-tool__file-icon {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgb(239 246 255);
+  border-radius: 0.25rem;
+  color: rgb(59 130 246);
+}
+
+.attaches-tool__file-info {
+  flex: 1;
+}
+
+.attaches-tool__file-name {
+  font-weight: 500;
+  color: rgb(17 24 39);
+}
+
+.attaches-tool__file-size {
+  font-size: 0.875rem;
+  color: rgb(107 114 128);
+}
+
+/* Embed Styles */
+.ce-block--embed {
+  margin: 1rem 0;
+}
+
+.embed-tool {
+  position: relative;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.embed-tool iframe {
+  width: 100%;
+  border: none;
+}
+
+.embed-tool__caption {
+  padding: 0.5rem;
+  background-color: rgb(249 250 251);
+  font-size: 0.875rem;
+  color: rgb(107 114 128);
+  text-align: center;
+}
+
+/* Link Tool Styles */
+.ce-block--linkTool {
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.ce-block--linkTool:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.link-tool__content {
+  padding: 1rem;
+}
+
+.link-tool__image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-bottom: 1px solid rgb(229 231 235);
+}
+
+.link-tool__title {
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+  color: rgb(17 24 39);
+}
+
+.link-tool__description {
+  color: rgb(75 85 99);
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.link-tool__anchor {
+  color: rgb(59 130 246);
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.link-tool__anchor:hover {
+  text-decoration: underline;
+}
+
+/* Table of Contents Styles */
+.ce-block--toc {
+  background-color: rgb(249 250 251);
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.toc-tool__title {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: rgb(17 24 39);
+}
+
+.toc-tool__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-tool__item {
+  margin-bottom: 0.25rem;
+}
+
+.toc-tool__link {
+  color: rgb(59 130 246);
+  text-decoration: none;
+  padding: 0.25rem 0;
+  display: block;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s ease;
+}
+
+.toc-tool__link:hover {
+  background-color: rgb(239 246 255);
+  text-decoration: none;
+}
+
+.toc-tool__link--level-2 {
+  padding-left: 1rem;
+}
+
+.toc-tool__link--level-3 {
+  padding-left: 2rem;
+}
+
+/* Nested Checklist Styles */
+.ce-block--nestedChecklist {
+  padding-left: 0;
+}
+
+.nested-checklist__item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.nested-checklist__item--nested {
+  padding-left: 2.5rem;
+}
+
+.nested-checklist__checkbox {
+  position: absolute;
+  left: 0;
+  top: 0.25rem;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.nested-checklist__checkbox--checked {
+  background-color: rgb(59 130 246);
+  border-color: rgb(59 130 246);
+}
+
+.nested-checklist__checkbox--checked::after {
+  content: "✓";
+  color: white;
+  font-size: 0.75rem;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.nested-checklist__text {
+  flex: 1;
+  min-height: 1.5rem;
+  padding: 0.125rem 0;
+}
+
+.nested-checklist__text--checked {
+  text-decoration: line-through;
+  color: rgb(107 114 128);
+}
+
+/* Hyperlink Styles */
+.hyperlink-tool {
+  color: rgb(59 130 246);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.hyperlink-tool:hover {
+  color: rgb(37 99 235);
+}
+
+/* Change Case Tool Styles */
+.change-case-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.25rem;
+  background: white;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.change-case-tool:hover {
+  background-color: rgb(249 250 251);
+}
+
+/* LaTeX Math Styles */
+.ce-block--latex {
+  text-align: center;
+  padding: 1rem;
+  background-color: rgb(249 250 251);
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+.latex-tool__preview {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+.latex-tool__input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.25rem;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 0.875rem;
+  background-color: white;
+}
+
+.latex-tool__input:focus {
+  outline: none;
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 1px rgb(59 130 246);
+}
+
+/* Enhanced inline tools */
+.ce-inline-tool--marker {
+  background-color: rgb(255 255 0);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.125rem;
+}
+
+.ce-inline-tool--underline {
+  text-decoration: underline;
+  text-decoration-color: rgb(59 130 246);
+  text-decoration-thickness: 2px;
+}
+
+.ce-inline-tool--inlineCode {
+  background-color: rgb(243 244 246);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 0.875em;
+  color: rgb(220 38 127);
+}
+
+/* Toolbar enhancements */
+.ce-toolbar__plus:hover,
+.ce-toolbar__settings-btn:hover {
+  background-color: rgb(59 130 246);
+  color: white;
+}
+
+.ce-popover {
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -2px rgb(0 0 0 / 0.05);
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+}
+
+.ce-popover__item:hover {
+  background-color: rgb(239 246 255);
+  color: rgb(59 130 246);
+}
+
+/* Block tune styles */
+.ce-block-tune {
+  background-color: white;
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.25rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.ce-block-tune__item:hover {
+  background-color: rgb(239 246 255);
+}

@@ -1,0 +1,278 @@
+@import 'tailwindcss';
+
+/* Import Editor.js styles */
+@import './editor.css';
+
+@layer base {
+  :root {
+    --radius: 0.625rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+  }
+
+  .dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      'Helvetica Neue',
+      Arial,
+      'Noto Sans',
+      sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Animated dash for dotted edges */
+  @keyframes dash {
+    to {
+      stroke-dashoffset: -10px;
+    }
+  }
+}
+
+/* React Flow specific styles */
+.react-flow__node {
+  font-family: inherit;
+}
+
+.react-flow__edge {
+  stroke-width: 2;
+}
+
+.react-flow__edge.react-flow__edge-path {
+  stroke: hsl(var(--border));
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: hsl(var(--primary));
+}
+
+/* Custom utility classes for MetricCard colors - using Tailwind utilities instead */
+
+/* COMPREHENSIVE DIALOG & MODAL TRANSPARENCY FIXES */
+/* ================================================ */
+/* This section completely resolves backdrop transparency issues */
+
+/* STANDARDIZED Z-INDEX HIERARCHY */
+/* ================================ */
+/* Modal overlays: z-[1000] */
+/* Modal content: z-[1001] */
+/* Dropdowns/Popovers: z-[1001] */
+/* Toasts: z-[9999] */
+
+/* All dialog overlays - LIGHT BACKDROP */
+[data-slot='dialog-overlay'],
+[data-slot='alert-dialog-overlay'],
+[role='presentation'][data-state='open'] {
+  z-index: 1000 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  /* backdrop-filter: blur(2px) !important; */
+  opacity: 1 !important;
+}
+
+/* Sheet overlay - LIGHT BACKDROP */
+[data-slot='sheet-overlay'] {
+  z-index: 999 !important;
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  /* backdrop-filter: blur(2px) !important; */
+  opacity: 1 !important;
+  pointer-events: none !important;
+}
+
+/* All dialog content - FORCE OPAQUE BACKGROUNDS */
+[data-slot='dialog-content'],
+[data-slot='alert-dialog-content'],
+[data-slot='sheet-content'],
+[role='dialog'] {
+  z-index: 1001 !important;
+  background: white !important;
+  color: hsl(var(--foreground)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  opacity: 1 !important;
+  /* backdrop-filter: none !important; */
+  /* -webkit-backdrop-filter: none !important; */
+}
+
+/* All dropdown/popover content - STRONGER BACKGROUNDS */
+[data-slot='select-content'],
+[data-slot='popover-content'],
+[data-slot='dropdown-menu-content'],
+[data-slot='command'] {
+  z-index: 9999 !important;
+  background: hsl(var(--background)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  /* backdrop-filter: blur(4px) !important; */
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Additional support for dropdown menus specifically */
+[data-slot='dropdown-menu-content'] {
+  background: hsl(var(--background)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* SHEET SPECIFIC FIXES - FORCE SOLID BACKGROUNDS */
+[data-slot='sheet-content'],
+.sheet-content {
+  z-index: 1002 !important;
+  background: white !important;
+  color: hsl(var(--foreground)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+  opacity: 1 !important;
+  /* backdrop-filter: none !important; */
+  /* -webkit-backdrop-filter: none !important; */
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  height: 100vh !important;
+  transform: translateX(0) !important;
+  pointer-events: auto !important;
+}
+
+/* OVERRIDE BODY POINTER-EVENTS FOR SHEET CONTENT */
+body[data-scroll-locked='1'] [data-slot='sheet-content'],
+body[data-scroll-locked='1'] .sheet-content {
+  pointer-events: auto !important;
+}
+
+/* FORCE ALL SHEET CHILDREN TO BE INTERACTIVE */
+[data-slot='sheet-content'] *,
+.sheet-content * {
+  pointer-events: auto !important;
+}
+
+/* FORCE SHEET CHILDREN TO INHERIT PROPER COLORS */
+[data-slot='sheet-content'] * {
+  color: inherit !important;
+}
+
+[data-slot='sheet-content'] [data-slot='sheet-title'] {
+  color: hsl(var(--foreground)) !important;
+}
+
+[data-slot='sheet-content'] [data-slot='sheet-description'] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* SEARCH DIALOG SPECIFIC FIXES */
+.quick-search-dialog [data-slot='dialog-content'] {
+  background: white !important;
+  color: hsl(var(--foreground)) !important;
+  border: 2px solid hsl(var(--border)) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+  /* backdrop-filter: none !important; */
+  /* -webkit-backdrop-filter: none !important; */
+}
+
+/* COMMAND PALETTE SPECIFIC OVERRIDES */
+[data-slot='command'] {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Toaster components */
+[data-sonner-toaster] {
+  z-index: 9999 !important;
+}
+
+[data-sonner-toast] {
+  z-index: 9999 !important;
+}
+
+/* ReactFlow specific styling */
+.react-flow__node {
+  z-index: 2 !important;
+}
+
+.react-flow__edge {
+  z-index: 1 !important;
+}
+
+/* Custom React Flow node styles */
+.react-flow__node-metric {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}

@@ -1,8 +1,8 @@
 // Typed project service layer that wraps existing Supabase operations with Prisma types and Zod validation
 
 import { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
-import * as projectsService from "@/lib/supabase/services/projects";
+import type { Database } from "@/shared/lib/supabase/types";
+import * as projectsService from "@/shared/lib/supabase/services/projects";
 import {
   validate,
   type Project,

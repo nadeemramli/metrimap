@@ -1,16 +1,14 @@
-import { isDevelopmentEnvironment } from '@/lib/supabase/client';
+import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
 import { ClerkProvider } from '@clerk/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import App from './App.tsx';
-import DevUserbackInitializer from './components/feedback/DevUserbackInitializer';
-import UserbackInitializer from './components/feedback/UserbackInitializer';
+import DevUserbackInitializer from './shared/components/common/feedback/DevUserbackInitializer';
+import UserbackInitializer from './shared/components/common/feedback/UserbackInitializer';
 import './styles/index.css';
 // Excalidraw CSS (package exports index.css, not dist/excalidraw.css)
 import '@excalidraw/excalidraw/index.css';
-// Custom CSS to hide Excalidraw UI and use only our toolbar
-import './components/canvas/excalidraw-custom.css';
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

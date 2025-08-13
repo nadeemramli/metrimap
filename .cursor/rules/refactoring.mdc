@@ -1,0 +1,27 @@
+---
+description: Rules to help AAgent clean up previous refactoring issues.
+globs: *
+alwaysApply: true
+---
+
+We've done big refactoring before turning from Layout structure to Feature structure, thus we deleting a lot of files and replaced it will placeholder.
+
+What I need you to do is to check if there's difference from the original, and add it into the new reference file. The original is important here. Please ensure that you don't simply copy and paste, cause we solve the import issue in the paste, copy and pasting would break the app cause the import would be wrong.
+
+The code that I copy and paste in the prompt is from the deleted changes, the one I used @ is the current file. Here I'm gonna paste the original file of this reference file.
+
+Be aware that the original path would usually be in src/...
+
+While the current path would be in src/features/
+
+Things you can do:
+
+1. If it exist, then tells that it already exist (action: we do nothing).
+
+2. if it exist but there's differences (action: add the differences if it's distinct).
+
+3. If it's not existed (action: please check if we already apply the same function anywhere else before adding)
+
+4. If it's not existed and no duplication of function (action: add the file, and wire it up with respective features)
+
+Must do: Ensure that any of the effort we do, is wired up to it's respective features.

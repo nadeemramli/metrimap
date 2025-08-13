@@ -1,7 +1,7 @@
+import { updateMetricCard as updateMetricCardInSupabase } from '@/shared/lib/supabase/services/metric-cards';
+import type { MetricCard } from '@/shared/types';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { updateMetricCard as updateMetricCardInSupabase } from '../../supabase/services/metric-cards';
-import type { MetricCard } from '../../types';
 
 export interface AutoSaveStoreState {
   // Auto-save state
