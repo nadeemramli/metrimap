@@ -47,6 +47,9 @@ export function useCanvasPageState() {
     string | undefined
   >(undefined);
 
+  // Help and modals state
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState<boolean>(false);
+
   return {
     // flags
     loading,
@@ -99,6 +102,10 @@ export function useCanvasPageState() {
     setRelationshipSheetId,
     settingsInitialTab,
     setSettingsInitialTab,
+
+    // help and modals
+    showShortcutsHelp,
+    setShowShortcutsHelp,
   };
 }
 

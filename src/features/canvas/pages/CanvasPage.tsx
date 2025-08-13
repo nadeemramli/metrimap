@@ -16,7 +16,7 @@ import { useParams } from 'react-router-dom';
 // Extracted utilities and hooks
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
-import { useCanvasStore } from '@/lib/stores';
+import { useAppStore, useCanvasStore } from '@/lib/stores';
 import { PortalContainerProvider } from '@/shared/contexts/PortalContainerContext';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
@@ -119,7 +119,7 @@ function CanvasPageInner() {
   ]);
 
   // Initialize keyboard shortcuts
-  useCanvasKeyboard({ state });
+  useCanvasKeyboard();
 
   // Initialize auto-save and realtime
   useAutoSave();
@@ -383,11 +383,13 @@ function CanvasPageInner() {
     ]
   );
 
+  // UNIFIED: Use only canvasNodes from Zustand store, remove state.extraNodes
+  const temporaryExtraNodes = state.extraNodes || [];
+
   // Memoized data conversions
   const nodes = useMemo(() => {
     const metricCardNodes = canvas?.nodes || [];
     const evidenceNodes = evidenceList?.filter((e) => e.position) || [];
-    const extraNodes = state.extraNodes || [];
     const persistedCanvasNodes = canvasNodes || [];
 
     const convertedMetricCardNodes = metricCardNodes.map((card) =>
@@ -433,12 +435,14 @@ function CanvasPageInner() {
       )
     );
 
+    // UNIFIED: Only use persisted canvas nodes, no more extraNodes
     const allNodes = [
       ...convertedMetricCardNodes,
       ...convertedEvidenceNodes,
       ...convertedGroupNodes,
       ...convertedPersistedCanvasNodes,
-      ...extraNodes,
+      // Only include temporary nodes if they exist (for immediate UI feedback)
+      ...(temporaryExtraNodes.length > 0 ? temporaryExtraNodes : []),
     ];
 
     console.log('🔄 Nodes computed:', {
@@ -446,7 +450,7 @@ function CanvasPageInner() {
       evidenceNodes: convertedEvidenceNodes.length,
       groupNodes: convertedGroupNodes.length,
       persistedCanvasNodes: convertedPersistedCanvasNodes.length,
-      extraNodes: extraNodes.length,
+      temporaryExtraNodes: temporaryExtraNodes.length,
       total: allNodes.length,
     });
 
@@ -456,8 +460,8 @@ function CanvasPageInner() {
     canvas?.nodes,
     canvas?.groups,
     evidenceList,
-    canvasNodes,
-    state.extraNodes,
+    canvasNodes, // Unified canvas nodes from Zustand store
+    temporaryExtraNodes, // Only temporary fallback nodes
     selectedNodeIds,
     state.isSettingsSheetOpen,
     stableEvents,
@@ -643,14 +647,18 @@ function CanvasPageInner() {
   );
 
   // Apply generic node changes for extra nodes (selection/resize etc.)
+  // UNIFIED: Only handle temporary extra nodes, persisted nodes are handled by their stores
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      if (!Array.isArray(state.extraNodes) || state.extraNodes.length === 0)
+      if (
+        !Array.isArray(temporaryExtraNodes) ||
+        temporaryExtraNodes.length === 0
+      )
         return;
-      const updated = applyNodeChanges(changes, state.extraNodes as any);
+      const updated = applyNodeChanges(changes, temporaryExtraNodes as any);
       state.setExtraNodes(updated as any);
     },
-    [state]
+    [temporaryExtraNodes, state]
   );
 
   const handleAddCustomNode = useCallback(
@@ -682,7 +690,7 @@ function CanvasPageInner() {
       }
 
       try {
-        // Create the canvas node in the database
+        // UNIFIED: Create the canvas node in the database and store
         await createCanvasNode({
           projectId: currentCanvas.id,
           nodeType: type,
@@ -695,14 +703,23 @@ function CanvasPageInner() {
         console.log(`✅ Created ${type} node successfully`);
       } catch (error) {
         console.error(`❌ Error creating ${type} node:`, error);
-        // Fallback to local state for immediate feedback
+        // UNIFIED: Only use temporary fallback for immediate UI feedback
+        // This will be replaced when the store updates
         const fallbackNode = {
           id: generateUUID(),
           type,
           position: basePosition,
           data: nodeData,
         };
-        state.setExtraNodes([...(state.extraNodes || []), fallbackNode as any]);
+        state.setExtraNodes([
+          ...(temporaryExtraNodes || []),
+          fallbackNode as any,
+        ]);
+
+        // Clear temporary node after a short delay to avoid conflicts
+        setTimeout(() => {
+          state.setExtraNodes([]);
+        }, 3000);
       }
     },
     [createCanvasNode, state]
@@ -743,7 +760,6 @@ function CanvasPageInner() {
                 : false // Draw mode: disable React Flow panning completely
             }
             panOnScroll={state.toolbarMode === 'edit'} // Enable scroll panning in Edit mode only
-            panOnScrollMode="free"
             zoomOnScroll={state.toolbarMode === 'edit'} // Enable zoom in Edit mode only
             panActivationKeyCode={state.toolbarMode === 'edit' ? 'Space' : null} // Space panning in Edit mode only
             nodesDraggable={state.toolbarMode === 'edit'}
@@ -770,9 +786,13 @@ function CanvasPageInner() {
                 mode={state.toolbarMode}
                 onChangeMode={handleModeChange}
                 navigationTool={state.navigationTool}
-                onChangeNavigationTool={state.setNavigationTool}
+                onChangeNavigationTool={(tool: string) =>
+                  state.setNavigationTool(tool as any)
+                }
                 keepToolActive={state.keepToolActive}
-                onToggleKeepToolActive={state.setKeepToolActive}
+                onToggleKeepToolActive={(value: boolean) =>
+                  state.setKeepToolActive(value)
+                }
                 drawActiveTool={state.drawActiveTool}
                 onSetDrawTool={state.setDrawActiveTool}
                 onOpenFilters={events.handleOpenFilters}
@@ -878,7 +898,11 @@ function CanvasPageInner() {
       <BulkOperationsToolbar />
 
       {/* Quick Search */}
-      <QuickSearchCommand isOpen={false} onClose={() => {}} />
+      <QuickSearchCommand
+        isOpen={false}
+        onClose={() => {}}
+        onResultSelect={() => {}}
+      />
     </div>
   );
 }

@@ -4,8 +4,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Support both Vite and Next-style public env vars (production may set NEXT_PUBLIC_*)
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export function useClerkSupabase(): SupabaseClient<Database> | null {
   const { user } = useUser();
@@ -29,7 +33,3 @@ export function useClerkSupabase(): SupabaseClient<Database> | null {
 
   return supabaseClient;
 }
-
-
-
-
