@@ -1,10 +1,10 @@
-import { generateUUID } from '@/shared/utils/validation';
 import type {
   ApiConnection,
   DataSource,
   GovernancePolicy,
   StatusFilter,
-} from '@/types/source';
+} from '@/features/sources/source';
+import { generateUUID } from '@/shared/utils/validation';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 

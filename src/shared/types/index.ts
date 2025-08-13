@@ -257,6 +257,26 @@ export interface GroupNode {
   zIndex?: number;
 }
 
+// Canvas node types for extra nodes (comment, source, chart, operator, whiteboard)
+export type CanvasNodeType =
+  | 'commentNode'
+  | 'sourceNode'
+  | 'chartNode'
+  | 'operatorNode'
+  | 'whiteboardNode';
+
+export interface CanvasNode {
+  id: string;
+  projectId: string;
+  nodeType: CanvasNodeType;
+  title?: string;
+  position: { x: number; y: number };
+  data: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
 // Events for changelog
 export interface ChangelogEntry {
   id: string;

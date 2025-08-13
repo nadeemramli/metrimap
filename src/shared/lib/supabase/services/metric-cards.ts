@@ -2,14 +2,22 @@ import {
   CreateMetricCardSchema,
   UpdateMetricCardSchema,
 } from '@/shared/lib/validation/zod';
+import type { MetricCard } from '@/shared/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { MetricCard } from '../../types';
 import { supabase } from '../client';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 
 export type MetricCardRow = Tables<'metric_cards'>;
 export type MetricCardInsert = TablesInsert<'metric_cards'>;
 export type MetricCardUpdate = TablesUpdate<'metric_cards'>;
+
+function setIfDefined<T extends Record<string, any>>(
+  obj: T,
+  key: keyof T,
+  value: any
+) {
+  if (value !== undefined) (obj as any)[key] = value;
+}
 
 // Transform database row to MetricCard
 function transformMetricCard(card: MetricCardRow): MetricCard {
@@ -53,9 +61,69 @@ function transformToInsert(
     causal_factors: card.causalFactors,
     dimensions: card.dimensions,
     assignees: card.assignees,
-    owner_id: card.owner && card.owner.trim() !== '' ? card.owner : null,
+    owner_id: card.owner && card.owner.trim() !== '' ? card.owner.trim() : null,
     created_by: userId,
   };
+}
+
+// Build DB update payload from domain updates
+function buildUpdateData(updates: Partial<MetricCard>): MetricCardUpdate {
+  const updateData: MetricCardUpdate = {};
+
+  setIfDefined(updateData, 'title', updates.title);
+  setIfDefined(updateData, 'description', updates.description);
+  setIfDefined(updateData, 'category', updates.category);
+  setIfDefined(updateData, 'sub_category', updates.subCategory);
+
+  if (updates.position !== undefined) {
+    updateData.position_x = updates.position.x;
+    updateData.position_y = updates.position.y;
+  }
+
+  setIfDefined(updateData, 'data', updates.data as any);
+  setIfDefined(updateData, 'source_type', updates.sourceType);
+  setIfDefined(updateData, 'formula', updates.formula);
+  setIfDefined(updateData, 'causal_factors', updates.causalFactors);
+  setIfDefined(updateData, 'dimensions', updates.dimensions);
+  setIfDefined(updateData, 'assignees', updates.assignees);
+
+  const trimmedOwner = updates.owner?.trim();
+  if (trimmedOwner) updateData.owner_id = trimmedOwner;
+
+  // Always update the timestamp
+  updateData.updated_at = new Date().toISOString();
+
+  return updateData;
+}
+
+function validateUpdateData(updateData: MetricCardUpdate) {
+  try {
+    UpdateMetricCardSchema.parse(updateData as unknown);
+  } catch (error) {
+    console.error('Validation error updating metric card:', error);
+    throw error;
+  }
+}
+
+async function executeUpdate(
+  id: string,
+  updateData: MetricCardUpdate,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase();
+  const { data, error } = await client
+    .from('metric_cards')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating metric card:', error);
+    throw error;
+  }
+
+  return data;
 }
 
 // Create a new metric card
@@ -105,57 +173,9 @@ export async function updateMetricCard(
   updates: Partial<MetricCard>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const updateData: MetricCardUpdate = {};
-
-  if (updates.title !== undefined) updateData.title = updates.title;
-  if (updates.description !== undefined)
-    updateData.description = updates.description;
-  if (updates.category !== undefined) updateData.category = updates.category;
-  if (updates.subCategory !== undefined)
-    updateData.sub_category = updates.subCategory;
-  if (updates.position !== undefined) {
-    updateData.position_x = updates.position.x;
-    updateData.position_y = updates.position.y;
-  }
-  if (updates.data !== undefined) updateData.data = updates.data as any;
-  if (updates.sourceType !== undefined)
-    updateData.source_type = updates.sourceType;
-  if (updates.formula !== undefined) updateData.formula = updates.formula;
-  if (updates.causalFactors !== undefined)
-    updateData.causal_factors = updates.causalFactors;
-  if (updates.dimensions !== undefined)
-    updateData.dimensions = updates.dimensions;
-  if (updates.assignees !== undefined) updateData.assignees = updates.assignees;
-  if (
-    updates.owner !== undefined &&
-    updates.owner &&
-    updates.owner.trim() !== ''
-  ) {
-    updateData.owner_id = updates.owner;
-  }
-
-  // Always update the timestamp
-  updateData.updated_at = new Date().toISOString();
-
-  const client = authenticatedClient || supabase();
-  try {
-    UpdateMetricCardSchema.parse(updateData as unknown);
-  } catch (error) {
-    console.error('Validation error updating metric card:', error);
-    throw error;
-  }
-  const { data, error } = await client
-    .from('metric_cards')
-    .update(updateData)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error updating metric card:', error);
-    throw error;
-  }
-
+  const updateData = buildUpdateData(updates);
+  validateUpdateData(updateData);
+  const data = await executeUpdate(id, updateData, authenticatedClient);
   return transformMetricCard(data);
 }
 

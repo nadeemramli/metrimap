@@ -1,6 +1,6 @@
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from "@xyflow/react";
-import type { EdgeProps } from "@xyflow/react";
-import { Badge } from "@/shared/components/ui/badge";
+import { Badge } from '@/shared/components/ui/badge';
+import type { EdgeProps } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 
 interface OperativeEdgeData {
   label?: string;
@@ -12,7 +12,6 @@ interface OperativeEdgeProps extends EdgeProps {
 }
 
 export default function OperativeEdge({
-  id,
   sourceX,
   sourceY,
   targetX,
@@ -36,15 +35,15 @@ export default function OperativeEdge({
       <BaseEdge
         path={edgePath}
         style={{
-          stroke: selected ? "#2563eb" : "#6b7280",
+          stroke: selected ? '#2563eb' : '#6b7280',
           strokeWidth: 2,
-          strokeDasharray: "4,2",
+          strokeDasharray: '4,2',
           opacity: selected ? 1 : 0.9,
         }}
       />
       <EdgeLabelRenderer>
         <div
-          style={{ position: "absolute", transform: "translate(-50%, -50%)" }}
+          style={{ position: 'absolute', transform: 'translate(-50%, -50%)' }}
           className="pointer-events-none"
         >
           {data?.label && (

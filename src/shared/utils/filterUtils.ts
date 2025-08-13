@@ -1,11 +1,16 @@
-import type { MetricCard, Relationship, CardCategory } from '@/shared/types';
+import type { CardCategory, MetricCard, Relationship } from '@/shared/types';
 
 export interface FilterOptions {
   categories?: CardCategory[];
   tags?: string[];
   owners?: string[];
   confidence?: ('High' | 'Medium' | 'Low')[];
-  relationshipTypes?: ('Deterministic' | 'Probabilistic' | 'Causal' | 'Compositional')[];
+  relationshipTypes?: (
+    | 'Deterministic'
+    | 'Probabilistic'
+    | 'Causal'
+    | 'Compositional'
+  )[];
   searchTerm?: string;
   dateRange?: {
     start: string;
@@ -20,6 +25,97 @@ export interface FilterState {
   visibleEdgeIds: Set<string>;
 }
 
+// Helper predicates to reduce complexity
+const normalize = (v?: string) => (v ?? '').toLowerCase();
+
+const matchesCategories = (card: MetricCard, options: FilterOptions): boolean =>
+  !options.categories?.length || options.categories.includes(card.category);
+
+function matchesTags(card: MetricCard, options: FilterOptions): boolean {
+  const tags = options.tags;
+  if (!tags || tags.length === 0) return true;
+  const cardTags = card.tags || [];
+  if (cardTags.length === 0) return false;
+  const haystack = cardTags.map(normalize).join(' ');
+  return tags.map(normalize).some((s) => haystack.includes(s));
+}
+
+function matchesOwner(card: MetricCard, options: FilterOptions): boolean {
+  const { owners } = options;
+  if (!owners || owners.length === 0) return true;
+  return !!card.owner && owners.includes(card.owner);
+}
+
+function matchesSearch(card: MetricCard, options: FilterOptions): boolean {
+  const { searchTerm } = options;
+  if (!searchTerm) return true;
+  const q = normalize(searchTerm);
+  const inTitle = normalize(card.title).includes(q);
+  const inDesc = normalize(card.description).includes(q);
+  const inTags = (card.tags || []).some((tag) => normalize(tag).includes(q));
+  return inTitle || inDesc || inTags;
+}
+
+function matchesDate(card: MetricCard, options: FilterOptions): boolean {
+  const { dateRange } = options;
+  if (!dateRange) return true;
+  const cardDate = new Date(card.createdAt);
+  const startDate = new Date(dateRange.start);
+  const endDate = new Date(dateRange.end);
+  return !(cardDate < startDate || cardDate > endDate);
+}
+
+function buildMetricCardPredicate(options: FilterOptions) {
+  return (card: MetricCard) =>
+    matchesCategories(card, options) &&
+    matchesTags(card, options) &&
+    matchesOwner(card, options) &&
+    matchesSearch(card, options) &&
+    matchesDate(card, options);
+}
+
+// Relationship helpers
+const matchesConfidence = (
+  rel: Relationship,
+  options: FilterOptions
+): boolean =>
+  !options.confidence?.length ||
+  options.confidence.includes(rel.confidence as any);
+
+function matchesRelType(rel: Relationship, options: FilterOptions): boolean {
+  const { relationshipTypes } = options;
+  if (!relationshipTypes || relationshipTypes.length === 0) return true;
+  return relationshipTypes.includes(rel.type as any);
+}
+
+function matchesRelSearch(rel: Relationship, options: FilterOptions): boolean {
+  const { searchTerm } = options;
+  if (!searchTerm) return true;
+  const q = normalize(searchTerm);
+  const inType = normalize(rel.type).includes(q);
+  const inEvidence = (rel.evidence || []).some(
+    (e) => normalize(e.title).includes(q) || normalize(e.summary).includes(q)
+  );
+  return inType || inEvidence;
+}
+
+function matchesRelDate(rel: Relationship, options: FilterOptions): boolean {
+  const { dateRange } = options;
+  if (!dateRange) return true;
+  const relDate = new Date(rel.createdAt);
+  const startDate = new Date(dateRange.start);
+  const endDate = new Date(dateRange.end);
+  return !(relDate < startDate || relDate > endDate);
+}
+
+function buildRelationshipPredicate(options: FilterOptions) {
+  return (rel: Relationship) =>
+    matchesConfidence(rel, options) &&
+    matchesRelType(rel, options) &&
+    matchesRelSearch(rel, options) &&
+    matchesRelDate(rel, options);
+}
+
 /**
  * Filter metric cards based on filter options
  */
@@ -27,61 +123,8 @@ export function filterMetricCards(
   cards: MetricCard[],
   options: FilterOptions
 ): MetricCard[] {
-  return cards.filter(card => {
-    // Category filter
-    if (options.categories && options.categories.length > 0) {
-      if (!options.categories.includes(card.category)) {
-        return false;
-      }
-    }
-
-    // Tags filter
-    if (options.tags && options.tags.length > 0) {
-      const cardTags = card.tags || [];
-      const hasMatchingTag = options.tags.some(tag => 
-        cardTags.some(cardTag => 
-          cardTag.toLowerCase().includes(tag.toLowerCase())
-        )
-      );
-      if (!hasMatchingTag) {
-        return false;
-      }
-    }
-
-    // Owner filter
-    if (options.owners && options.owners.length > 0) {
-      if (!card.owner || !options.owners.includes(card.owner)) {
-        return false;
-      }
-    }
-
-    // Search term filter
-    if (options.searchTerm) {
-      const searchLower = options.searchTerm.toLowerCase();
-      const matchesTitle = card.title.toLowerCase().includes(searchLower);
-      const matchesDescription = card.description.toLowerCase().includes(searchLower);
-      const matchesTags = (card.tags || []).some(tag => 
-        tag.toLowerCase().includes(searchLower)
-      );
-      
-      if (!matchesTitle && !matchesDescription && !matchesTags) {
-        return false;
-      }
-    }
-
-    // Date range filter
-    if (options.dateRange) {
-      const cardDate = new Date(card.createdAt);
-      const startDate = new Date(options.dateRange.start);
-      const endDate = new Date(options.dateRange.end);
-      
-      if (cardDate < startDate || cardDate > endDate) {
-        return false;
-      }
-    }
-
-    return true;
-  });
+  const predicate = buildMetricCardPredicate(options);
+  return cards.filter(predicate);
 }
 
 /**
@@ -91,48 +134,8 @@ export function filterRelationships(
   relationships: Relationship[],
   options: FilterOptions
 ): Relationship[] {
-  return relationships.filter(relationship => {
-    // Confidence filter
-    if (options.confidence && options.confidence.length > 0) {
-      if (!options.confidence.includes(relationship.confidence)) {
-        return false;
-      }
-    }
-
-    // Relationship type filter
-    if (options.relationshipTypes && options.relationshipTypes.length > 0) {
-      if (!options.relationshipTypes.includes(relationship.type)) {
-        return false;
-      }
-    }
-
-    // Search term filter
-    if (options.searchTerm) {
-      const searchLower = options.searchTerm.toLowerCase();
-      const matchesType = relationship.type.toLowerCase().includes(searchLower);
-      const matchesEvidence = (relationship.evidence || []).some(evidence => 
-        evidence.title.toLowerCase().includes(searchLower) ||
-        evidence.summary.toLowerCase().includes(searchLower)
-      );
-      
-      if (!matchesType && !matchesEvidence) {
-        return false;
-      }
-    }
-
-    // Date range filter
-    if (options.dateRange) {
-      const relationshipDate = new Date(relationship.createdAt);
-      const startDate = new Date(options.dateRange.start);
-      const endDate = new Date(options.dateRange.end);
-      
-      if (relationshipDate < startDate || relationshipDate > endDate) {
-        return false;
-      }
-    }
-
-    return true;
-  });
+  const predicate = buildRelationshipPredicate(options);
+  return relationships.filter(predicate);
 }
 
 /**
@@ -142,11 +145,15 @@ export function getAvailableFilterOptions(
   cards: MetricCard[],
   relationships: Relationship[]
 ) {
-  const categories = [...new Set(cards.map(card => card.category))];
-  const tags = [...new Set(cards.flatMap(card => card.tags || []))];
-  const owners = [...new Set(cards.map(card => card.owner).filter(Boolean))] as string[];
-  const confidenceLevels = [...new Set(relationships.map(rel => rel.confidence))];
-  const relationshipTypes = [...new Set(relationships.map(rel => rel.type))];
+  const categories = [...new Set(cards.map((card) => card.category))];
+  const tags = [...new Set(cards.flatMap((card) => card.tags || []))];
+  const owners = [
+    ...new Set(cards.map((card) => card.owner).filter(Boolean)),
+  ] as string[];
+  const confidenceLevels = [
+    ...new Set(relationships.map((rel) => rel.confidence)),
+  ];
+  const relationshipTypes = [...new Set(relationships.map((rel) => rel.type))];
 
   return {
     categories,
@@ -168,8 +175,8 @@ export function applyFilters(
   const filteredCards = filterMetricCards(cards, options);
   const filteredRelationships = filterRelationships(relationships, options);
 
-  const visibleNodeIds = new Set(filteredCards.map(card => card.id));
-  const visibleEdgeIds = new Set(filteredRelationships.map(rel => rel.id));
+  const visibleNodeIds = new Set(filteredCards.map((card) => card.id));
+  const visibleEdgeIds = new Set(filteredRelationships.map((rel) => rel.id));
 
   return { visibleNodeIds, visibleEdgeIds };
 }
@@ -203,4 +210,4 @@ export function getFilterSummary(options: FilterOptions): string {
   }
 
   return parts.length > 0 ? parts.join(', ') : 'No filters';
-} 
+}

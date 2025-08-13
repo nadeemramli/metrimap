@@ -11,7 +11,7 @@ export function useAutoSave({
   delay = 2000,
   enabled = true,
 }: Partial<UseAutoSaveOptions> = {}) {
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isEnabledRef = useRef(enabled);
 
   // Update enabled state
@@ -34,7 +34,7 @@ export function useAutoSave({
   const cancel = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
-      timeoutRef.current = undefined;
+      timeoutRef.current = null;
     }
   }, []);
 
@@ -46,9 +46,7 @@ export function useAutoSave({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 

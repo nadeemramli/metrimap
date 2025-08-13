@@ -320,15 +320,26 @@ export default function RelationshipsTable({
                                   </div>
                                   {expandedTagInputs.has(relationship.id) && (
                                     <EnhancedTagInput
-                                      value={
+                                      tags={
                                         relationshipTags[relationship.id] || []
                                       }
-                                      onChange={async (tags) => {
+                                      onAdd={async (tag) => {
+                                        const current =
+                                          relationshipTags[relationship.id] ||
+                                          [];
                                         await onAddTagsToRelationship(
                                           relationship.id,
-                                          tags
+                                          [...current, tag]
                                         );
-                                        toggleTagInput(relationship.id);
+                                      }}
+                                      onRemove={async (tag) => {
+                                        const current =
+                                          relationshipTags[relationship.id] ||
+                                          [];
+                                        await onAddTagsToRelationship(
+                                          relationship.id,
+                                          current.filter((t) => t !== tag)
+                                        );
                                       }}
                                       placeholder="Add tags..."
                                       disabled={isLoadingTags}

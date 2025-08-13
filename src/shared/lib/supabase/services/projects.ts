@@ -4,9 +4,9 @@ import {
   UpdateGroupSchema,
   UpdateProjectSchema,
 } from '@/shared/lib/validation/zod';
+import type { CanvasProject } from '@/shared/types';
 import { transformCanvasProject } from '@/shared/utils/dataTransformers';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CanvasProject } from '../../types';
 import { supabase } from '../client';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 
@@ -18,15 +18,11 @@ export type MetricCard = Tables<'metric_cards'>;
 export type Relationship = Tables<'relationships'>;
 export type Group = Tables<'groups'>;
 
-// Fetch all projects for a user (fixed to eliminate RLS circular dependencies)
-export async function getUserProjects(
+async function fetchOwnedProjects(
   userId: string,
-  authenticatedClient?: SupabaseClient<Database>
+  client: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
-
-  // Step 1: Get projects owned by user (RLS handles this)
-  const { data: ownedProjects, error: ownedError } = await client
+  const { data, error } = await client
     .from('projects')
     .select(
       `
@@ -40,63 +36,68 @@ export async function getUserProjects(
     )
     .eq('created_by', userId)
     .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
 
-  if (ownedError) {
-    console.error('Error fetching owned projects:', ownedError);
-    throw ownedError;
-  }
-
-  // Step 2: Get project IDs where user is a collaborator
-  const { data: collaborations, error: collabError } = await client
+async function fetchCollaboratedProjectIds(
+  userId: string,
+  client: SupabaseClient<Database>
+) {
+  const { data, error } = await client
     .from('project_collaborators')
     .select('project_id')
     .eq('user_id', userId);
+  if (error) throw error;
+  return (data || []).map((c) => c.project_id).filter((id) => id !== null);
+}
 
-  if (collabError) {
-    console.error('Error fetching collaborations:', collabError);
-    throw collabError;
-  }
+async function fetchCollaboratedProjects(
+  projectIds: string[],
+  userId: string,
+  client: SupabaseClient<Database>
+) {
+  if (projectIds.length === 0) return [] as any[];
+  const { data, error } = await client
+    .from('projects')
+    .select(
+      `
+      *,
+      project_collaborators(
+        role,
+        permissions,
+        users(id, name, email, avatar_url)
+      )
+    `
+    )
+    .in('id', projectIds)
+    .neq('created_by', userId)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
 
-  // Step 3: Get collaborated projects (if any)
-  let collaboratedProjects: any[] = [];
-  if (collaborations && collaborations.length > 0) {
-    const projectIds = collaborations
-      .map((c) => c.project_id)
-      .filter((id) => id !== null);
-
-    if (projectIds.length > 0) {
-      const { data, error } = await client
-        .from('projects')
-        .select(
-          `
-          *,
-          project_collaborators(
-            role,
-            permissions,
-            users(id, name, email, avatar_url)
-          )
-        `
-        )
-        .in('id', projectIds)
-        .neq('created_by', userId) // Avoid duplicates with owned projects
-        .order('updated_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching collaborated projects:', error);
-        throw error;
-      }
-
-      collaboratedProjects = data || [];
-    }
-  }
-
-  // Step 4: Combine and sort all projects
-  const allProjects = [...(ownedProjects || []), ...collaboratedProjects].sort(
+function combineAndSortProjects(owned: any[], collaborated: any[]) {
+  return [...owned, ...collaborated].sort(
     (a, b) =>
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
+}
 
-  return allProjects;
+// Fetch all projects for a user (fixed to eliminate RLS circular dependencies)
+export async function getUserProjects(
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase();
+  const owned = await fetchOwnedProjects(userId, client);
+  const collabIds = await fetchCollaboratedProjectIds(userId, client);
+  const collaborated = await fetchCollaboratedProjects(
+    collabIds,
+    userId,
+    client
+  );
+  return combineAndSortProjects(owned, collaborated);
 }
 
 // Fetch a single project with all its data
@@ -357,7 +358,11 @@ export async function mergeProjectSettings(
     .eq('id', projectId)
     .single();
   if (fetchErr) throw fetchErr;
-  const next = { ...(proj?.settings || {}), ...partialSettings } as any;
+  const base: Record<string, any> =
+    proj && proj.settings && typeof proj.settings === 'object'
+      ? (proj.settings as Record<string, any>)
+      : {};
+  const next = { ...base, ...partialSettings } as any;
   return updateProject(projectId, { settings: next } as any, client);
 }
 

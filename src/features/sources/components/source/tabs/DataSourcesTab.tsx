@@ -1,3 +1,4 @@
+import type { DataSource } from '@/features/sources/source';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -8,7 +9,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import type { DataSource } from '@/types/source';
 import {
   AlertTriangle,
   CheckCircle,
@@ -19,7 +19,6 @@ import {
   MoreVertical,
   Plus,
   Trash2,
-  XCircle,
 } from 'lucide-react';
 
 interface DataSourcesTabProps {
@@ -31,45 +30,37 @@ interface DataSourcesTabProps {
 
 const getStatusIcon = (status: DataSource['status']) => {
   switch (status) {
-    case 'connected':
+    case 'Live':
       return <CheckCircle className="h-4 w-4 text-green-500" />;
-    case 'disconnected':
-      return <XCircle className="h-4 w-4 text-red-500" />;
-    case 'syncing':
-      return <Clock className="h-4 w-4 text-blue-500" />;
-    case 'error':
-      return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    case 'Instrumented':
+      return <Database className="h-4 w-4 text-blue-500" />;
+    case 'Needs QA':
+      return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+    case 'Planned':
     default:
-      return <XCircle className="h-4 w-4 text-gray-500" />;
+      return <Clock className="h-4 w-4 text-gray-500" />;
   }
 };
 
 const getStatusColor = (status: DataSource['status']) => {
   switch (status) {
-    case 'connected':
+    case 'Live':
       return 'bg-green-50 border-green-200 text-green-900';
-    case 'disconnected':
-      return 'bg-gray-50 border-gray-200 text-gray-900';
-    case 'syncing':
+    case 'Instrumented':
       return 'bg-blue-50 border-blue-200 text-blue-900';
-    case 'error':
-      return 'bg-red-50 border-red-200 text-red-900';
+    case 'Needs QA':
+      return 'bg-yellow-50 border-yellow-200 text-yellow-900';
+    case 'Planned':
     default:
       return 'bg-gray-50 border-gray-200 text-gray-900';
   }
 };
 
-const getQualityColor = (quality: DataSource['quality']) => {
-  switch (quality) {
-    case 'high':
-      return 'bg-green-50 border-green-200 text-green-900';
-    case 'medium':
-      return 'bg-yellow-50 border-yellow-200 text-yellow-900';
-    case 'low':
-      return 'bg-red-50 border-red-200 text-red-900';
-    default:
-      return 'bg-gray-50 border-gray-200 text-gray-900';
-  }
+const getQualityColor = (quality: DataSource['dataQuality']) => {
+  if (quality == null) return 'bg-gray-50 border-gray-200 text-gray-900';
+  if (quality >= 80) return 'bg-green-50 border-green-200 text-green-900';
+  if (quality >= 50) return 'bg-yellow-50 border-yellow-200 text-yellow-900';
+  return 'bg-red-50 border-red-200 text-red-900';
 };
 
 export function DataSourcesTab({
@@ -136,7 +127,7 @@ export function DataSourcesTab({
                   <td className="px-6 py-4">
                     <div>
                       <div className="font-medium text-foreground">
-                        {source.name}
+                        {source.metricName}
                       </div>
                       {source.description && (
                         <div className="text-sm text-muted-foreground">
@@ -146,7 +137,7 @@ export function DataSourcesTab({
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge variant="secondary">{source.system}</Badge>
+                    <Badge variant="secondary">{source.sourceSystem}</Badge>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -162,9 +153,11 @@ export function DataSourcesTab({
                   <td className="px-6 py-4">
                     <Badge
                       variant="outline"
-                      className={getQualityColor(source.quality)}
+                      className={getQualityColor(source.dataQuality)}
                     >
-                      {source.quality}
+                      {source.dataQuality != null
+                        ? `${source.dataQuality}%`
+                        : 'Unknown'}
                     </Badge>
                   </td>
                   <td className="px-6 py-4">
@@ -173,7 +166,9 @@ export function DataSourcesTab({
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {new Date(source.lastSync).toLocaleString()}
+                    {source.lastSync
+                      ? new Date(source.lastSync).toLocaleString()
+                      : '-'}
                   </td>
                   <td className="px-6 py-4">
                     <DropdownMenu>

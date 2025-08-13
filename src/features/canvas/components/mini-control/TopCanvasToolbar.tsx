@@ -1,60 +1,58 @@
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
-import { LayoutGrid, MapPin, MousePointer, Pencil, Search } from 'lucide-react';
+import {
+  MapPin,
+  MessageSquarePlus,
+  MousePointer,
+  Pencil,
+  Search,
+} from 'lucide-react';
 import AddNodeButton from './AddNodeButton';
 import FilterControls from './FilterControls';
+import LayoutDropdownButton from './LayoutDropdownButton';
 
 type CanvasMode = 'edit' | 'draw';
-type NavigationTool = 'hand' | 'move' | 'scale' | string;
-type DrawTool =
-  | 'selection'
-  | 'freedraw'
-  | 'rectangle'
-  | 'ellipse'
-  | 'arrow'
-  | 'line'
-  | 'text'
-  | string;
 
 interface TopCanvasToolbarProps {
   mode: CanvasMode;
   onChangeMode: (mode: CanvasMode) => void;
 
-  navigationTool: NavigationTool;
-  onChangeNavigationTool: (tool: NavigationTool) => void;
+  navigationTool: string;
+  onChangeNavigationTool: (tool: string) => void;
 
   keepToolActive: boolean;
   onToggleKeepToolActive: (value: boolean) => void;
 
-  drawActiveTool: DrawTool;
-  onSetDrawTool: (tool: DrawTool) => void;
+  drawActiveTool: string;
+  onSetDrawTool: (tool: string) => void;
 
   onOpenFilters: () => void;
   onOpenSearch?: () => void;
   onAddEvidence: () => void;
   onApplyLayout: () => void;
   currentLayoutDirection?: string;
-  onAddCustomNode?: (type: 'commentNode') => void;
+  onAddCustomNode?: (
+    type:
+      | 'commentNode'
+      | 'sourceNode'
+      | 'chartNode'
+      | 'operatorNode'
+      | 'whiteboardNode'
+  ) => void;
 }
 
 export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
   const {
     mode,
     onChangeMode,
-    navigationTool,
-    onChangeNavigationTool,
     keepToolActive,
     onToggleKeepToolActive,
     drawActiveTool,
     onSetDrawTool,
-    onOpenFilters,
-    onAddEvidence,
-    onApplyLayout,
-    currentLayoutDirection,
   } = props;
 
-  const drawTools: DrawTool[] = [
+  const drawTools: string[] = [
     'selection',
     'freedraw',
     'rectangle',
@@ -96,7 +94,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
         </Button>
       </div>
 
-      {/* Pointer tool (lightweight cue, matches legacy look) */}
+      {/* Pointer tool */}
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
@@ -118,6 +116,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
               variant={drawActiveTool === tool ? 'default' : 'secondary'}
               size="sm"
               onClick={() => onSetDrawTool(tool)}
+              className="rounded-lg"
             >
               {tool.charAt(0).toUpperCase() + tool.slice(1)}
             </Button>
@@ -140,43 +139,38 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-1">
-        <AddNodeButton />
-        {/* Comment pin */}
-        <Button
-          variant="outline"
-          size="sm"
-          title="Add comment pin"
-          onClick={() => props.onAddCustomNode?.('commentNode')}
-        >
-          <MapPin className="h-4 w-4" />
-        </Button>
-        {/* Layout popover trigger (icon) */}
+        <AddNodeButton onAddCustomNode={props.onAddCustomNode} />
+        {/* Add Evidence Node */}
         <Button
           variant="ghost"
           size="sm"
+          title="Add evidence"
           className="rounded-lg"
-          title="Layout"
-          onClick={() => window.dispatchEvent(new Event('openUnifiedLayout'))}
+          onClick={props.onAddEvidence}
         >
-          <LayoutGrid className="w-4 h-4" />
+          <MapPin className="h-4 w-4" />
         </Button>
-        {/* Filters */}
-        <FilterControls />
-        {/* Search */}
+        {/* Add Comment Node */}
         <Button
-          variant="outline"
+          variant="ghost"
+          size="sm"
+          title="Add comment"
+          className="rounded-lg"
+          onClick={() => props.onAddCustomNode?.('commentNode')}
+        >
+          <MessageSquarePlus className="h-4 w-4" />
+        </Button>
+        {/* Layout dropdown */}
+        <LayoutDropdownButton />
+        <FilterControls />
+        <Button
+          variant="ghost"
           size="sm"
           onClick={props.onOpenSearch}
           title="Search"
+          className="rounded-lg"
         >
           <Search className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={onAddEvidence}>
-          Add Evidence
-        </Button>
-        <Button variant="outline" size="sm" onClick={onApplyLayout}>
-          Apply Layout{' '}
-          {currentLayoutDirection ? `(${currentLayoutDirection})` : ''}
         </Button>
       </div>
     </div>

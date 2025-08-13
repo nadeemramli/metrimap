@@ -1,6 +1,2 @@
 // Evidence feature types will be consolidated here
-export * from './stores/types';
-
-
-
-
+export type { EvidenceComment, EvidenceItem } from '@/shared/types';

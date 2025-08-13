@@ -4,6 +4,7 @@ interface UseCanvasEventsOptions {
   viewportSync: {
     updateViewport: (v: { x: number; y: number; zoom: number }) => void;
   };
+  onApplyLayout?: () => void;
 }
 
 /**
@@ -11,21 +12,22 @@ interface UseCanvasEventsOptions {
  */
 export function useCanvasEvents({
   state,
-  canvasMachine,
-  viewportSync,
+  onApplyLayout,
 }: UseCanvasEventsOptions) {
   const handlePaneClick = () => {
-    // Clear any transient UI or selections if needed
+    // Clear any transient UI or selections if neededs
   };
 
   const handleOpenSettingsSheet = (nodeId: string) => {
+    console.log('🔧 Opening settings sheet for node:', nodeId);
     state.setIsSettingsSheetOpen(true);
-    state.setActiveNodeId?.(nodeId);
+    state.setSettingsCardId?.(nodeId);
   };
 
   const handleOpenRelationshipSheet = (edgeId: string) => {
+    console.log('🔗 Opening relationship sheet for edge:', edgeId);
     state.setIsRelationshipSheetOpen(true);
-    state.setActiveEdgeId?.(edgeId);
+    state.setRelationshipSheetId?.(edgeId);
   };
 
   const handleSwitchToCard = (nodeId: string) => {
@@ -56,7 +58,12 @@ export function useCanvasEvents({
   };
 
   const handleApplyLayout = () => {
-    state.applyLayout?.();
+    console.log('🔄 Layout button clicked');
+    if (onApplyLayout) {
+      onApplyLayout();
+    } else {
+      console.warn('⚠️ No layout handler provided');
+    }
   };
 
   const handleGroupSelectedNodes = () => {
@@ -84,10 +91,15 @@ export function useCanvasEvents({
     state.applyFilters?.(filters);
   };
   const handleCloseSettingsSheet = () => {
+    console.log('🔧 Closing settings sheet');
     state.setIsSettingsSheetOpen?.(false);
+    state.setSettingsCardId?.(undefined);
+    state.setSettingsInitialTab?.(undefined);
   };
   const handleCloseRelationshipSheet = () => {
+    console.log('🔗 Closing relationship sheet');
     state.setIsRelationshipSheetOpen?.(false);
+    state.setRelationshipSheetId?.(undefined);
   };
 
   return {

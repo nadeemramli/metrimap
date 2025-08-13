@@ -207,6 +207,21 @@ model comment_mentions {
   @@map("comment_mentions")
 }
 
+model canvas_nodes {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id String    @db.Uuid
+  node_type  String
+  title      String?
+  position_x Float     @default(0)
+  position_y Float     @default(0)
+  data       Json?     @default("{}")
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  created_by String
+
+  @@map("canvas_nodes")
+}
+
 model notifications {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id     String   @db.Uuid

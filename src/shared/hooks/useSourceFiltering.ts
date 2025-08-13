@@ -3,7 +3,7 @@ import type {
   DataSource,
   GovernancePolicy,
   StatusFilter,
-} from '@/types/source';
+} from '@/features/sources/source';
 import { useMemo } from 'react';
 
 interface UseSourceFilteringProps {
@@ -16,6 +16,62 @@ interface UseSourceFilteringProps {
   systemFilter: string;
 }
 
+// Helper utilities to reduce complexity in the main hook
+const normalize = (value?: string) => (value ?? '').toLowerCase();
+
+function statusMatches(
+  status: string | undefined,
+  filter: StatusFilter
+): boolean {
+  const f = normalize(filter as unknown as string);
+  if (f === 'all') return true;
+  return normalize(status) === f;
+}
+
+function systemMatches(system: string | undefined, filter: string): boolean {
+  const f = normalize(filter);
+  if (f === 'all') return true;
+  return normalize(system) === f;
+}
+
+function buildSourcePredicate(
+  searchQuery: string,
+  statusFilter: StatusFilter,
+  systemFilter: string
+) {
+  const query = normalize(searchQuery);
+  return (source: DataSource) => {
+    const name = normalize(source.metricName);
+    const system = normalize(source.sourceSystem);
+    const matchesSearch = name.includes(query) || system.includes(query);
+    return (
+      matchesSearch &&
+      statusMatches(source.status, statusFilter) &&
+      systemMatches(source.sourceSystem, systemFilter)
+    );
+  };
+}
+
+function buildApiPredicate(searchQuery: string, statusFilter: StatusFilter) {
+  const query = normalize(searchQuery);
+  return (api: ApiConnection) => {
+    const name = normalize(api.name);
+    const type = normalize(api.type);
+    const matchesSearch = name.includes(query) || type.includes(query);
+    return matchesSearch && statusMatches(api.status, statusFilter);
+  };
+}
+
+function buildPolicyPredicate(searchQuery: string, statusFilter: StatusFilter) {
+  const query = normalize(searchQuery);
+  return (policy: GovernancePolicy) => {
+    const name = normalize(policy.name);
+    const type = normalize(policy.type);
+    const matchesSearch = name.includes(query) || type.includes(query);
+    return matchesSearch && statusMatches(policy.status, statusFilter);
+  };
+}
+
 export function useSourceFiltering({
   dataSources,
   apiConnections,
@@ -25,50 +81,26 @@ export function useSourceFiltering({
   statusFilter,
   systemFilter,
 }: UseSourceFilteringProps) {
-  const filteredSources = useMemo(() => {
-    return dataSources.filter((source) => {
-      const name = (source.metricName ?? '').toLowerCase();
-      const system = (source.sourceSystem ?? '').toLowerCase();
-      const search = (searchQuery ?? '').toLowerCase();
-      const matchesSearch = name.includes(search) || system.includes(search);
-      const matchesStatus =
-        (statusFilter ?? 'all').toLowerCase() === 'all' ||
-        (source.status ?? '').toLowerCase() ===
-          (statusFilter as string).toLowerCase();
-      const matchesSystem =
-        (systemFilter ?? 'all').toLowerCase() === 'all' ||
-        system === (systemFilter as string).toLowerCase();
-      return matchesSearch && matchesStatus && matchesSystem;
-    });
-  }, [dataSources, searchQuery, statusFilter, systemFilter]);
+  const filteredSources = useMemo(
+    () =>
+      dataSources.filter(
+        buildSourcePredicate(searchQuery, statusFilter, systemFilter)
+      ),
+    [dataSources, searchQuery, statusFilter, systemFilter]
+  );
 
-  const filteredApis = useMemo(() => {
-    return apiConnections.filter((api) => {
-      const name = (api.name ?? '').toLowerCase();
-      const type = (api.type ?? '').toLowerCase();
-      const search = (searchQuery ?? '').toLowerCase();
-      const matchesSearch = name.includes(search) || type.includes(search);
-      const matchesStatus =
-        (statusFilter ?? 'all').toLowerCase() === 'all' ||
-        (api.status ?? '').toLowerCase() ===
-          (statusFilter as string).toLowerCase();
-      return matchesSearch && matchesStatus;
-    });
-  }, [apiConnections, searchQuery, statusFilter]);
+  const filteredApis = useMemo(
+    () => apiConnections.filter(buildApiPredicate(searchQuery, statusFilter)),
+    [apiConnections, searchQuery, statusFilter]
+  );
 
-  const filteredPolicies = useMemo(() => {
-    return governancePolicies.filter((policy) => {
-      const name = (policy.name ?? '').toLowerCase();
-      const type = (policy.type ?? '').toLowerCase();
-      const search = (searchQuery ?? '').toLowerCase();
-      const matchesSearch = name.includes(search) || type.includes(search);
-      const matchesStatus =
-        (statusFilter ?? 'all').toLowerCase() === 'all' ||
-        (policy.status ?? '').toLowerCase() ===
-          (statusFilter as string).toLowerCase();
-      return matchesSearch && matchesStatus;
-    });
-  }, [governancePolicies, searchQuery, statusFilter]);
+  const filteredPolicies = useMemo(
+    () =>
+      governancePolicies.filter(
+        buildPolicyPredicate(searchQuery, statusFilter)
+      ),
+    [governancePolicies, searchQuery, statusFilter]
+  );
 
   const getFilteredData = () => {
     switch (activeTab) {

@@ -116,20 +116,6 @@ export default function AddNodeButton({
 
   return (
     <div className="flex gap-2">
-      {/* TEMPORARY: Test button to verify node creation */}
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => {
-          console.log(
-            '🖱️ AddNodeButton: Test button clicked - creating default node'
-          );
-          handleAddNode('Data/Metric');
-        }}
-      >
-        Test Add
-      </Button>
-
       <DropdownMenu
         onOpenChange={(open) =>
           console.log('Dropdown:', open ? 'opened' : 'closed')
@@ -142,7 +128,7 @@ export default function AddNodeButton({
               <Plus className="h-4 w-4" />
             </ControlButton>
           ) : (
-            <Button size="sm" className="gap-2" onClick={() => {}}>
+            <Button size="sm" variant="ghost" className="gap-2 rounded-lg">
               <Plus className="h-4 w-4" />
               Add Card
             </Button>

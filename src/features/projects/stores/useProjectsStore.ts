@@ -178,8 +178,6 @@ export const useProjectsStore = create<ProjectsStoreState>()(
             groups,
             lastModifiedBy,
             // Exclude camelCase fields that would conflict with database schema
-            createdAt,
-            updatedAt,
             ...dbProjectData
           } = projectData;
           const projectToCreate = {

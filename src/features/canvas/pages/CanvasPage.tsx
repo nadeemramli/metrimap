@@ -1,16 +1,20 @@
 import {
+  applyNodeChanges,
   Background,
   Controls,
   Panel,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  type Connection,
+  type NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 
 // Extracted utilities and hooks
+import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
 import { PortalContainerProvider } from '@/shared/contexts/PortalContainerContext';
@@ -18,6 +22,10 @@ import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
 import { getProjectById } from '@/shared/lib/supabase/services/projects';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import {
+  applyAutoLayout,
+  type LayoutDirection,
+} from '@/shared/utils/autoLayout';
 import {
   createExcalidrawInitialData,
   sanitizeExcalidrawData,
@@ -51,7 +59,6 @@ import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPan
 import TopCanvasToolbar from '@/features/canvas/components/mini-control/TopCanvasToolbar';
 import QuickSearchCommand from '@/features/canvas/components/search/QuickSearchCommand';
 import { generateUUID } from '@/shared/utils/validation';
-import type { Node } from '@xyflow/react';
 
 // Auto-save and realtime hooks
 import { useAutoSave } from '@/shared/hooks/useAutoSave';
@@ -77,13 +84,39 @@ function CanvasPageInner() {
   } = useCanvasStore();
 
   const { evidence: evidenceList } = useEvidenceStore();
+  const updateEvidencePosition = useEvidenceStore(
+    (s) => s.updateEvidencePosition
+  );
+
+  // Canvas nodes store for extra nodes (comment, source, chart, operator, whiteboard)
+  const {
+    canvasNodes,
+    loadCanvasNodes,
+    createNode: createCanvasNode,
+    updateNodePosition: updateCanvasNodePosition,
+    deleteNode: deleteCanvasNode,
+  } = useCanvasNodesStore();
 
   // Initialize hooks
   const canvasMachine = useCanvasStateMachine();
   const viewportSync = useCanvasViewportSync();
 
-  // Initialize event handlers
-  const events = useCanvasEvents({ state, canvasMachine, viewportSync });
+  // Sync local state with state machine to ensure consistency
+  // This fixes the node dragging issue by ensuring toolbarMode is properly synchronized
+  useEffect(() => {
+    const machineMode =
+      canvasMachine.currentEnvironment === 'practical' ? 'edit' : 'draw';
+    if (state.toolbarMode !== machineMode) {
+      console.log(
+        `🔄 Syncing toolbar mode: ${state.toolbarMode} -> ${machineMode}`
+      );
+      state.setToolbarMode(machineMode);
+    }
+  }, [
+    canvasMachine.currentEnvironment,
+    state.toolbarMode,
+    state.setToolbarMode,
+  ]);
 
   // Initialize keyboard shortcuts
   useCanvasKeyboard({ state });
@@ -137,6 +170,14 @@ function CanvasPageInner() {
             groups: projectData.groups?.length || 0,
           });
           loadCanvas(projectData);
+
+          // Load canvas nodes for this project
+          try {
+            await loadCanvasNodes(canvasId);
+            console.log('✅ Canvas nodes loaded');
+          } catch (error) {
+            console.error('❌ Error loading canvas nodes:', error);
+          }
         } else {
           console.error('❌ No project data returned for canvas:', canvasId);
           // Initialize a local skeleton canvas so the UI stays interactive
@@ -187,23 +228,191 @@ function CanvasPageInner() {
   }, [canvasId, canvas?.id, supabaseClient, loadCanvas, setLoading, setError]);
 
   // React Flow hooks
-  const { getViewport } = useReactFlow() as any;
+  const { getViewport, getNodes, getEdges, setNodes, fitView } =
+    useReactFlow() as any;
+
+  // Auto-layout handler
+  const handleApplyLayout = useCallback(
+    async (direction?: LayoutDirection) => {
+      console.log(
+        '🔄 Applying auto-layout with direction:',
+        direction || state.currentLayoutDirection
+      );
+
+      const currentNodes = getNodes();
+      const currentEdges = getEdges();
+
+      if (!currentNodes || currentNodes.length === 0) {
+        console.log('⚠️ No nodes to layout');
+        return;
+      }
+
+      const layoutDirection =
+        direction || (state.currentLayoutDirection as LayoutDirection) || 'TB';
+
+      try {
+        // Apply the auto-layout algorithm
+        const layoutedNodes = applyAutoLayout(currentNodes, currentEdges, {
+          direction: layoutDirection,
+          nodeWidth: 320,
+          nodeHeight: 200,
+          rankSeparation: 150,
+          nodeSeparation: 100,
+          marginX: 50,
+          marginY: 50,
+        });
+
+        console.log('✅ Layout applied, updating nodes...');
+
+        // Update the nodes with new positions
+        setNodes(layoutedNodes);
+
+        // Update the current layout direction in state
+        state.setCurrentLayoutDirection(layoutDirection);
+
+        // Fit the view to show all nodes with some padding
+        setTimeout(() => {
+          fitView({ padding: 50, duration: 800 });
+        }, 100);
+
+        console.log('✅ Auto-layout completed successfully');
+      } catch (error) {
+        console.error('❌ Error applying auto-layout:', error);
+      }
+    },
+    [getNodes, getEdges, setNodes, fitView, state]
+  );
+
+  // Create stable event handlers to prevent circular dependencies
+  const stableHandleOpenSettingsSheet = useCallback(
+    (nodeId: string) => {
+      console.log('🔧 Opening settings sheet for node:', nodeId);
+      state.setIsSettingsSheetOpen(true);
+      state.setSettingsCardId?.(nodeId);
+    },
+    [state]
+  );
+
+  const stableHandleSwitchToCard = useCallback(
+    (nodeId: string, tab?: string) => {
+      console.log('🔧 Switching to card:', nodeId, 'tab:', tab);
+      state.setIsSettingsSheetOpen(true);
+      state.setSettingsCardId?.(nodeId);
+      if (tab) {
+        state.setSettingsInitialTab?.(tab);
+      }
+    },
+    [state]
+  );
+
+  const stableHandleToggleCollapse = useCallback((groupId: string) => {
+    console.log('📁 Toggle collapse for group:', groupId);
+    // Update group collapse state in canvas
+    const currentCanvas = useCanvasStore.getState().canvas;
+    if (currentCanvas) {
+      const updatedGroups =
+        currentCanvas.groups?.map((group) =>
+          group.id === groupId
+            ? { ...group, isCollapsed: !group.isCollapsed }
+            : group
+        ) || [];
+
+      useCanvasStore.setState((state) => ({
+        canvas: state.canvas
+          ? {
+              ...state.canvas,
+              groups: updatedGroups,
+              updatedAt: new Date().toISOString(),
+            }
+          : undefined,
+      }));
+    }
+  }, []);
+
+  const stableHandleUpdateGroupSize = useCallback(
+    (groupId: string, size: { width: number; height: number }) => {
+      console.log('📏 Update group size:', groupId, size);
+      // Update group size in canvas
+      const currentCanvas = useCanvasStore.getState().canvas;
+      if (currentCanvas) {
+        const updatedGroups =
+          currentCanvas.groups?.map((group) =>
+            group.id === groupId ? { ...group, size } : group
+          ) || [];
+
+        useCanvasStore.setState((state) => ({
+          canvas: state.canvas
+            ? {
+                ...state.canvas,
+                groups: updatedGroups,
+                updatedAt: new Date().toISOString(),
+              }
+            : undefined,
+        }));
+      }
+    },
+    []
+  );
+
+  // Stable callback for layout application
+  const onApplyLayoutCallback = useCallback(() => {
+    handleApplyLayout();
+  }, [handleApplyLayout]);
+
+  // Initialize event handlers (after handleApplyLayout is defined)
+  const events = useCanvasEvents({
+    state,
+    canvasMachine,
+    viewportSync,
+    onApplyLayout: onApplyLayoutCallback,
+  });
+
+  // Create stable references to prevent circular dependencies
+  const stableEvents = useMemo(
+    () => ({
+      handleOpenSettingsSheet: stableHandleOpenSettingsSheet,
+      handleSwitchToCard: stableHandleSwitchToCard,
+      handleToggleCollapse: stableHandleToggleCollapse,
+      handleUpdateGroupSize: stableHandleUpdateGroupSize,
+    }),
+    [
+      stableHandleOpenSettingsSheet,
+      stableHandleSwitchToCard,
+      stableHandleToggleCollapse,
+      stableHandleUpdateGroupSize,
+    ]
+  );
 
   // Memoized data conversions
   const nodes = useMemo(() => {
-    const canvasNodes = canvas?.nodes || [];
+    const metricCardNodes = canvas?.nodes || [];
     const evidenceNodes = evidenceList?.filter((e) => e.position) || [];
     const extraNodes = state.extraNodes || [];
+    const persistedCanvasNodes = canvasNodes || [];
 
-    const convertedCanvasNodes = canvasNodes.map((card) =>
+    const convertedMetricCardNodes = metricCardNodes.map((card) =>
       convertToNode(
         card,
-        events.handleOpenSettingsSheet,
+        stableEvents.handleOpenSettingsSheet,
         () => console.log('Node clicked:', card.id),
-        events.handleSwitchToCard,
+        stableEvents.handleSwitchToCard,
         state.isSettingsSheetOpen,
         selectedNodeIds
       )
+    );
+
+    // Convert persisted canvas nodes to ReactFlow nodes
+    const convertedPersistedCanvasNodes = persistedCanvasNodes.map(
+      (canvasNode) => ({
+        id: canvasNode.id,
+        type: canvasNode.nodeType,
+        position: canvasNode.position,
+        data: {
+          ...canvasNode.data,
+          title: canvasNode.title,
+          projectId: canvasNode.projectId,
+        },
+      })
     );
 
     const convertedEvidenceNodes = evidenceNodes.map((evidence) =>
@@ -219,17 +428,27 @@ function CanvasPageInner() {
         group,
         () => console.log('Edit group:', group.id),
         () => console.log('Delete group:', group.id),
-        events.handleToggleCollapse,
-        events.handleUpdateGroupSize
+        stableEvents.handleToggleCollapse,
+        stableEvents.handleUpdateGroupSize
       )
     );
 
     const allNodes = [
-      ...convertedCanvasNodes,
+      ...convertedMetricCardNodes,
       ...convertedEvidenceNodes,
       ...convertedGroupNodes,
+      ...convertedPersistedCanvasNodes,
       ...extraNodes,
     ];
+
+    console.log('🔄 Nodes computed:', {
+      metricCardNodes: convertedMetricCardNodes.length,
+      evidenceNodes: convertedEvidenceNodes.length,
+      groupNodes: convertedGroupNodes.length,
+      persistedCanvasNodes: convertedPersistedCanvasNodes.length,
+      extraNodes: extraNodes.length,
+      total: allNodes.length,
+    });
 
     return allNodes;
   }, [
@@ -237,9 +456,11 @@ function CanvasPageInner() {
     canvas?.nodes,
     canvas?.groups,
     evidenceList,
+    canvasNodes,
     state.extraNodes,
     selectedNodeIds,
     state.isSettingsSheetOpen,
+    stableEvents,
   ]);
 
   const edges = useMemo(() => {
@@ -263,6 +484,8 @@ function CanvasPageInner() {
     canvas?.edges,
     state.extraEdges,
     state.isRelationshipSheetOpen,
+    events.handleOpenRelationshipSheet,
+    events.handleSwitchToRelationship,
   ]);
 
   // Memoized filter options
@@ -310,8 +533,128 @@ function CanvasPageInner() {
     [state, canvasMachine]
   );
 
+  // Keep nodes in sync while dragging (controlled ReactFlow)
+  const handleNodeDrag = useCallback(
+    (_: any, node: any) => {
+      if (node?.id && node?.position) {
+        if (node.type === 'metricCard') {
+          useCanvasStore.getState().updateNodePosition(node.id, node.position);
+        } else if (node.type === 'evidenceNode') {
+          updateEvidencePosition(node.id, node.position);
+        } else {
+          const current = state.extraNodes || [];
+          const next = current.map((n: any) =>
+            n.id === node.id ? { ...n, position: node.position } : n
+          );
+          state.setExtraNodes(next);
+        }
+      }
+    },
+    [state, updateEvidencePosition]
+  );
+
+  const handleNodeDragStop = useCallback(
+    (_: any, node: any) => {
+      // Reuse same logic on drag stop to ensure final commit
+      if (node?.id && node?.position) {
+        if (node.type === 'metricCard') {
+          useCanvasStore.getState().updateNodePosition(node.id, node.position);
+        } else if (node.type === 'evidenceNode') {
+          updateEvidencePosition(node.id, node.position);
+        } else {
+          const current = state.extraNodes || [];
+          const next = current.map((n: any) =>
+            n.id === node.id ? { ...n, position: node.position } : n
+          );
+          state.setExtraNodes(next);
+        }
+      }
+    },
+    [state, updateEvidencePosition]
+  );
+
+  // Handle edge connections between nodes
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      console.log('🔗 Creating connection:', connection);
+
+      // Get source and target nodes to determine edge type
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+
+      if (!sourceNode || !targetNode) {
+        console.error('❌ Source or target node not found');
+        return;
+      }
+
+      // Determine edge type based on node types
+      const isMetricToMetric =
+        sourceNode.type === 'metricCard' && targetNode.type === 'metricCard';
+      const isOperativeConnection =
+        ['sourceNode', 'chartNode', 'operatorNode'].includes(sourceNode.type) ||
+        ['sourceNode', 'chartNode', 'operatorNode'].includes(targetNode.type);
+
+      if (isMetricToMetric) {
+        // Create DynamicEdge for MetricCard to MetricCard connections
+        const relationshipData = {
+          sourceId: connection.source,
+          targetId: connection.target,
+          type: 'Deterministic' as const, // Default type, user can change later
+          weight: 1.0,
+          confidence: 'Medium' as const,
+          evidence: [],
+          notes: `Connection between ${sourceNode.data?.card?.title || 'Unknown'} and ${targetNode.data?.card?.title || 'Unknown'}`,
+        };
+
+        // Create the relationship using the canvas store
+        useCanvasStore.getState().createEdge(relationshipData);
+      } else if (isOperativeConnection) {
+        // Create OperativeEdge for data source, visualization, and operative node connections
+        // For now, add to extraEdges since these aren't stored as Relationships
+        const operativeEdge = {
+          id: `${connection.source}-${connection.target}`,
+          source: connection.source,
+          target: connection.target,
+          type: 'operativeEdge',
+          data: {
+            label: 'Data Flow',
+          },
+        };
+
+        const currentEdges = state.extraEdges || [];
+        state.setExtraEdges([...currentEdges, operativeEdge]);
+      } else {
+        console.log('🔗 Mixed connection type, defaulting to DynamicEdge');
+        // Mixed connection (e.g., MetricCard to OperatorNode), use DynamicEdge
+        const relationshipData = {
+          sourceId: connection.source,
+          targetId: connection.target,
+          type: 'Deterministic' as const,
+          weight: 1.0,
+          confidence: 'Medium' as const,
+          evidence: [],
+          notes: `Mixed connection between nodes`,
+        };
+
+        useCanvasStore.getState().createEdge(relationshipData);
+      }
+    },
+    [nodes, state]
+  );
+
+  // Apply generic node changes for extra nodes (selection/resize etc.)
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      if (!Array.isArray(state.extraNodes) || state.extraNodes.length === 0)
+        return;
+      const updated = applyNodeChanges(changes, state.extraNodes as any);
+      state.setExtraNodes(updated as any);
+    },
+    [state]
+  );
+
   const handleAddCustomNode = useCallback(
-    (
+    async (
       type:
         | 'sourceNode'
         | 'chartNode'
@@ -319,29 +662,50 @@ function CanvasPageInner() {
         | 'whiteboardNode'
         | 'commentNode'
     ) => {
-      const id = generateUUID();
+      const currentCanvas = useCanvasStore.getState().canvas;
+      if (!currentCanvas?.id) {
+        console.error('❌ No canvas loaded, cannot add node');
+        return;
+      }
+
       const basePosition = { x: 100, y: 100 };
-      const node: Partial<Node> = {
-        id,
-        type,
-        position: basePosition,
-      };
+      const nodeData: any = {};
+
       if (type === 'operatorNode') {
-        node.data = {
-          label: 'Operator',
-          operationType: 'formula',
-          isActive: true,
-        } as any;
+        nodeData.label = 'Operator';
+        nodeData.operationType = 'formula';
+        nodeData.isActive = true;
       }
+
       if (type === 'commentNode') {
-        node.data = {
-          title: 'Comment',
-          projectId: useCanvasStore.getState().canvas?.id,
-        } as any;
+        nodeData.title = 'Comment';
       }
-      state.setExtraNodes([...(state.extraNodes || []), node as Node]);
+
+      try {
+        // Create the canvas node in the database
+        await createCanvasNode({
+          projectId: currentCanvas.id,
+          nodeType: type,
+          title: type === 'commentNode' ? 'Comment' : type.replace('Node', ''),
+          position: basePosition,
+          data: nodeData,
+          createdBy: useAppStore.getState().user?.id || 'anonymous',
+        });
+
+        console.log(`✅ Created ${type} node successfully`);
+      } catch (error) {
+        console.error(`❌ Error creating ${type} node:`, error);
+        // Fallback to local state for immediate feedback
+        const fallbackNode = {
+          id: generateUUID(),
+          type,
+          position: basePosition,
+          data: nodeData,
+        };
+        state.setExtraNodes([...(state.extraNodes || []), fallbackNode as any]);
+      }
     },
-    [state]
+    [createCanvasNode, state]
   );
 
   return (
@@ -360,6 +724,18 @@ function CanvasPageInner() {
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             onPaneClick={events.handlePaneClick}
+            onNodesChange={handleNodesChange}
+            onNodeDrag={handleNodeDrag}
+            onNodeDragStop={handleNodeDragStop}
+            onNodeDoubleClick={(_, node) => {
+              console.log('🔧 Node double-clicked:', node.id);
+              events.handleOpenSettingsSheet(node.id);
+            }}
+            onEdgeDoubleClick={(_, edge) => {
+              console.log('🔗 Edge double-clicked:', edge.id);
+              events.handleOpenRelationshipSheet(edge.id);
+            }}
+            onConnect={handleConnect}
             // Enhanced navigation behavior
             panOnDrag={
               state.toolbarMode === 'edit'

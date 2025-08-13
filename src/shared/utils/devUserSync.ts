@@ -1,7 +1,7 @@
+import { supabase } from '@/shared/lib/supabase/client';
+import type { Database } from '@/shared/lib/supabase/types';
 import { CreateUserSchema } from '@/shared/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../supabase/client';
-import type { Database } from '../supabase/types';
 
 export async function syncDevUserToProduction(
   userId: string,

@@ -18,8 +18,8 @@ export function useCanvasPageState() {
   const [keepToolActive, setKeepToolActive] = useState<boolean>(false);
   const [drawActiveTool, setDrawActiveTool] = useState<string>('freedraw');
   const [currentLayoutDirection, setCurrentLayoutDirection] = useState<
-    'LR' | 'TB'
-  >('LR');
+    'LR' | 'TB' | 'BT' | 'RL'
+  >('TB');
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
 
   // Whiteboard overlay state
@@ -37,6 +37,15 @@ export function useCanvasPageState() {
     useState<boolean>(false);
   const [isRelationshipSheetOpen, setIsRelationshipSheetOpen] =
     useState<boolean>(false);
+  const [settingsCardId, setSettingsCardId] = useState<string | undefined>(
+    undefined
+  );
+  const [relationshipSheetId, setRelationshipSheetId] = useState<
+    string | undefined
+  >(undefined);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    string | undefined
+  >(undefined);
 
   return {
     // flags
@@ -84,6 +93,12 @@ export function useCanvasPageState() {
     setIsSettingsSheetOpen,
     isRelationshipSheetOpen,
     setIsRelationshipSheetOpen,
+    settingsCardId,
+    setSettingsCardId,
+    relationshipSheetId,
+    setRelationshipSheetId,
+    settingsInitialTab,
+    setSettingsInitialTab,
   };
 }
 

@@ -55,7 +55,7 @@ export default function CanvasSettingsPage() {
 
   // Find project from store instead of calling async function
   const currentProject = canvasId
-    ? projects.find((p) => p.id === canvasId)
+    ? (projects.find((p) => p.id === canvasId) ?? null)
     : null;
 
   // Use custom hooks

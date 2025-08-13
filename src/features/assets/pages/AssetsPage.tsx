@@ -27,7 +27,6 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
-import { useAuthenticatedSupabase } from '@/shared/contexts/AuthenticatedSupabaseContext';
 import {
   addTagsToMetricCard,
   addTagsToRelationship,
@@ -73,7 +72,6 @@ type SortField =
 type SortOrder = 'asc' | 'desc';
 
 export default function AssetsPage() {
-  const supabaseClient = useAuthenticatedSupabase();
   const { persistNodeDelete, persistEdgeDelete } = useCanvasStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('metrics');
@@ -568,7 +566,7 @@ export default function AssetsPage() {
       ];
       csvContent = headers.join(',') + '\n';
 
-      dataToExport.forEach((metric: MetricCard) => {
+      filteredMetrics.forEach((metric) => {
         const row = [
           `"${metric.title}"`,
           `"${metric.category}"`,
@@ -592,7 +590,7 @@ export default function AssetsPage() {
       ];
       csvContent = headers.join(',') + '\n';
 
-      dataToExport.forEach((rel: Relationship) => {
+      filteredRelationships.forEach((rel) => {
         const sourceNode = getNodeById(rel.sourceId);
         const targetNode = getNodeById(rel.targetId);
         const row = [
@@ -772,7 +770,7 @@ export default function AssetsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {metricCategories.map((category) => (
+                {(metricCategories as string[]).map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
                   </SelectItem>
@@ -789,7 +787,7 @@ export default function AssetsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  {relationshipTypes.map((type) => (
+                  {(relationshipTypes as string[]).map((type) => (
                     <SelectItem key={type} value={type}>
                       {type}
                     </SelectItem>
@@ -806,7 +804,7 @@ export default function AssetsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Confidence</SelectItem>
-                  {confidenceLevels.map((confidence) => (
+                  {(confidenceLevels as string[]).map((confidence) => (
                     <SelectItem key={confidence} value={confidence}>
                       {confidence}
                     </SelectItem>

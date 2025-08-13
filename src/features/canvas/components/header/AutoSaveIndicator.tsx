@@ -2,7 +2,7 @@ import { useCanvasStore } from '@/lib/stores';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils';
-import { AlertCircle, CheckCircle, Clock, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 
 interface AutoSaveIndicatorProps {
   className?: string;
@@ -11,61 +11,57 @@ interface AutoSaveIndicatorProps {
 export default function AutoSaveIndicator({
   className,
 }: AutoSaveIndicatorProps) {
-  const { saveAllPendingChanges, isSaving, lastSaved, pendingChanges } =
+  const { saveAllPendingChanges, isSaving, lastSaved, pendingChanges, error } =
     useCanvasStore();
 
   const pendingCount = pendingChanges?.size || 0;
   const hasPendingChanges = pendingCount > 0;
+  const hasError = Boolean(error);
 
   const handleManualSave = () => {
     saveAllPendingChanges();
   };
 
-  const getLastSavedText = () => {
-    if (!lastSaved) return 'Not saved yet';
-
-    const diff = Date.now() - new Date(lastSaved).getTime();
-    const minutes = Math.floor(diff / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
-
-    if (minutes > 0) return `Saved ${minutes}m ago`;
-    return `Saved ${seconds}s ago`;
-  };
-
-  const getStatusIcon = () => {
-    if (isSaving) return <Clock className="h-3 w-3 animate-spin" />;
-    if (hasPendingChanges) return <AlertCircle className="h-3 w-3" />;
-    return <CheckCircle className="h-3 w-3" />;
-  };
-
+  // Status helpers (4-state design)
   const getStatusText = () => {
-    if (isSaving) return 'Saving...';
-    if (hasPendingChanges) return `${pendingCount} unsaved changes`;
-    return 'All changes saved';
+    if (hasError) return 'Error saving';
+    if (hasPendingChanges)
+      return `${pendingCount} unsaved change${pendingCount > 1 ? 's' : ''}`;
+    if (lastSaved && !isSaving) return 'Saved just now';
+    return 'Auto-save enabled';
   };
 
-  const getStatusVariant = () => {
-    if (isSaving) return 'secondary' as const;
-    if (hasPendingChanges) return 'outline' as const;
-    return 'default' as const;
+  const getDotClass = () => {
+    if (hasError) return 'bg-red-500';
+    if (hasPendingChanges) return 'bg-amber-500';
+    if (lastSaved && !isSaving) return 'bg-emerald-500';
+    return 'bg-gray-400';
+  };
+
+  const getBadgeClass = () => {
+    if (hasError) return 'bg-red-100 text-red-700 border border-red-200';
+    if (hasPendingChanges)
+      return 'bg-amber-100 text-amber-800 border border-amber-200';
+    if (lastSaved && !isSaving)
+      return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+    return 'bg-gray-100 text-gray-700 border border-gray-200';
   };
 
   return (
-    <div className={cn('flex items-center gap-2 min-w-[300px]', className)}>
+    <div
+      className={cn('flex items-center gap-2 min-w-[300px]', className)}
+      aria-live="polite"
+    >
       <Badge
-        variant={getStatusVariant()}
-        className="flex items-center gap-1.5 px-2 py-1"
+        variant="outline"
+        className={cn('flex items-center gap-2 px-2 py-1 h-6', getBadgeClass())}
       >
-        {getStatusIcon()}
+        <span className={cn('h-2 w-2 rounded-full', getDotClass())} />
         <span className="text-xs font-medium">{getStatusText()}</span>
       </Badge>
 
-      <span className="text-xs text-muted-foreground whitespace-nowrap">
-        {getLastSavedText()}
-      </span>
-
       <div className="w-[70px] flex justify-end">
-        {hasPendingChanges && !isSaving && (
+        {hasPendingChanges && !isSaving && !hasError && (
           <Button
             size="sm"
             variant="ghost"

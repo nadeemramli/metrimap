@@ -1,16 +1,16 @@
-import { createContext, useContext, useEffect } from "react";
-import type { ReactNode } from "react";
-import { useClerkSupabase } from "@/shared/hooks/useClerkSupabase";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/shared/lib/supabase/types";
-import { setAuthenticatedClient } from "@/shared/utils/authenticatedClient";
+import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import {
   createDevSupabaseClient,
   isDevelopmentEnvironment,
-} from "@/shared/lib/supabase/client";
+} from '@/shared/lib/supabase/client';
+import type { Database } from '@/shared/lib/supabase/types';
+import { setAuthenticatedClient } from '@/shared/utils/authenticatedClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { ReactNode } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 
 interface AuthenticatedSupabaseContextType {
-  supabaseClient: SupabaseClient<Database>;
+  supabaseClient: SupabaseClient<Database> | null;
 }
 
 const AuthenticatedSupabaseContext =
@@ -31,7 +31,9 @@ export function AuthenticatedSupabaseProvider({
 
   // Set the authenticated client for stores to use
   useEffect(() => {
-    setAuthenticatedClient(supabaseClient);
+    if (supabaseClient) {
+      setAuthenticatedClient(supabaseClient);
+    }
   }, [supabaseClient]);
 
   return (
@@ -43,9 +45,9 @@ export function AuthenticatedSupabaseProvider({
 
 export function useAuthenticatedSupabase() {
   const context = useContext(AuthenticatedSupabaseContext);
-  if (!context) {
+  if (!context || !context.supabaseClient) {
     throw new Error(
-      "useAuthenticatedSupabase must be used within AuthenticatedSupabaseProvider"
+      'useAuthenticatedSupabase must be used within AuthenticatedSupabaseProvider'
     );
   }
   return context.supabaseClient;

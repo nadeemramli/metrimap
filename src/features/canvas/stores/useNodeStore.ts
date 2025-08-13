@@ -1,14 +1,14 @@
-import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
 import {
   createMetricCard,
   deleteMetricCard as deleteMetricCardInSupabase,
   updateMetricCard as updateMetricCardInSupabase,
 } from '@/shared/lib/supabase/services/metric-cards';
+import { useAppStore } from '@/shared/stores/useAppStore';
 import type { MetricCard } from '@/shared/types';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
 import { generateUUID } from '@/shared/utils/validation';
-import { useAppStore } from '@/shared/stores/useAppStore';
+import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 
 export interface NodeStoreState {
   // Selection state
@@ -26,7 +26,9 @@ export interface NodeStoreState {
   persistNodeDelete: (nodeId: string) => Promise<void>;
 
   // Local Node management (for optimistic updates)
-  addNodeLocal: (node: MetricCard) => MetricCard[];
+  addNodeLocal: (
+    node: MetricCard
+  ) => (currentNodes: MetricCard[]) => MetricCard[];
   updateNodeLocal: (
     nodes: MetricCard[],
     nodeId: string,

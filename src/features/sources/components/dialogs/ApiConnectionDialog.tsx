@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 
-type Mode = 'create' | 'edit';
+type Mode = 'create' | 'edit' | 'view';
 
 interface ApiConnection {
   id?: string;

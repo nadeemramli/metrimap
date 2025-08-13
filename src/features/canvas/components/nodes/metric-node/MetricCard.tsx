@@ -1220,8 +1220,8 @@ export default function MetricCard({ data, selected }: NodeProps) {
 
       {/* Drag Section - Moved to bottom with padding */}
       {!isPreview && (
-        <div className="p-3 border-t border-border/30 bg-muted/20">
-          <div className="drag-handle__custom flex justify-center cursor-grab active:cursor-grabbing">
+        <div className="p-2 border-t border-border/30 bg-muted/20">
+          <div className="flex justify-center cursor-grab active:cursor-grabbing">
             <div className="flex items-center gap-1 px-3 py-1.5 bg-muted/80 backdrop-blur-sm rounded-full text-xs text-muted-foreground hover:bg-muted/90 transition-colors border border-border/50 shadow-sm">
               <GripVertical className="w-3 h-3" />
               <span className="font-medium select-none">Drag</span>

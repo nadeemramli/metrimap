@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-import { supabase } from '../lib/supabase/client';
+import { supabase } from '@/shared/lib/supabase/client';
 
 interface TestResult {
   table: string;

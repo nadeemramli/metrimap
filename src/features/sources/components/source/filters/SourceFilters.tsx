@@ -1,3 +1,4 @@
+import type { StatusFilter, TabType } from '@/features/sources/source';
 import { Input } from '@/shared/components/ui/input';
 import {
   Select,
@@ -6,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import type { StatusFilter, TabType } from '@/types/source';
 import { Search } from 'lucide-react';
 
 interface SourceFiltersProps {

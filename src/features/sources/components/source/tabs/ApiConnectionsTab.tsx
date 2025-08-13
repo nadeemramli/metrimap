@@ -1,3 +1,4 @@
+import type { ApiConnection } from '@/features/sources/source';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -8,7 +9,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import type { ApiConnection } from '@/types/source';
 import {
   AlertTriangle,
   CheckCircle,
@@ -31,11 +31,11 @@ interface ApiConnectionsTabProps {
 
 const getStatusIcon = (status: ApiConnection['status']) => {
   switch (status) {
-    case 'active':
+    case 'Connected':
       return <CheckCircle className="h-4 w-4 text-green-500" />;
-    case 'inactive':
+    case 'Disconnected':
       return <XCircle className="h-4 w-4 text-gray-500" />;
-    case 'error':
+    case 'Warning':
       return <AlertTriangle className="h-4 w-4 text-red-500" />;
     default:
       return <XCircle className="h-4 w-4 text-gray-500" />;
@@ -44,21 +44,20 @@ const getStatusIcon = (status: ApiConnection['status']) => {
 
 const getStatusColor = (status: ApiConnection['status']) => {
   switch (status) {
-    case 'active':
+    case 'Connected':
       return 'bg-green-50 border-green-200 text-green-900';
-    case 'inactive':
+    case 'Disconnected':
       return 'bg-gray-50 border-gray-200 text-gray-900';
-    case 'error':
+    case 'Warning':
       return 'bg-red-50 border-red-200 text-red-900';
     default:
       return 'bg-gray-50 border-gray-200 text-gray-900';
   }
 };
 
-const getPerformanceColor = (successRate: number) => {
-  if (successRate >= 95) return 'bg-green-50 border-green-200 text-green-900';
-  if (successRate >= 90)
-    return 'bg-yellow-50 border-yellow-200 text-yellow-900';
+const getPerformanceColor = (uptime: number) => {
+  if (uptime >= 99) return 'bg-green-50 border-green-200 text-green-900';
+  if (uptime >= 95) return 'bg-yellow-50 border-yellow-200 text-yellow-900';
   return 'bg-red-50 border-red-200 text-red-900';
 };
 
@@ -100,16 +99,16 @@ export function ApiConnectionsTab({
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Method
+                  Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Response Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Success Rate
+                  Uptime
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Last Call
+                  Last Ping
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Actions
@@ -128,13 +127,8 @@ export function ApiConnectionsTab({
                         {api.name}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {api.endpoint}
+                        {api.type} • v{api.version}
                       </div>
-                      {api.rateLimit && (
-                        <div className="text-xs text-muted-foreground">
-                          Limit: {api.rateLimit}
-                        </div>
-                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -149,24 +143,28 @@ export function ApiConnectionsTab({
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge variant="secondary">{api.method}</Badge>
+                    <Badge variant="secondary">{api.type}</Badge>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1">
                       <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-sm">{api.responseTime}ms</span>
+                      <span className="text-sm">
+                        {api.responseTime != null
+                          ? `${api.responseTime}ms`
+                          : '-'}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <Badge
                       variant="outline"
-                      className={getPerformanceColor(api.successRate)}
+                      className={getPerformanceColor(api.uptime)}
                     >
-                      {api.successRate}%
+                      {api.uptime}%
                     </Badge>
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {new Date(api.lastCall).toLocaleString()}
+                    {new Date(api.lastPing).toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
                     <DropdownMenu>

@@ -83,7 +83,7 @@ export default function HomePage() {
     [quickSearch.open]
   );
 
-  useKeyboardShortcuts(shortcuts, { enabled: true });
+  useKeyboardShortcuts(shortcuts);
 
   // Initialize projects store on component mount, but only when user is available
   useEffect(() => {

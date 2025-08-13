@@ -1,51 +1,65 @@
-"use client";
+'use client';
 
-import { memo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Badge } from "@/shared/components/ui/badge";
+import { Badge } from '@/shared/components/ui/badge';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/shared/components/ui/card';
+import { cn } from '@/shared/utils';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
 import {
   BarChart3,
+  GripVertical,
   LineChartIcon,
   PieChartIcon,
-  GripVertical,
-} from "lucide-react";
-import { cn } from "@/shared/utils";
+} from 'lucide-react';
+import { memo, useMemo } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 interface ChartNodeData {
-  chartType: "bar" | "line" | "pie";
-  xAxis: string | null;
-  yAxis: string | null;
-  title: string;
+  chartType?: 'bar' | 'line' | 'pie';
+  xAxis?: string | null;
+  yAxis?: string | null;
+  title?: string;
   data?: any[];
 }
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const ChartNodeInner = memo(({ data, selected }: NodeProps) => {
-  const typedData = (data || {}) as unknown as ChartNodeData;
-  const { chartType, xAxis, yAxis, title, data: chartData } = typedData;
+  const nodeData = (data || {}) as ChartNodeData;
+  const chartType = nodeData.chartType ?? 'bar';
+  const xAxis = nodeData.xAxis ?? null;
+  const yAxis = nodeData.yAxis ?? null;
+  const title = nodeData.title ?? 'Chart';
+  const chartData = Array.isArray(nodeData.data) ? nodeData.data : undefined;
+
+  const chartLabel = useMemo(
+    () => (chartType ? chartType.toUpperCase() : 'BAR'),
+    [chartType]
+  );
 
   const getChartIcon = () => {
     switch (chartType) {
-      case "bar":
+      case 'bar':
         return <BarChart3 className="w-4 h-4" />;
-      case "line":
+      case 'line':
         return <LineChartIcon className="w-4 h-4" />;
-      case "pie":
+      case 'pie':
         return <PieChartIcon className="w-4 h-4" />;
       default:
         return <BarChart3 className="w-4 h-4" />;
@@ -65,7 +79,7 @@ const ChartNodeInner = memo(({ data, selected }: NodeProps) => {
     }
 
     switch (chartType) {
-      case "bar":
+      case 'bar':
         return (
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={chartData}>
@@ -76,7 +90,7 @@ const ChartNodeInner = memo(({ data, selected }: NodeProps) => {
             </BarChart>
           </ResponsiveContainer>
         );
-      case "line":
+      case 'line':
         return (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData}>
@@ -92,7 +106,7 @@ const ChartNodeInner = memo(({ data, selected }: NodeProps) => {
             </LineChart>
           </ResponsiveContainer>
         );
-      case "pie":
+      case 'pie':
         return (
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
@@ -127,8 +141,8 @@ const ChartNodeInner = memo(({ data, selected }: NodeProps) => {
   return (
     <Card
       className={cn(
-        "w-80 bg-white dark:bg-white-300 border-2 rounded-lg shadow-lg",
-        selected && "ring-2 ring-blue-500"
+        'w-80 bg-white dark:bg-white-300 border-2 rounded-lg shadow-lg',
+        selected && 'ring-2 ring-blue-500'
       )}
     >
       <Handle type="target" position={Position.Left} />
@@ -138,7 +152,7 @@ const ChartNodeInner = memo(({ data, selected }: NodeProps) => {
           <div className="flex items-center gap-2">
             {getChartIcon()}
             <Badge variant="secondary" className="text-xs">
-              {chartType.toUpperCase()}
+              {chartLabel}
             </Badge>
           </div>
         </CardTitle>
@@ -165,5 +179,5 @@ const ChartNodeInner = memo(({ data, selected }: NodeProps) => {
   );
 });
 
-ChartNodeInner.displayName = "ChartNode";
+ChartNodeInner.displayName = 'ChartNode';
 export default ChartNodeInner;

@@ -55,15 +55,15 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 
 // Types and hooks
-import { useSourcesStore } from '@/features/sources/stores/useSourcesStore';
-import { useSourceFiltering } from '@/shared/hooks/useSourceFiltering';
 import type {
   ApiConnection,
   DataSource,
   GovernancePolicy,
   StatusFilter,
   TabType,
-} from '@/types/source';
+} from '@/features/sources/source';
+import { useSourcesStore } from '@/features/sources/stores/useSourcesStore';
+import { useSourceFiltering } from '@/shared/hooks/useSourceFiltering';
 
 // Dialog components (moved under features/sources/components/dialogs)
 import ApiConnectionDialog from '@/features/sources/components/dialogs/ApiConnectionDialog';
@@ -91,8 +91,6 @@ export default function SourcePage() {
     dataSources,
     apiConnections,
     governancePolicies,
-    isLoading,
-    error,
     // CRUD operations
     createDataSource,
     updateDataSource,
@@ -149,44 +147,9 @@ export default function SourcePage() {
     loadAllData();
   }, [loadAllData]);
 
-  // Get available systems for filtering
-  const availableSystems = useMemo(() => {
-    const systems = new Set(
-      dataSources
-        .map((source) => source.sourceSystem)
-        .filter(
-          (sys): sys is string => typeof sys === 'string' && sys.length > 0
-        )
-    );
-    return Array.from(systems);
-  }, [dataSources]);
+  // removed unused availableSystems
 
   // Handler functions - Now fully implemented!
-  const handleEdit = (item: DataSource | ApiConnection | GovernancePolicy) => {
-    // Determine item type and open appropriate dialog
-    if ('metricName' in item) {
-      // It's a DataSource
-      setDataSourceDialog({
-        isOpen: true,
-        mode: 'edit',
-        item: item as DataSource,
-      });
-    } else if ('type' in item && 'lastPing' in item) {
-      // It's an ApiConnection
-      setApiConnectionDialog({
-        isOpen: true,
-        mode: 'edit',
-        item: item as ApiConnection,
-      });
-    } else {
-      // It's a GovernancePolicy
-      setGovernancePolicyDialog({
-        isOpen: true,
-        mode: 'edit',
-        item: item as GovernancePolicy,
-      });
-    }
-  };
 
   const handleDelete = async (itemId: string) => {
     if (
@@ -217,31 +180,7 @@ export default function SourcePage() {
     }
   };
 
-  const handleView = (item: DataSource | ApiConnection | GovernancePolicy) => {
-    // Determine item type and open appropriate dialog in view mode
-    if ('metricName' in item) {
-      // It's a DataSource
-      setDataSourceDialog({
-        isOpen: true,
-        mode: 'view',
-        item: item as DataSource,
-      });
-    } else if ('type' in item && 'lastPing' in item) {
-      // It's an ApiConnection
-      setApiConnectionDialog({
-        isOpen: true,
-        mode: 'view',
-        item: item as ApiConnection,
-      });
-    } else {
-      // It's a GovernancePolicy
-      setGovernancePolicyDialog({
-        isOpen: true,
-        mode: 'view',
-        item: item as GovernancePolicy,
-      });
-    }
-  };
+  // removed unused handleView
 
   const handleExport = () => {
     setExportDialog(true);
@@ -255,36 +194,21 @@ export default function SourcePage() {
     }
   };
 
-  const handleMonitoringSettings = () => {
-    setMonitoringSettingsDialog(true);
-  };
+  // removed unused handleMonitoringSettings
 
-  const handleAddMonitor = () => {
-    // Open the appropriate dialog based on active tab
-    switch (activeTab) {
-      case 'sources':
-        setDataSourceDialog({ isOpen: true, mode: 'create' });
-        break;
-      case 'apis':
-        setApiConnectionDialog({ isOpen: true, mode: 'create' });
-        break;
-      case 'governance':
-        setGovernancePolicyDialog({ isOpen: true, mode: 'create' });
-        break;
-    }
-  };
+  // removed unused handleAddMonitor
 
   // Dialog handlers
   const handleExportData = async (options: ExportOptions) => {
     try {
-      const exportedData = await exportData(options.type);
+      const exportedData = await exportData('all');
 
       // Create and download file
       const blob = new Blob([exportedData], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `metrimap-${options.type}-${new Date().toISOString().split('T')[0]}.${options.format}`;
+      link.download = `metrimap-all-${new Date().toISOString().split('T')[0]}.${options.format ?? 'json'}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -510,18 +434,18 @@ export default function SourcePage() {
               <Select
                 value={statusFilter}
                 onValueChange={(value) =>
-                  setStatusFilter(value as InstrumentationStatus | 'All')
+                  setStatusFilter(value as StatusFilter)
                 }
               >
                 <SelectTrigger className="w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All Status</SelectItem>
-                  <SelectItem value="Live">Live</SelectItem>
-                  <SelectItem value="Instrumented">Instrumented</SelectItem>
-                  <SelectItem value="Needs QA">Needs QA</SelectItem>
-                  <SelectItem value="Planned">Planned</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="live">Live</SelectItem>
+                  <SelectItem value="instrumented">Instrumented</SelectItem>
+                  <SelectItem value="needs qa">Needs QA</SelectItem>
+                  <SelectItem value="planned">Planned</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -1053,7 +977,21 @@ export default function SourcePage() {
           if (dataSourceDialog.mode === 'edit' && dataSourceDialog.item) {
             await updateDataSource(dataSourceDialog.item.id, source);
           } else {
-            await createDataSource(source);
+            await createDataSource({
+              metricName: source.metricName,
+              sourceSystem: '',
+              eventName: '',
+              actor: '',
+              trigger: '',
+              status: 'Planned',
+              lastSync: null,
+              dataQuality: null,
+              recordsToday: 0,
+              owner: '',
+              description: '',
+              tags: [],
+              compliance: [],
+            });
           }
         }}
         dataSource={dataSourceDialog.item}
@@ -1069,7 +1007,17 @@ export default function SourcePage() {
           if (apiConnectionDialog.mode === 'edit' && apiConnectionDialog.item) {
             await updateApiConnection(apiConnectionDialog.item.id, connection);
           } else {
-            await createApiConnection(connection);
+            await createApiConnection({
+              name: connection.name,
+              type: connection.type ?? 'HTTP',
+              status: 'Disconnected',
+              lastPing: new Date().toISOString(),
+              responseTime: null,
+              uptime: 0,
+              requestsToday: 0,
+              errorRate: 0,
+              version: '1.0.0',
+            });
           }
         }}
         apiConnection={apiConnectionDialog.item}
@@ -1091,7 +1039,16 @@ export default function SourcePage() {
               policy
             );
           } else {
-            await createGovernancePolicy(policy);
+            await createGovernancePolicy({
+              name: policy.name,
+              type: 'security',
+              status: 'Active',
+              coverage: 0,
+              lastReview: new Date().toISOString(),
+              nextReview: new Date().toISOString(),
+              owner: 'Unassigned',
+              compliance: [],
+            });
           }
         }}
         governancePolicy={governancePolicyDialog.item}

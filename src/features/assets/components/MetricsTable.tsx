@@ -73,14 +73,8 @@ export default function MetricsTable({
   };
 
   const formatValue = (metric: MetricCard) => {
-    if (!metric.value) return '-';
-
-    const value =
-      typeof metric.value === 'number'
-        ? metric.value
-        : parseFloat(metric.value);
-    if (isNaN(value)) return metric.value;
-
+    if (!metric.data || metric.data.length === 0) return '-';
+    const value = metric.data[0].value;
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
@@ -157,11 +151,7 @@ export default function MetricsTable({
                               <span className="font-medium text-foreground">
                                 {metric.title}
                               </span>
-                              {metric.subtitle && (
-                                <span className="text-sm text-muted-foreground">
-                                  {metric.subtitle}
-                                </span>
-                              )}
+                              {/* subtitle not present on MetricCard type */}
                             </div>
                           </td>
                         );
@@ -200,7 +190,7 @@ export default function MetricsTable({
                             className="px-6 py-4 whitespace-nowrap"
                           >
                             <span className="text-sm text-muted-foreground">
-                              {metric.connections || 0}
+                              {0}
                             </span>
                           </td>
                         );
@@ -265,10 +255,20 @@ export default function MetricsTable({
                               </div>
                               {expandedTagInputs.has(metric.id) && (
                                 <EnhancedTagInput
-                                  value={metricTags[metric.id] || []}
-                                  onChange={async (tags) => {
-                                    await onAddTagsToMetric(metric.id, tags);
-                                    toggleTagInput(metric.id);
+                                  tags={metricTags[metric.id] || []}
+                                  onAdd={async (tag) => {
+                                    const current = metricTags[metric.id] || [];
+                                    await onAddTagsToMetric(metric.id, [
+                                      ...current,
+                                      tag,
+                                    ]);
+                                  }}
+                                  onRemove={async (tag) => {
+                                    const current = metricTags[metric.id] || [];
+                                    await onAddTagsToMetric(
+                                      metric.id,
+                                      current.filter((t) => t !== tag)
+                                    );
                                   }}
                                   placeholder="Add tags..."
                                   disabled={isLoadingTags}

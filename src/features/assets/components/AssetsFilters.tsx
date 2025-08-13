@@ -72,9 +72,7 @@ export default function AssetsFilters({
   relationshipTypes,
   confidenceLevels,
   visibleColumns,
-  columnOrder,
   onColumnVisibilityChange,
-  onColumnOrderChange,
   getOrderedVisibleColumns,
 }: AssetsFiltersProps) {
   const metricColumns: Column[] = [

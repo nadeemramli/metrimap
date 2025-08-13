@@ -10,6 +10,7 @@ import {
 import type { MetricCard, Relationship } from '@/shared/types';
 import { getCategoryColor } from '@/shared/utils/metricUtils';
 import { Calendar, Edit, MoreVertical, Network, Trash2 } from 'lucide-react';
+import type { JSX } from 'react';
 
 interface MetricTableCellProps {
   metric: MetricCard;

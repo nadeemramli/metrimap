@@ -1,10 +1,10 @@
+import type { EvidenceComment, EvidenceItem } from '@/shared/types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { EvidenceItem, EvidenceComment } from '../types';
 
 interface EvidenceState {
   evidence: EvidenceItem[];
-  
+
   // Actions
   addEvidence: (evidence: EvidenceItem) => void;
   updateEvidence: (id: string, updates: Partial<EvidenceItem>) => void;
@@ -12,23 +12,36 @@ interface EvidenceState {
   getEvidenceById: (id: string) => EvidenceItem | undefined;
   getEvidenceByType: (type: string) => EvidenceItem[];
   getEvidenceByOwner: (owner: string) => EvidenceItem[];
-  
+
   // Context-based evidence retrieval
-  getEvidenceByContext: (contextType: "relationship" | "card" | "general", targetId?: string) => EvidenceItem[];
+  getEvidenceByContext: (
+    contextType: 'relationship' | 'card' | 'general',
+    targetId?: string
+  ) => EvidenceItem[];
   getEvidenceForRelationship: (relationshipId: string) => EvidenceItem[];
   getEvidenceForCard: (cardId: string) => EvidenceItem[];
   getGeneralEvidence: () => EvidenceItem[];
-  
+
   // Comments management
-  addComment: (evidenceId: string, comment: Omit<EvidenceComment, 'id' | 'evidenceId' | 'createdAt'>) => void;
-  updateComment: (evidenceId: string, commentId: string, content: string) => void;
+  addComment: (
+    evidenceId: string,
+    comment: Omit<EvidenceComment, 'id' | 'evidenceId' | 'createdAt'>
+  ) => void;
+  updateComment: (
+    evidenceId: string,
+    commentId: string,
+    content: string
+  ) => void;
   deleteComment: (evidenceId: string, commentId: string) => void;
-  
+
   // Canvas evidence positioning
-  updateEvidencePosition: (id: string, position: { x: number; y: number }) => void;
+  updateEvidencePosition: (
+    id: string,
+    position: { x: number; y: number }
+  ) => void;
   toggleEvidenceVisibility: (id: string) => void;
   toggleEvidenceExpansion: (id: string) => void;
-  
+
   searchEvidence: (query: string) => EvidenceItem[];
   duplicateEvidence: (id: string) => EvidenceItem | null;
 }
@@ -80,44 +93,59 @@ export const useEvidenceStore = create<EvidenceState>()(
             item.title.toLowerCase().includes(lowercaseQuery) ||
             item.summary.toLowerCase().includes(lowercaseQuery) ||
             item.owner.toLowerCase().includes(lowercaseQuery) ||
-            (item.hypothesis && item.hypothesis.toLowerCase().includes(lowercaseQuery)) ||
-            (item.tags && item.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery)))
+            (item.hypothesis &&
+              item.hypothesis.toLowerCase().includes(lowercaseQuery)) ||
+            (item.tags &&
+              item.tags.some((tag: string) =>
+                tag.toLowerCase().includes(lowercaseQuery)
+              ))
         );
       },
 
       // Context-based evidence retrieval
-      getEvidenceByContext: (contextType: "relationship" | "card" | "general", targetId?: string) => {
+      getEvidenceByContext: (
+        contextType: 'relationship' | 'card' | 'general',
+        targetId?: string
+      ) => {
         const state = get();
         return state.evidence.filter((item) => {
-          if (!item.context) return contextType === "general";
-          return item.context.type === contextType && 
-                 (contextType === "general" || item.context.targetId === targetId);
+          if (!item.context) return contextType === 'general';
+          return (
+            item.context.type === contextType &&
+            (contextType === 'general' || item.context.targetId === targetId)
+          );
         });
       },
 
       getEvidenceForRelationship: (relationshipId: string) => {
         const state = get();
-        return state.evidence.filter((item) => 
-          item.context?.type === "relationship" && item.context.targetId === relationshipId
+        return state.evidence.filter(
+          (item) =>
+            item.context?.type === 'relationship' &&
+            item.context.targetId === relationshipId
         );
       },
 
       getEvidenceForCard: (cardId: string) => {
         const state = get();
-        return state.evidence.filter((item) => 
-          item.context?.type === "card" && item.context.targetId === cardId
+        return state.evidence.filter(
+          (item) =>
+            item.context?.type === 'card' && item.context.targetId === cardId
         );
       },
 
       getGeneralEvidence: () => {
         const state = get();
-        return state.evidence.filter((item) => 
-          !item.context || item.context.type === "general"
+        return state.evidence.filter(
+          (item) => !item.context || item.context.type === 'general'
         );
       },
 
       // Comments management
-      addComment: (evidenceId: string, comment: Omit<EvidenceComment, 'id' | 'evidenceId' | 'createdAt'>) => {
+      addComment: (
+        evidenceId: string,
+        comment: Omit<EvidenceComment, 'id' | 'evidenceId' | 'createdAt'>
+      ) => {
         set((state) => ({
           evidence: state.evidence.map((item) =>
             item.id === evidenceId
@@ -138,15 +166,23 @@ export const useEvidenceStore = create<EvidenceState>()(
         }));
       },
 
-      updateComment: (evidenceId: string, commentId: string, content: string) => {
+      updateComment: (
+        evidenceId: string,
+        commentId: string,
+        content: string
+      ) => {
         set((state) => ({
           evidence: state.evidence.map((item) =>
             item.id === evidenceId
               ? {
                   ...item,
-                  comments: item.comments?.map((comment) =>
+                  comments: item.comments?.map((comment: EvidenceComment) =>
                     comment.id === commentId
-                      ? { ...comment, content, updatedAt: new Date().toISOString() }
+                      ? {
+                          ...comment,
+                          content,
+                          updatedAt: new Date().toISOString(),
+                        }
                       : comment
                   ),
                 }
@@ -161,7 +197,9 @@ export const useEvidenceStore = create<EvidenceState>()(
             item.id === evidenceId
               ? {
                   ...item,
-                  comments: item.comments?.filter((comment) => comment.id !== commentId),
+                  comments: item.comments?.filter(
+                    (comment: EvidenceComment) => comment.id !== commentId
+                  ),
                 }
               : item
           ),
@@ -169,7 +207,10 @@ export const useEvidenceStore = create<EvidenceState>()(
       },
 
       // Canvas evidence positioning
-      updateEvidencePosition: (id: string, position: { x: number; y: number }) => {
+      updateEvidencePosition: (
+        id: string,
+        position: { x: number; y: number }
+      ) => {
         set((state) => ({
           evidence: state.evidence.map((item) =>
             item.id === id ? { ...item, position } : item
@@ -204,10 +245,12 @@ export const useEvidenceStore = create<EvidenceState>()(
           title: `${original.title} (Copy)`,
           createdAt: new Date().toISOString(),
           // Reset canvas-specific properties
-          position: original.position ? { 
-            x: original.position.x + 20, 
-            y: original.position.y + 20 
-          } : undefined,
+          position: original.position
+            ? {
+                x: original.position.x + 20,
+                y: original.position.y + 20,
+              }
+            : undefined,
           isVisible: true,
           isExpanded: false,
           comments: [], // Don't duplicate comments

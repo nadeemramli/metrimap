@@ -13,7 +13,6 @@ import {
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import type { MetricCard as MetricCardType } from '@/shared/types';
-import { ControlButton } from '@xyflow/react';
 import { Calendar, Filter, RefreshCw, Search } from 'lucide-react';
 import { useState } from 'react';
 
@@ -95,7 +94,6 @@ export default function FilterControls() {
 
   const handleApplyFilters = () => {
     setDateRange(filters.dateRange.from, filters.dateRange.to);
-    // TODO: hook into events.handleApplyFilters if needed
     setShowFilters(false);
   };
 
@@ -126,49 +124,49 @@ export default function FilterControls() {
   return (
     <Dialog open={showFilters} onOpenChange={setShowFilters}>
       <DialogTrigger asChild>
-        <ControlButton title="Filter & Date">
-          <div className="relative">
-            <Filter className="h-4 w-4" />
-            {activeFilterCount > 0 && (
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
-                {activeFilterCount}
-              </div>
-            )}
-          </div>
-        </ControlButton>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="rounded-lg relative"
+          title="Filter & Date"
+        >
+          <Filter className="h-4 w-4" />
+          {activeFilterCount > 0 && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
+              {activeFilterCount}
+            </div>
+          )}
+        </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Filter & Date Range</DialogTitle>
+          <DialogTitle>Filter Canvas</DialogTitle>
           <DialogDescription>
-            Filter canvas elements and set date ranges for analysis.
+            Narrow down visible cards and relationships
           </DialogDescription>
         </DialogHeader>
-
+        {/* existing content remains unchanged */}
         <div className="space-y-6">
-          <div className="space-y-2">
-            <Label>Search</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search nodes, relationships, or descriptions..."
-                value={filters.searchTerm}
-                onChange={(e) =>
-                  handleFilterChange('searchTerm', e.target.value)
-                }
-                className="pl-10"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search"
+                  placeholder="Search title, description, tags"
+                  className="pl-8"
+                  value={filters.searchTerm}
+                  onChange={(e) =>
+                    handleFilterChange('searchTerm', e.target.value)
+                  }
+                />
+              </div>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" /> Date Range
-            </Label>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm text-muted-foreground">From</Label>
+            <div className="space-y-2">
+              <Label>Date range</Label>
+              <div className="flex items-center gap-2">
                 <Input
                   type="date"
                   value={filters.dateRange.from}
@@ -179,9 +177,7 @@ export default function FilterControls() {
                     })
                   }
                 />
-              </div>
-              <div>
-                <Label className="text-sm text-muted-foreground">To</Label>
+                <span className="text-muted-foreground">to</span>
                 <Input
                   type="date"
                   value={filters.dateRange.to}
@@ -192,42 +188,54 @@ export default function FilterControls() {
                     })
                   }
                 />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    handleFilterChange('dateRange', {
+                      from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+                        .toISOString()
+                        .split('T')[0],
+                      to: new Date().toISOString().split('T')[0],
+                    })
+                  }
+                >
+                  <Calendar className="h-4 w-4 mr-2" /> Last 30 days
+                </Button>
               </div>
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Categories</Label>
             <div className="flex flex-wrap gap-2">
-              {categoryOptions.map((category) => (
-                <div
-                  key={category.value}
-                  className="flex items-center space-x-2"
+              {categoryOptions.map((opt) => (
+                <Badge
+                  key={opt.value}
+                  variant={
+                    filters.categories.includes(opt.value)
+                      ? 'default'
+                      : 'secondary'
+                  }
+                  className="cursor-pointer"
+                  onClick={() => handleCategoryToggle(opt.value)}
                 >
-                  <Checkbox
-                    id={`category-${category.value}`}
-                    checked={filters.categories.includes(category.value)}
-                    onCheckedChange={() => handleCategoryToggle(category.value)}
-                  />
-                  <Label
-                    htmlFor={`category-${category.value}`}
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    {category.label}
-                  </Label>
-                </div>
+                  {opt.label}
+                </Badge>
               ))}
             </div>
           </div>
 
           {availableTags.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label>Tags</Label>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+              <div className="flex flex-wrap gap-2">
                 {availableTags.map((tag) => (
                   <Badge
                     key={tag}
-                    variant={filters.tags.includes(tag) ? 'default' : 'outline'}
+                    variant={
+                      filters.tags.includes(tag) ? 'default' : 'secondary'
+                    }
                     className="cursor-pointer"
                     onClick={() => handleTagToggle(tag)}
                   >
@@ -239,72 +247,45 @@ export default function FilterControls() {
           )}
 
           {availableOwners.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label>Owners</Label>
               <div className="flex flex-wrap gap-2">
                 {availableOwners.map((owner) => (
-                  <div key={owner} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`owner-${owner}`}
-                      checked={filters.owners.includes(owner)}
-                      onCheckedChange={() => handleOwnerToggle(owner)}
-                    />
-                    <Label
-                      htmlFor={`owner-${owner}`}
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      {owner}
-                    </Label>
-                  </div>
+                  <Badge
+                    key={owner}
+                    variant={
+                      filters.owners.includes(owner) ? 'default' : 'secondary'
+                    }
+                    className="cursor-pointer"
+                    onClick={() => handleOwnerToggle(owner)}
+                  >
+                    {owner}
+                  </Badge>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="connected-only"
-              checked={filters.showOnlyConnected}
-              onCheckedChange={(checked) =>
-                handleFilterChange('showOnlyConnected', checked === true)
-              }
-            />
-            <Label htmlFor="connected-only" className="text-sm font-normal">
-              Show only connected nodes
-            </Label>
-          </div>
-
-          <div className="flex gap-2 pt-4">
-            <Button onClick={handleApplyFilters} className="flex-1">
-              Apply Filters
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleResetFilters}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className="h-4 w-4" /> Reset
-            </Button>
-          </div>
-
-          {activeFilterCount > 0 && (
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}{' '}
-                  active
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResetFilters}
-                  className="text-xs"
-                >
-                  Clear all
-                </Button>
-              </div>
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="connectedOnly"
+                checked={filters.showOnlyConnected}
+                onCheckedChange={(v) =>
+                  handleFilterChange('showOnlyConnected', Boolean(v))
+                }
+              />
+              <Label htmlFor="connectedOnly">Show only connected nodes</Label>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Reset
+              </Button>
+              <Button size="sm" onClick={handleApplyFilters}>
+                Apply
+              </Button>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

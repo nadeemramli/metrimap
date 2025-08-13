@@ -1,3 +1,4 @@
+import type { GovernancePolicy } from '@/features/sources/source';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -8,7 +9,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import type { GovernancePolicy } from '@/types/source';
 import {
   Calendar,
   Edit,
@@ -44,11 +44,11 @@ const getTypeColor = (type: GovernancePolicy['type']) => {
 
 const getStatusColor = (status: GovernancePolicy['status']) => {
   switch (status) {
-    case 'active':
+    case 'Active':
       return 'bg-green-50 border-green-200 text-green-900';
-    case 'draft':
+    case 'Under Review':
       return 'bg-yellow-50 border-yellow-200 text-yellow-900';
-    case 'archived':
+    case 'Inactive':
       return 'bg-gray-50 border-gray-200 text-gray-900';
     default:
       return 'bg-gray-50 border-gray-200 text-gray-900';
@@ -120,11 +120,7 @@ export function GovernanceTab({
                       <div className="font-medium text-foreground">
                         {policy.name}
                       </div>
-                      {policy.description && (
-                        <div className="text-sm text-muted-foreground">
-                          {policy.description}
-                        </div>
-                      )}
+                      {/* description not present on GovernancePolicy type */}
                     </div>
                   </td>
                   <td className="px-6 py-4">

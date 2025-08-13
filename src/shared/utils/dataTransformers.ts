@@ -75,7 +75,7 @@ export function transformRelationship(rel: DBRelationship): Relationship {
     weight: rel.weight || 1,
     description: rel.description || '',
     evidence:
-      rel.evidence_items?.map((evidence: any) => ({
+      (rel as any).evidence_items?.map((evidence: any) => ({
         id: evidence.id,
         title: evidence.title,
         type: evidence.type as any,
@@ -101,14 +101,10 @@ export function transformGroup(group: DBGroup): GroupNode {
   return {
     id: group.id,
     name: group.name,
-    description: group.description || '',
-    color: group.color || '#e5e7eb',
     nodeIds: group.node_ids || [],
     position: { x: group.position_x, y: group.position_y },
     size: { width: group.width, height: group.height },
     isCollapsed: false,
-    createdAt: group.created_at || new Date().toISOString(),
-    updatedAt: group.updated_at || new Date().toISOString(),
   };
 }
 

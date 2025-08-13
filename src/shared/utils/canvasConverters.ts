@@ -42,8 +42,6 @@ export const convertToNode = (
   selectable: true, // Ensure nodes are selectable
   draggable: true, // Ensure nodes are draggable
   // Let React Flow handle layering naturally
-  // Removed dragHandle to enable touch device + handle connections
-  // The visual drag handle remains as UI guidance
 });
 
 // Convert Relationship to ReactFlow Edge with DynamicEdge
