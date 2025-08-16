@@ -26,7 +26,7 @@ import {
 import { Switch } from '@/shared/components/ui/switch';
 import type { LayoutDirection, LayoutOptions } from '@/shared/utils/autoLayout';
 import {
-  applyAutoLayout,
+  applyAutoLayoutWithValidation,
   AUTO_LAYOUT_ALGORITHMS,
 } from '@/shared/utils/autoLayout';
 import { ControlButton, useReactFlow } from '@xyflow/react';
@@ -62,20 +62,54 @@ export default function UnifiedLayoutControls() {
       const applyDir = direction || layoutOptions.direction;
       const nodes = rf?.getNodes?.() || [];
       const edges = rf?.getEdges?.() || [];
-      if (nodes.length === 0) return;
-      setIsApplyingLayout(true);
-      const layoutedNodes = applyAutoLayout(nodes, edges, {
-        ...layoutOptions,
+
+      console.log('🔄 UnifiedLayoutControls: Applying layout', {
         direction: applyDir,
+        nodeCount: nodes.length,
+        edgeCount: edges.length,
       });
-      rf?.setNodes?.(layoutedNodes as any);
-      setTimeout(() => {
-        fitView({ padding: 50, duration: 800 });
+
+      if (nodes.length === 0) {
+        console.log('⚠️ UnifiedLayoutControls: No nodes to layout');
+        return;
+      }
+
+      setIsApplyingLayout(true);
+
+      try {
+        const { nodes: layoutedNodes, validation } =
+          applyAutoLayoutWithValidation(nodes, edges, {
+            ...layoutOptions,
+            direction: applyDir,
+          });
+
+        // Check validation results
+        if (!validation.isValid) {
+          console.warn(
+            '⚠️ UnifiedLayoutControls: Layout validation issues:',
+            validation.issues
+          );
+        }
+
+        rf?.setNodes?.(layoutedNodes as any);
+
+        setTimeout(() => {
+          fitView({ padding: 50, duration: 800 });
+          setIsApplyingLayout(false);
+        }, 100);
+
+        updateCanvasSettings({
+          autoLayout: { algorithm: applyDir, enabled: currentSettings.enabled },
+        });
+
+        console.log('✅ UnifiedLayoutControls: Layout applied successfully');
+      } catch (error) {
+        console.error(
+          '❌ UnifiedLayoutControls: Error applying layout:',
+          error
+        );
         setIsApplyingLayout(false);
-      }, 100);
-      updateCanvasSettings({
-        autoLayout: { algorithm: applyDir, enabled: currentSettings.enabled },
-      });
+      }
     },
     [rf, fitView, layoutOptions, currentSettings.enabled, updateCanvasSettings]
   );

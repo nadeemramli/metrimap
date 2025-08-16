@@ -1,17 +1,18 @@
-"use client";
+'use client';
 
-import { memo } from "react";
-import type { NodeProps } from "@xyflow/react";
+import type { NodeProps } from '@xyflow/react';
+import { memo } from 'react';
 
 type WhiteboardShape =
-  | "rect"
-  | "ellipse"
-  | "diamond"
-  | "arrow"
-  | "text"
-  | "image"
-  | "circle"
-  | "freehand";
+  | 'rect'
+  | 'rectangle' // Added for new rectangle tool
+  | 'ellipse'
+  | 'diamond'
+  | 'arrow'
+  | 'text'
+  | 'image'
+  | 'circle'
+  | 'freehand';
 
 export type WhiteboardNodeData = {
   shape: WhiteboardShape;
@@ -22,11 +23,15 @@ export type WhiteboardNodeData = {
   fontSize?: number;
   imageSrc?: string;
   points?: { x: number; y: number }[]; // freehand
+  path?: string; // SVG path for freehand drawing
+  width?: number; // For dynamic sizing
+  height?: number; // For dynamic sizing
+  toBeDeleted?: boolean; // For eraser functionality
 };
 
 const DEFAULTS = {
-  fill: "#ffffff",
-  stroke: "#1f2937",
+  fill: '#ffffff',
+  stroke: '#1f2937',
   strokeWidth: 2,
   fontSize: 16,
 };
@@ -38,41 +43,47 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
   const strokeWidth = d.strokeWidth ?? DEFAULTS.strokeWidth;
   const fontSize = d.fontSize ?? DEFAULTS.fontSize;
 
+  // Apply eraser effect if marked for deletion
+  const isToBeDeleted = d.toBeDeleted;
+
   // Node size is controlled by style on create; render 100% in an SVG
   return (
     <div
       style={{
-        width: "100%",
-        height: "100%",
-        background: "transparent",
-        border: selected ? "2px solid #3b82f6" : "1px solid #d1d5db",
+        width: '100%',
+        height: '100%',
+        background: 'transparent',
+        border: selected ? '2px solid #3b82f6' : '1px solid #d1d5db',
         borderRadius: 6,
-        overflow: "hidden",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-        backgroundColor: d.shape === "image" ? "transparent" : "white",
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        backgroundColor: d.shape === 'image' ? 'transparent' : 'white',
+        opacity: isToBeDeleted ? 0.3 : 1,
+        filter: isToBeDeleted ? 'grayscale(100%)' : 'none',
+        transition: 'opacity 0.2s ease, filter 0.2s ease',
       }}
     >
-      {d.shape === "image" ? (
+      {d.shape === 'image' ? (
         <img
           src={d.imageSrc}
           alt="wb"
-          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         />
-      ) : d.shape === "text" ? (
+      ) : d.shape === 'text' ? (
         <div
           style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             fontSize,
             color: stroke,
             padding: 8,
-            textAlign: "center",
+            textAlign: 'center',
           }}
         >
-          {d.text || "Text"}
+          {d.text || 'Text'}
         </div>
       ) : (
         <svg
@@ -81,7 +92,7 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
         >
-          {d.shape === "rect" && (
+          {(d.shape === 'rect' || d.shape === 'rectangle') && (
             <rect
               x="2"
               y="2"
@@ -93,7 +104,7 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
               rx="6"
             />
           )}
-          {d.shape === "circle" && (
+          {d.shape === 'circle' && (
             <circle
               cx="50"
               cy="50"
@@ -103,7 +114,7 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
               strokeWidth={strokeWidth}
             />
           )}
-          {d.shape === "ellipse" && (
+          {d.shape === 'ellipse' && (
             <ellipse
               cx="50"
               cy="50"
@@ -114,7 +125,7 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
               strokeWidth={strokeWidth}
             />
           )}
-          {d.shape === "diamond" && (
+          {d.shape === 'diamond' && (
             <polygon
               points="50,2 98,50 50,98 2,50"
               fill={fill}
@@ -122,19 +133,38 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
               strokeWidth={strokeWidth}
             />
           )}
-          {d.shape === "arrow" && (
+          {d.shape === 'arrow' && (
             <g fill="none" stroke={stroke} strokeWidth={strokeWidth}>
               <line x1="10" y1="70" x2="90" y2="30" />
               <polygon points="90,30 82,32 85,24" fill={stroke} />
             </g>
           )}
-          {d.shape === "freehand" && d.points && d.points.length > 0 && (
-            <polyline
-              points={d.points.map((p) => `${p.x},${p.y}`).join(" ")}
-              fill="none"
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-            />
+          {d.shape === 'freehand' && (
+            <>
+              {/* Support both points array and SVG path */}
+              {d.path ? (
+                <path
+                  d={d.path}
+                  fill="none"
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ) : (
+                d.points &&
+                d.points.length > 0 && (
+                  <polyline
+                    points={d.points.map((p) => `${p.x},${p.y}`).join(' ')}
+                    fill="none"
+                    stroke={stroke}
+                    strokeWidth={strokeWidth}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )
+              )}
+            </>
           )}
         </svg>
       )}
@@ -142,5 +172,5 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
   );
 });
 
-WhiteboardNode.displayName = "WhiteboardNode";
+WhiteboardNode.displayName = 'WhiteboardNode';
 export default WhiteboardNode;

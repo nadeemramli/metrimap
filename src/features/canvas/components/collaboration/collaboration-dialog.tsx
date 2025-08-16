@@ -1,3 +1,4 @@
+import VersionHistoryButton from '@/features/canvas/components/version-history/VersionHistoryButton';
 import { useAppStore } from '@/lib/stores';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -338,11 +339,76 @@ export function CollaborationDialog({ children }: CollaborationDialogProps) {
                 </TabsContent>
 
                 <TabsContent value="changelog" className="mt-0 h-full">
-                  <ScrollArea className="h-full">
-                    <div className="space-y-6 text-sm text-muted-foreground">
-                      No changes
+                  <div className="space-y-4">
+                    {/* Version History Controls */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          Version History
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Manage canvas snapshots and version history
+                        </p>
+                      </div>
+                      {canvasId && (
+                        <VersionHistoryButton
+                          canvasId={canvasId}
+                          variant="default"
+                          size="default"
+                        />
+                      )}
                     </div>
-                  </ScrollArea>
+
+                    <Separator />
+
+                    {/* Changelog Content */}
+                    <ScrollArea className="h-[400px]">
+                      <div className="space-y-6 text-sm text-muted-foreground">
+                        {changelogEntries.length === 0 ? (
+                          <div className="text-center py-8">
+                            <p>No changes recorded yet.</p>
+                            <p className="text-xs mt-2">
+                              Changes will appear here as you modify the canvas.
+                            </p>
+                          </div>
+                        ) : (
+                          changelogEntries.map((dayGroup, index) => (
+                            <div key={index} className="space-y-3">
+                              <h4 className="font-medium text-foreground sticky top-0 bg-background py-2">
+                                {dayGroup.date}
+                              </h4>
+                              <div className="space-y-2 pl-4">
+                                {dayGroup.changes.map((change) => (
+                                  <div
+                                    key={change.id}
+                                    className="flex items-start gap-3 p-3 rounded-lg border bg-card"
+                                  >
+                                    <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-medium text-foreground">
+                                          {change.title}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {change.timestamp}
+                                        </span>
+                                      </div>
+                                      <p className="text-sm text-muted-foreground">
+                                        {change.description}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        by {change.author}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
                 </TabsContent>
               </div>
             </Tabs>

@@ -315,7 +315,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
   // If collapsed, show just the pin
   if (!isExpanded) {
     return (
-      <div className="relative">
+      <div className="relative cursor-move">
         <Handle type="target" position={Position.Top} className="w-3 h-3" />
         <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
 
@@ -324,7 +324,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
             variant="outline"
             size="sm"
             onClick={handleToggleExpanded}
-            className="h-8 w-8 p-0 rounded-full bg-white border-2 border-blue-500 hover:bg-blue-50"
+            className="nodrag h-8 w-8 p-0 rounded-full bg-white border-2 border-blue-500 hover:bg-blue-50"
             title={`${evidence.title} - Click to expand`}
           >
             <MapPin className="h-4 w-4 text-blue-600" />
@@ -339,7 +339,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
 
   // If expanded, show the full evidence card with editor
   return (
-    <div className="relative">
+    <div className="relative cursor-move">
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
       <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
 
@@ -348,7 +348,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
           isFullscreen ? 'w-[95vw] max-w-[95vw]' : 'w-80'
         } transition-all duration-300`}
       >
-        <CardHeader className="pb-3 cursor-move evidence-drag-handle">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`p-2 rounded-lg ${getTypeColor(evidence.type)}`}>
@@ -356,14 +356,14 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
               </div>
               <div className="flex-1">
                 {isEditing ? (
-                  <div className="space-y-2">
+                  <div className="nodrag space-y-2">
                     <Input
                       value={editForm.title}
                       onChange={(e) =>
                         setEditForm({ ...editForm, title: e.target.value })
                       }
                       placeholder="Evidence title"
-                      className="text-lg font-bold border-none p-0 focus:ring-0"
+                      className="nodrag text-lg font-bold border-none p-0 focus:ring-0"
                     />
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <div className="flex items-center gap-2">
@@ -374,7 +374,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                             setEditForm({ ...editForm, owner: e.target.value })
                           }
                           placeholder="Owner"
-                          className="border-none p-0 text-sm focus:ring-0"
+                          className="nodrag border-none p-0 text-sm focus:ring-0"
                         />
                       </div>
                       <div className="flex items-center gap-2">
@@ -385,7 +385,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                           onChange={(e) =>
                             setEditForm({ ...editForm, date: e.target.value })
                           }
-                          className="border-none p-0 text-sm focus:ring-0"
+                          className="nodrag border-none p-0 text-sm focus:ring-0"
                         />
                       </div>
                     </div>
@@ -408,7 +408,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="nodrag flex items-center gap-1">
               {isEditing && (
                 <>
                   <Button
@@ -418,6 +418,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                     title={
                       isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'
                     }
+                    className="nodrag"
                   >
                     {isFullscreen ? (
                       <Minimize2 className="h-3 w-3" />
@@ -430,6 +431,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                     size="sm"
                     onClick={handleSaveEdit}
                     disabled={isLoading}
+                    className="nodrag"
                   >
                     <Save className="h-3 w-3 mr-1" />
                     {isLoading ? 'Saving...' : 'Save'}
@@ -438,6 +440,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsEditing(false)}
+                    className="nodrag"
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -447,7 +450,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                 variant="ghost"
                 size="sm"
                 onClick={handleToggleExpanded}
-                className="h-6 w-6 p-0"
+                className="nodrag h-6 w-6 p-0"
               >
                 <ChevronUp className="h-3 w-3" />
               </Button>
@@ -457,7 +460,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsEditing(true)}
-                    className="h-6 w-6 p-0"
+                    className="nodrag h-6 w-6 p-0"
                   >
                     <Edit className="h-3 w-3" />
                   </Button>
@@ -465,12 +468,20 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                     variant="ghost"
                     size="sm"
                     onClick={handleDeleteEvidence}
-                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                    className="nodrag h-6 w-6 p-0 text-red-500 hover:text-red-700"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
-                  <Link to={`/evidence/${evidence.id}`} title="Open full page">
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <Link
+                    to={`/evidence/${evidence.id}`}
+                    title="Open full page"
+                    className="nodrag"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="nodrag h-6 w-6 p-0"
+                    >
                       <ExternalLink className="h-3 w-3" />
                     </Button>
                   </Link>
@@ -501,7 +512,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
 
         {/* Metadata Section */}
         {isEditing && (
-          <div className="px-6 py-4 border-b bg-gray-50">
+          <div className="nodrag px-6 py-4 border-b bg-gray-50">
             <div
               className={`grid gap-4 ${isFullscreen ? 'grid-cols-1 md:grid-cols-6' : 'grid-cols-1 md:grid-cols-3'}`}
             >
@@ -515,7 +526,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                     setEditForm({ ...editForm, hypothesis: e.target.value })
                   }
                   placeholder="What hypothesis is being tested?"
-                  className="mt-1"
+                  className="nodrag mt-1"
                 />
               </div>
               <div>
@@ -528,7 +539,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                     setEditForm({ ...editForm, link: e.target.value })
                   }
                   placeholder="https://..."
-                  className="mt-1"
+                  className="nodrag mt-1"
                 />
               </div>
               <div>
@@ -544,7 +555,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                     })
                   }
                   placeholder="How does this affect confidence?"
-                  className="mt-1"
+                  className="nodrag mt-1"
                 />
               </div>
               <div className="md:col-span-3">
@@ -565,7 +576,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                       tags: (editForm.tags || []).filter((t) => t !== tag),
                     })
                   }
-                  className="mt-1"
+                  className="nodrag mt-1"
                 />
               </div>
             </div>
@@ -575,18 +586,33 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
         <CardContent className="space-y-3">
           {/* Content */}
           <div>
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-              CONTENT
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                CONTENT
+              </span>
+              {!isEditing && (
+                <Link
+                  to={`/evidence/${evidence.id}`}
+                  className="nodrag text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  title="View full content"
+                >
+                  View Full
+                </Link>
+              )}
+            </div>
             <div className="mt-2">
               {isEditing ? (
                 <div
                   ref={editorContainerRef}
-                  className="codex-editor"
+                  className="nodrag codex-editor"
                   style={{ minHeight: '300px' }}
                 />
               ) : (
-                <EvidenceContentRenderer evidence={evidence} />
+                <div className="max-h-32 overflow-hidden relative">
+                  <EvidenceContentRenderer evidence={evidence} />
+                  {/* Fade overlay for long content */}
+                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                </div>
               )}
             </div>
           </div>
@@ -607,7 +633,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
           )}
 
           {/* Comments */}
-          <div className="border-t pt-3">
+          <div className="nodrag border-t pt-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                 COMMENTS ({evidence.comments?.length || 0})
@@ -638,6 +664,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a comment..."
+                className="nodrag"
               />
               <Button
                 variant="outline"
@@ -650,7 +677,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                   });
                   setNewComment('');
                 }}
-                className="text-xs"
+                className="nodrag text-xs"
               >
                 Add
               </Button>

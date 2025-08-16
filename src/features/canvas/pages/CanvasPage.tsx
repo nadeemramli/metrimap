@@ -15,8 +15,10 @@ import { useParams } from 'react-router-dom';
 
 // Extracted utilities and hooks
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
+import { useNewNodeTypesStore } from '@/features/canvas/stores/useNewNodeTypesStore';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useAppStore, useCanvasStore } from '@/lib/stores';
+import { useCanvasHeader } from '@/shared/contexts/CanvasHeaderContext';
 import { PortalContainerProvider } from '@/shared/contexts/PortalContainerContext';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
@@ -26,10 +28,7 @@ import {
   applyAutoLayout,
   type LayoutDirection,
 } from '@/shared/utils/autoLayout';
-import {
-  createExcalidrawInitialData,
-  sanitizeExcalidrawData,
-} from '@/shared/utils/excalidrawDefaults';
+import { handleNodeConnection } from '@/shared/utils/edgeConnectionHandler';
 import { getAvailableFilterOptions } from '@/shared/utils/filterUtils';
 import { useCanvasEvents } from '../hooks/useCanvasEvents';
 import { useCanvasKeyboard } from '../hooks/useCanvasKeyboard';
@@ -39,6 +38,7 @@ import { useCanvasViewportSync } from '../hooks/useCanvasViewportSync';
 
 // Extracted converters and types
 import {
+  convertToCanvasNode,
   convertToEdge,
   convertToEvidenceNode,
   convertToGroupNode,
@@ -52,12 +52,18 @@ import CanvasDebugPanels from '@/features/canvas/components/layout/CanvasDebugPa
 import CanvasModals from '@/features/canvas/components/layout/CanvasModals';
 
 // Core components
-import WhiteboardOverlay from '@/features/canvas/components/WhiteboardOverlay';
 import BulkOperationsToolbar from '@/features/canvas/components/bulk/BulkOperationsToolbar';
 import SelectionPanel from '@/features/canvas/components/grouping/SelectionPanel';
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
 import TopCanvasToolbar from '@/features/canvas/components/mini-control/TopCanvasToolbar';
 import QuickSearchCommand from '@/features/canvas/components/search/QuickSearchCommand';
+import {
+  EraseToolComponent,
+  FreehandDrawComponent,
+  LassoSelectionComponent,
+  RectangleToolComponent,
+  type WhiteboardTool,
+} from '@/features/canvas/components/whiteboard';
 import { generateUUID } from '@/shared/utils/validation';
 
 // Auto-save and realtime hooks
@@ -71,6 +77,7 @@ function CanvasPageInner() {
 
   // Initialize state management
   const state = useCanvasPageState();
+  const { setHeaderInfo } = useCanvasHeader();
 
   // Initialize canvas stores and data
   const {
@@ -97,6 +104,9 @@ function CanvasPageInner() {
     deleteNode: deleteCanvasNode,
   } = useCanvasNodesStore();
 
+  // New node types store for PRD-based nodes (value, action, hypothesis, metric)
+  const { newNodes } = useNewNodeTypesStore();
+
   // Initialize hooks
   const canvasMachine = useCanvasStateMachine();
   const viewportSync = useCanvasViewportSync();
@@ -116,6 +126,48 @@ function CanvasPageInner() {
     canvasMachine.currentEnvironment,
     state.toolbarMode,
     state.setToolbarMode,
+  ]);
+
+  // Set header info with canvas mode toggle
+  useEffect(() => {
+    const headerData = {
+      title: canvas?.name || 'Untitled Canvas',
+      description: canvas?.description,
+      autoSaveStatus: {
+        text: 'Auto-save enabled',
+        icon: () => null,
+        className: 'text-gray-600',
+        bgClassName: 'bg-gray-100',
+        dotClassName: 'bg-gray-400',
+      },
+      canvasMode: {
+        mode: state.toolbarMode,
+        onChangeMode: (mode: 'edit' | 'draw') => {
+          console.log('🔄 Header mode change:', mode);
+          state.setToolbarMode(mode);
+
+          if (mode === 'edit') {
+            canvasMachine.switchToPractical();
+            // Reset to select tool when switching to edit mode
+            state.setWhiteboardTool('select');
+          } else {
+            canvasMachine.switchToDesign();
+            // Don't auto-set drawing tool - let user choose
+            console.log('🎨 Switched to draw mode');
+          }
+        },
+      },
+    };
+
+    console.log('🎯 Setting header info:', headerData);
+    setHeaderInfo(headerData);
+  }, [
+    canvas?.name,
+    canvas?.description,
+    state.toolbarMode,
+    setHeaderInfo,
+    state.setToolbarMode,
+    canvasMachine,
   ]);
 
   // Initialize keyboard shortcuts
@@ -196,6 +248,37 @@ function CanvasPageInner() {
             updatedAt: now,
             lastModifiedBy: 'system',
           } as any);
+
+          // Dev convenience: if running in development, auto-bootstrap a minimal project record
+          try {
+            if (isDevelopmentEnvironment()) {
+              const client = supabaseClient || getClientForEnvironment();
+              const userId = useAppStore.getState().user?.id || 'dev-user-001';
+              const { error: insertErr } = await client
+                .from('projects')
+                .insert({
+                  id: canvasId,
+                  name: 'Untitled Canvas',
+                  description: '',
+                  tags: [],
+                  settings: {},
+                  created_by: userId,
+                } as any);
+              if (insertErr) {
+                console.warn(
+                  '⚠️ Dev bootstrap project insert skipped/failed:',
+                  insertErr
+                );
+              } else {
+                console.log('✅ Dev bootstrap project created:', canvasId);
+              }
+            }
+          } catch (e) {
+            console.warn(
+              '⚠️ Dev bootstrap project creation errored but is non-fatal:',
+              e
+            );
+          }
         }
       } catch (error) {
         console.error('❌ Error loading canvas data:', error);
@@ -391,6 +474,7 @@ function CanvasPageInner() {
     const metricCardNodes = canvas?.nodes || [];
     const evidenceNodes = evidenceList?.filter((e) => e.position) || [];
     const persistedCanvasNodes = canvasNodes || [];
+    const newNodeTypes = newNodes || [];
 
     const convertedMetricCardNodes = metricCardNodes.map((card) =>
       convertToNode(
@@ -405,17 +489,19 @@ function CanvasPageInner() {
 
     // Convert persisted canvas nodes to ReactFlow nodes
     const convertedPersistedCanvasNodes = persistedCanvasNodes.map(
-      (canvasNode) => ({
-        id: canvasNode.id,
-        type: canvasNode.nodeType,
-        position: canvasNode.position,
-        data: {
-          ...canvasNode.data,
-          title: canvasNode.title,
-          projectId: canvasNode.projectId,
-        },
-      })
+      (canvasNode) => convertToCanvasNode(canvasNode, selectedNodeIds)
     );
+
+    // Convert new node types to ReactFlow nodes
+    const convertedNewNodeTypes = newNodeTypes.map((node) => ({
+      id: node.id,
+      type: node.type,
+      position: node.position,
+      data: { node },
+      selected: selectedNodeIds.includes(node.id),
+      selectable: true,
+      draggable: true,
+    }));
 
     const convertedEvidenceNodes = evidenceNodes.map((evidence) =>
       convertToEvidenceNode(
@@ -441,6 +527,7 @@ function CanvasPageInner() {
       ...convertedEvidenceNodes,
       ...convertedGroupNodes,
       ...convertedPersistedCanvasNodes,
+      ...convertedNewNodeTypes,
       // Only include temporary nodes if they exist (for immediate UI feedback)
       ...(temporaryExtraNodes.length > 0 ? temporaryExtraNodes : []),
     ];
@@ -450,6 +537,7 @@ function CanvasPageInner() {
       evidenceNodes: convertedEvidenceNodes.length,
       groupNodes: convertedGroupNodes.length,
       persistedCanvasNodes: convertedPersistedCanvasNodes.length,
+      newNodeTypes: convertedNewNodeTypes.length,
       temporaryExtraNodes: temporaryExtraNodes.length,
       total: allNodes.length,
     });
@@ -461,6 +549,7 @@ function CanvasPageInner() {
     canvas?.groups,
     evidenceList,
     canvasNodes, // Unified canvas nodes from Zustand store
+    newNodes, // New node types from Zustand store
     temporaryExtraNodes, // Only temporary fallback nodes
     selectedNodeIds,
     state.isSettingsSheetOpen,
@@ -500,42 +589,7 @@ function CanvasPageInner() {
   // Enable shortcuts (simplified example)
   const enabledShortcuts = useMemo(() => [], []);
 
-  // Mode change handler
-  const handleModeChange = useCallback(
-    async (mode: 'edit' | 'draw') => {
-      state.setIsTransitioning(true);
-
-      try {
-        state.setToolbarMode(mode);
-
-        if (mode === 'draw') {
-          console.log('🎨 Switching to Draw Mode...');
-          canvasMachine.switchToDesign();
-          state.setWbPassthrough(false); // Ensure drawing is enabled
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          state.setIsWhiteboardActive(true);
-          await new Promise((resolve) => setTimeout(resolve, 200));
-
-          if (state.whiteboardRef.current) {
-            console.log('🎨 Setting freedraw tool...');
-            state.whiteboardRef.current.setTool('freedraw');
-            canvasMachine.setDesignTool('freedraw');
-            state.setDrawActiveTool('freedraw');
-          }
-        } else {
-          console.log('🔧 Switching to Edit Mode...');
-          canvasMachine.switchToPractical();
-          state.setIsWhiteboardActive(false);
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      } catch (error) {
-        console.error('Error during mode transition:', error);
-      } finally {
-        state.setIsTransitioning(false);
-      }
-    },
-    [state, canvasMachine]
-  );
+  // Mode change is now handled in the header toggle
 
   // Keep nodes in sync while dragging (controlled ReactFlow)
   const handleNodeDrag = useCallback(
@@ -577,73 +631,56 @@ function CanvasPageInner() {
     [state, updateEvidencePosition]
   );
 
-  // Handle edge connections between nodes
+  // Enhanced edge connection handler
   const handleConnect = useCallback(
     (connection: Connection) => {
-      console.log('🔗 Creating connection:', connection);
+      console.log('🔗 Enhanced connection handler triggered:', connection);
 
-      // Get source and target nodes to determine edge type
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
+      // Get all existing edges for cycle detection
+      const existingEdges = [
+        ...(canvas?.edges || []).map((e) => ({
+          source: e.sourceId,
+          target: e.targetId,
+          type: 'relationship',
+        })),
+        ...(state.extraEdges || []).map((e) => ({
+          source: e.source,
+          target: e.target,
+          type: e.type,
+        })),
+      ];
 
-      if (!sourceNode || !targetNode) {
-        console.error('❌ Source or target node not found');
-        return;
-      }
+      // Use enhanced connection handler
+      const result = handleNodeConnection(connection, {
+        nodes,
+        existingEdges,
+        onCreateRelationship: async (relationshipData) => {
+          try {
+            await useCanvasStore.getState().createEdge(relationshipData);
+            console.log('✅ Relationship edge created successfully');
+          } catch (error) {
+            console.error('❌ Failed to create relationship edge:', error);
+          }
+        },
+        onCreateDataFlow: (edgeData) => {
+          const currentEdges = state.extraEdges || [];
+          state.setExtraEdges([...currentEdges, edgeData]);
+          console.log('✅ Data flow edge created successfully');
+        },
+        onCreateReference: (edgeData) => {
+          const currentEdges = state.extraEdges || [];
+          state.setExtraEdges([...currentEdges, edgeData]);
+          console.log('✅ Reference edge created successfully');
+        },
+      });
 
-      // Determine edge type based on node types
-      const isMetricToMetric =
-        sourceNode.type === 'metricCard' && targetNode.type === 'metricCard';
-      const isOperativeConnection =
-        ['sourceNode', 'chartNode', 'operatorNode'].includes(sourceNode.type) ||
-        ['sourceNode', 'chartNode', 'operatorNode'].includes(targetNode.type);
-
-      if (isMetricToMetric) {
-        // Create DynamicEdge for MetricCard to MetricCard connections
-        const relationshipData = {
-          sourceId: connection.source,
-          targetId: connection.target,
-          type: 'Deterministic' as const, // Default type, user can change later
-          weight: 1.0,
-          confidence: 'Medium' as const,
-          evidence: [],
-          notes: `Connection between ${sourceNode.data?.card?.title || 'Unknown'} and ${targetNode.data?.card?.title || 'Unknown'}`,
-        };
-
-        // Create the relationship using the canvas store
-        useCanvasStore.getState().createEdge(relationshipData);
-      } else if (isOperativeConnection) {
-        // Create OperativeEdge for data source, visualization, and operative node connections
-        // For now, add to extraEdges since these aren't stored as Relationships
-        const operativeEdge = {
-          id: `${connection.source}-${connection.target}`,
-          source: connection.source,
-          target: connection.target,
-          type: 'operativeEdge',
-          data: {
-            label: 'Data Flow',
-          },
-        };
-
-        const currentEdges = state.extraEdges || [];
-        state.setExtraEdges([...currentEdges, operativeEdge]);
-      } else {
-        console.log('🔗 Mixed connection type, defaulting to DynamicEdge');
-        // Mixed connection (e.g., MetricCard to OperatorNode), use DynamicEdge
-        const relationshipData = {
-          sourceId: connection.source,
-          targetId: connection.target,
-          type: 'Deterministic' as const,
-          weight: 1.0,
-          confidence: 'Medium' as const,
-          evidence: [],
-          notes: `Mixed connection between nodes`,
-        };
-
-        useCanvasStore.getState().createEdge(relationshipData);
+      if (!result.success) {
+        console.error('❌ Connection failed:', result.error);
+        // You could show a toast notification here
+        alert(`Connection failed: ${result.error}`);
       }
     },
-    [nodes, state]
+    [nodes, canvas?.edges, state]
   );
 
   // Apply generic node changes for extra nodes (selection/resize etc.)
@@ -659,6 +696,26 @@ function CanvasPageInner() {
       state.setExtraNodes(updated as any);
     },
     [temporaryExtraNodes, state]
+  );
+
+  // Handle draw tool changes - update state and call Excalidraw API
+  const handleSetDrawTool = useCallback(
+    (tool: string) => {
+      console.log('🎨 Setting draw tool:', tool);
+      state.setDrawActiveTool(tool);
+      canvasMachine.setDesignTool(tool as any);
+
+      // Also call the Excalidraw setTool method if whiteboard is active
+      if (state.whiteboardRef.current && state.isWhiteboardActive) {
+        try {
+          state.whiteboardRef.current.setTool(tool);
+          console.log('✅ Excalidraw tool set to:', tool);
+        } catch (error) {
+          console.warn('⚠️ Failed to set Excalidraw tool:', error);
+        }
+      }
+    },
+    [state, canvasMachine]
   );
 
   const handleAddCustomNode = useCallback(
@@ -701,6 +758,8 @@ function CanvasPageInner() {
         });
 
         console.log(`✅ Created ${type} node successfully`);
+        // Clear any temporary nodes since the persisted node was created successfully
+        state.setExtraNodes([]);
       } catch (error) {
         console.error(`❌ Error creating ${type} node:`, error);
         // UNIFIED: Only use temporary fallback for immediate UI feedback
@@ -719,7 +778,7 @@ function CanvasPageInner() {
         // Clear temporary node after a short delay to avoid conflicts
         setTimeout(() => {
           state.setExtraNodes([]);
-        }, 3000);
+        }, 5000); // Increased timeout to give more time for debugging
       }
     },
     [createCanvasNode, state]
@@ -730,7 +789,7 @@ function CanvasPageInner() {
       {/* Layer 1: App Context - Base layer */}
       <div className="h-full relative" style={{ zIndex: 0 }}>
         <PortalContainerProvider container={state.reactFlowRef.current as any}>
-          {/* Layer 2: ReactFlow Canvas */}
+          {/* ReactFlow Canvas - Always rendered, with whiteboard tools overlaid in draw mode */}
           <ReactFlow
             ref={(ref) => {
               state.reactFlowRef.current = ref;
@@ -738,8 +797,11 @@ function CanvasPageInner() {
             }}
             nodes={nodes}
             edges={edges}
-            nodeTypes={nodeTypes}
+            nodeTypes={nodeTypes as any}
             edgeTypes={edgeTypes}
+            style={{
+              cursor: state.whiteboardTool === 'hand' ? 'grab' : 'default',
+            }}
             onPaneClick={events.handlePaneClick}
             onNodesChange={handleNodesChange}
             onNodeDrag={handleNodeDrag}
@@ -753,18 +815,40 @@ function CanvasPageInner() {
               events.handleOpenRelationshipSheet(edge.id);
             }}
             onConnect={handleConnect}
-            // Enhanced navigation behavior
+            // Enhanced navigation behavior - adjust based on active whiteboard tool
             panOnDrag={
-              state.toolbarMode === 'edit'
-                ? [1, 2] // Edit mode: only right/middle mouse buttons for panning (left mouse for node selection/dragging)
-                : false // Draw mode: disable React Flow panning completely
+              state.toolbarMode === 'edit' ||
+              state.whiteboardTool === 'select' ||
+              state.whiteboardTool === 'hand'
+                ? [1, 2] // Edit mode, select tool, or hand tool: allow panning
+                : false // Draw mode with active drawing tool: disable React Flow panning
             }
-            panOnScroll={state.toolbarMode === 'edit'} // Enable scroll panning in Edit mode only
-            zoomOnScroll={state.toolbarMode === 'edit'} // Enable zoom in Edit mode only
-            panActivationKeyCode={state.toolbarMode === 'edit' ? 'Space' : null} // Space panning in Edit mode only
-            nodesDraggable={state.toolbarMode === 'edit'}
-            nodesConnectable={state.toolbarMode === 'edit'}
-            elementsSelectable={state.toolbarMode === 'edit'}
+            panOnScroll={
+              state.toolbarMode === 'edit' ||
+              state.whiteboardTool === 'select' ||
+              state.whiteboardTool === 'hand'
+            }
+            zoomOnScroll={
+              state.toolbarMode === 'edit' ||
+              state.whiteboardTool === 'select' ||
+              state.whiteboardTool === 'hand'
+            }
+            panActivationKeyCode={
+              state.toolbarMode === 'edit' ||
+              state.whiteboardTool === 'select' ||
+              state.whiteboardTool === 'hand'
+                ? 'Space'
+                : null
+            }
+            nodesDraggable={
+              state.toolbarMode === 'edit' || state.whiteboardTool === 'select'
+            }
+            nodesConnectable={
+              state.toolbarMode === 'edit' || state.whiteboardTool === 'select'
+            }
+            elementsSelectable={
+              state.toolbarMode === 'edit' || state.whiteboardTool === 'select'
+            }
             zoomOnPinch={true}
             minZoom={0.05}
             maxZoom={3}
@@ -781,10 +865,13 @@ function CanvasPageInner() {
             <Controls />
 
             {/* Top toolbar */}
-            <Panel position="top-center" className="pointer-events-auto">
+            <Panel
+              position="top-center"
+              className="pointer-events-auto"
+              style={{ zIndex: 1010 }}
+            >
               <TopCanvasToolbar
                 mode={state.toolbarMode}
-                onChangeMode={handleModeChange}
                 navigationTool={state.navigationTool}
                 onChangeNavigationTool={(tool: string) =>
                   state.setNavigationTool(tool as any)
@@ -794,7 +881,25 @@ function CanvasPageInner() {
                   state.setKeepToolActive(value)
                 }
                 drawActiveTool={state.drawActiveTool}
-                onSetDrawTool={state.setDrawActiveTool}
+                onSetDrawTool={handleSetDrawTool}
+                whiteboardTool={state.whiteboardTool}
+                onSetWhiteboardTool={(tool: string) => {
+                  console.log('🎨 Whiteboard tool changed to:', tool);
+                  // Ensure the tool is a valid WhiteboardTool
+                  const validTools = [
+                    'select',
+                    'hand',
+                    'eraser',
+                    'lasso',
+                    'rectangle',
+                    'freehand',
+                  ] as const;
+                  if (validTools.includes(tool as any)) {
+                    state.setWhiteboardTool(tool as WhiteboardTool);
+                  } else {
+                    console.warn('Invalid whiteboard tool:', tool);
+                  }
+                }}
                 onOpenFilters={events.handleOpenFilters}
                 onAddEvidence={events.handleAddEvidence}
                 onApplyLayout={events.handleApplyLayout}
@@ -803,52 +908,108 @@ function CanvasPageInner() {
               />
             </Panel>
 
-            {/* Operative control panel - top-left */}
-            <Panel position="top-left">
-              <div className="w-80 max-h-[70vh] overflow-auto bg-background/90 backdrop-blur border rounded-lg shadow-lg">
-                <ControlPanel
-                  operatorNodes={
-                    nodes.filter((n) => n.type === 'operatorNode') as any
-                  }
-                  onUpdateNode={(nodeId, updates) => {
-                    // Update local operator node data in state.extraNodes for simplicity
-                    const target = (state.extraNodes || []).find(
-                      (n) => n.id === nodeId
-                    );
-                    if (target) {
-                      target.data = { ...target.data, ...updates } as any;
-                      state.setExtraNodes([...(state.extraNodes || [])]);
+            {/* Operative control panel - top-left - Only show in edit mode */}
+            {state.toolbarMode === 'edit' && (
+              <Panel position="top-left">
+                <div className="w-80 max-h-[70vh] overflow-auto bg-background/90 backdrop-blur border rounded-lg shadow-lg">
+                  <ControlPanel
+                    operatorNodes={
+                      nodes.filter((n) => n.type === 'operatorNode') as any
                     }
-                  }}
-                  onBulkUpdate={(updates) => {
-                    const opNodes = nodes.filter(
-                      (n) => n.type === 'operatorNode'
-                    );
-                    opNodes.forEach((n: any) => {
-                      n.data = { ...n.data, ...updates };
-                    });
-                    state.setExtraNodes([...(state.extraNodes || [])]);
-                  }}
-                  onSimulate={() => {
-                    console.log('Simulate operative nodes');
-                  }}
-                  isSimulating={false}
-                />
-              </div>
-            </Panel>
+                    onUpdateNode={(nodeId, updates) => {
+                      // Update local operator node data in state.extraNodes for simplicity
+                      const target = (state.extraNodes || []).find(
+                        (n) => n.id === nodeId
+                      );
+                      if (target) {
+                        target.data = { ...target.data, ...updates } as any;
+                        state.setExtraNodes([...(state.extraNodes || [])]);
+                      }
+                    }}
+                    onBulkUpdate={(updates) => {
+                      const opNodes = nodes.filter(
+                        (n) => n.type === 'operatorNode'
+                      );
+                      opNodes.forEach((n: any) => {
+                        n.data = { ...n.data, ...updates };
+                      });
+                      state.setExtraNodes([...(state.extraNodes || [])]);
+                    }}
+                    onSimulate={() => {
+                      console.log('Simulate operative nodes');
+                    }}
+                    isSimulating={false}
+                  />
+                </div>
+              </Panel>
+            )}
 
-            {/* Selection Panel */}
-            <Panel position="bottom-center">
-              <SelectionPanel
-                selectedNodeIds={selectedNodeIds}
-                selectedGroupIds={state.selectedGroupIds}
-                onGroupNodes={events.handleGroupSelectedNodes}
-                onUngroupNodes={events.handleUngroupSelectedGroups}
-                onDeleteNodes={events.handleDeleteSelectedItems}
-                onDuplicateNodes={events.handleDuplicateSelectedItems}
-                onOpenSettings={events.handleOpenSelectedSettings}
-              />
-            </Panel>
+            {/* Selection Panel - Only show in edit mode */}
+            {state.toolbarMode === 'edit' && (
+              <Panel position="bottom-center">
+                <SelectionPanel
+                  selectedNodeIds={selectedNodeIds}
+                  selectedGroupIds={state.selectedGroupIds}
+                  onGroupNodes={events.handleGroupSelectedNodes}
+                  onUngroupNodes={events.handleUngroupSelectedGroups}
+                  onDeleteNodes={events.handleDeleteSelectedItems}
+                  onDuplicateNodes={events.handleDuplicateSelectedItems}
+                  onOpenSettings={events.handleOpenSelectedSettings}
+                />
+              </Panel>
+            )}
+
+            {/* React Flow Whiteboard Tools - Only render the active tool */}
+            {state.toolbarMode === 'draw' && (
+              <>
+                {state.whiteboardTool === 'eraser' && (
+                  <EraseToolComponent
+                    isActive={true}
+                    onErase={(nodeIds, edgeIds) => {
+                      console.log('Erased items:', { nodeIds, edgeIds });
+                    }}
+                  />
+                )}
+
+                {state.whiteboardTool === 'lasso' && (
+                  <LassoSelectionComponent
+                    isActive={true}
+                    partial={state.whiteboardPartialSelection}
+                    onSelection={(nodeIds, edgeIds) => {
+                      console.log('Lasso selected items:', {
+                        nodeIds,
+                        edgeIds,
+                      });
+                      if (nodeIds.length > 0 || edgeIds.length > 0) {
+                        console.log('✅ Lasso selection successful!');
+                      } else {
+                        console.log('ℹ️ No items selected by lasso');
+                      }
+                    }}
+                  />
+                )}
+
+                {state.whiteboardTool === 'rectangle' && (
+                  <RectangleToolComponent
+                    isActive={true}
+                    onRectangleCreate={(rectangle) => {
+                      console.log('✅ Rectangle created:', rectangle);
+                    }}
+                  />
+                )}
+
+                {state.whiteboardTool === 'freehand' && (
+                  <FreehandDrawComponent
+                    isActive={true}
+                    brushSize={state.whiteboardBrushSize}
+                    brushColor={state.whiteboardBrushColor}
+                    onPathCreate={(path) => {
+                      console.log('Created freehand path:', path);
+                    }}
+                  />
+                )}
+              </>
+            )}
 
             {/* Debug Panels */}
             <CanvasDebugPanels
@@ -858,27 +1019,6 @@ function CanvasPageInner() {
               isDevelopment={isDevelopment}
             />
           </ReactFlow>
-
-          {/* Layer 3: Excalidraw Canvas Overlay - Only render in Draw mode */}
-          {state.toolbarMode === 'draw' && (
-            <WhiteboardOverlay
-              ref={state.whiteboardRef as any}
-              isActive={state.isWhiteboardActive}
-              zIndex={2}
-              viewport={viewportSync.getViewport()}
-              initialData={
-                state.whiteboardScene
-                  ? sanitizeExcalidrawData(state.whiteboardScene)
-                  : createExcalidrawInitialData()
-              }
-              onSceneChange={(scene) => state.setWhiteboardScene(scene)}
-              onViewportChange={(viewport) => {
-                viewportSync.syncToReactFlow(viewport);
-              }}
-              topOffset={100}
-              passthrough={state.wbPassthrough}
-            />
-          )}
         </PortalContainerProvider>
       </div>
 

@@ -109,18 +109,11 @@ export async function getProjectById(
   console.log('🔍 authenticatedClient provided:', !!authenticatedClient);
 
   const client = authenticatedClient || supabase();
+
+  // First, fetch the project
   const { data: project, error: projectError } = await client
     .from('projects')
-    .select(
-      `
-      *,
-      project_collaborators(
-        role,
-        permissions,
-        users(id, name, email, avatar_url)
-      )
-    `
-    )
+    .select('*')
     .eq('id', projectId)
     .maybeSingle();
 
@@ -135,6 +128,26 @@ export async function getProjectById(
   }
 
   console.log('✅ Project found:', project.name);
+
+  // Separately fetch project collaborators with user details
+  const { data: collaborators, error: collaboratorsError } = await client
+    .from('project_collaborators')
+    .select(
+      `
+      role,
+      permissions,
+      users(id, name, email, avatar_url)
+    `
+    )
+    .eq('project_id', projectId);
+
+  if (collaboratorsError) {
+    console.error('Error fetching collaborators:', collaboratorsError);
+    // Don't throw here, just log the error and continue without collaborators
+  }
+
+  // Attach collaborators to project
+  (project as any).project_collaborators = collaborators || [];
 
   // Fetch metric cards
   const { data: metricCards, error: cardsError } = await client

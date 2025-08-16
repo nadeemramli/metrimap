@@ -1,5 +1,5 @@
-import { createContext, useContext, useState } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 export interface CanvasHeaderInfo {
   title: string;
@@ -10,6 +10,11 @@ export interface CanvasHeaderInfo {
     className: string;
     bgClassName: string;
     dotClassName: string;
+  };
+  // Canvas mode toggle
+  canvasMode?: {
+    mode: 'edit' | 'draw';
+    onChangeMode: (mode: 'edit' | 'draw') => void;
   };
 }
 
@@ -26,7 +31,7 @@ export function useCanvasHeader() {
   const context = useContext(CanvasHeaderContext);
   if (context === undefined) {
     throw new Error(
-      "useCanvasHeader must be used within a CanvasHeaderProvider"
+      'useCanvasHeader must be used within a CanvasHeaderProvider'
     );
   }
   return context;

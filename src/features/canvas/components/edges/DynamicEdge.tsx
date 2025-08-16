@@ -1,36 +1,39 @@
-import { useState, useCallback } from "react";
+import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/shared/components/ui/popover';
+import type {
+  ConfidenceLevel,
+  Relationship,
+  RelationshipType,
+} from '@/shared/types';
+import { cn } from '@/shared/utils';
+import type { EdgeProps } from '@xyflow/react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
   getSmoothStepPath,
   useReactFlow,
-} from "@xyflow/react";
-import type { EdgeProps } from "@xyflow/react";
-import { Button } from "@/shared/components/ui/button";
-import { Badge } from "@/shared/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/components/ui/popover";
+} from '@xyflow/react';
 import {
   ArrowRight,
-  Zap,
-  TrendingUp,
-  Network,
+  Eye,
   Layers,
   MoreHorizontal,
+  Network,
   Settings,
   Trash2,
-  Eye,
-} from "lucide-react";
-import { cn } from "@/shared/utils";
-import type {
-  Relationship,
-  RelationshipType,
-  ConfidenceLevel,
-} from "@/shared/types";
+  TrendingUp,
+  Zap,
+} from 'lucide-react';
+import { useCallback, useState } from 'react';
+import EnhancedEdgeButton, {
+  useEdgeActions,
+} from './shared/EnhancedEdgeButton';
 
 interface DynamicEdgeData {
   relationship: Relationship;
@@ -48,8 +51,8 @@ interface DynamicEdgeProps extends EdgeProps {
 // Relationship type styling based on PRD specifications
 const getRelationshipTypeConfig = (type: RelationshipType, weight?: number) => {
   const getColorByWeight = (weight?: number) => {
-    if (weight === undefined || weight === 0) return "#6b7280"; // Gray for no correlation
-    return weight > 0 ? "#16a34a" : "#dc2626"; // Green for positive, red for negative
+    if (weight === undefined || weight === 0) return '#6b7280'; // Gray for no correlation
+    return weight > 0 ? '#16a34a' : '#dc2626'; // Green for positive, red for negative
   };
 
   // Check if relationship type needs numeric button - TODO: Use when implementing dynamic button logic
@@ -58,59 +61,59 @@ const getRelationshipTypeConfig = (type: RelationshipType, weight?: number) => {
   // };
 
   switch (type) {
-    case "Deterministic":
+    case 'Deterministic':
       return {
         icon: ArrowRight,
-        color: "text-gray-600",
-        stroke: "#6b7280", // Gray base color
-        label: "Deterministic",
-        description: "Formulaic relationship",
-        lineStyle: "smoothstep", // Rigid/formulaic
-        buttonValue: weight ? `${weight}` : "1.0",
+        color: 'text-gray-600',
+        stroke: '#6b7280', // Gray base color
+        label: 'Deterministic',
+        description: 'Formulaic relationship',
+        lineStyle: 'smoothstep', // Rigid/formulaic
+        buttonValue: weight ? `${weight}` : '1.0',
         showButton: true,
       };
-    case "Probabilistic":
+    case 'Probabilistic':
       return {
         icon: TrendingUp,
-        color: "text-gray-600",
+        color: 'text-gray-600',
         stroke: getColorByWeight(weight),
-        label: "Probabilistic",
-        description: "Statistical correlation",
-        lineStyle: "dotted",
-        buttonValue: weight ? `${weight}` : "0.0",
+        label: 'Probabilistic',
+        description: 'Statistical correlation',
+        lineStyle: 'dotted',
+        buttonValue: weight ? `${weight}` : '0.0',
         showButton: true,
       };
-    case "Causal":
+    case 'Causal':
       return {
         icon: Zap,
-        color: "text-gray-600",
+        color: 'text-gray-600',
         stroke: getColorByWeight(weight),
-        label: "Causal",
-        description: "Proven causal influence",
-        lineStyle: "solid",
-        buttonValue: weight ? `${weight}` : "0.0",
+        label: 'Causal',
+        description: 'Proven causal influence',
+        lineStyle: 'solid',
+        buttonValue: weight ? `${weight}` : '0.0',
         showButton: true,
       };
-    case "Compositional":
+    case 'Compositional':
       return {
         icon: Layers,
-        color: "text-gray-600",
-        stroke: "#6b7280", // Gray base color
-        label: "Compositional",
-        description: "Part-of relationship",
-        lineStyle: "dotted-smoothstep", // Hierarchical with dots
-        buttonValue: weight ? `${weight}` : "1.0",
+        color: 'text-gray-600',
+        stroke: '#6b7280', // Gray base color
+        label: 'Compositional',
+        description: 'Part-of relationship',
+        lineStyle: 'dotted-smoothstep', // Hierarchical with dots
+        buttonValue: weight ? `${weight}` : '1.0',
         showButton: false, // No numeric value needed
       };
     default:
       return {
         icon: Network,
-        color: "text-gray-600",
-        stroke: "#6b7280",
-        label: "Unknown",
-        description: "Undefined relationship",
-        lineStyle: "solid",
-        buttonValue: "0.0",
+        color: 'text-gray-600',
+        stroke: '#6b7280',
+        label: 'Unknown',
+        description: 'Undefined relationship',
+        lineStyle: 'solid',
+        buttonValue: '0.0',
         showButton: false,
       };
   }
@@ -119,33 +122,33 @@ const getRelationshipTypeConfig = (type: RelationshipType, weight?: number) => {
 // Confidence level styling - affects button appearance, not line style
 const getConfidenceConfig = (confidence: ConfidenceLevel) => {
   switch (confidence) {
-    case "High":
+    case 'High':
       return {
-        badge: "bg-green-100 text-green-800 border-green-200",
+        badge: 'bg-green-100 text-green-800 border-green-200',
         buttonOpacity: 1,
-        buttonBorder: "border-green-300",
-        buttonBg: "bg-green-50",
+        buttonBorder: 'border-green-300',
+        buttonBg: 'bg-green-50',
       };
-    case "Medium":
+    case 'Medium':
       return {
-        badge: "bg-yellow-100 text-yellow-800 border-yellow-200",
+        badge: 'bg-yellow-100 text-yellow-800 border-yellow-200',
         buttonOpacity: 1,
-        buttonBorder: "border-yellow-300",
-        buttonBg: "bg-yellow-50",
+        buttonBorder: 'border-yellow-300',
+        buttonBg: 'bg-yellow-50',
       };
-    case "Low":
+    case 'Low':
       return {
-        badge: "bg-red-100 text-red-800 border-red-200",
+        badge: 'bg-red-100 text-red-800 border-red-200',
         buttonOpacity: 1,
-        buttonBorder: "border-red-300",
-        buttonBg: "bg-red-50",
+        buttonBorder: 'border-red-300',
+        buttonBg: 'bg-red-50',
       };
     default:
       return {
-        badge: "bg-gray-100 text-gray-800 border-gray-200",
+        badge: 'bg-gray-100 text-gray-800 border-gray-200',
         buttonOpacity: 1,
-        buttonBorder: "border-gray-300",
-        buttonBg: "bg-gray-50",
+        buttonBorder: 'border-gray-300',
+        buttonBg: 'bg-gray-50',
       };
   }
 };
@@ -173,6 +176,17 @@ export default function DynamicEdge({
     onSwitchToRelationship,
     isRelationshipSheetOpen,
   } = data;
+
+  // Enhanced edge actions
+  const {
+    handleOpenSettings,
+    handleView,
+    handleEdit,
+    handleDelete: handleEdgeDelete,
+    handleCopy,
+    handleShare,
+    handleAddTag,
+  } = useEdgeActions(id, 'relationshipEdge');
   const typeConfig = getRelationshipTypeConfig(
     relationship.type,
     relationship.weight
@@ -189,12 +203,12 @@ export default function DynamicEdge({
       if (isRelationshipSheetOpen && onSwitchToRelationship) {
         onSwitchToRelationship(relationship.id);
         console.log(
-          "🔗 Double-clicked relationship (switch):",
+          '🔗 Double-clicked relationship (switch):',
           relationship.id
         );
       } else if (onOpenRelationshipSheet) {
         onOpenRelationshipSheet(relationship.id);
-        console.log("🔗 Double-clicked relationship (open):", relationship.id);
+        console.log('🔗 Double-clicked relationship (open):', relationship.id);
       }
     },
     [
@@ -210,26 +224,26 @@ export default function DynamicEdge({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       e.preventDefault();
-      console.log("🔗 Edge clicked relationship:", relationship.id);
-      console.log("🔗 Sheet open:", isRelationshipSheetOpen);
+      console.log('🔗 Edge clicked relationship:', relationship.id);
+      console.log('🔗 Sheet open:', isRelationshipSheetOpen);
       console.log(
-        "🔗 onSwitchToRelationship available:",
+        '🔗 onSwitchToRelationship available:',
         !!onSwitchToRelationship
       );
       console.log(
-        "🔗 onOpenRelationshipSheet available:",
+        '🔗 onOpenRelationshipSheet available:',
         !!onOpenRelationshipSheet
       );
 
       // If relationship sheet is open, switch to this relationship instead of opening new sheet
       if (isRelationshipSheetOpen && onSwitchToRelationship) {
         onSwitchToRelationship(relationship.id);
-        console.log("🔗 Called onSwitchToRelationship with:", relationship.id);
+        console.log('🔗 Called onSwitchToRelationship with:', relationship.id);
       } else if (onOpenRelationshipSheet) {
         onOpenRelationshipSheet(relationship.id);
-        console.log("🔗 Called onOpenRelationshipSheet with:", relationship.id);
+        console.log('🔗 Called onOpenRelationshipSheet with:', relationship.id);
       } else {
-        console.error("❌ No relationship sheet handler defined!");
+        console.error('❌ No relationship sheet handler defined!');
       }
     },
     [
@@ -242,7 +256,7 @@ export default function DynamicEdge({
 
   // Get path based on relationship type
   const getEdgePath = () => {
-    if (typeConfig.lineStyle === "smoothstep") {
+    if (typeConfig.lineStyle === 'smoothstep') {
       // Use smoothstep for deterministic relationships
       return getSmoothStepPath({
         sourceX,
@@ -252,7 +266,7 @@ export default function DynamicEdge({
         targetY,
         targetPosition,
       });
-    } else if (typeConfig.lineStyle === "dotted-smoothstep") {
+    } else if (typeConfig.lineStyle === 'dotted-smoothstep') {
       // Use smoothstep with dots for compositional relationships
       return getSmoothStepPath({
         sourceX,
@@ -278,31 +292,31 @@ export default function DynamicEdge({
   const [edgePath, labelX, labelY] = getEdgePath();
 
   const handleDelete = useCallback(() => {
-    if (confirm("Are you sure you want to delete this relationship?")) {
+    if (confirm('Are you sure you want to delete this relationship?')) {
       deleteElements({ edges: [{ id }] });
     }
   }, [deleteElements, id]);
 
   const handleOpenSheet = useCallback(() => {
-    console.log("🔗 handleOpenSheet called for relationship:", relationship.id);
-    console.log("🔗 Sheet open:", isRelationshipSheetOpen);
+    console.log('🔗 handleOpenSheet called for relationship:', relationship.id);
+    console.log('🔗 Sheet open:', isRelationshipSheetOpen);
     console.log(
-      "🔗 onSwitchToRelationship available:",
+      '🔗 onSwitchToRelationship available:',
       !!onSwitchToRelationship
     );
     console.log(
-      "🔗 onOpenRelationshipSheet available:",
+      '🔗 onOpenRelationshipSheet available:',
       !!onOpenRelationshipSheet
     );
 
     if (isRelationshipSheetOpen && onSwitchToRelationship) {
       onSwitchToRelationship(relationship.id);
-      console.log("🔗 Called onSwitchToRelationship with:", relationship.id);
+      console.log('🔗 Called onSwitchToRelationship with:', relationship.id);
     } else if (onOpenRelationshipSheet) {
       onOpenRelationshipSheet(relationship.id);
-      console.log("🔗 Called onOpenRelationshipSheet with:", relationship.id);
+      console.log('🔗 Called onOpenRelationshipSheet with:', relationship.id);
     } else {
-      console.error("❌ No relationship sheet handler defined!");
+      console.error('❌ No relationship sheet handler defined!');
     }
     setShowActions(false);
   }, [
@@ -313,7 +327,7 @@ export default function DynamicEdge({
   ]);
 
   const handleViewEvidence = useCallback(() => {
-    console.log("View evidence for relationship:", relationship.id);
+    console.log('View evidence for relationship:', relationship.id);
     setShowActions(false);
   }, [relationship.id]);
 
@@ -328,18 +342,18 @@ export default function DynamicEdge({
           stroke: typeConfig.stroke,
           strokeWidth: 2,
           strokeDasharray:
-            typeConfig.lineStyle === "dotted" ||
-            typeConfig.lineStyle === "dotted-smoothstep"
-              ? "5,5"
-              : "none",
+            typeConfig.lineStyle === 'dotted' ||
+            typeConfig.lineStyle === 'dotted-smoothstep'
+              ? '5,5'
+              : 'none',
           opacity: selected || isHovered ? 1 : 0.8,
-          transition: "all 0.2s ease-in-out",
-          cursor: "pointer",
+          transition: 'all 0.2s ease-in-out',
+          cursor: 'pointer',
           // Add animation for dotted lines
-          ...(typeConfig.lineStyle === "dotted" ||
-          typeConfig.lineStyle === "dotted-smoothstep"
+          ...(typeConfig.lineStyle === 'dotted' ||
+          typeConfig.lineStyle === 'dotted-smoothstep'
             ? {
-                animation: "dash 1s linear infinite",
+                animation: 'dash 1s linear infinite',
               }
             : {}),
         }}
@@ -353,9 +367,9 @@ export default function DynamicEdge({
       <BaseEdge
         path={edgePath}
         style={{
-          stroke: "transparent",
+          stroke: 'transparent',
           strokeWidth: 30, // Even wider invisible area for easier clicking
-          cursor: "pointer",
+          cursor: 'pointer',
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -367,14 +381,14 @@ export default function DynamicEdge({
       <EdgeLabelRenderer>
         <div
           style={{
-            position: "absolute",
+            position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             fontSize: 12,
-            pointerEvents: "all",
+            pointerEvents: 'all',
           }}
           className={cn(
-            "transition-all duration-200",
-            selected || isHovered ? "opacity-100" : "opacity-0"
+            'transition-all duration-200',
+            selected || isHovered ? 'opacity-100' : 'opacity-0'
           )}
         >
           {/* Relationship Info */}
@@ -383,14 +397,14 @@ export default function DynamicEdge({
             <div className="flex items-center gap-1">
               <Badge
                 variant="outline"
-                className={cn("text-xs font-normal", typeConfig.color)}
+                className={cn('text-xs font-normal', typeConfig.color)}
               >
                 <typeConfig.icon className="mr-1 h-3 w-3" />
                 {typeConfig.label}
               </Badge>
               <Badge
                 variant="outline"
-                className={cn("text-xs font-normal", confidenceConfig.badge)}
+                className={cn('text-xs font-normal', confidenceConfig.badge)}
               >
                 {relationship.confidence}
               </Badge>
@@ -454,35 +468,37 @@ export default function DynamicEdge({
         </div>
       </EdgeLabelRenderer>
 
-      {/* Relationship Management Button - Always visible and easier to click */}
+      {/* Enhanced Edge Button with Toolbar */}
       {typeConfig.showButton && (
-        <EdgeLabelRenderer>
-          <div
-            style={{
-              position: "absolute",
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              pointerEvents: "all",
-            }}
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEdgeClick(e);
-              }}
-              className={`h-10 w-10 p-0 rounded-full shadow-lg transition-all duration-200 ${confidenceConfig.buttonBorder} ${confidenceConfig.buttonBg} hover:scale-110 hover:shadow-xl border-2`}
-              style={{
-                opacity: confidenceConfig.buttonOpacity,
-                zIndex: 10,
-              }}
-            >
-              <span className="text-sm font-mono font-bold text-gray-800">
-                {typeConfig.buttonValue}
-              </span>
-            </Button>
-          </div>
-        </EdgeLabelRenderer>
+        <EnhancedEdgeButton
+          labelX={labelX}
+          labelY={labelY}
+          edgeId={id}
+          edgeType="relationshipEdge"
+          relationshipType={relationship.type}
+          weight={relationship.weight}
+          confidence={relationship.confidence}
+          selected={selected}
+          isHovered={isHovered}
+          onOpenSettings={() => {
+            if (isRelationshipSheetOpen && onSwitchToRelationship) {
+              onSwitchToRelationship(relationship.id);
+            } else if (onOpenRelationshipSheet) {
+              onOpenRelationshipSheet(relationship.id);
+            }
+          }}
+          onView={handleView}
+          onEdit={handleEdit}
+          onDelete={() => {
+            if (confirm('Are you sure you want to delete this relationship?')) {
+              deleteElements({ edges: [{ id }] });
+            }
+          }}
+          onCopy={handleCopy}
+          onShare={handleShare}
+          onAddTag={handleAddTag}
+          customLabel={typeConfig.buttonValue}
+        />
       )}
     </>
   );

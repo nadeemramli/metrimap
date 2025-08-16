@@ -10,6 +10,7 @@ import {
 } from '@/features/canvas/components/panels';
 import AdvancedSearchModal from '@/features/canvas/components/search/AdvancedSearchModal';
 import type { CanvasPageState } from '@/features/canvas/hooks/useCanvasPageState';
+import { useCanvasStore } from '@/lib/stores';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -20,6 +21,7 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { Button } from '@/shared/components/ui/button';
 import KeyboardShortcutsHelp from '@/shared/components/ui/KeyboardShortcutsHelp';
+import type { AnyNode } from '@/shared/types';
 import type { FilterOptions } from '@/shared/utils/filterUtils';
 
 interface CanvasModalsProps {
@@ -47,16 +49,45 @@ export default function CanvasModals({
   onConfirmCategorySelection,
   onCancelCategorySelection,
 }: CanvasModalsProps) {
+  const { getNodeById, persistNodeUpdate } = useCanvasStore();
+
+  // Get the current node for settings
+  const currentNode = state.settingsCardId
+    ? getNodeById(state.settingsCardId)
+    : null;
+
+  // Determine if we should use the new NodeSettingsRouter or legacy CardSettingsSheet
+  const useNewNodeSettings =
+    currentNode &&
+    ['valueNode', 'actionNode', 'hypothesisNode', 'metricNode'].includes(
+      currentNode.type || ''
+    );
+
+  // Handle save for new node types
+  const handleNodeSave = (nodeId: string, updatedData: Partial<AnyNode>) => {
+    console.log('💾 Saving node data:', nodeId, updatedData);
+    persistNodeUpdate(nodeId, updatedData);
+  };
   return (
     <>
-      {/* Card Settings Sheet */}
-      <CardSettingsSheet
-        isOpen={state.isSettingsSheetOpen}
-        onClose={onCloseSettingsSheet}
-        cardId={state.settingsCardId}
-        initialTab={state.settingsInitialTab}
-        onSwitchToCard={onSwitchToCard}
-      />
+      {/* Node Settings - Route to appropriate settings panel */}
+      {useNewNodeSettings ? (
+        <NodeSettingsRouter
+          node={currentNode as AnyNode}
+          isOpen={state.isSettingsSheetOpen}
+          onClose={onCloseSettingsSheet}
+          onSave={handleNodeSave}
+        />
+      ) : (
+        /* Legacy Card Settings Sheet for MetricCard and other existing types */
+        <CardSettingsSheet
+          isOpen={state.isSettingsSheetOpen}
+          onClose={onCloseSettingsSheet}
+          cardId={state.settingsCardId}
+          initialTab={state.settingsInitialTab}
+          onSwitchToCard={onSwitchToCard}
+        />
+      )}
 
       {/* Relationship Sheet */}
       <RelationshipSheet

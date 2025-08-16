@@ -4,11 +4,22 @@
  */
 
 import { DynamicEdge, OperativeEdge } from '@/features/canvas/components/edges';
+import DataFlowEdge from '@/features/canvas/components/edges/DataFlowEdge';
+import ReferenceEdge from '@/features/canvas/components/edges/ReferenceEdge';
+
+// Import existing node types
 import { GroupNode, MetricCard } from '@/features/canvas/components/nodes';
 import EvidenceNode from '@/features/canvas/components/nodes/EvidenceNode';
 import ChartNode from '@/features/canvas/components/nodes/chart-node';
 import OperatorNode from '@/features/canvas/components/nodes/operator-node';
 import SourceNode from '@/features/canvas/components/nodes/source-node/source-node';
+
+// Import new PRD-based node types
+import ActionNode from '@/features/canvas/components/nodes/ActionNode';
+import HypothesisNode from '@/features/canvas/components/nodes/HypothesisNode';
+import MetricNode from '@/features/canvas/components/nodes/MetricNode';
+import ValueNode from '@/features/canvas/components/nodes/ValueNode';
+
 import type {
   EvidenceItem,
   GroupNode as GroupNodeType,
@@ -143,9 +154,48 @@ export const convertToGroupNode = (
 // Import additional node components
 import { WhiteboardNode } from '@/features/canvas/components/nodes';
 import CommentNode from '@/features/canvas/components/nodes/comment-node';
+import type { CanvasNode } from '@/shared/types';
+
+// Convert CanvasNode to ReactFlow Node
+export const convertToCanvasNode = (
+  canvasNode: CanvasNode,
+  selectedNodeIds: string[] = []
+): Node => ({
+  id: canvasNode.id,
+  type: canvasNode.nodeType,
+  position: canvasNode.position,
+  data: {
+    ...canvasNode.data,
+    title: canvasNode.title,
+    projectId: canvasNode.projectId,
+    // Ensure all node types have the required data structure
+    ...(canvasNode.nodeType === 'commentNode' && {
+      title: canvasNode.title || 'Comment',
+    }),
+    ...(canvasNode.nodeType === 'operatorNode' && {
+      label: canvasNode.data?.label || 'Operator',
+      operationType: canvasNode.data?.operationType || 'formula',
+      isActive: canvasNode.data?.isActive ?? true,
+    }),
+    ...(canvasNode.nodeType === 'sourceNode' && {
+      title: canvasNode.title || 'Source',
+      sourceType: canvasNode.data?.sourceType || 'warehouse',
+    }),
+    ...(canvasNode.nodeType === 'chartNode' && {
+      title: canvasNode.title || 'Chart',
+    }),
+    ...(canvasNode.nodeType === 'whiteboardNode' && {
+      shape: canvasNode.data?.shape || 'rect',
+    }),
+  },
+  selected: selectedNodeIds.includes(canvasNode.id),
+  selectable: true,
+  draggable: true,
+});
 
 // Define custom node and edge types for ReactFlow
 export const nodeTypes = {
+  // Legacy node types (for backward compatibility)
   metricCard: MetricCard,
   groupNode: GroupNode,
   evidenceNode: EvidenceNode,
@@ -154,9 +204,17 @@ export const nodeTypes = {
   operatorNode: OperatorNode,
   whiteboardNode: WhiteboardNode,
   commentNode: CommentNode,
+
+  // New PRD-based node types
+  valueNode: ValueNode,
+  actionNode: ActionNode,
+  hypothesisNode: HypothesisNode,
+  metricNode: MetricNode,
 };
 
 export const edgeTypes = {
-  dynamicEdge: DynamicEdge,
-  operativeEdge: OperativeEdge,
+  dynamicEdge: DynamicEdge, // Relationship Edge - Business logic connections
+  operativeEdge: OperativeEdge, // Data Flow Edge - Data pipeline connections
+  dataFlowEdge: DataFlowEdge, // Alternative Data Flow Edge component
+  referenceEdge: ReferenceEdge, // Reference Edge - Simple reference connections
 };

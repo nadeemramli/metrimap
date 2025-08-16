@@ -8,9 +8,6 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useRef } from 'react';
 
-import WhiteboardOverlay, {
-  type WhiteboardOverlayHandle,
-} from '@/features/canvas/components/WhiteboardOverlay';
 import { useCanvasStateMachine } from '@/features/canvas/hooks/useCanvasStateMachine';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -72,7 +69,6 @@ export default function EnhancedCanvasPage({
     clearError,
   } = useCanvasStateMachine();
 
-  const whiteboardRef = useRef<WhiteboardOverlayHandle>(null);
   const reactFlowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,46 +89,37 @@ export default function EnhancedCanvasPage({
           case 'v':
           case '1':
             setDesignTool('selection');
-            whiteboardRef.current?.setTool?.('selection');
             break;
           case 'h':
           case '2':
             setDesignTool('hand');
-            whiteboardRef.current?.setTool?.('hand');
             break;
           case 'r':
           case '3':
             setDesignTool('rectangle');
-            whiteboardRef.current?.setTool?.('rectangle');
             break;
           case 'o':
           case '4':
             setDesignTool('ellipse');
-            whiteboardRef.current?.setTool?.('ellipse');
             break;
           case 'a':
           case '5':
             setDesignTool('arrow');
-            whiteboardRef.current?.setTool?.('arrow');
             break;
           case 'l':
           case '6':
             setDesignTool('line');
-            whiteboardRef.current?.setTool?.('line');
             break;
           case 'p':
           case '7':
             setDesignTool('freedraw');
-            whiteboardRef.current?.setTool?.('freedraw');
             break;
           case 't':
           case '8':
             setDesignTool('text');
-            whiteboardRef.current?.setTool?.('text');
             break;
           case 'e':
             setDesignTool('eraser');
-            whiteboardRef.current?.setTool?.('eraser');
             break;
         }
       }
@@ -236,7 +223,6 @@ export default function EnhancedCanvasPage({
                     size="sm"
                     onClick={() => {
                       setDesignTool(tool.id as any);
-                      whiteboardRef.current?.setTool?.(tool.id);
                     }}
                     className="h-8 w-8 p-0"
                     title={tool.label}
@@ -252,7 +238,6 @@ export default function EnhancedCanvasPage({
                   value={strokeColor || '#000000'}
                   onChange={(e) => {
                     setStrokeColor(e.target.value);
-                    whiteboardRef.current?.setStrokeColor?.(e.target.value);
                   }}
                   className="w-8 h-8 border border-border rounded cursor-pointer"
                   title="Stroke Color"
@@ -268,7 +253,6 @@ export default function EnhancedCanvasPage({
                     onChange={(e) => {
                       const width = parseInt(e.target.value);
                       setStrokeWidth(width);
-                      whiteboardRef.current?.setStrokeWidth?.(width);
                     }}
                     className="w-16"
                   />
@@ -333,20 +317,7 @@ export default function EnhancedCanvasPage({
         </ReactFlow>
       </ReactFlowProvider>
 
-      <WhiteboardOverlay
-        ref={whiteboardRef}
-        isActive={isWhiteboardActive}
-        className="absolute inset-0"
-        zIndex={100}
-        viewport={viewport}
-        initialData={{
-          elements: designElements,
-          appState: { ...designAppState, viewBackgroundColor: 'transparent' },
-        }}
-        onSceneChange={handleWhiteboardChange}
-        topOffset={80}
-        passthrough={isPassthroughMode}
-      />
+      {/* WhiteboardOverlay removed - using ReactFlow directly for canvas operations */}
     </div>
   );
 }

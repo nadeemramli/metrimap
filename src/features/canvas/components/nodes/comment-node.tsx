@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { type NodeProps } from "@xyflow/react";
-import { Card } from "@/shared/components/ui/card";
-import { Button } from "@/shared/components/ui/button";
-import { Textarea } from "@/shared/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
-import { Badge } from "@/shared/components/ui/badge";
-import { MessageSquare, MapPin } from "lucide-react";
-import { useAppStore } from "@/lib/stores";
+import { useAppStore } from '@/lib/stores';
+import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
+import { Card } from '@/shared/components/ui/card';
+import { Textarea } from '@/shared/components/ui/textarea';
 import {
-  createCommentThread,
   createComment,
+  createCommentThread,
   listComments,
   type CommentRow,
-} from "@/shared/lib/supabase/services/collaboration";
+} from '@/shared/lib/supabase/services/collaboration';
 import {
   getClientForEnvironment,
   isDevelopmentMode,
-} from "@/shared/utils/authenticatedClient";
-import { toast } from "sonner";
+} from '@/shared/utils/authenticatedClient';
+import { type NodeProps } from '@xyflow/react';
+import { MapPin, MessageSquare } from 'lucide-react';
+import * as React from 'react';
+import { toast } from 'sonner';
 
 export type CommentNodeData = {
   title?: string;
@@ -35,7 +35,7 @@ export default function CommentNode({ id, data }: NodeProps) {
     nodeData.threadId ?? null
   );
   const [comments, setComments] = React.useState<CommentRow[]>([]);
-  const [content, setContent] = React.useState("");
+  const [content, setContent] = React.useState('');
   const [isSending, setIsSending] = React.useState(false);
 
   React.useEffect(() => {
@@ -46,7 +46,7 @@ export default function CommentNode({ id, data }: NodeProps) {
         const c = await listComments(threadId, getClientForEnvironment());
         if (mounted) setComments(c || []);
       } catch (e: any) {
-        console.error("Failed to load comments", e);
+        console.error('Failed to load comments', e);
       }
     };
     load();
@@ -58,7 +58,7 @@ export default function CommentNode({ id, data }: NodeProps) {
   const handleSend = async () => {
     if (!content.trim()) return;
     if (!nodeData.projectId) {
-      toast.error("Missing project id for comment thread");
+      toast.error('Missing project id for comment thread');
       return;
     }
     setIsSending(true);
@@ -69,8 +69,8 @@ export default function CommentNode({ id, data }: NodeProps) {
         const thread = await createCommentThread(
           {
             projectId: nodeData.projectId,
-            source: "canvas",
-            context: { nodeId: id, title: nodeData.title ?? "Comment" },
+            source: 'canvas',
+            context: { nodeId: id, title: nodeData.title ?? 'Comment' },
             createdBy: user?.id ?? null,
           },
           client
@@ -87,21 +87,21 @@ export default function CommentNode({ id, data }: NodeProps) {
         client
       );
       setComments((prev) => [...prev, created]);
-      setContent("");
-      toast.success("Comment posted");
+      setContent('');
+      toast.success('Comment posted');
       // Also broadcast to open collaboration dialog selection if needed
       window.dispatchEvent(
-        new CustomEvent("collab:navigate", {
+        new CustomEvent('collab:navigate', {
           detail: {
             threadId: currentThreadId,
             context: { nodeId: id },
-            source: "canvas",
+            source: 'canvas',
           },
         })
       );
     } catch (e: any) {
-      console.error("Failed to send comment", e);
-      const msg = e?.message || "Unable to post comment";
+      console.error('Failed to send comment', e);
+      const msg = e?.message || 'Unable to post comment';
       if (!isDevelopmentMode()) {
         toast.error(msg);
       } else {
@@ -113,7 +113,7 @@ export default function CommentNode({ id, data }: NodeProps) {
   };
 
   return (
-    <div className="relative select-none">
+    <div className="relative select-none cursor-move">
       {/* Pin marker */}
       <div className="absolute -left-6 -top-6 rounded-full bg-rose-500 text-white w-8 h-8 flex items-center justify-center shadow">
         <MapPin className="w-4 h-4" />
@@ -141,12 +141,12 @@ export default function CommentNode({ id, data }: NodeProps) {
             <div key={c.id} className="flex items-start gap-2">
               <Avatar className="w-6 h-6">
                 <AvatarFallback>
-                  {(c.author_id?.[0] || "?").toUpperCase()}
+                  {(c.author_id?.[0] || '?').toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="text-[11px] text-muted-foreground">
-                  {c.author_id || "anon"} •{" "}
+                  {c.author_id || 'anon'} •{' '}
                   {new Date(c.created_at).toLocaleTimeString()}
                 </div>
                 <div className="text-sm leading-snug">{c.content}</div>
@@ -160,10 +160,10 @@ export default function CommentNode({ id, data }: NodeProps) {
           )}
         </div>
 
-        <div className="mt-2">
+        <div className="nodrag mt-2">
           <Textarea
             placeholder="Add a comment…"
-            className="min-h-[60px]"
+            className="nodrag min-h-[60px]"
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
@@ -172,6 +172,7 @@ export default function CommentNode({ id, data }: NodeProps) {
               size="sm"
               onClick={handleSend}
               disabled={isSending || !content.trim()}
+              className="nodrag"
             >
               Send
             </Button>

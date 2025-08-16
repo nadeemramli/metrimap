@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import type { WhiteboardTool } from '../components/whiteboard';
 
 // Canvas page state hook - minimal implementation to satisfy current CanvasPage needs
 export function useCanvasPageState() {
@@ -21,6 +22,15 @@ export function useCanvasPageState() {
     'LR' | 'TB' | 'BT' | 'RL'
   >('TB');
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+
+  // New React Flow whiteboard tools state
+  const [whiteboardTool, setWhiteboardTool] =
+    useState<WhiteboardTool>('select');
+  const [whiteboardPartialSelection, setWhiteboardPartialSelection] =
+    useState<boolean>(false);
+  const [whiteboardBrushSize, setWhiteboardBrushSize] = useState<number>(3);
+  const [whiteboardBrushColor, setWhiteboardBrushColor] =
+    useState<string>('#000000');
 
   // Whiteboard overlay state
   const [isWhiteboardActive, setIsWhiteboardActive] = useState<boolean>(false);
@@ -74,6 +84,16 @@ export function useCanvasPageState() {
     setCurrentLayoutDirection,
     isTransitioning,
     setIsTransitioning,
+
+    // whiteboard tools
+    whiteboardTool,
+    setWhiteboardTool,
+    whiteboardPartialSelection,
+    setWhiteboardPartialSelection,
+    whiteboardBrushSize,
+    setWhiteboardBrushSize,
+    whiteboardBrushColor,
+    setWhiteboardBrushColor,
 
     // whiteboard overlay
     isWhiteboardActive,

@@ -1,4 +1,5 @@
 import { CollaborationDialog } from '@/features/canvas/components/collaboration/collaboration-dialog';
+import CanvasModeToggle from '@/features/canvas/components/header/CanvasModeToggle';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { Button } from '@/shared/components/ui/button';
@@ -213,6 +214,14 @@ export default function CanvasLayout() {
                     </span>
                   </>
                 )}
+                {/* Canvas Mode Toggle */}
+                {headerInfo.canvasMode && (
+                  <CanvasModeToggle
+                    mode={headerInfo.canvasMode.mode}
+                    onChangeMode={headerInfo.canvasMode.onChangeMode}
+                  />
+                )}
+
                 {/* Collaboration Button (left side, after title/desc) */}
                 <CollaborationDialog>
                   <Button variant="outline" size="sm" className="h-7 px-2">

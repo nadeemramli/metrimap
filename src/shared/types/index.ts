@@ -1,5 +1,8 @@
 // Core types for Metrimap application based on PRD specifications
 
+// Export new node type system
+export * from './nodeTypes';
+
 export type CardCategory =
   | 'Core/Value'
   | 'Data/Metric'

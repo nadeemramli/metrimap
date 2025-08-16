@@ -1,35 +1,33 @@
+import { createClerkSupabaseClient } from '@/shared/lib/supabase/client';
 import type { Database } from '@/shared/lib/supabase/types';
-import { useUser } from '@clerk/react-router';
+import { useAuth } from '@clerk/react-router';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createClient } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 
-// Support both Vite and Next-style public env vars (production may set NEXT_PUBLIC_*)
-const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
+// Native Clerk → Supabase integration using accessToken callback
 export function useClerkSupabase(): SupabaseClient<Database> | null {
-  const { user } = useUser();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const [supabaseClient, setSupabaseClient] =
     useState<SupabaseClient<Database> | null>(null);
 
   useEffect(() => {
-    if (user) {
-      const client = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-        global: {
-          headers: {
-            Authorization: `Bearer ${user.id}`,
-          },
-        },
+    if (!isLoaded) return;
+    if (isSignedIn) {
+      const client = createClerkSupabaseClient(async () => {
+        try {
+          // Use the Clerk template for Supabase if configured
+          const token = await getToken({ template: 'supabase' });
+          return token;
+        } catch (err) {
+          console.error('Failed to get Clerk token for Supabase:', err);
+          return null;
+        }
       });
       setSupabaseClient(client);
     } else {
       setSupabaseClient(null);
     }
-  }, [user]);
+  }, [isLoaded, isSignedIn, getToken]);
 
   return supabaseClient;
 }

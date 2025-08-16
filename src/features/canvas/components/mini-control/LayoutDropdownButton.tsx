@@ -10,9 +10,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
+import { cn } from '@/shared/utils';
 import type { LayoutDirection, LayoutOptions } from '@/shared/utils/autoLayout';
 import {
-  applyAutoLayout,
+  applyAutoLayoutWithValidation,
   AUTO_LAYOUT_ALGORITHMS,
 } from '@/shared/utils/autoLayout';
 import { useReactFlow } from '@xyflow/react';
@@ -26,6 +27,7 @@ export default function LayoutDropdownButton() {
     useCanvasNodesStore();
   const rf = useReactFlow<any>();
   const [isApplying, setIsApplying] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const currentSettings = useMemo(
     () =>
@@ -72,24 +74,43 @@ export default function LayoutDropdownButton() {
       }
 
       setIsApplying(true);
+      setIsOpen(false); // Close dropdown after selection
       console.log('🔄 LayoutDropdownButton: Applying layout with options:', {
         ...options,
         direction,
       });
 
       try {
-        // Apply the auto-layout algorithm
-        const layoutedNodes = applyAutoLayout(nodes, edges, {
-          ...options,
-          direction,
-        });
+        const prevViewport = (rf as any)?.getViewport?.();
+
+        // Apply the enhanced auto-layout algorithm with validation
+        const { nodes: layoutedNodes, validation } =
+          applyAutoLayoutWithValidation(nodes, edges, {
+            ...options,
+            direction,
+          });
+
+        // Check validation results
+        if (!validation.isValid) {
+          console.warn(
+            '⚠️ LayoutDropdownButton: Layout validation issues:',
+            validation.issues
+          );
+          // Continue anyway, but log the issues
+        }
+
         console.log(
           '🔄 LayoutDropdownButton: Layout result:',
           layoutedNodes.length,
           'nodes'
         );
 
+        // Update ReactFlow state first for immediate visual feedback
+        rf?.setNodes?.(layoutedNodes as any);
+
         // Update the underlying data sources with new positions
+        const updatePromises: Promise<void>[] = [];
+
         for (const layoutedNode of layoutedNodes) {
           const newPosition = layoutedNode.position;
           console.log(
@@ -97,52 +118,98 @@ export default function LayoutDropdownButton() {
             newPosition
           );
 
-          if (layoutedNode.type === 'metricCard') {
-            // Update canvas store for MetricCard nodes
-            console.log(`📝 Updating MetricCard node ${layoutedNode.id}`);
-            await updateNodePosition(layoutedNode.id, newPosition);
-          } else if (layoutedNode.type === 'evidenceNode') {
-            // Update evidence store for Evidence nodes
-            console.log(`📄 Updating Evidence node ${layoutedNode.id}`);
-            updateEvidencePosition(layoutedNode.id, newPosition);
-          } else if (
-            [
-              'commentNode',
-              'sourceNode',
-              'chartNode',
-              'operatorNode',
-              'whiteboardNode',
-            ].includes(layoutedNode.type)
-          ) {
-            // Update canvas nodes store for persisted extra nodes
-            console.log(
-              `🎨 Updating Canvas node ${layoutedNode.id} (type: ${layoutedNode.type})`
-            );
-            await updateCanvasNodePosition(layoutedNode.id, newPosition);
-          } else {
-            // Temporary extra nodes - these will be handled by ReactFlow state only
-            console.log(
-              `⚠️ Skipping temporary node ${layoutedNode.id} (type: ${layoutedNode.type}) - not persisted`
+          try {
+            if (layoutedNode.type === 'metricCard') {
+              // Update canvas store for MetricCard nodes
+              console.log(`📝 Updating MetricCard node ${layoutedNode.id}`);
+              updatePromises.push(
+                updateNodePosition(layoutedNode.id, newPosition)
+              );
+            } else if (layoutedNode.type === 'evidenceNode') {
+              // Update evidence store for Evidence nodes
+              console.log(`📄 Updating Evidence node ${layoutedNode.id}`);
+              const evidenceItem = evidenceList.find(
+                (e) => e.id === layoutedNode.id
+              );
+              if (evidenceItem) {
+                updatePromises.push(
+                  updateEvidencePosition(evidenceItem.id, newPosition)
+                );
+              } else {
+                console.warn(
+                  `⚠️ Evidence item not found for node ${layoutedNode.id}`
+                );
+              }
+            } else if (
+              [
+                'commentNode',
+                'sourceNode',
+                'chartNode',
+                'operatorNode',
+                'whiteboardNode',
+              ].includes(layoutedNode.type)
+            ) {
+              // Update canvas nodes store for persisted extra nodes
+              console.log(
+                `🎨 Updating Canvas node ${layoutedNode.id} (type: ${layoutedNode.type})`
+              );
+              updatePromises.push(
+                updateCanvasNodePosition(layoutedNode.id, newPosition)
+              );
+            } else {
+              // Temporary extra nodes - these will be handled by ReactFlow state only
+              console.log(
+                `⚠️ Skipping temporary node ${layoutedNode.id} (type: ${layoutedNode.type}) - not persisted`
+              );
+            }
+          } catch (error) {
+            console.error(
+              `❌ Error preparing update for node ${layoutedNode.id}:`,
+              error
             );
           }
         }
 
-        console.log('✅ LayoutDropdownButton: All node positions updated');
+        // Execute all updates in parallel for better performance
+        console.log(
+          `🔄 LayoutDropdownButton: Executing ${updatePromises.length} position updates...`
+        );
+        try {
+          await Promise.all(updatePromises);
+          console.log(
+            '✅ LayoutDropdownButton: All node positions updated successfully'
+          );
+        } catch (error) {
+          console.error(
+            '❌ LayoutDropdownButton: Error updating some node positions:',
+            error
+          );
+          // Continue anyway - ReactFlow state is already updated
+        }
 
-        // Update canvas settings
+        // Update canvas settings - enable layout when applying
         updateCanvasSettings({
           autoLayout: {
             algorithm: direction,
-            enabled: currentSettings.enabled,
+            enabled: true, // Always enable when applying a layout
           },
         });
 
-        // Fit the view to show all nodes
+        console.log('✅ LayoutDropdownButton: Layout applied successfully', {
+          direction,
+          nodesUpdated: layoutedNodes.length,
+        });
+
+        // Preserve current viewport (avoid auto zooming)
         setTimeout(() => {
-          rf?.fitView?.({ padding: 50, duration: 800 });
+          if (prevViewport) {
+            (rf as any)?.setViewport?.(prevViewport, { duration: 0 });
+          }
           setIsApplying(false);
-          console.log('✅ LayoutDropdownButton: Layout complete');
-        }, 100);
+          console.log(
+            '✅ LayoutDropdownButton: Layout complete (viewport preserved)'
+          );
+        }, 50);
       } catch (error) {
         console.error('❌ LayoutDropdownButton: Error applying layout:', error);
         setIsApplying(false);
@@ -159,32 +226,53 @@ export default function LayoutDropdownButton() {
     ]
   );
 
+  // Check if any layout is currently active
+  const hasActiveLayout = currentSettings.algorithm && currentSettings.enabled;
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="rounded-lg" title="Layout">
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'rounded-lg transition-colors',
+            hasActiveLayout
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+              : 'hover:bg-accent hover:text-accent-foreground'
+          )}
+          title="Layout"
+        >
           <LayoutGrid className="w-4 h-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="start">
         <DropdownMenuLabel>Auto Layout</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {AUTO_LAYOUT_ALGORITHMS.map((direction) => (
-          <DropdownMenuItem
-            key={direction.value}
-            onClick={() => handleApply(direction.value)}
-            disabled={isApplying || (rf?.getNodes?.() || []).length === 0}
-            className="flex items-center justify-between"
-          >
-            <span>{direction.label}</span>
-            {currentSettings.algorithm === direction.value && (
-              <div className="w-2 h-2 bg-primary rounded-full" />
-            )}
-          </DropdownMenuItem>
-        ))}
+        {AUTO_LAYOUT_ALGORITHMS.map((direction) => {
+          const isActive = currentSettings.algorithm === direction.value;
+          return (
+            <DropdownMenuItem
+              key={direction.value}
+              onClick={() => handleApply(direction.value)}
+              disabled={isApplying || (rf?.getNodes?.() || []).length === 0}
+              className={cn(
+                'flex items-center justify-between cursor-pointer',
+                isActive && 'bg-accent text-accent-foreground'
+              )}
+            >
+              <span>{direction.label}</span>
+              {isActive && <div className="w-2 h-2 bg-primary rounded-full" />}
+            </DropdownMenuItem>
+          );
+        })}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => window.dispatchEvent(new Event('openUnifiedLayout'))}
+          onClick={() => {
+            window.dispatchEvent(new Event('openUnifiedLayout'));
+            setIsOpen(false);
+          }}
+          className="cursor-pointer"
         >
           <Settings className="h-4 w-4 mr-2" /> More settings
         </DropdownMenuItem>

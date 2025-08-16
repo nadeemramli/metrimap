@@ -1,4 +1,3 @@
-import { createViewportSyncAppState } from '@/shared/utils/excalidrawDefaults';
 import { useCallback, useRef } from 'react';
 
 export interface Viewport {
@@ -8,15 +7,15 @@ export interface Viewport {
 }
 
 /**
- * Enhanced viewport sync helper that synchronizes viewport between ReactFlow and Excalidraw
+ * Enhanced viewport sync helper for ReactFlow canvas
  */
 export function useCanvasViewportSync() {
   const viewportRef = useRef<Viewport>({ x: 0, y: 0, zoom: 1 });
   const reactFlowRef = useRef<any>(null);
 
-  // Prevent bounce-backs when syncing between canvases
+  // Prevent bounce-backs when syncing
   const lastSyncRef = useRef<{
-    source: 'reactflow' | 'excalidraw' | null;
+    source: 'reactflow' | null;
     timestamp: number;
   }>({
     source: null,
@@ -51,12 +50,12 @@ export function useCanvasViewportSync() {
     [updateViewport]
   );
 
-  // Sync from Excalidraw to React Flow
+  // Update React Flow viewport
   const syncToReactFlow = useCallback(
     (viewport: Viewport) => {
       const now = Date.now();
       if (
-        lastSyncRef.current.source === 'excalidraw' &&
+        lastSyncRef.current.source === 'reactflow' &&
         now - lastSyncRef.current.timestamp < SYNC_DEBOUNCE_MS
       ) {
         return;
@@ -77,57 +76,6 @@ export function useCanvasViewportSync() {
     [updateViewport]
   );
 
-  // Sync current React Flow viewport to Excalidraw
-  const syncToExcalidraw = useCallback(
-    (excalidrawRef: React.RefObject<any>) => {
-      if (!excalidrawRef.current) return;
-
-      const now = Date.now();
-      if (
-        lastSyncRef.current.source === 'reactflow' &&
-        now - lastSyncRef.current.timestamp < SYNC_DEBOUNCE_MS
-      ) {
-        return;
-      }
-
-      try {
-        const rfViewport = viewportRef.current;
-        // Excalidraw scrollX/scrollY are opposite to React Flow x/y
-        excalidrawRef.current.updateScene?.({
-          appState: createViewportSyncAppState(
-            -rfViewport.x,
-            -rfViewport.y,
-            rfViewport.zoom
-          ),
-        });
-        lastSyncRef.current = { source: 'excalidraw', timestamp: now };
-      } catch (error) {
-        console.warn('Failed to sync viewport to Excalidraw:', error);
-      }
-    },
-    []
-  );
-
-  // Extract viewport from Excalidraw and sync to React Flow
-  const onExcalidrawMove = useCallback(
-    (excalidrawRef: React.RefObject<any>) => {
-      if (!excalidrawRef.current) return;
-      try {
-        const appState = excalidrawRef.current.getAppState?.();
-        if (!appState) return;
-        const viewport: Viewport = {
-          x: -(appState.scrollX || 0),
-          y: -(appState.scrollY || 0),
-          zoom: appState.zoom?.value || 1,
-        };
-        syncToReactFlow(viewport);
-      } catch (error) {
-        console.warn('Failed to read Excalidraw viewport:', error);
-      }
-    },
-    [syncToReactFlow]
-  );
-
   return {
     get viewport() {
       return viewportRef.current;
@@ -137,8 +85,5 @@ export function useCanvasViewportSync() {
     setReactFlowRef,
     syncFromReactFlow,
     syncToReactFlow,
-    // Optional Excalidraw helpers
-    syncToExcalidraw,
-    onExcalidrawMove,
   };
 }

@@ -1,12 +1,20 @@
-import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
-import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
+  ArrowRight,
+  Circle,
+  Diamond,
+  Eraser,
+  Hand,
+  Image,
+  Lasso,
   MapPin,
   MessageSquarePlus,
+  Minus,
   MousePointer,
-  Pencil,
+  PenTool,
   Search,
+  Square,
+  Type,
 } from 'lucide-react';
 import AddNodeButton from './AddNodeButton';
 import FilterControls from './FilterControls';
@@ -16,7 +24,6 @@ type CanvasMode = 'edit' | 'draw';
 
 interface TopCanvasToolbarProps {
   mode: CanvasMode;
-  onChangeMode: (mode: CanvasMode) => void;
 
   navigationTool: string;
   onChangeNavigationTool: (tool: string) => void;
@@ -26,6 +33,10 @@ interface TopCanvasToolbarProps {
 
   drawActiveTool: string;
   onSetDrawTool: (tool: string) => void;
+
+  // Whiteboard tools (for draw mode)
+  whiteboardTool?: string;
+  onSetWhiteboardTool?: (tool: string) => void;
 
   onOpenFilters: () => void;
   onOpenSearch?: () => void;
@@ -45,133 +56,161 @@ interface TopCanvasToolbarProps {
 export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
   const {
     mode,
-    onChangeMode,
     keepToolActive,
     onToggleKeepToolActive,
     drawActiveTool,
     onSetDrawTool,
+    whiteboardTool,
+    onSetWhiteboardTool,
   } = props;
 
-  const drawTools: string[] = [
-    'selection',
-    'freedraw',
-    'rectangle',
-    'ellipse',
-    'arrow',
-    'line',
-    'text',
+  console.log('🎯 TopCanvasToolbar render:', { mode, whiteboardTool });
+
+  // React Flow whiteboard tools (for draw mode)
+  const whiteboardTools: { id: string; title: string; Icon: any }[] = [
+    { id: 'select', title: 'Select (V)', Icon: MousePointer },
+    { id: 'hand', title: 'Hand Tool (H)', Icon: Hand },
+    { id: 'eraser', title: 'Eraser (E)', Icon: Eraser },
+    { id: 'lasso', title: 'Lasso Selection (L)', Icon: Lasso },
+    { id: 'rectangle', title: 'Rectangle (R)', Icon: Square },
+    { id: 'freehand', title: 'Freehand Draw (P)', Icon: PenTool },
   ];
+
+  // Legacy draw tools (for backward compatibility)
+  const drawTools: { id: string; title: string; Icon: any }[] = [
+    { id: 'selection', title: 'Selection (V)', Icon: MousePointer },
+    { id: 'rectangle', title: 'Rectangle (R)', Icon: Square },
+    { id: 'ellipse', title: 'Ellipse (O)', Icon: Circle },
+    { id: 'diamond', title: 'Diamond (D)', Icon: Diamond },
+    { id: 'arrow', title: 'Arrow (A)', Icon: ArrowRight },
+    { id: 'line', title: 'Line (L)', Icon: Minus },
+    { id: 'freedraw', title: 'Draw (P)', Icon: PenTool },
+    { id: 'text', title: 'Text (T)', Icon: Type },
+    { id: 'image', title: 'Image', Icon: Image },
+  ];
+
+  const getToolButtonClasses = (active: boolean) =>
+    `rounded-lg h-8 w-8 p-0 transition-colors ${
+      active
+        ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-200'
+        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+    }`;
+
+  const WithTooltip = ({
+    label,
+    hotkey,
+    children,
+  }: {
+    label: string;
+    hotkey?: string;
+    children: React.ReactNode;
+  }) => (
+    <div className="relative group">
+      {children}
+      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:flex items-center gap-1 whitespace-nowrap rounded-md bg-black/80 text-white text-[11px] px-2 py-1 shadow-lg">
+        <span>{label}</span>
+        {hotkey && (
+          <kbd className="bg-white/20 px-1 rounded-sm text-[10px]">
+            {hotkey}
+          </kbd>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-sm border border-gray-200 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset,0_10px_24px_-12px_rgba(0,0,0,0.25)] px-3 py-2">
-      {/* Mode Toggle */}
-      <div className="flex bg-gray-100 rounded-xl p-1 mr-1">
-        <Button
-          variant={mode === 'edit' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => onChangeMode('edit')}
-          className={`rounded-lg transition-all duration-200 ${
-            mode === 'edit'
-              ? 'bg-white shadow-sm text-gray-900'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <Pencil className="w-4 h-4 mr-2" />
-          Edit
-        </Button>
-        <Button
-          variant={mode === 'draw' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => onChangeMode('draw')}
-          className={`rounded-lg transition-all duration-200 ${
-            mode === 'draw'
-              ? 'bg-white shadow-sm text-gray-900'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <Pencil className="w-4 h-4 mr-2" />
-          Draw
-        </Button>
-      </div>
+      {/* Drawing Tools - Show different tools based on mode */}
+      {mode === 'draw' ? (
+        /* React Flow Whiteboard Tools */
+        whiteboardTools.map((tool) => {
+          const Icon = tool.Icon;
+          const isActive = whiteboardTool === tool.id;
 
-      {/* Pointer tool */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="rounded-lg"
-          title="Select (V)"
-        >
-          <MousePointer className="w-4 h-4" />
-        </Button>
-      </div>
+          return (
+            <WithTooltip key={tool.id} label={tool.title}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={getToolButtonClasses(isActive)}
+                title={tool.title}
+                onClick={() => {
+                  console.log('🎯 Tool clicked:', tool.id);
+                  onSetWhiteboardTool?.(tool.id);
+                }}
+              >
+                <Icon className="w-4 h-4" />
+              </Button>
+            </WithTooltip>
+          );
+        })
+      ) : (
+        /* Edit Mode - Just selection tool */
+        <WithTooltip label="Selection" hotkey="V">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={getToolButtonClasses(true)}
+            title="Selection (V)"
+          >
+            <MousePointer className="w-4 h-4" />
+          </Button>
+        </WithTooltip>
+      )}
 
-      {/* Drawing tools (visible in draw mode) */}
-      {mode === 'draw' && (
+      {/* Draw mode - no indicator needed since it's clear from the tools */}
+
+      {/* Actions - Only show in edit mode */}
+      {mode === 'edit' && (
         <div className="flex items-center gap-1">
-          <Badge variant="outline">Tools</Badge>
-          {drawTools.map((tool) => (
+          <WithTooltip label="Add Card" hotkey="A">
+            <div>
+              <AddNodeButton onAddCustomNode={props.onAddCustomNode} />
+            </div>
+          </WithTooltip>
+          {/* Add Evidence Node */}
+          <WithTooltip label="Add Evidence">
             <Button
-              key={tool}
-              variant={drawActiveTool === tool ? 'default' : 'secondary'}
+              variant="ghost"
               size="sm"
-              onClick={() => onSetDrawTool(tool)}
+              title="Add evidence"
               className="rounded-lg"
+              onClick={props.onAddEvidence}
             >
-              {tool.charAt(0).toUpperCase() + tool.slice(1)}
+              <MapPin className="h-4 w-4" />
             </Button>
-          ))}
-          <div className="flex items-center gap-2 pl-2">
-            <Checkbox
-              id="keepToolActive"
-              checked={keepToolActive}
-              onCheckedChange={(v) => onToggleKeepToolActive(Boolean(v))}
-            />
-            <label
-              htmlFor="keepToolActive"
-              className="text-xs text-muted-foreground"
+          </WithTooltip>
+          {/* Add Comment Node */}
+          <WithTooltip label="Add Comment">
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Add comment"
+              className="rounded-lg"
+              onClick={() => props.onAddCustomNode?.('commentNode')}
             >
-              Lock tool
-            </label>
-          </div>
+              <MessageSquarePlus className="h-4 w-4" />
+            </Button>
+          </WithTooltip>
+          {/* Layout dropdown */}
+          <LayoutDropdownButton />
+          <FilterControls />
         </div>
       )}
 
-      {/* Actions */}
+      {/* Search - Available in both modes */}
       <div className="flex items-center gap-1">
-        <AddNodeButton onAddCustomNode={props.onAddCustomNode} />
-        {/* Add Evidence Node */}
-        <Button
-          variant="ghost"
-          size="sm"
-          title="Add evidence"
-          className="rounded-lg"
-          onClick={props.onAddEvidence}
-        >
-          <MapPin className="h-4 w-4" />
-        </Button>
-        {/* Add Comment Node */}
-        <Button
-          variant="ghost"
-          size="sm"
-          title="Add comment"
-          className="rounded-lg"
-          onClick={() => props.onAddCustomNode?.('commentNode')}
-        >
-          <MessageSquarePlus className="h-4 w-4" />
-        </Button>
-        {/* Layout dropdown */}
-        <LayoutDropdownButton />
-        <FilterControls />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={props.onOpenSearch}
-          title="Search"
-          className="rounded-lg"
-        >
-          <Search className="h-4 w-4" />
-        </Button>
+        <WithTooltip label="Search" hotkey="/">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={props.onOpenSearch}
+            title="Search"
+            className="rounded-lg"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+        </WithTooltip>
       </div>
     </div>
   );

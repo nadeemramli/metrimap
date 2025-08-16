@@ -7,3 +7,9 @@ export { default as MetricCard } from './metric-node/MetricCard';
 export { default as OperatorNode } from './operator-node';
 export { default as SourceNode } from './source-node/source-node';
 export { default as WhiteboardNode } from './whiteboard-node';
+
+// New PRD-based node types
+export { default as ActionNode } from './ActionNode';
+export { default as HypothesisNode } from './HypothesisNode';
+export { default as MetricNode } from './MetricNode';
+export { default as ValueNode } from './ValueNode';

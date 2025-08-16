@@ -1,5 +1,5 @@
 import AutoSaveIndicator from '@/features/canvas/components/header/AutoSaveIndicator';
-import VersionHistoryButton from '@/features/canvas/components/version-history/VersionHistoryButton';
+import CanvasModeToggle from '@/features/canvas/components/header/CanvasModeToggle';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { Button } from '@/shared/components/ui/button';
@@ -71,6 +71,9 @@ export default function CanvasLayout() {
   const { getProjectById } = useProjectsStore();
   const { headerInfo } = useCanvasHeader();
   const user = useAppStore((s) => s.user);
+
+  // Debug: Log header info changes
+  console.log('🎯 CanvasLayout headerInfo:', headerInfo);
 
   const project = canvasId ? getProjectById(canvasId) : null;
 
@@ -215,6 +218,14 @@ export default function CanvasLayout() {
                     </span>
                   </>
                 )}
+                {/* Canvas Mode Toggle */}
+                {headerInfo.canvasMode && (
+                  <CanvasModeToggle
+                    mode={headerInfo.canvasMode.mode}
+                    onChangeMode={headerInfo.canvasMode.onChangeMode}
+                  />
+                )}
+
                 {/* Collaboration Button (left side, after title/desc) */}
                 <CollaborationDialog>
                   <Button variant="outline" size="sm" className="h-7 px-2">
@@ -279,15 +290,6 @@ export default function CanvasLayout() {
               <Share2 className="h-3.5 w-3.5 mr-1" />
               Share
             </Button>
-
-            {/* Version History */}
-            {canvasId && (
-              <VersionHistoryButton
-                canvasId={canvasId}
-                variant="outline"
-                size="sm"
-              />
-            )}
 
             {/* Auto-save indicator in header */}
             <AutoSaveIndicator />

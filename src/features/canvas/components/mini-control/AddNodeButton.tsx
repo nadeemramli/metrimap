@@ -1,3 +1,4 @@
+import { useNewNodeTypesStore } from '@/features/canvas/stores/useNewNodeTypesStore';
 import { useCanvasStore } from '@/lib/stores';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -8,11 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import type { MetricCard as MetricCardType } from '@/shared/types';
+import type {
+  ActionNode,
+  AnyNode,
+  HypothesisNode,
+  MetricNode,
+  ValueNode,
+} from '@/shared/types/nodeTypes';
 import { ControlButton } from '@xyflow/react';
 import { Plus } from 'lucide-react';
-
-type CardCategory = MetricCardType['category'];
 
 interface AddNodeButtonProps {
   position?: { x: number; y: number };
@@ -21,43 +26,42 @@ interface AddNodeButtonProps {
     type: 'sourceNode' | 'chartNode' | 'operatorNode' | 'whiteboardNode',
     position?: { x: number; y: number }
   ) => void;
+  onAddNewNodeType?: (
+    type: 'valueNode' | 'actionNode' | 'hypothesisNode' | 'metricNode',
+    position?: { x: number; y: number }
+  ) => void;
 }
 
-const categoryTemplates: Array<{
-  category: CardCategory;
+// New PRD-based node types
+const newNodeTypeTemplates: Array<{
+  type: 'valueNode' | 'actionNode' | 'hypothesisNode' | 'metricNode';
   label: string;
   description: string;
   icon: string;
 }> = [
   {
-    category: 'Core/Value',
-    label: 'Core/Value',
-    description: 'Foundational value delivery elements',
+    type: 'valueNode',
+    label: 'Value Node',
+    description: 'Core business value chain components',
     icon: '🎯',
   },
   {
-    category: 'Data/Metric',
-    label: 'Data/Metric',
-    description: 'Quantifiable business measures',
-    icon: '📊',
-  },
-  {
-    category: 'Work/Action',
-    label: 'Work/Action',
-    description: 'Business activities and initiatives',
+    type: 'actionNode',
+    label: 'Action Node',
+    description: 'Tasks and initiatives (BAU or new)',
     icon: '⚡',
   },
   {
-    category: 'Ideas/Hypothesis',
-    label: 'Ideas/Hypothesis',
-    description: 'Assumptions and potential drivers',
+    type: 'hypothesisNode',
+    label: 'Hypothesis Node',
+    description: 'Brainstorming and idea capture',
     icon: '💡',
   },
   {
-    category: 'Metadata',
-    label: 'Metadata',
-    description: 'Supplementary system information',
-    icon: '📋',
+    type: 'metricNode',
+    label: 'Metric Node',
+    description: 'Data-centric metric proxy',
+    icon: '📊',
   },
 ];
 
@@ -65,52 +69,100 @@ export default function AddNodeButton({
   position,
   asControlButton = false,
   onAddCustomNode,
+  onAddNewNodeType,
 }: AddNodeButtonProps) {
-  const { createNode } = useCanvasStore();
+  const { createNewNode } = useNewNodeTypesStore();
+  const canvas = useCanvasStore((state) => state.canvas);
 
-  const handleAddNode = async (category: CardCategory) => {
-    const baseNodeData: Partial<MetricCardType> = {
-      title: `New ${category.split('/')[1] || category}`,
-      description: `A new ${String(category).toLowerCase()} card`,
-      category,
-      tags: [],
-      causalFactors: [],
-      dimensions: [],
-      position: position || { x: Math.random() * 400, y: Math.random() * 400 },
-      assignees: [],
+  // Handle creating new PRD-based node types
+  const handleAddNewNodeType = async (
+    nodeType: 'valueNode' | 'actionNode' | 'hypothesisNode' | 'metricNode'
+  ) => {
+    if (!canvas) {
+      console.error('❌ No canvas loaded');
+      alert('No canvas loaded. Please try again.');
+      return;
+    }
+
+    const basePosition = position || {
+      x: Math.random() * 400,
+      y: Math.random() * 400,
     };
 
-    const nodeWithData: Partial<MetricCardType> = {
-      ...baseNodeData,
-      ...(category === 'Data/Metric' && {
-        data: [
-          {
-            period: 'Past 7 days',
-            value: Math.floor(Math.random() * 10000) + 1000,
-            change_percent: (Math.random() - 0.5) * 20,
-            trend: Math.random() > 0.5 ? 'up' : 'down',
-          },
-          {
-            period: 'Past 30 days',
-            value: Math.floor(Math.random() * 50000) + 5000,
-            change_percent: (Math.random() - 0.5) * 20,
-            trend: Math.random() > 0.5 ? 'up' : 'down',
-          },
-          {
-            period: 'Past 90 days',
-            value: Math.floor(Math.random() * 200000) + 20000,
-            change_percent: (Math.random() - 0.5) * 20,
-            trend: Math.random() > 0.5 ? 'up' : 'down',
-          },
-        ],
-      }),
-    } as any;
+    let nodeData: Partial<AnyNode>;
+
+    switch (nodeType) {
+      case 'valueNode':
+        nodeData = {
+          title: 'New Value Node',
+          description: 'A new core business value component',
+          valueType: 'Journey Step',
+          businessImpact: 'Medium',
+          stakeholders: [],
+          tags: [],
+          position: basePosition,
+        } as Partial<ValueNode>;
+        break;
+
+      case 'actionNode':
+        nodeData = {
+          title: 'New Action Node',
+          description: 'A new task or initiative',
+          actionType: 'Initiative',
+          status: 'Planning',
+          priority: 'Medium',
+          effort: 0,
+          tags: [],
+          position: basePosition,
+        } as Partial<ActionNode>;
+        break;
+
+      case 'hypothesisNode':
+        nodeData = {
+          title: 'New Hypothesis Node',
+          description: 'A new idea or assumption',
+          hypothesisType: 'Factor',
+          confidence: 'Medium',
+          testable: false,
+          assumptions: [],
+          successCriteria: [],
+          tags: [],
+          position: basePosition,
+        } as Partial<HypothesisNode>;
+        break;
+
+      case 'metricNode':
+        nodeData = {
+          title: 'New Metric Node',
+          description: 'A new data-centric metric',
+          metricType: 'Output Metric',
+          unit: '',
+          currentValue: 0,
+          targetValue: 0,
+          dimensions: [],
+          segments: [],
+          tags: [],
+          position: basePosition,
+        } as Partial<MetricNode>;
+        break;
+
+      default:
+        console.error('Unknown node type:', nodeType);
+        return;
+    }
 
     try {
-      await createNode(nodeWithData as any);
+      if (onAddNewNodeType) {
+        onAddNewNodeType(nodeType, basePosition);
+      } else {
+        // Create the new node using the store
+        console.log('🎯 Creating new node type:', nodeType, nodeData);
+        await createNewNode(nodeType, nodeData, canvas.id);
+        console.log('✅ Successfully created new node type:', nodeType);
+      }
     } catch (error) {
-      console.error('Failed to create node:', error);
-      alert('Failed to create card. Please try again.');
+      console.error('Failed to create new node type:', error);
+      alert('Failed to create node. Please try again.');
     }
   };
 
@@ -135,12 +187,14 @@ export default function AddNodeButton({
           )}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-64 z-[9999]" align="start">
-          <DropdownMenuLabel>Select Card Type</DropdownMenuLabel>
+          <DropdownMenuLabel>Core Node Types</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {categoryTemplates.map((template) => (
+
+          {/* Core node types */}
+          {newNodeTypeTemplates.map((template) => (
             <DropdownMenuItem
-              key={template.category}
-              onClick={() => handleAddNode(template.category)}
+              key={template.type}
+              onClick={() => handleAddNewNodeType(template.type)}
               className="flex items-start gap-3 p-3"
             >
               <span className="text-lg mt-0.5">{template.icon}</span>
@@ -154,7 +208,7 @@ export default function AddNodeButton({
           ))}
 
           <DropdownMenuSeparator />
-          <DropdownMenuLabel>Custom Nodes</DropdownMenuLabel>
+          <DropdownMenuLabel>Utility Nodes</DropdownMenuLabel>
           <DropdownMenuItem
             onClick={() => onAddCustomNode?.('sourceNode', position)}
             className="flex items-start gap-3 p-3"

@@ -16,7 +16,7 @@ import CanvasLayout from './features/canvas/components/CanvasLayout';
 import CanvasPage from './features/canvas/pages/CanvasPage';
 import CanvasSettingsPage from './features/canvas/pages/CanvasSettingsPage';
 import EnhancedCanvasPage from './features/canvas/pages/EnhancedCanvasPage';
-import ExcalidrawTestPage from './features/canvas/pages/ExcalidrawTestPage';
+
 import DashboardPage from './features/dashboard/pages/DashboardPage';
 import EvidencePage from './features/evidence/pages/EvidencePage';
 import EvidenceRepositoryPage from './features/evidence/pages/EvidenceRepositoryPage';
@@ -70,10 +70,7 @@ export default function App() {
                   path="/evidence/:evidenceId"
                   element={<EvidencePage />}
                 />
-                <Route
-                  path="/excalidraw-test"
-                  element={<ExcalidrawTestPage />}
-                />
+
                 <Route
                   path="/canvas/:canvasId"
                   element={

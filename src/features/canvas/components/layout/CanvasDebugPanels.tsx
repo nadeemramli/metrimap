@@ -4,8 +4,11 @@
  */
 
 import type { CanvasPageState } from '@/features/canvas/hooks/useCanvasPageState';
+import { Button } from '@/shared/components/ui/button';
 import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
 import { Panel } from '@xyflow/react';
+import { Bug, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { useState } from 'react';
 
 interface CanvasDebugPanelsProps {
   state: CanvasPageState;
@@ -24,24 +27,64 @@ export default function CanvasDebugPanels({
     return null;
   }
 
+  // Local toggle for collapsing the Debug State panel (dev only)
+  const [isOpen, setIsOpen] = useState(true);
+
   return (
     <>
       {/* Development Debug Info - Combined Panel (development only) */}
-      {isDevelopment && (
-        <Panel
-          position="top-left"
-          className="bg-black/80 text-white p-3 rounded-lg text-xs max-w-xs"
-        >
-          <div className="font-semibold mb-2">🐛 Debug State</div>
-          <div>Selected Nodes: {selectedNodeIds.length}</div>
-          <div>Selected Groups: {state.selectedGroupIds.length}</div>
-          <div>Total Nodes: {canvas?.nodes?.length || 0}</div>
-          <div>Total Groups: {canvas?.groups?.length || 0}</div>
-          <div className="mt-2 text-yellow-300">
-            Shift+Click should work for multi-selection
-          </div>
-        </Panel>
-      )}
+      {isDevelopment &&
+        (isOpen ? (
+          <Panel
+            position="top-left"
+            className="bg-black/80 text-white p-3 rounded-lg text-xs max-w-xs"
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="font-semibold">🐛 Debug State</div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 rounded-md hover:bg-white/10"
+                  title="Collapse"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 rounded-md hover:bg-white/10"
+                  title="Close"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            <div>Selected Nodes: {selectedNodeIds.length}</div>
+            <div>Selected Groups: {state.selectedGroupIds.length}</div>
+            <div>Total Nodes: {canvas?.nodes?.length || 0}</div>
+            <div>Total Groups: {canvas?.groups?.length || 0}</div>
+            <div className="mt-2 text-yellow-300">
+              Shift+Click should work for multi-selection
+            </div>
+          </Panel>
+        ) : (
+          <Panel position="top-left" className="bg-black/60 p-1 rounded-md">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-8 px-2 py-1 rounded-md text-xs flex items-center gap-1"
+              title="Open Debug State"
+              onClick={() => setIsOpen(true)}
+            >
+              <Bug className="h-3.5 w-3.5" />
+              <span>Debug</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+          </Panel>
+        ))}
 
       {/* Navigation Controls - Inside ReactFlow Panel (development only) */}
       {isDevelopmentEnvironment() && (

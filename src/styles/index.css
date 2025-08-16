@@ -276,3 +276,10 @@ body[data-scroll-locked='1'] .sheet-content {
   background: hsl(var(--card)) !important;
   border: 1px solid hsl(var(--border)) !important;
 }
+
+/* Ensure Excalidraw container is properly positioned */
+.excalidraw-container-active .excalidraw {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+}
