@@ -140,14 +140,14 @@ export default function DataTransformationNode({
   const [transformationMode, setTransformationMode] = useState<
     'basic' | 'advanced' | null
   >(null);
-  const [basicTransformations, setBasicTransformations] = useState<any[]>([]);
+  const [, setBasicTransformations] = useState<any[]>([]);
   const [currentStep, setCurrentStep] = useState<
     'source' | 'transformation' | 'complete'
   >('source');
   const [dataSourceType, setDataSourceType] = useState<
     'sources' | 'manual' | 'generated' | null
   >(null);
-  const [sourceData, setSourceData] = useState<DataRow[]>([]);
+  const [, setSourceData] = useState<DataRow[]>([]);
 
   const handleRunCode = async () => {
     setIsRunning(true);
@@ -211,7 +211,7 @@ export default function DataTransformationNode({
 
         {currentStep === 'source' && dataSourceType === 'sources' && (
           <SourceConfigurationPanel
-            onConfigComplete={(config, data) => {
+            onConfigComplete={(_config, data) => {
               setSourceData(data);
               setData(data);
               setCurrentStep('transformation');

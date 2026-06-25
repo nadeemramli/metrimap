@@ -21,8 +21,7 @@ import {
   Calculator,
   TrendingUp,
   Save,
-  AlertTriangle,
-  Trash2
+  AlertTriangle
 } from 'lucide-react';
 import type { MetricNode } from '@/shared/types';
 import { cn } from '@/shared/utils';

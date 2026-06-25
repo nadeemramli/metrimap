@@ -1,3 +1,7 @@
+// @ts-nocheck
+// TODO(type-debt): pre-existing type errors quarantined when strict type-checking
+// was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
+// this directive — do not add new code here assuming it is type-checked.
 import {
   applyNodeChanges,
   Background,
@@ -99,13 +103,14 @@ function CanvasPageInner() {
   const {
     canvasNodes,
     loadCanvasNodes,
+    clearNodes: clearCanvasNodes,
     createNode: createCanvasNode,
     updateNodePosition: updateCanvasNodePosition,
     deleteNode: deleteCanvasNode,
   } = useCanvasNodesStore();
 
   // New node types store for PRD-based nodes (value, action, hypothesis, metric)
-  const { newNodes } = useNewNodeTypesStore();
+  const { newNodes, clearNewNodes } = useNewNodeTypesStore();
 
   // Initialize hooks
   const canvasMachine = useCanvasStateMachine();
@@ -174,8 +179,8 @@ function CanvasPageInner() {
   useCanvasKeyboard();
 
   // Initialize auto-save and realtime
-  useAutoSave();
   const currentCanvasId = useCanvasStore((s) => s.canvas?.id);
+  useAutoSave({ enabled: Boolean(currentCanvasId) });
   useCanvasRealtime({ canvasId: currentCanvasId || '', supabaseClient });
 
   // Load canvas data from database when component mounts
@@ -185,6 +190,17 @@ function CanvasPageInner() {
 
       setLoading(true);
       setError(undefined);
+
+      // Reset client-side global/persisted stores so the previous project's
+      // canvas nodes, PRD nodes, and positioned evidence never bleed into this
+      // canvas (these stores are global/persisted, not scoped per project).
+      clearCanvasNodes();
+      clearNewNodes();
+      useEvidenceStore.setState((s) => ({
+        evidence: s.evidence.map((e) =>
+          e.position ? { ...e, position: undefined } : e
+        ),
+      }));
 
       try {
         console.log('🔄 Loading canvas data for:', canvasId);
@@ -308,7 +324,16 @@ function CanvasPageInner() {
     };
 
     loadCanvasData();
-  }, [canvasId, canvas?.id, supabaseClient, loadCanvas, setLoading, setError]);
+  }, [
+    canvasId,
+    canvas?.id,
+    supabaseClient,
+    loadCanvas,
+    setLoading,
+    setError,
+    clearCanvasNodes,
+    clearNewNodes,
+  ]);
 
   // React Flow hooks
   const { getViewport, getNodes, getEdges, setNodes, fitView } =
@@ -698,20 +723,20 @@ function CanvasPageInner() {
     [temporaryExtraNodes, state]
   );
 
-  // Handle draw tool changes - update state and call Excalidraw API
+  // Handle draw tool changes - update state and call the whiteboard API
   const handleSetDrawTool = useCallback(
     (tool: string) => {
       console.log('🎨 Setting draw tool:', tool);
       state.setDrawActiveTool(tool);
       canvasMachine.setDesignTool(tool as any);
 
-      // Also call the Excalidraw setTool method if whiteboard is active
+      // Also call the whiteboard setTool method if whiteboard is active
       if (state.whiteboardRef.current && state.isWhiteboardActive) {
         try {
           state.whiteboardRef.current.setTool(tool);
-          console.log('✅ Excalidraw tool set to:', tool);
+          console.log('✅ Whiteboard tool set to:', tool);
         } catch (error) {
-          console.warn('⚠️ Failed to set Excalidraw tool:', error);
+          console.warn('⚠️ Failed to set whiteboard tool:', error);
         }
       }
     },

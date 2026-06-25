@@ -24,10 +24,6 @@ export function CommentSummaryDashboard({
   const evidenceComments = threads.filter((t) => t.source === 'evidence');
   const nodeComments = threads.filter((t) => t.source === 'node');
 
-  const totalComments = threads.reduce(
-    (acc, thread) => acc + (thread.comments?.length || 0),
-    0
-  );
   const resolvedThreads = threads.filter((t) =>
     (t.comments || []).every((c: any) => c.resolved)
   ).length;

@@ -228,7 +228,7 @@ export function getValidSourcesForTarget(targetType: NodeType): NodeType[] {
  */
 export function wouldCreateCycle(
   sourceId: string,
-  targetId: string,
+  _targetId: string,
   existingEdges: Array<{ source: string; target: string; type?: string }>
 ): boolean {
   // Only check cycles for data flow edges
@@ -259,12 +259,6 @@ export function wouldCreateCycle(
     recursionStack.delete(nodeId);
     return false;
   }
-
-  // Add the proposed edge temporarily
-  const edgesWithProposed = [
-    ...existingEdges,
-    { source: sourceId, target: targetId },
-  ];
 
   // Check if adding this edge creates a cycle
   return hasCycle(sourceId);

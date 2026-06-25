@@ -4,7 +4,7 @@ interface CanvasModalsProps {
   // Add props as needed
 }
 
-export default function CanvasModals(props: CanvasModalsProps) {
+export default function CanvasModals(_props: CanvasModalsProps) {
   // TODO: Implement canvas modals after reorganization
   // This component handled various canvas modals like confirmations, settings, etc.
 

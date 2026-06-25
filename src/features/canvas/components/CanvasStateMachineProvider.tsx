@@ -17,7 +17,6 @@ export interface CanvasStateMachineProviderProps {
 
 export function CanvasStateMachineProvider({
   children,
-  canvasId,
   onEnvironmentChange,
   onError,
 }: CanvasStateMachineProviderProps) {

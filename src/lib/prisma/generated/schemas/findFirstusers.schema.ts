@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { usersOrderByWithRelationInputObjectSchema } from './objects/usersOrderByWithRelationInput.schema';

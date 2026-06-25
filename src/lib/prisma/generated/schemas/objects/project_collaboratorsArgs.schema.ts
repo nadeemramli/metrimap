@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { project_collaboratorsSelectObjectSchema } from './project_collaboratorsSelect.schema'

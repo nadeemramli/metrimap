@@ -19,7 +19,7 @@ function getTimeAgo(timestamp: string) {
   return `${days}d ago`;
 }
 
-function getActionIcon(action: string) {
+function getActionIcon(_action: string) {
   // simple placeholder; real mapping can live in a utils module
   return <span className="inline-block w-2 h-2 rounded-full bg-muted" />;
 }

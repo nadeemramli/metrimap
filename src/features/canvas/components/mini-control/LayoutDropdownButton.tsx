@@ -1,3 +1,7 @@
+// @ts-nocheck
+// TODO(type-debt): pre-existing type errors quarantined when strict type-checking
+// was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
+// this directive — do not add new code here assuming it is type-checked.
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
@@ -22,7 +26,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function LayoutDropdownButton() {
   const { canvas, updateCanvasSettings, updateNodePosition } = useCanvasStore();
-  const { evidenceList, updateEvidencePosition } = useEvidenceStore();
+  const { evidence: evidenceList, updateEvidencePosition } = useEvidenceStore();
   const { updateNodePosition: updateCanvasNodePosition } =
     useCanvasNodesStore();
   const rf = useReactFlow<any>();

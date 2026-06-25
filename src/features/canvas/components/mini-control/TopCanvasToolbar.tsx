@@ -1,20 +1,14 @@
 import { Button } from '@/shared/components/ui/button';
 import {
-  ArrowRight,
-  Circle,
-  Diamond,
   Eraser,
   Hand,
-  Image,
   Lasso,
   MapPin,
   MessageSquarePlus,
-  Minus,
   MousePointer,
   PenTool,
   Search,
   Square,
-  Type,
 } from 'lucide-react';
 import AddNodeButton from './AddNodeButton';
 import FilterControls from './FilterControls';
@@ -56,10 +50,6 @@ interface TopCanvasToolbarProps {
 export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
   const {
     mode,
-    keepToolActive,
-    onToggleKeepToolActive,
-    drawActiveTool,
-    onSetDrawTool,
     whiteboardTool,
     onSetWhiteboardTool,
   } = props;
@@ -74,19 +64,6 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
     { id: 'lasso', title: 'Lasso Selection (L)', Icon: Lasso },
     { id: 'rectangle', title: 'Rectangle (R)', Icon: Square },
     { id: 'freehand', title: 'Freehand Draw (P)', Icon: PenTool },
-  ];
-
-  // Legacy draw tools (for backward compatibility)
-  const drawTools: { id: string; title: string; Icon: any }[] = [
-    { id: 'selection', title: 'Selection (V)', Icon: MousePointer },
-    { id: 'rectangle', title: 'Rectangle (R)', Icon: Square },
-    { id: 'ellipse', title: 'Ellipse (O)', Icon: Circle },
-    { id: 'diamond', title: 'Diamond (D)', Icon: Diamond },
-    { id: 'arrow', title: 'Arrow (A)', Icon: ArrowRight },
-    { id: 'line', title: 'Line (L)', Icon: Minus },
-    { id: 'freedraw', title: 'Draw (P)', Icon: PenTool },
-    { id: 'text', title: 'Text (T)', Icon: Type },
-    { id: 'image', title: 'Image', Icon: Image },
   ];
 
   const getToolButtonClasses = (active: boolean) =>

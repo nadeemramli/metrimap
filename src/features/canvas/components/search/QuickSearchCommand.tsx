@@ -12,6 +12,9 @@ interface QuickSearchResult {
   type: 'metric' | 'relationship' | 'evidence';
   id: string;
   title: string;
+  // The owning canvas/project id of the result, threaded through so the
+  // consumer can navigate to the correct canvas instead of a hardcoded one.
+  data?: { canvasId?: string };
 }
 
 interface QuickSearchCommandProps {
@@ -33,7 +36,6 @@ export function useQuickSearch() {
 export default function QuickSearchCommand({
   isOpen,
   onClose,
-  onResultSelect,
 }: QuickSearchCommandProps) {
   const [searchTerm, setSearchTerm] = useState('');
 

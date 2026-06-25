@@ -123,7 +123,7 @@ const ChartNodeInner = memo(({ data, selected }: NodeProps) => {
                 dataKey={yAxis}
                 nameKey={xAxis}
               >
-                {chartData.map((entry, index) => (
+                {chartData.map((_entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={COLORS[index % COLORS.length]}

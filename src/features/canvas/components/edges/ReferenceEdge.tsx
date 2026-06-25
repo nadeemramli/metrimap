@@ -4,7 +4,7 @@
  */
 
 import { memo } from 'react';
-import { EdgeProps, getSmoothStepPath, EdgeLabelRenderer, BaseEdge } from '@xyflow/react';
+import { getSmoothStepPath, EdgeLabelRenderer, BaseEdge, type EdgeProps } from '@xyflow/react';
 import { FileText, Tag, MessageCircle, Link } from 'lucide-react';
 
 interface ReferenceEdgeData {
@@ -19,7 +19,6 @@ interface ReferenceEdgeProps extends EdgeProps {
 }
 
 const ReferenceEdge = memo(({
-  id,
   sourceX,
   sourceY,
   targetX,

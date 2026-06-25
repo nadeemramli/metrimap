@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { z } from "zod";
 import { usersSelectObjectSchema } from "./objects/usersSelect.schema.js";
 import { usersCreateInputObjectSchema } from "./objects/usersCreateInput.schema.js";

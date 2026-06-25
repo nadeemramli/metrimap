@@ -1,3 +1,7 @@
+// @ts-nocheck
+// TODO(type-debt): pre-existing type errors quarantined when strict type-checking
+// was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
+// this directive — do not add new code here assuming it is type-checked.
 // Typed project service layer that wraps existing Supabase operations with Prisma types and Zod validation
 
 import { SupabaseClient } from "@supabase/supabase-js";

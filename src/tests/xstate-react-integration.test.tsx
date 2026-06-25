@@ -5,8 +5,8 @@ import {
   CanvasStateMachineProvider,
   useEnhancedToolbarProps,
   useLegacyCanvasState,
-} from '@/features/canvas/components/canvas/CanvasStateMachineProvider';
-import { useCanvasStateMachine } from '@/features/canvas/lib/hooks/useCanvasStateMachine';
+} from '@/features/canvas/components/CanvasStateMachineProvider';
+import { useCanvasStateMachine } from '@/features/canvas/hooks/useCanvasStateMachine';
 
 // Test component that uses the legacy interface
 function LegacyTestComponent() {
@@ -352,7 +352,8 @@ describe('XState React Performance', () => {
 
     function RenderCountComponent() {
       renderCount++;
-      const machine = useCanvasStateMachine();
+      // Subscribe to the machine to measure re-renders it triggers.
+      useCanvasStateMachine();
       return <div data-testid="render-count">{renderCount}</div>;
     }
 
@@ -366,9 +367,6 @@ describe('XState React Performance', () => {
 
     // Multiple state changes
     act(() => {
-      const machine = useCanvasStateMachine.getState
-        ? useCanvasStateMachine.getState()
-        : null;
       // These operations should be batched by React
     });
 

@@ -1,3 +1,7 @@
+// @ts-nocheck
+// TODO(type-debt): pre-existing type errors quarantined when strict type-checking
+// was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
+// this directive — do not add new code here assuming it is type-checked.
 import EvidenceContentRenderer from '@/features/evidence/components/EvidenceContentRenderer';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { Badge } from '@/shared/components/ui/badge';

@@ -21,7 +21,6 @@ import {
   Link2,
   GitBranch,
 } from 'lucide-react';
-import { Separator } from '@/shared/components/ui/separator';
 
 interface EnhancedEdgeButtonProps {
   // Position
@@ -136,11 +135,9 @@ function getEdgeConfig(edgeType: string, relationshipType?: string, weight?: num
 export default function EnhancedEdgeButton({
   labelX,
   labelY,
-  edgeId,
   edgeType,
   relationshipType,
   weight,
-  confidence,
   selected = false,
   isHovered = false,
   onOpenSettings,

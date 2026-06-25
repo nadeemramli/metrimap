@@ -6,7 +6,7 @@ import {
   ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { useCanvasStateMachine } from '@/features/canvas/hooks/useCanvasStateMachine';
 import { Badge } from '@/shared/components/ui/badge';
@@ -34,7 +34,6 @@ interface EnhancedCanvasPageProps {
 }
 
 export default function EnhancedCanvasPage({
-  canvasId,
   className,
 }: EnhancedCanvasPageProps) {
   const {
@@ -45,7 +44,6 @@ export default function EnhancedCanvasPage({
     isInDesignMode,
     currentTool,
     setDesignTool,
-    isWhiteboardActive,
     isPassthroughMode,
     enablePassthrough,
     disablePassthrough,
@@ -57,10 +55,6 @@ export default function EnhancedCanvasPage({
     strokeWidth,
     practicalNodes,
     practicalEdges,
-    designElements,
-    designAppState,
-    updateDesignData,
-    viewport,
     updateViewport,
     collaborators,
     isCollaborationActive,
@@ -142,13 +136,6 @@ export default function EnhancedCanvasPage({
     disablePassthrough,
     setDesignTool,
   ]);
-
-  const handleWhiteboardChange = useCallback(
-    (scene: { elements: any[]; appState: any; files?: any }) => {
-      updateDesignData(scene.elements, scene.appState);
-    },
-    [updateDesignData]
-  );
 
   if (hasError) {
     return (

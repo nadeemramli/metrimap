@@ -4,7 +4,7 @@
  */
 
 import { memo } from 'react';
-import { EdgeProps, getBezierPath, EdgeLabelRenderer, BaseEdge } from '@xyflow/react';
+import { getBezierPath, EdgeLabelRenderer, BaseEdge, type EdgeProps } from '@xyflow/react';
 import { Database, ArrowRight, BarChart3, Settings } from 'lucide-react';
 
 interface DataFlowEdgeData {
@@ -20,7 +20,6 @@ interface DataFlowEdgeProps extends EdgeProps {
 }
 
 const DataFlowEdge = memo(({
-  id,
   sourceX,
   sourceY,
   targetX,

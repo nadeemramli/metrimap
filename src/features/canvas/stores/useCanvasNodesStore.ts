@@ -9,7 +9,6 @@ import {
   updateCanvasNodePosition 
 } from '@/shared/lib/supabase/services/canvasNodes';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
-import { useAppStore } from '@/lib/stores';
 
 interface CanvasNodesState {
   // State

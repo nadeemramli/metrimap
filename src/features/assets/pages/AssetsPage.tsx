@@ -96,7 +96,6 @@ export default function AssetsPage() {
     relationshipTypes,
     confidenceLevels,
     getNodeById,
-    setProject,
     setMetricTags,
     setRelationshipTags,
   } = useAssetsData();
