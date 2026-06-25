@@ -1,5 +1,6 @@
 import AutoSaveIndicator from '@/features/canvas/components/header/AutoSaveIndicator';
 import CanvasModeToggle from '@/features/canvas/components/header/CanvasModeToggle';
+import CanvasTitleEditor from '@/features/canvas/components/header/CanvasTitleEditor';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { Button } from '@/shared/components/ui/button';
@@ -204,10 +205,11 @@ export default function CanvasLayout() {
 
             {headerInfo ? (
               <>
-                {/* Canvas Title */}
-                <span className="text-sm font-medium text-foreground truncate">
-                  {headerInfo.title}
-                </span>
+                {/* Canvas Title — double-click to rename */}
+                <CanvasTitleEditor
+                  title={headerInfo.title}
+                  canvasId={canvasId}
+                />
 
                 {/* Canvas Description */}
                 {headerInfo.description && (
@@ -263,7 +265,7 @@ export default function CanvasLayout() {
             <Button
               variant="default"
               size="sm"
-              className="h-7 px-2"
+              className="h-7 gap-1.5 px-3 rounded-md shadow-sm"
               onClick={async () => {
                 if (!canvasId) return;
                 try {
@@ -287,7 +289,7 @@ export default function CanvasLayout() {
               }}
               title="Share canvas"
             >
-              <Share2 className="h-3.5 w-3.5 mr-1" />
+              <Share2 className="h-3.5 w-3.5" />
               Share
             </Button>
 

@@ -37,6 +37,7 @@ interface CanvasStoreState extends CanvasState {
 
   // Canvas management
   loadCanvas: (canvas: CanvasProject) => void;
+  renameCanvas: (name: string) => void;
   clearCanvas: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | undefined) => void;
@@ -167,6 +168,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
       });
       set({ canvas, isLoading: false, error: undefined });
     },
+
+    renameCanvas: (name: string) =>
+      set((state) => ({
+        canvas: state.canvas ? { ...state.canvas, name } : state.canvas,
+      })),
 
     clearCanvas: () =>
       set({

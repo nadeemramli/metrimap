@@ -14,8 +14,10 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { SlidersHorizontal } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
 
 // Extracted utilities and hooks
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
@@ -82,6 +84,9 @@ function CanvasPageInner() {
   // Initialize state management
   const state = useCanvasPageState();
   const { setHeaderInfo } = useCanvasHeader();
+
+  // Operator/tools control panel is hidden by default; toggled from the right.
+  const [showOperatorPanel, setShowOperatorPanel] = useState(false);
 
   // Initialize canvas stores and data
   const {
@@ -933,8 +938,8 @@ function CanvasPageInner() {
               />
             </Panel>
 
-            {/* Operative control panel - top-left - Only show in edit mode */}
-            {state.toolbarMode === 'edit' && (
+            {/* Operative control panel - top-left - edit mode + toggled on */}
+            {state.toolbarMode === 'edit' && showOperatorPanel && (
               <Panel position="top-left">
                 <div className="w-80 max-h-[70vh] overflow-auto bg-background/90 backdrop-blur border rounded-lg shadow-lg">
                   <ControlPanel
@@ -966,6 +971,22 @@ function CanvasPageInner() {
                     isSimulating={false}
                   />
                 </div>
+              </Panel>
+            )}
+
+            {/* Tools toggle (top-right) — opens the operator control panel */}
+            {state.toolbarMode === 'edit' && (
+              <Panel position="top-right">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowOperatorPanel((v) => !v)}
+                  className="h-8 gap-1.5 border bg-background/90 shadow-sm backdrop-blur"
+                  title={showOperatorPanel ? 'Hide tools' : 'Show tools'}
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {showOperatorPanel ? 'Hide tools' : 'Tools'}
+                </Button>
               </Panel>
             )}
 
