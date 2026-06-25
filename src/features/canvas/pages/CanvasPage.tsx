@@ -115,7 +115,7 @@ function CanvasPageInner() {
   } = useCanvasNodesStore();
 
   // New node types store for PRD-based nodes (value, action, hypothesis, metric)
-  const { newNodes, clearNewNodes } = useNewNodeTypesStore();
+  const { newNodes, clearNewNodes, updateNewNode } = useNewNodeTypesStore();
 
   // Initialize hooks
   const canvasMachine = useCanvasStateMachine();
@@ -629,6 +629,24 @@ function CanvasPageInner() {
           useCanvasStore.getState().updateNodePosition(node.id, node.position);
         } else if (node.type === 'evidenceNode') {
           updateEvidencePosition(node.id, node.position);
+        } else if (
+          [
+            'sourceNode',
+            'chartNode',
+            'operatorNode',
+            'commentNode',
+            'whiteboardNode',
+          ].includes(node.type)
+        ) {
+          // Persisted canvas nodes live in useCanvasNodesStore.
+          updateCanvasNodePosition(node.id, node.position);
+        } else if (
+          ['valueNode', 'actionNode', 'hypothesisNode', 'metricNode'].includes(
+            node.type
+          )
+        ) {
+          // PRD node types live in useNewNodeTypesStore.
+          updateNewNode(node.id, { position: node.position });
         } else {
           const current = state.extraNodes || [];
           const next = current.map((n: any) =>
@@ -638,7 +656,7 @@ function CanvasPageInner() {
         }
       }
     },
-    [state, updateEvidencePosition]
+    [state, updateEvidencePosition, updateCanvasNodePosition, updateNewNode]
   );
 
   const handleNodeDragStop = useCallback(
@@ -649,6 +667,24 @@ function CanvasPageInner() {
           useCanvasStore.getState().updateNodePosition(node.id, node.position);
         } else if (node.type === 'evidenceNode') {
           updateEvidencePosition(node.id, node.position);
+        } else if (
+          [
+            'sourceNode',
+            'chartNode',
+            'operatorNode',
+            'commentNode',
+            'whiteboardNode',
+          ].includes(node.type)
+        ) {
+          // Persisted canvas nodes live in useCanvasNodesStore.
+          updateCanvasNodePosition(node.id, node.position);
+        } else if (
+          ['valueNode', 'actionNode', 'hypothesisNode', 'metricNode'].includes(
+            node.type
+          )
+        ) {
+          // PRD node types live in useNewNodeTypesStore.
+          updateNewNode(node.id, { position: node.position });
         } else {
           const current = state.extraNodes || [];
           const next = current.map((n: any) =>
@@ -658,7 +694,7 @@ function CanvasPageInner() {
         }
       }
     },
-    [state, updateEvidencePosition]
+    [state, updateEvidencePosition, updateCanvasNodePosition, updateNewNode]
   );
 
   // Enhanced edge connection handler

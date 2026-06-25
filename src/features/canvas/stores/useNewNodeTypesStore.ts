@@ -100,7 +100,21 @@ export const useNewNodeTypesStore = create<NewNodeTypesStoreState>()(
           ...nodeData
         } as Omit<AnyNode, 'id' | 'createdAt' | 'updatedAt'>;
 
-        const newNode = await createNewNodeType(nodeType, baseNodeData, client);
+        // PRD node types (value/action/hypothesis/metric) are created
+        // client-side — the dedicated *_node tables/RPCs do not exist on the
+        // cloud DB (calling them threw PGRST202). This makes the nodes appear
+        // and be movable in-session. TODO: persist via metric_cards (category
+        // mapping) or real node tables.
+        const now = new Date().toISOString();
+        const newNode = {
+          ...baseNodeData,
+          id:
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `node_${Date.now()}_${Math.round(Math.random() * 1e6)}`,
+          createdAt: now,
+          updatedAt: now,
+        };
         
         // Add to local state
         set(state => ({

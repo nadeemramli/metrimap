@@ -1,3 +1,6 @@
+import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
+import { useAppStore } from '@/shared/stores/useAppStore';
+
 interface UseCanvasEventsOptions {
   state: any;
   canvasMachine: any;
@@ -54,6 +57,35 @@ export function useCanvasEvents({
   };
 
   const handleAddEvidence = () => {
+    // The page-state hook never implemented addEvidenceAtCenter, so the button
+    // was a silent no-op. Add a positioned evidence item directly so an
+    // evidence node appears on the canvas (it renders from the evidence store).
+    const { user } = useAppStore.getState();
+    const now = new Date().toISOString();
+    useEvidenceStore.getState().addEvidence({
+      id:
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `evidence_${Date.now()}`,
+      title: 'New Evidence',
+      type: 'Analysis',
+      date: now.slice(0, 10),
+      summary: '',
+      owner: user?.name || 'You',
+      ownerId: user?.id,
+      hypothesis: '',
+      impactOnConfidence: '',
+      link: '',
+      createdAt: now,
+      updatedAt: now,
+      createdBy: user?.id || 'unknown',
+      position: { x: 250 + Math.random() * 200, y: 150 + Math.random() * 200 },
+      isVisible: true,
+      isExpanded: false,
+      comments: [],
+      context: { type: 'general' },
+    } as any);
+    // Also call the legacy hook if a page ever provides it.
     state.addEvidenceAtCenter?.();
   };
 
