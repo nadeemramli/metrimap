@@ -7,8 +7,6 @@ import App from './App.tsx';
 import DevUserbackInitializer from './shared/components/common/feedback/DevUserbackInitializer';
 import UserbackInitializer from './shared/components/common/feedback/UserbackInitializer';
 import './styles/index.css';
-// Excalidraw CSS (package exports index.css, not dist/excalidraw.css)
-import '@excalidraw/excalidraw/index.css';
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

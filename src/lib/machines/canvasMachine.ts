@@ -1,5 +1,6 @@
 // XState machine for managing dual-environment canvas (Practical/Design)
-// This manages the complex state transitions between React Flow and Excalidraw environments
+// This manages the complex state transitions between the React Flow (practical)
+// and custom whiteboard (design) environments
 
 import { createMachine, assign } from "xstate";
 

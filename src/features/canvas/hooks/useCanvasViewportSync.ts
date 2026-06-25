@@ -38,12 +38,6 @@ export function useCanvasViewportSync() {
   const syncFromReactFlow = useCallback(
     (viewport: Viewport) => {
       const now = Date.now();
-      if (
-        lastSyncRef.current.source === 'excalidraw' &&
-        now - lastSyncRef.current.timestamp < SYNC_DEBOUNCE_MS
-      ) {
-        return;
-      }
       updateViewport(viewport);
       lastSyncRef.current = { source: 'reactflow', timestamp: now };
     },
