@@ -20,6 +20,7 @@ import {
 } from '@/shared/lib/supabase/services/newNodeTypes';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
 import { useAppStore } from '@/shared/stores/useAppStore';
+import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 
 export interface NewNodeTypesStoreState {
   // State
@@ -100,30 +101,36 @@ export const useNewNodeTypesStore = create<NewNodeTypesStoreState>()(
           ...nodeData
         } as Omit<AnyNode, 'id' | 'createdAt' | 'updatedAt'>;
 
-        // PRD node types (value/action/hypothesis/metric) are created
-        // client-side — the dedicated *_node tables/RPCs do not exist on the
-        // cloud DB (calling them threw PGRST202). This makes the nodes appear
-        // and be movable in-session. TODO: persist via metric_cards (category
-        // mapping) or real node tables.
-        const now = new Date().toISOString();
-        const newNode = {
-          ...baseNodeData,
-          id:
-            typeof crypto !== 'undefined' && crypto.randomUUID
-              ? crypto.randomUUID()
-              : `node_${Date.now()}_${Math.round(Math.random() * 1e6)}`,
-          createdAt: now,
-          updatedAt: now,
+        // Persist PRD node types by mapping them to metric_cards — their
+        // categories ARE the metric-card categories. The dedicated *_node
+        // tables/RPCs never existed on the cloud DB (PGRST202). Routing through
+        // the canvas store's createNode reuses the working, RLS-safe card path,
+        // so these now persist, render as cards, drag, and autosave.
+        const categoryByType: Record<string, string> = {
+          valueNode: 'Core/Value',
+          actionNode: 'Work/Action',
+          hypothesisNode: 'Ideas/Hypothesis',
+          metricNode: 'Data/Metric',
         };
-        
-        // Add to local state
-        set(state => ({
-          newNodes: [...state.newNodes, newNode],
-          isLoading: false
-        }));
-        
-        console.log(`✅ Created ${nodeType}: ${newNode.id} (${newNode.title})`);
-        return newNode;
+        const category = categoryByType[nodeType] || 'Core/Value';
+
+        const metricCardData = {
+          title: baseNodeData.title,
+          description: baseNodeData.description,
+          category,
+          tags: baseNodeData.tags || [],
+          causalFactors: [],
+          dimensions: [],
+          position: baseNodeData.position,
+          assignees: [],
+          owner: user.id,
+        };
+
+        await useCanvasStore.getState().createNode(metricCardData as any);
+
+        set({ isLoading: false });
+        console.log(`✅ Created ${nodeType} as a "${category}" metric card`);
+        return { ...metricCardData, type: nodeType } as any;
       } catch (error) {
         console.error(`❌ Error creating ${nodeType}:`, error);
         set({ 

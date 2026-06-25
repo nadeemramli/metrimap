@@ -5,6 +5,8 @@ _Generated 2026-06-26 from a multi-agent codebase audit (39 items: 9 P0, 18 P1, 
 > **Metrimap Backlog** — living doc for a hobby project. Pragmatic, not strict process: items are grouped by rough severity (P0 = data loss / core flow broken, P1 = feature non-functional, P2 = degraded/misleading, P3 = cleanup). Re-order freely; close as you go.
 >
 > Note: **RLS hardening** (Clerk `auth.uid()` → JWT `sub` migration across `comment_threads`, `comments`, `comment_mentions`, `notifications`, `canvas_nodes`) and **build warnings** (type-only imports, chunk size, Storybook addons) are partially tracked by separate in-flight work. They are listed here for completeness but may already be moving.
+>
+> **Feature plans** live under `docs/backlog/` — e.g. [operator-as-control / data-flow simulation](docs/backlog/operator-control-feature.md).
 
 ## P0 — data loss / core flows broken
 
