@@ -1,11 +1,10 @@
 # Prisma + Zod Quick Reference
 
-Fast reference for common patterns and file locations.
+Quick reference for common patterns, file locations, and commands.
 
 ## 📁 Key Files & Locations
 
 ### Schema & Generated Files
-
 ```
 prisma/schema.prisma                     # Database schema (read-only mirror)
 prisma/generated/schemas/objects/        # Generated Zod schemas
@@ -13,7 +12,6 @@ node_modules/.prisma/client/             # Generated Prisma client
 ```
 
 ### Service Layer
-
 ```
 src/lib/services/typed-operations.ts    # Core validation functions
 src/lib/services/typed-projects.ts      # Project operations
@@ -21,7 +19,6 @@ src/lib/services/typed-canvas.ts        # Canvas operations
 ```
 
 ### React Integration
-
 ```
 src/lib/hooks/useTypedValidation.ts     # Form validation hooks
 src/components/forms/TypedProjectForm.tsx # Example component
@@ -44,7 +41,6 @@ npm run prisma:pull
 ## 🔧 Common Patterns
 
 ### Import Types
-
 ```typescript
 // Database types (exact schema match)
 import type {
@@ -61,7 +57,6 @@ import type {
 ```
 
 ### Validate Data
-
 ```typescript
 import { validate } from "@/lib/services/typed-operations";
 
@@ -75,7 +70,6 @@ if (result.success) {
 ```
 
 ### Service Operations
-
 ```typescript
 import { createProject, updateProject } from "@/lib/services/typed-projects";
 
@@ -87,7 +81,6 @@ if (result.success) {
 ```
 
 ### React Forms
-
 ```typescript
 import { useProjectValidation } from "@/lib/hooks/useTypedValidation";
 
@@ -103,7 +96,6 @@ validation.getFieldError("name");
 ## 📋 Validation Schema Names
 
 ### Create Schemas
-
 - `CreateUserSchema`
 - `CreateProjectSchema`
 - `CreateMetricCardSchema`
@@ -112,7 +104,6 @@ validation.getFieldError("name");
 - `CreateGroupSchema`
 
 ### Update Schemas
-
 - `UpdateUserSchema`
 - `UpdateProjectSchema`
 - `UpdateMetricCardSchema`
@@ -121,7 +112,6 @@ validation.getFieldError("name");
 - `UpdateGroupSchema`
 
 ### Query Schemas
-
 - `UserWhereSchema`
 - `ProjectWhereSchema`
 - `MetricCardWhereSchema`
@@ -130,7 +120,6 @@ validation.getFieldError("name");
 ## 🎯 Quick Examples
 
 ### Form with Validation
-
 ```typescript
 function MyForm() {
   const validation = useProjectValidation().create;
@@ -159,7 +148,6 @@ function MyForm() {
 ```
 
 ### Service Layer Usage
-
 ```typescript
 // Create with validation
 const result = await createProject({
@@ -179,7 +167,6 @@ if (!result.success) {
 ```
 
 ### Canvas Operations
-
 ```typescript
 import { useTypedCanvasOperations } from "@/lib/services/typed-canvas";
 
@@ -196,7 +183,6 @@ const card = await createCard({
 ## 🐛 Debugging
 
 ### Check Validation Errors
-
 ```typescript
 const result = validate.project.create(data);
 console.log({
@@ -207,14 +193,12 @@ console.log({
 ```
 
 ### Inspect Generated Schemas
-
 ```typescript
 import { CreateProjectSchema } from "@/lib/validation/zod";
 console.log(CreateProjectSchema.safeParse(data));
 ```
 
 ### Type Information
-
 ```typescript
 import type { Project } from "@/lib/services/typed-operations";
 
@@ -241,7 +225,4 @@ const project: Project = {
 
 ## 📚 Full Documentation
 
-For complete details, see:
-
-- [Integration Guide](./PRISMA_ZOD_INTEGRATION_GUIDE.md)
-- [Setup Documentation](./PRISMA_ZOD_SETUP.md)
+For complete details, see: [Prisma + Zod Integration Guide](./PRISMA_ZOD_INTEGRATION_GUIDE.md)

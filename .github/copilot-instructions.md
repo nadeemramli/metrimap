@@ -1,0 +1,1 @@
+GitHub Copilot: follow the project guidance in [`AGENTS.md`](../AGENTS.md) at the repo root — it is the shared source of truth for architecture, stack, commands, conventions, the Supabase client, and secrets handling. The root `README.md` is not the project readme (it is the upstream Supabase CLI readme by mistake); use `docs/index.md` and `docs/prd/` for project context.

@@ -37,3 +37,13 @@ storybook-static
 
 #Ignore cursor AI rules
 .cursor/rules/codacy.mdc
+# VitePress build cache
+docs/.vitepress/cache
+docs/.vitepress/dist
+
+# Agent skills tooling (local)
+.agents/
+skills-lock.json
+
+# Supabase CLI local link state
+supabase/.temp/

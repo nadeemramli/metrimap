@@ -16,7 +16,10 @@
     "test": "vitest",
     "test:rls": "tsx src/tests/run-rls-tests.ts",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@automerge/automerge": "^2.0.0",
@@ -159,6 +162,7 @@
     "vite": "^7.0.4",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.5.0",
+    "vitepress": "^1.6.4",
     "vitest": "^3.2.4"
   },
   "overrides": {

@@ -1,0 +1,8 @@
+---
+description: Project source of truth for AI agents
+alwaysApply: true
+---
+
+Follow the guidance in `AGENTS.md` at the repository root — it is the shared, cross-tool source of truth for this project's architecture, tech stack, commands, conventions, Supabase client usage, and secrets handling.
+
+The other rules in this folder (`refactoring`, `ts-cleanup`, `partial-implementation`, `memory`, `learned-memories`) remain in effect. Where a path in `learned-memories.mdc` conflicts with `AGENTS.md` (e.g. `src/lib/supabase` vs `src/shared/lib/supabase`, `src/components/ui` vs `src/shared/components/ui`), prefer `AGENTS.md` — the codebase was refactored to a feature-based layout.
