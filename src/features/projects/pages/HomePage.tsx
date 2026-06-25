@@ -70,10 +70,8 @@ export default function HomePage() {
   // Global keyboard shortcuts
   const shortcuts = useMemo(
     () => [
-      createShortcut('k', 'Open quick search', quickSearch.open, {
-        meta: true,
-      }),
-      createShortcut('?', 'Open quick search', quickSearch.open, {}),
+      // Quick search (Cmd+K / ?) is intentionally disabled — the palette is a
+      // placeholder pending rebuild. Advanced Search (Shift+F) is fully wired.
       createShortcut(
         'f',
         'Open advanced search',
@@ -81,7 +79,7 @@ export default function HomePage() {
         { shift: true }
       ),
     ],
-    [quickSearch.open]
+    []
   );
 
   useKeyboardShortcuts(shortcuts);
