@@ -240,6 +240,13 @@ export interface CanvasProject {
   edges: Relationship[];
   groups: GroupNode[];
 
+  // Lightweight counts for list views (populated by the aggregated projects
+  // query; undefined once a project's full content is loaded, so renderers
+  // fall back to nodes/edges/groups .length).
+  nodeCount?: number;
+  edgeCount?: number;
+  groupCount?: number;
+
   // Canvas settings
   settings?: CanvasSettings;
 

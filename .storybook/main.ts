@@ -6,10 +6,8 @@ import wasm from 'vite-plugin-wasm';
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.@(ts|tsx|mdx)'],
   addons: [
-    '@storybook/addon-essentials',
     '@storybook/addon-a11y',
     '@storybook/addon-docs',
-    '@storybook/addon-interactions',
     '@storybook/addon-vitest',
   ],
   framework: {

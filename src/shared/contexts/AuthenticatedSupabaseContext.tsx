@@ -21,13 +21,13 @@ export function AuthenticatedSupabaseProvider({
 }: {
   children: ReactNode;
 }) {
-  // Check if we're in development mode
+  // Hooks must run unconditionally (Rules-of-Hooks).
+  // Cloud-only: the dev/service-role path is dead, so always use the Clerk client.
+  const clerkClient = useClerkSupabase();
   const isDevelopment = isDevelopmentEnvironment();
-
-  // Use development client in development mode, otherwise use Clerk client
   const supabaseClient = isDevelopment
     ? createDevSupabaseClient()
-    : useClerkSupabase();
+    : clerkClient;
 
   // Set the authenticated client for stores to use
   useEffect(() => {

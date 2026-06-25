@@ -4,6 +4,8 @@ Guidance for AI coding agents (Claude Code, Cursor, Codex, Devin, Copilot, etc.)
 
 > Note: the root `README.md` currently contains the upstream Supabase CLI readme by mistake — it does **not** describe this project. The real project overview is `docs/index.md` and the PRD under `docs/prd/`.
 
+> Known issues & roadmap live in **`BACKLOG.md`** (prioritized P0–P3). Check it before starting work — several core flows (autosave, duplicate, version history, evidence persistence) have open P0s.
+
 ## What this project is
 
 **Metrimap** (`metric-mapping`) is a visual-first web app for building, managing, and analyzing metric trees and business-architecture maps. Users place **cards** (metrics, business processes, work/actions) on an infinite **canvas** and connect them with typed **relationships** (deterministic, probabilistic, causal, compositional). It includes an evidence repository, dashboards, source management, formula/correlation computation, and rich text/whiteboard editing.

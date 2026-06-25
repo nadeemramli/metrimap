@@ -4,7 +4,7 @@ import EraseToolComponent from './EraseToolComponent';
 import LassoSelectionComponent from './LassoSelectionComponent';
 import RectangleToolComponent from './RectangleToolComponent';
 import FreehandDrawComponent from './FreehandDrawComponent';
-import WhiteboardToolsPanel, { WhiteboardTool } from './WhiteboardToolsPanel';
+import WhiteboardToolsPanel, { type WhiteboardTool } from './WhiteboardToolsPanel';
 
 interface WhiteboardContainerProps {
   isDrawMode: boolean;

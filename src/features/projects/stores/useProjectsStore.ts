@@ -1,7 +1,6 @@
 import {
   createProject as createProjectInSupabase,
   deleteProject as deleteProjectInSupabase,
-  getProjectById,
   getUserProjects,
   updateProject as updateProjectInSupabase,
 } from '@/shared/lib/supabase/services/projects';
@@ -10,6 +9,7 @@ import type { CanvasProject } from '@/shared/types';
 import {
   getClientForEnvironment,
   isDevelopmentMode,
+  whenAuthenticatedClientReady,
 } from '@/shared/utils/authenticatedClient';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -70,8 +70,10 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           const user = requireAuth();
           console.log('✅ User authenticated:', user.id);
 
-          // Use enhanced client utility
-          const client = getClientForEnvironment();
+          // Wait for the Clerk-authenticated client to be set by
+          // AuthenticatedSupabaseProvider instead of throwing on the
+          // user-set / client-set effect race.
+          const client = await whenAuthenticatedClientReady();
           console.log('✅ Client obtained for environment');
 
           const projects = await getUserProjects(user.id, client);
@@ -80,66 +82,44 @@ export const useProjectsStore = create<ProjectsStoreState>()(
             projects?.length || 0
           );
 
-          // Load full canvas data for each project
-          const canvasProjects: CanvasProject[] = [];
+          // Build lightweight list items directly from the aggregated query.
+          // Counts come from embedded PostgREST aggregates (metric_cards(count)
+          // etc.); collaborators from embedded rows. Full node/edge/group data
+          // is loaded lazily when a canvas is opened — so the homepage list is
+          // one round trip instead of an N+1 of getProjectById per project.
+          const countOf = (v: any): number =>
+            Array.isArray(v) ? (v[0]?.count ?? v.length ?? 0) : 0;
 
-          console.log(
-            `📋 Loading full data for ${projects?.length || 0} projects...`
-          );
-          console.log(
-            `🔍 Projects from getUserProjects:`,
-            projects?.map((p) => ({ id: p.id, name: p.name }))
-          );
-          for (const project of projects || []) {
-            console.log(`🔍 Loading project: ${project.name} (${project.id})`);
-            try {
-              console.log(`🔍 Calling getProjectById for ${project.id}...`);
-              const fullProject = await getProjectById(project.id, client);
-              if (fullProject) {
-                console.log(
-                  `✅ Loaded project ${project.name} with ${fullProject.nodes.length} nodes, ${fullProject.edges.length} edges, ${fullProject.groups.length} groups`
-                );
-                canvasProjects.push(fullProject);
-              } else {
-                console.log(
-                  `⚠️ No full data returned for project ${project.name}`
-                );
-                // Fallback to basic project data
-                canvasProjects.push({
-                  id: project.id,
-                  name: project.name,
-                  description: project.description || '',
-                  tags: project.tags || [],
-                  collaborators: [],
-                  nodes: [],
-                  edges: [],
-                  groups: [],
-                  createdAt: project.created_at || new Date().toISOString(),
-                  updatedAt: project.updated_at || new Date().toISOString(),
-                  lastModifiedBy: user.id,
-                });
-              }
-            } catch (error) {
-              console.error(
-                `❌ Failed to load full data for project ${project.id}:`,
-                error
-              );
-              // Fallback to basic project data
-              canvasProjects.push({
+          const canvasProjects: CanvasProject[] = (projects || []).map(
+            (project: any) => {
+              const collaborators: string[] = (
+                project.project_collaborators || []
+              )
+                .map((pc: any) => pc?.users?.email)
+                .filter(Boolean);
+              return {
                 id: project.id,
                 name: project.name,
                 description: project.description || '',
                 tags: project.tags || [],
-                collaborators: [],
+                collaborators,
                 nodes: [],
                 edges: [],
                 groups: [],
+                nodeCount: countOf(project.metric_cards),
+                edgeCount: countOf(project.relationships),
+                groupCount: countOf(project.groups),
+                settings: (project.settings as any) || undefined,
                 createdAt: project.created_at || new Date().toISOString(),
                 updatedAt: project.updated_at || new Date().toISOString(),
-                lastModifiedBy: user.id,
-              });
+                lastModifiedBy: project.last_modified_by || user.id,
+              };
             }
-          }
+          );
+
+          console.log(
+            `📋 Loaded ${canvasProjects.length} projects (counts via aggregate query)`
+          );
 
           set({
             projects: canvasProjects,
@@ -428,7 +408,6 @@ export const useProjectsStore = create<ProjectsStoreState>()(
       name: 'projects-store',
       partialize: (state) => ({
         projects: state.projects,
-        isInitialized: state.isInitialized,
       }),
     }
   )

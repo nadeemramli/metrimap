@@ -16,6 +16,7 @@ import {
   deleteRelationship as deleteRelationshipInSupabase,
   updateRelationship as updateRelationshipInSupabase,
 } from '../../../shared/lib/supabase/services/relationships';
+import { useProjectsStore } from '@/features/projects/stores/useProjectsStore';
 import { useAppStore } from '../../../shared/stores/useAppStore';
 import type {
   CanvasProject,
@@ -278,9 +279,6 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
           // Sync with projects store to add the new project to the list
           try {
-            const { useProjectsStore } = await import(
-              '@/features/projects/stores/useProjectsStore'
-            );
             const projectsStore = useProjectsStore.getState();
 
             const canvasProject = {
@@ -591,7 +589,10 @@ export const useCanvasStore = create<CanvasStoreState>()(
           : undefined,
       }));
 
-      // The debounced persistence will be handled by the auto-save system
+      // Register this node as dirty so the debounced auto-save system persists
+      // the new position. Without this, dragged positions never reach Supabase
+      // and are lost on refresh.
+      get().addPendingChange(nodeId);
     },
 
     // Auto-save functionality

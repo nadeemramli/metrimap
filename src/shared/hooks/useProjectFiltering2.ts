@@ -61,9 +61,17 @@ export function useProjectFiltering({
             (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
           );
         case 'nodes':
-          return dir * ((a.nodes?.length || 0) - (b.nodes?.length || 0));
+          return (
+            dir *
+            ((a.nodeCount ?? a.nodes?.length ?? 0) -
+              (b.nodeCount ?? b.nodes?.length ?? 0))
+          );
         case 'edges':
-          return dir * ((a.edges?.length || 0) - (b.edges?.length || 0));
+          return (
+            dir *
+            ((a.edgeCount ?? a.edges?.length ?? 0) -
+              (b.edgeCount ?? b.edges?.length ?? 0))
+          );
         case 'updated':
         default:
           return (

@@ -1,6 +1,8 @@
 import { useProjectsStore } from '@/features/projects/stores/useProjectsStore';
+import { useAppStore } from '@/lib/stores';
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export function useProjectActions() {
   const navigate = useNavigate();
@@ -111,6 +113,13 @@ export function useProjectActions() {
     [deleteProject]
   );
 
+  const handleProjectSettings = useCallback(
+    (projectId: string) => {
+      navigate(`/canvas/${projectId}/settings`);
+    },
+    [navigate]
+  );
+
   const toggleStar = useCallback(
     async (projectId: string) => {
       const project = getProjectById(projectId);
@@ -126,6 +135,13 @@ export function useProjectActions() {
   );
 
   const handleCreateCanvas = useCallback(async () => {
+    // Guard against the auth-timing race: addProject -> requireAuth() throws
+    // when the user has not been populated yet. Surface that instead of
+    // silently navigating to a broken /canvas/new skeleton.
+    if (!useAppStore.getState().user) {
+      toast.error('Finishing sign-in… please try again in a moment.');
+      return;
+    }
     setIsCreatingCanvas(true);
     try {
       // Create a new project first
@@ -150,8 +166,11 @@ export function useProjectActions() {
       }
     } catch (error) {
       console.error('Failed to create canvas:', error);
-      // Fallback to the previous behavior if project creation fails
-      navigate('/canvas/new');
+      toast.error(
+        error instanceof Error && error.message
+          ? `Could not create canvas: ${error.message}`
+          : 'Could not create canvas. Please try again.'
+      );
     } finally {
       setIsCreatingCanvas(false);
     }
@@ -168,6 +187,7 @@ export function useProjectActions() {
     handleOpenCanvas,
     handleDuplicateProject,
     handleDeleteProject,
+    handleProjectSettings,
     toggleStar,
     handleCreateCanvas,
     isCreatingCanvas,

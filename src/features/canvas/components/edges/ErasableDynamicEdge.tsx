@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { EdgeProps, getSmoothStepPath, EdgeLabelRenderer } from '@xyflow/react';
+import { getSmoothStepPath, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
 import { ArrowRight, TrendingUp, Zap, BarChart3 } from 'lucide-react';
 import type { RelationshipType } from '@/shared/types';
 

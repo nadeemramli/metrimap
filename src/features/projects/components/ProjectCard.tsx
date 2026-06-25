@@ -33,6 +33,7 @@ interface ProjectCardProps {
   onDuplicateProject: (projectId: string) => void;
   onToggleStar: (projectId: string) => void;
   onDeleteProject: (projectId: string) => void;
+  onProjectSettings: (projectId: string) => void;
 }
 
 export function ProjectCard({
@@ -41,6 +42,7 @@ export function ProjectCard({
   onDuplicateProject,
   onToggleStar,
   onDeleteProject,
+  onProjectSettings,
 }: ProjectCardProps) {
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 ease-out border hover:border-primary/20 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
@@ -97,7 +99,10 @@ export function ProjectCard({
                 </span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1 bg-gray-200" />
-              <DropdownMenuItem className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium">
+              <DropdownMenuItem
+                onClick={() => onProjectSettings(project.id)}
+                className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+              >
                 <span>Project Settings</span>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -137,15 +142,15 @@ export function ProjectCard({
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <BarChart3 className="h-3 w-3 text-blue-500" />
-              {project.nodes.length} metrics
+              {project.nodeCount ?? project.nodes.length} metrics
             </div>
             <div className="flex items-center gap-1">
               <Network className="h-3 w-3 text-green-500" />
-              {project.edges.length} relationships
+              {project.edgeCount ?? project.edges.length} relationships
             </div>
             <div className="flex items-center gap-1">
               <Folder className="h-3 w-3 text-purple-500" />
-              {project.groups?.length || 0} groups
+              {project.groupCount ?? project.groups?.length ?? 0} groups
             </div>
           </div>
 

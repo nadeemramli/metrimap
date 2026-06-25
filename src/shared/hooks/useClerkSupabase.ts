@@ -15,8 +15,10 @@ export function useClerkSupabase(): SupabaseClient<Database> | null {
     if (isSignedIn) {
       const client = createClerkSupabaseClient(async () => {
         try {
-          // Use the Clerk template for Supabase if configured
-          const token = await getToken({ template: 'supabase' });
+          // Native Clerk → Supabase integration: no JWT template.
+          // Requesting a 'supabase' template under native third-party auth
+          // yields null → no Authorization header → RLS sees anon.
+          const token = await getToken();
           return token;
         } catch (err) {
           console.error('Failed to get Clerk token for Supabase:', err);

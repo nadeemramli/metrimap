@@ -32,6 +32,7 @@ interface ProjectTableProps {
   onDuplicateProject: (projectId: string) => void;
   onToggleStar: (projectId: string) => void;
   onDeleteProject: (projectId: string) => void;
+  onProjectSettings: (projectId: string) => void;
 }
 
 export function ProjectTable({
@@ -40,6 +41,7 @@ export function ProjectTable({
   onDuplicateProject,
   onToggleStar,
   onDeleteProject,
+  onProjectSettings,
 }: ProjectTableProps) {
   return (
     <Table className="transition-all duration-300">
@@ -99,7 +101,7 @@ export function ProjectTable({
               <div className="flex items-center justify-center gap-1 p-2 rounded-md transition-all duration-300 group-hover:bg-blue-50 group-hover:scale-105">
                 <BarChart3 className="h-3 w-3 text-blue-500 transition-transform duration-300 group-hover:scale-110" />
                 <span className="font-medium transition-all duration-300 group-hover:font-semibold">
-                  {project.nodes.length}
+                  {project.nodeCount ?? project.nodes.length}
                 </span>
               </div>
             </TableCell>
@@ -107,7 +109,7 @@ export function ProjectTable({
               <div className="flex items-center justify-center gap-1 p-2 rounded-md transition-all duration-300 group-hover:bg-green-50 group-hover:scale-105">
                 <Network className="h-3 w-3 text-green-500 transition-transform duration-300 group-hover:scale-110" />
                 <span className="font-medium transition-all duration-300 group-hover:font-semibold">
-                  {project.edges.length}
+                  {project.edgeCount ?? project.edges.length}
                 </span>
               </div>
             </TableCell>
@@ -115,7 +117,7 @@ export function ProjectTable({
               <div className="flex items-center justify-center gap-1 p-2 rounded-md transition-all duration-300 group-hover:bg-purple-50 group-hover:scale-105">
                 <Folder className="h-3 w-3 text-purple-500 transition-transform duration-300 group-hover:scale-110" />
                 <span className="font-medium transition-all duration-300 group-hover:font-semibold">
-                  {project.groups?.length || 0}
+                  {project.groupCount ?? project.groups?.length ?? 0}
                 </span>
               </div>
             </TableCell>
@@ -206,7 +208,10 @@ export function ProjectTable({
                       </span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 bg-gray-200" />
-                    <DropdownMenuItem className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium">
+                    <DropdownMenuItem
+                      onClick={() => onProjectSettings(project.id)}
+                      className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                    >
                       <span>Project Settings</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem

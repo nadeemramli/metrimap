@@ -53,6 +53,7 @@ export default function HomePage() {
     handleOpenCanvas,
     handleDuplicateProject,
     handleDeleteProject,
+    handleProjectSettings,
     toggleStar,
   } = useProjectActions();
 
@@ -193,6 +194,7 @@ export default function HomePage() {
                       onDuplicateProject={handleDuplicateProject}
                       onToggleStar={toggleStar}
                       onDeleteProject={handleDeleteProject}
+                      onProjectSettings={handleProjectSettings}
                     />
                   ))}
                 </div>
@@ -203,6 +205,7 @@ export default function HomePage() {
                   onDuplicateProject={handleDuplicateProject}
                   onToggleStar={toggleStar}
                   onDeleteProject={handleDeleteProject}
+                  onProjectSettings={handleProjectSettings}
                 />
               )
             ) : (
@@ -226,6 +229,7 @@ export default function HomePage() {
                       onDuplicateProject={handleDuplicateProject}
                       onToggleStar={toggleStar}
                       onDeleteProject={handleDeleteProject}
+                      onProjectSettings={handleProjectSettings}
                     />
                   ))}
                 </div>
@@ -236,6 +240,7 @@ export default function HomePage() {
                   onDuplicateProject={handleDuplicateProject}
                   onToggleStar={toggleStar}
                   onDeleteProject={handleDeleteProject}
+                  onProjectSettings={handleProjectSettings}
                 />
               )
             ) : (
@@ -255,6 +260,7 @@ export default function HomePage() {
                       onDuplicateProject={handleDuplicateProject}
                       onToggleStar={toggleStar}
                       onDeleteProject={handleDeleteProject}
+                      onProjectSettings={handleProjectSettings}
                     />
                   ))}
                 </div>
@@ -265,6 +271,7 @@ export default function HomePage() {
                   onDuplicateProject={handleDuplicateProject}
                   onToggleStar={toggleStar}
                   onDeleteProject={handleDeleteProject}
+                  onProjectSettings={handleProjectSettings}
                 />
               )
             ) : (
@@ -281,16 +288,28 @@ export default function HomePage() {
         onResultSelect={(result) => {
           // Handle search result selection
           switch (result.type) {
-            case 'metric':
-              // Navigate to canvas containing the metric
-              navigate(`/canvas/1`); // TODO: Get actual canvas ID
+            case 'metric': {
+              // Navigate to the canvas that owns the metric
+              const canvasId = (result.data as any)?.canvasId;
+              if (canvasId) {
+                navigate(`/canvas/${canvasId}`, {
+                  state: { focusNode: result.id },
+                });
+              }
               break;
-            case 'relationship':
-              // Navigate to canvas containing the relationship
-              navigate(`/canvas/1`); // TODO: Get actual canvas ID
+            }
+            case 'relationship': {
+              // Navigate to the canvas that owns the relationship
+              const canvasId = (result.data as any)?.canvasId;
+              if (canvasId) {
+                navigate(`/canvas/${canvasId}`, {
+                  state: { openRelationship: result.id },
+                });
+              }
               break;
+            }
             case 'evidence':
-              navigate('/evidence');
+              navigate('/evidence', { state: { focusEvidence: result.id } });
               break;
           }
         }}

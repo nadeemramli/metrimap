@@ -29,9 +29,17 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ["react", "react-dom"],
-          clerk: ["@clerk/react-router"]
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("node_modules/react-dom/") || id.includes("node_modules/react/") || id.includes("node_modules/scheduler/")) return "vendor-react";
+          if (id.includes("@clerk")) return "vendor-clerk";
+          if (id.includes("@xyflow") || id.includes("reactflow") || id.includes("dagre")) return "vendor-flow";
+          if (id.includes("@excalidraw")) return "vendor-excalidraw";
+          if (id.includes("@editorjs") || id.includes("editorjs")) return "vendor-editorjs";
+          if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+          if (id.includes("mathjs") || id.includes("simple-statistics")) return "vendor-math";
+          if (id.includes("@automerge")) return "vendor-automerge";
+          return "vendor";
         }
       },
       onwarn(warning, warn) {

@@ -31,7 +31,10 @@ async function fetchOwnedProjects(
         role,
         permissions,
         users(id, name, email, avatar_url)
-      )
+      ),
+      metric_cards(count),
+      relationships(count),
+      groups(count)
     `
     )
     .eq('created_by', userId)
@@ -67,7 +70,10 @@ async function fetchCollaboratedProjects(
         role,
         permissions,
         users(id, name, email, avatar_url)
-      )
+      ),
+      metric_cards(count),
+      relationships(count),
+      groups(count)
     `
     )
     .in('id', projectIds)
@@ -89,6 +95,11 @@ export async function getUserProjects(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
+  if (!authenticatedClient) {
+    console.warn(
+      '⚠️ getUserProjects called without an authenticated client; falling back to anon (RLS will hide non-public rows). This usually means the Clerk client was not threaded through.'
+    );
+  }
   const client = authenticatedClient || supabase();
   const owned = await fetchOwnedProjects(userId, client);
   const collabIds = await fetchCollaboratedProjectIds(userId, client);
