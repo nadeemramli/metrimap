@@ -31,7 +31,7 @@ The implementation diverged from the original decision:
 ## Consequences
 
 - One canvas/viewport system to reason about (React Flow), at the cost of building/maintaining drawing tools ourselves.
-- The Excalidraw CSS import is now effectively vestigial and is a candidate for cleanup.
+- The vestigial Excalidraw CSS import (and a dead `.excalidraw-container-active` style rule) have been **removed**; the `@excalidraw/excalidraw` package is now an unused dependency and can be dropped from `package.json`. Note that some comments/log strings in canvas code still say "Excalidraw" — they refer to the custom whiteboard ref, not the package.
 - This ADR is retained (rather than deleted) to record *why* the title says "Excalidraw" but the code does not use it.
 
 ## References

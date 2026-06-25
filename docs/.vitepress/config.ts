@@ -4,7 +4,14 @@ export default defineConfig({
   title: 'Metrimap Documentation',
   description: 'Comprehensive documentation for the Metrimap application',
   base: '/',
-  
+
+  // Ignore legitimate false positives: localhost example URLs in env docs,
+  // and relative links to source files (`.tsx`) used as code references.
+  ignoreDeadLinks: [
+    /^https?:\/\/localhost/,
+    /\.(tsx?|jsx?)$/,
+  ],
+
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
@@ -36,6 +43,14 @@ export default defineConfig({
           ]
         }
       ],
+      '/architecture/': [
+        {
+          text: 'Architecture',
+          items: [
+            { text: 'Type-Check Debt', link: '/architecture/TYPE_CHECK_DEBT' }
+          ]
+        }
+      ],
       '/features/': [
         {
           text: 'Features',
@@ -52,9 +67,8 @@ export default defineConfig({
           items: [
             { text: 'Draw Mode Architecture', link: '/editor/DRAW_MODE_ARCHITECTURE' },
             { text: 'Notebook Implementation', link: '/editor/NOTEBOOK_IMPLEMENTATION' },
-            { text: 'EditorJS Fixes Summary', link: '/editor/EDITORJS_FIXES_SUMMARY' },
-            { text: 'Block Conversion and Fullscreen Fixes', link: '/editor/BLOCK_CONVERSION_AND_FULLSCREEN_FIXES' },
-            { text: 'EditorJS Error Analysis', link: '/editor/EDITORJS_ERROR_ANALYSIS' }
+            { text: 'EditorJS Troubleshooting Guide', link: '/editor/EDITORJS_TROUBLESHOOTING_GUIDE' },
+            { text: 'Block Conversion and Fullscreen Fixes', link: '/editor/BLOCK_CONVERSION_AND_FULLSCREEN_FIXES' }
           ]
         }
       ],
@@ -62,13 +76,11 @@ export default defineConfig({
         {
           text: 'Database',
           items: [
-            { text: 'Prisma Zod Quick Reference', link: '/database/PRISMA_ZOD_QUICK_REFERENCE' },
+            { text: 'Prisma + Zod Integration Guide', link: '/database/PRISMA_ZOD_INTEGRATION_GUIDE' },
+            { text: 'Prisma + Zod Quick Reference', link: '/database/PRISMA_ZOD_QUICK_REFERENCE' },
             { text: 'RLS Solution Summary', link: '/database/RLS_SOLUTION_SUMMARY' },
-            { text: 'Supabase Client Singleton', link: '/database/SUPABASE_CLIENT_SINGLETON' },
-            { text: 'Team Guide Prisma Zod', link: '/database/TEAM_GUIDE_PRISMA_ZOD' },
-            { text: 'Prisma Zod Integration Guide', link: '/database/PRISMA_ZOD_INTEGRATION_GUIDE' },
-            { text: 'Prisma Zod Setup', link: '/database/PRISMA_ZOD_SETUP' },
-            { text: 'RLS Testing Guide', link: '/database/RLS_TESTING_GUIDE' }
+            { text: 'RLS Testing Guide', link: '/database/RLS_TESTING_GUIDE' },
+            { text: 'Supabase Client Singleton', link: '/database/SUPABASE_CLIENT_SINGLETON' }
           ]
         }
       ],
@@ -76,9 +88,7 @@ export default defineConfig({
         {
           text: 'Authentication',
           items: [
-            { text: 'Use Clerk with your Supabase project', link: '/auth/Use_Clerk_with_your_Supabase_project' },
-            { text: 'Customize your session token', link: '/auth/Customize_your_session_token' },
-            { text: 'Integrate Supabase with Clerk', link: '/auth/Integrate_Supabase_with_Clerk' }
+            { text: 'Clerk + Supabase Integration', link: '/auth/CLERK_SUPABASE_INTEGRATION' }
           ]
         }
       ],

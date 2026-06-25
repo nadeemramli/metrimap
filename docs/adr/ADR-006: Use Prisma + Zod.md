@@ -30,7 +30,7 @@ Refresh after DB changes with `npm run prisma:types` (= `prisma db pull && prism
 
 - Single source of truth (Supabase); types and validators are regenerated, not hand-maintained.
 - Contributors must run `npm run prisma:types` after schema changes and must not edit generated files.
-- **Known stale artifacts (post feature-refactor):** the React validation hook `useTypedValidation` (`useProjectValidation`/`useProjectForm`) no longer exists, but `src/shared/components/common/TypedProjectForm.tsx` still imports it and is therefore broken. Use the `validate.*` API and the service layer instead. See the Prisma + Zod guide.
+- **No React validation hook:** an earlier `useTypedValidation` hook (`useProjectValidation`/`useProjectForm`) and its `TypedProjectForm.tsx` example were removed in the feature-structure refactor (the hook was deleted, leaving the component broken). Validate via the `validate.*` API and the service layer instead. See the Prisma + Zod guide.
 
 ## References
 

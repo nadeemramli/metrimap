@@ -10,11 +10,11 @@ Metrimap provides a canvas for users to visually map components of their busines
 
 - [Product Requirements Document](/prd/prd) - Complete feature specifications and architecture
 - [Architecture Decision Records](/adr/) - Technical decisions and design rationale
-- [Features Documentation](/features/) - Implementation details for specific features
-- [Database Documentation](/database/) - Prisma, Zod, and Supabase integration guides
-- [Authentication](/auth/) - Clerk and Supabase authentication setup
-- [State Management](/state-management/) - XState implementation patterns
-- [Editor Documentation](/editor/) - EditorJS and whiteboarding features
+- [Features Documentation](/features/USERBACK_INTEGRATION) - Implementation details for specific features
+- [Database: Prisma + Zod](/database/PRISMA_ZOD_INTEGRATION_GUIDE) - Prisma, Zod, and Supabase integration guides
+- [Authentication](/auth/CLERK_SUPABASE_INTEGRATION) - Clerk and Supabase authentication setup
+- [State Management](/state-management/XSTATE_COMPLETE_GUIDE) - XState implementation patterns
+- [Editor Documentation](/editor/DRAW_MODE_ARCHITECTURE) - EditorJS and whiteboarding features
 
 ## Getting Started
 

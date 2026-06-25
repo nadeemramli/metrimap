@@ -1,435 +1,171 @@
 # Prisma + Zod Integration Guide
 
-Complete guide for using Prisma ORM and Zod validation in the Metric Mapping application.
+The complete guide to end-to-end type safety and runtime validation in Metrimap. This is the **canonical** reference; the [Quick Reference](./PRISMA_ZOD_QUICK_REFERENCE.md) is a cheat sheet derived from it.
 
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Generated Files](#generated-files)
-4. [Type Safety](#type-safety)
-5. [Validation Layer](#validation-layer)
-6. [Service Layer](#service-layer)
-7. [React Integration](#react-integration)
-8. [Best Practices](#best-practices)
-9. [Migration Guide](#migration-guide)
-10. [Troubleshooting](#troubleshooting)
+> Decision & rationale: [ADR-006](../adr/ADR-006:%20Use%20Prisma%20+%20Zod.md).
 
 ## Overview
 
-We've implemented end-to-end type safety using:
-
-- **Prisma**: Type-safe database client and schema introspection
-- **Zod**: Runtime validation with TypeScript integration
-- **Generated Types**: Auto-generated from database schema
-
-**Key Benefits:**
-
-- 🔒 End-to-end type safety from database to UI
-- ✅ Runtime validation with compile-time types
-- 🚀 Auto-generated schemas from database
-- 🔄 Seamless integration with existing Supabase operations
-- 📝 Better developer experience with IntelliSense
-
-## Architecture
+- **Supabase (Postgres) is the source of truth.** We do **not** run Prisma migrations.
+- **Prisma** is used in *schema-only* mode: `prisma db pull` mirrors the DB into a schema; its generated client gives us **types**.
+- **Zod** schemas are **auto-generated from the Prisma schema** (via `prisma-zod-generator`) and used for **runtime validation**.
+- **Data access stays on the Supabase JS SDK** — Prisma never queries the database.
 
 ```
-Database (Supabase)
-    ↓ (prisma db pull)
-Prisma Schema
-    ↓ (prisma generate)
-├── Prisma Client (types)
-└── Zod Schemas (validation)
-    ↓
-Service Layer (validation + operations)
-    ↓
-React Components (type-safe forms)
+Supabase DB
+  │ prisma db pull
+  ▼
+src/lib/prisma/schema.prisma   (mirror, do not hand-edit)
+  │ prisma generate
+  ├── Prisma client            → TypeScript types
+  └── Zod schemas              → runtime validation
+        │ re-exported via
+        ▼
+src/shared/lib/validation/zod.ts
+        │ consumed by
+        ▼
+src/lib/services/typed-*.ts    (validate + Supabase operations)
+        ▼
+React components / boundaries (e.g. ClerkSupabaseProvider)
 ```
 
-## Generated Files
+## File map (current paths)
 
-### Prisma Schema
+| Purpose | Path |
+|---------|------|
+| Schema mirror (read-only) | `src/lib/prisma/schema.prisma` |
+| Generated Zod schemas | `src/lib/prisma/generated/schemas/` (objects under `…/objects/`) |
+| Curated schema re-exports | `src/shared/lib/validation/zod.ts` |
+| Core validation API | `src/lib/services/typed-operations.ts` |
+| Project operations | `src/lib/services/typed-projects.ts` |
+| Canvas operations | `src/lib/services/typed-canvas.ts` |
 
-```
-prisma/schema.prisma          # Database schema mirror
-```
+> ⚠️ **Do not hand-edit** `src/lib/prisma/schema.prisma` or anything under `src/lib/prisma/generated/` — they are regenerated. The files you edit are `zod.ts` (to expose new schemas) and your services/components.
 
-### Generated Types & Validation
+## Commands
 
-```
-prisma/generated/
-├── schemas/objects/          # Zod validation schemas
-│   ├── usersCreateInput.schema.ts
-│   ├── usersUpdateInput.schema.ts
-│   ├── projectsCreateInput.schema.ts
-│   └── ...
-└── client/                   # Prisma client (auto-generated)
-```
-
-### Service Layer
-
-```
-src/lib/services/
-├── typed-operations.ts       # Core validation functions
-├── typed-projects.ts         # Project operations with validation
-└── typed-canvas.ts          # Canvas operations with validation
+```bash
+npm run prisma:types     # db pull + generate (use after any DB schema change)
+npm run prisma:pull      # sync schema.prisma from Supabase only
+npm run prisma:generate  # regenerate Prisma client + Zod schemas only
 ```
 
-### React Integration
-
-```
-src/lib/hooks/
-└── useTypedValidation.ts    # React hooks for form validation
-
-src/components/forms/
-└── TypedProjectForm.tsx     # Example typed form component
-```
-
-## Type Safety
-
-### Database Types
+## Types
 
 ```typescript
+// Database row types — exact schema match (Prisma client, types only)
 import type {
   users as User,
   projects as Project,
   metric_cards as MetricCard,
 } from "@prisma/client";
 
-// These types exactly match your database schema
-const project: Project = {
-  id: "uuid",
-  name: "Project Name",
-  description: "Description",
-  created_at: new Date(),
-  // ... all fields are typed
-};
-```
-
-### Input Validation Types
-
-```typescript
-import {
+// Validated input types — inferred from the Zod schemas
+import type {
   CreateProjectInput,
   UpdateProjectInput,
-  ProjectWhereInput,
 } from "@/lib/services/typed-operations";
-
-// These are inferred from Zod schemas, ensuring runtime validation matches types
-const createData: CreateProjectInput = {
-  name: "New Project",
-  description: "Project description",
-  // TypeScript will enforce required fields and types
-};
 ```
 
-## Validation Layer
+## Validation layer
 
-### Basic Validation
+The core API lives in `typed-operations.ts`. `ValidationResult<T>` is `{ success: boolean; data?: T; errors?: ZodIssue[] }`.
 
 ```typescript
 import { validate } from "@/lib/services/typed-operations";
 
-// Validate project creation data
 const result = validate.project.create(unknownData);
+if (result.success) {
+  result.data;        // fully typed CreateProjectInput
+} else {
+  result.errors;      // ZodIssue[] — each has .path and .message
+}
+```
+
+Available validators (each with `.create`, `.update`, and — where applicable — `.where`):
+
+`validate.user`, `validate.project`, `validate.metricCard`, `validate.relationship`, `validate.evidenceItem`, `validate.group`.
+
+For one-off boundary checks you can also use a schema directly:
+
+```typescript
+import { CreateUserSchema } from "@/shared/lib/validation/zod";
+CreateUserSchema.parse({ email, name, avatar_url }); // throws on invalid
+```
+
+## Service layer (recommended)
+
+Service functions validate **and** perform the Supabase operation, returning a uniform result. They accept an optional **authenticated Supabase client** — pass the Clerk-authenticated client (see [ADR-002](../adr/ADR-002:%20Using%20Clerk%20for%20User%20Management.md)) so the call runs under the user's RLS context.
+
+```typescript
+import { createProject, updateProject } from "@/lib/services/typed-projects";
+
+// Returns { success: boolean; project?: Project; errors?: string[] }
+const result = await createProject(
+  { name: "My Project", description: "..." },
+  authenticatedClient // optional; omit to use the default client
+);
 
 if (result.success) {
-  // result.data is fully typed and validated
-  console.log(result.data.name); // TypeScript knows this is a string
+  console.log("Created:", result.project!.name);
 } else {
-  // result.errors contains detailed validation errors
-  console.error(result.errors);
+  console.error(result.errors); // human-readable "path: message" strings
 }
 ```
 
-### Service Layer Validation
+Canvas operations follow the same pattern via `typed-canvas.ts`.
 
-```typescript
-import { createProject } from "@/lib/services/typed-projects";
+## Using validation in React
 
-const result = await createProject({
-  name: "My Project",
-  description: "Project description",
-  tags: ["analytics", "dashboard"],
-});
+There is **no validation hook** in the codebase today (see the warning below). Validate in event handlers using the service layer or the `validate` API:
 
-if (result.success) {
-  // result.project is fully typed
-  console.log(`Created: ${result.project.name}`);
-} else {
-  // result.errors contains human-readable error messages
-  console.error("Validation failed:", result.errors);
-}
-```
+```tsx
+function ProjectForm({ client }: { client?: SupabaseClient }) {
+  const [form, setForm] = useState({ name: "", description: "" });
+  const [errors, setErrors] = useState<string[]>([]);
 
-## Service Layer
-
-### Typed Project Operations
-
-```typescript
-import * as typedProjects from "@/lib/services/typed-projects";
-
-// All operations include validation and proper typing
-const projects = await typedProjects.getUserProjects(userId);
-const project = await typedProjects.getProjectById(projectId);
-
-// Create with validation
-const createResult = await typedProjects.createProject({
-  name: "New Project",
-  description: "Description",
-});
-
-// Update with validation
-const updateResult = await typedProjects.updateProject(projectId, {
-  name: "Updated Name",
-});
-```
-
-### Canvas Operations
-
-```typescript
-import { useTypedCanvasOperations } from "@/lib/services/typed-canvas";
-
-const { createCard, updateCard, validate } = useTypedCanvasOperations();
-
-// Create card with validation
-try {
-  const card = await createCard({
-    title: "New Metric",
-    category: "Data/Metric",
-    position: { x: 100, y: 100 },
-  });
-  console.log("Card created:", card);
-} catch (error) {
-  console.error("Validation failed:", error.message);
-}
-```
-
-## React Integration
-
-### Form Validation Hook
-
-```typescript
-import { useProjectValidation } from '@/lib/hooks/useTypedValidation';
-
-function ProjectForm() {
-  const validation = useProjectValidation().create;
-  const [formData, setFormData] = useState({ name: '', description: '' });
-
-  const handleSubmit = (e) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = validation.validateAll(formData);
-
-    if (result.success) {
-      // Submit validated data
-      submitProject(result.data);
-    } else {
-      // Show validation errors
-      console.log(validation.errors);
+    const result = await createProject(form, client);
+    if (!result.success) {
+      setErrors(result.errors ?? []);
+      return;
     }
+    // success — result.project is typed
   };
 
-  return (
-    <form onSubmit={handleSubmit}>
-      <input
-        value={formData.name}
-        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-        onBlur={() => validation.validateField('name', formData.name)}
-      />
-      {validation.hasFieldError('name') && (
-        <span className="error">{validation.getFieldError('name')}</span>
-      )}
-    </form>
-  );
+  return (/* inputs bound to form; render errors */);
 }
 ```
 
-### Complete Form Example
+> ℹ️ **History:** there used to be a `useTypedValidation` hook (`useProjectForm` / `useProjectValidation`) and a `TypedProjectForm.tsx` example component. The hook was removed in the feature-structure refactor, which left the component broken, so **both have since been deleted**. Older docs that showed `useProjectValidation().create` described that removed hook. Use the patterns above (service layer / `validate.*`); if you want a reusable form hook, add one intentionally.
 
-See `src/components/forms/TypedProjectForm.tsx` for a complete implementation with:
+## Best practices
 
-- Real-time validation
-- Error display
-- Type-safe form handling
-- Integration with service layer
-
-## Best Practices
-
-### 1. Always Validate Input
-
-```typescript
-// ❌ Don't use raw data
-const project = await createProject(rawUserInput);
-
-// ✅ Always validate first
-const validation = validate.project.create(rawUserInput);
-if (validation.success) {
-  const project = await createProject(validation.data);
-}
-```
-
-### 2. Use Service Layer
-
-```typescript
-// ❌ Don't use Prisma client directly in components
-import { PrismaClient } from "@prisma/client";
-
-// ✅ Use typed service layer
-import { createProject } from "@/lib/services/typed-projects";
-```
-
-### 3. Handle Validation Errors Properly
-
-```typescript
-// ✅ Provide user-friendly error messages
-const result = validate.project.create(data);
-if (!result.success) {
-  const errorMessages = result.errors.map(
-    (error) => `${error.path.join(".")}: ${error.message}`
-  );
-  showUserError(errorMessages.join(", "));
-}
-```
-
-### 4. Leverage TypeScript IntelliSense
-
-```typescript
-// TypeScript will auto-complete and type-check all fields
-const project: Project = {
-  id: "uuid",
-  name: "Project",
-  // IntelliSense shows all available fields
-  // TypeScript ensures all required fields are present
-};
-```
-
-## Migration Guide
-
-### 1. Gradual Migration
-
-You can migrate components gradually:
-
-```typescript
-// Old approach
-import type { CanvasProject } from "@/lib/types";
-import { createProject } from "@/lib/supabase/services/projects";
-
-// New approach
-import type { Project } from "@/lib/services/typed-operations";
-import { createProject } from "@/lib/services/typed-projects";
-```
-
-### 2. Legacy Compatibility
-
-The new services wrap existing Supabase operations:
-
-```typescript
-// typed-projects.ts wraps the original projects service
-import * as originalService from "@/lib/supabase/services/projects";
-
-export async function createProject(data: unknown) {
-  const validation = validate.project.create(data);
-  if (validation.success) {
-    return originalService.createProject(validation.data);
-  }
-  // Handle validation errors
-}
-```
-
-### 3. Component Updates
-
-Update forms to use validation hooks:
-
-```typescript
-// Before
-const [errors, setErrors] = useState({});
-const validateForm = (data) => {
-  /* manual validation */
-};
-
-// After
-const validation = useProjectValidation().create;
-// Automatic validation with type safety
-```
+1. **Always validate untrusted input** before it reaches Supabase — via the service layer or `validate.*`.
+2. **Prefer the service layer** over calling Supabase + validating by hand; it keeps the contract uniform.
+3. **Pass the authenticated client** to service functions so writes run under the correct RLS identity.
+4. **Surface field-level errors** to users (`errors` carries `path` + `message`).
+5. **Regenerate after DB changes** (`npm run prisma:types`) and restart the TS server.
 
 ## Troubleshooting
 
-### Schema Sync Issues
+| Problem | Fix |
+|---------|-----|
+| Types don't match the database | `npm run prisma:types`, then restart the TS server |
+| `prisma db pull` introduces relation conflicts | Keep scalar fields only; relations are intentionally stripped to prevent ORM use |
+| "Schema/type doesn't exist" | Re-export it from `src/shared/lib/validation/zod.ts`; run `prisma:generate` |
+| Validation always fails | Inspect `src/lib/prisma/generated/schemas/objects/<Model>*.schema.ts`; check required vs optional and field names |
+| Missing `DATABASE_URL` | Point it at the Supabase Postgres connection string (used only by `prisma db pull`) |
 
-If types don't match database:
+## Performance notes
 
-```bash
-# Pull latest schema from Supabase
-npm run prisma:pull
+- Zod schemas are **pre-generated**, not built at runtime — validation overhead is minimal.
+- The Prisma client is bundled for **types only**; it issues no queries.
+- Existing Supabase operations are unchanged — the typed layer wraps them.
 
-# Regenerate types and validation
-npm run prisma:generate
-```
+## References
 
-### Validation Errors
-
-Common validation issues:
-
-```typescript
-// Check required fields
-const validation = validate.project.create(data);
-console.log(validation.errors); // Shows missing/invalid fields
-
-// Check field types
-console.log(typeof data.created_at); // Should be Date or string
-```
-
-### Type Conflicts
-
-If you see TypeScript errors:
-
-1. Restart TypeScript server
-2. Run `npm run prisma:types`
-3. Check import paths in `src/lib/validation/zod.ts`
-
-### Performance Considerations
-
-- Prisma client is used for types only, not database operations
-- Validation happens at runtime, minimal performance impact
-- Zod schemas are pre-generated, not created at runtime
-
-## Development Workflow
-
-### 1. Database Changes
-
-```bash
-# After making database changes in Supabase
-npm run prisma:pull    # Sync schema
-npm run prisma:generate # Regenerate types
-```
-
-### 2. Adding New Validations
-
-1. Update Prisma schema (if needed)
-2. Run `prisma generate`
-3. Export new schemas in `src/lib/validation/zod.ts`
-4. Create service layer functions
-5. Add React hooks if needed
-
-### 3. Testing Validations
-
-```typescript
-import { validate } from "@/lib/services/typed-operations";
-
-// Test in development
-const testData = { name: "", description: null };
-const result = validate.project.create(testData);
-console.log(result.errors); // See what validation fails
-```
-
-## Summary
-
-This integration provides:
-
-- **Type Safety**: End-to-end types from database to UI
-- **Runtime Validation**: Zod ensures data integrity
-- **Developer Experience**: Auto-completion and error catching
-- **Maintainability**: Single source of truth for types
-- **Gradual Adoption**: Can be implemented incrementally
-
-The system maintains compatibility with existing Supabase operations while adding a robust validation and type safety layer.
+- [ADR-006: Use Prisma + Zod](../adr/ADR-006:%20Use%20Prisma%20+%20Zod.md)
+- [Quick Reference](./PRISMA_ZOD_QUICK_REFERENCE.md)
+- `src/lib/services/typed-operations.ts`, `typed-projects.ts`, `typed-canvas.ts`
