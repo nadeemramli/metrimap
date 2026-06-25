@@ -31,7 +31,13 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
-          if (id.includes("node_modules/react-dom/") || id.includes("node_modules/react/") || id.includes("node_modules/scheduler/")) return "vendor-react";
+          // NOTE: do NOT isolate react/react-dom/scheduler into their own chunk.
+          // Under React 19, splitting React from its consumer cluster (Radix,
+          // react-router, TanStack, sonner, …) yields a cross-chunk init order
+          // where a consumer touches React.* before the React chunk finishes
+          // initializing → "Cannot read properties of undefined (reading 'S')" /
+          // "...setting 'Children'" crash in production. Let React fall through
+          // to the generic `vendor` chunk alongside its consumers.
           if (id.includes("@clerk")) return "vendor-clerk";
           if (id.includes("@xyflow") || id.includes("reactflow") || id.includes("dagre")) return "vendor-flow";
           if (id.includes("@excalidraw")) return "vendor-excalidraw";
