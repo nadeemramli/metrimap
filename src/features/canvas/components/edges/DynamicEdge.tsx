@@ -19,7 +19,6 @@ import type { EdgeProps } from '@xyflow/react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
   getSmoothStepPath,
   useReactFlow,
 } from '@xyflow/react';
@@ -258,39 +257,23 @@ export default function DynamicEdge({
     ]
   );
 
-  // Get path based on relationship type
+  // All relationship paths use orthogonal "smoothstep" routing so same-rank /
+  // straight connections bend into a readable zig-zag (org-chart style) instead
+  // of collapsing into a flat overlapping line. Relationship type is still
+  // distinguished by stroke dash/color/arrowhead, not by curve shape.
+  // `offset` pushes the edge out of the handle before it turns (bigger step);
+  // `borderRadius` rounds the corners.
   const getEdgePath = () => {
-    if (typeConfig.lineStyle === 'smoothstep') {
-      // Use smoothstep for deterministic relationships
-      return getSmoothStepPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-      });
-    } else if (typeConfig.lineStyle === 'dotted-smoothstep') {
-      // Use smoothstep with dots for compositional relationships
-      return getSmoothStepPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-      });
-    } else {
-      // Use bezier for probabilistic and causal
-      return getBezierPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-      });
-    }
+    return getSmoothStepPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+      borderRadius: 14,
+      offset: 28,
+    });
   };
 
   const [edgePath, labelX, labelY] = getEdgePath();
