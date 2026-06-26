@@ -196,6 +196,12 @@ const saas = {
     E('hyp_annual', 'churnrate', 'Probabilistic', 50),
     E('hyp_selfserve', 'trialconv', 'Probabilistic', 50),
   ],
+  groups: [
+    { name: 'Acquisition Funnel', keys: ['visitors','organic','paid','social','referral','direct','emailt','reach','engage','posts','adspend','cpc','mql','v2l','trials','trialconv','newcust'] },
+    { name: 'Revenue & MRR', keys: ['revenue','mrr','newmrr','expmrr','reactmrr','churnmrr','contractmrr','arpa','price','seats'] },
+    { name: 'Unit Economics', keys: ['cac','ltv','ltvcac','payback','churnrate','nrr'] },
+    { name: 'Cost Structure', keys: ['costs','cogs','hosting','support','sm','rnd','gna','gm'] },
+  ],
 };
 
 // ===================== E-commerce =====================
@@ -301,6 +307,12 @@ const ecom = {
     E('hyp_freeship', 'aov', 'Probabilistic', 50),
     E('hyp_reviews', 'pdpcvr', 'Probabilistic', 50),
   ],
+  groups: [
+    { name: 'Traffic & Channels', keys: ['sessions','organic','paid','social','email','direct','affiliate','reach','ctr','posts','list','openrate','adspend','cpc'] },
+    { name: 'Conversion & Orders', keys: ['orders','cvr','pdpcvr','atc','cartabandon','checkoutcvr','newcust'] },
+    { name: 'AOV & Retention', keys: ['aov','items','itemprice','crosssell','upsell','repeat','freq','ltv'] },
+    { name: 'Cost Structure', keys: ['costs','cogs','gm','shipping','returns','marketing','payfees','fulfil','cac'] },
+  ],
 };
 
 // ===================== Retail (walk-in) =====================
@@ -398,6 +410,12 @@ const retail = {
     E('hyp_events', 'events', 'Probabilistic', 50),
     E('hyp_staff', 'staffratio', 'Probabilistic', 50),
   ],
+  groups: [
+    { name: 'Foot Traffic', keys: ['foot','passersby','capture','window','signage','localmkt','socialloc','reach','engage','events','season'] },
+    { name: 'Conversion & Basket', keys: ['txn','cvr','staffratio','availability','queue','basket','items','itemprice','impulse'] },
+    { name: 'Retention', keys: ['loyalty','repeat','nps'] },
+    { name: 'Cost Structure', keys: ['costs','cogs','gm','rent','labor','staffhours','wage','utilities','shrink','marketing'] },
+  ],
 };
 
 const TREES = [saas, ecom, retail];
@@ -487,6 +505,28 @@ function buildTree(tree) {
     created_by: OWNER,
   }));
 
+  const groupRows = (tree.groups || []).map((g) => {
+    const ps = g.keys.map((k) => pos.get(k)).filter(Boolean);
+    const xs = ps.map((p) => p.x);
+    const ys = ps.map((p) => p.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const pad = 40;
+    return {
+      id: randomUUID(),
+      project_id: projectId,
+      name: g.name,
+      node_ids: g.keys.map((k) => idOf.get(k)).filter(Boolean),
+      position_x: Math.round(minX - pad),
+      position_y: Math.round(minY - pad),
+      width: Math.round(maxX - minX + 260 + pad * 2),
+      height: Math.round(maxY - minY + 130 + pad * 2),
+      created_by: OWNER,
+    };
+  });
+
   // SQL
   sql += `\nDELETE FROM public.projects WHERE created_by='${OWNER}' AND name='${sqlEsc(tree.name)}';\n`;
   sql += `INSERT INTO public.projects (id,name,description,created_by,last_modified_by,is_public,tags,settings) VALUES ('${projectId}','${sqlEsc(tree.name)}','${sqlEsc(tree.description)}','${OWNER}','${OWNER}',${IS_PUBLIC},ARRAY['example','template'],'{}');\n`;
@@ -494,8 +534,10 @@ function buildTree(tree) {
     sql += `INSERT INTO public.metric_cards (id,project_id,title,description,category,position_x,position_y,created_by,data) VALUES ('${c.id}','${c.project_id}','${sqlEsc(c.title)}','${sqlEsc(c.description)}','${c.category}',${c.position_x},${c.position_y},'${OWNER}','${sqlEsc(JSON.stringify(c.data))}'::jsonb);\n`;
   for (const r of rels)
     sql += `INSERT INTO public.relationships (id,project_id,source_id,target_id,type,confidence,weight,created_by) VALUES ('${r.id}','${r.project_id}','${r.source_id}','${r.target_id}','${r.type}','${r.confidence}',${r.weight},'${OWNER}');\n`;
+  for (const g of groupRows)
+    sql += `INSERT INTO public.groups (id,project_id,name,node_ids,position_x,position_y,width,height,created_by) VALUES ('${g.id}','${g.project_id}','${sqlEsc(g.name)}',ARRAY[${g.node_ids.map((id) => `'${id}'`).join(',')}]::uuid[],${g.position_x},${g.position_y},${g.width},${g.height},'${OWNER}');\n`;
 
-  return { project, cards, rels };
+  return { project, cards, rels, groups: groupRows };
 }
 
 const built = TREES.map(buildTree);
@@ -515,7 +557,7 @@ const db = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false },
 });
 
-for (const { project, cards, rels } of built) {
+for (const { project, cards, rels, groups } of built) {
   await db.from('projects').delete().eq('created_by', OWNER).eq('name', project.name);
   let { error: pe } = await db.from('projects').insert(project);
   if (pe) throw new Error(`project ${project.name}: ${pe.message}`);
@@ -523,6 +565,12 @@ for (const { project, cards, rels } of built) {
   if (ce) throw new Error(`cards ${project.name}: ${ce.message}`);
   let { error: re } = await db.from('relationships').insert(rels);
   if (re) throw new Error(`relationships ${project.name}: ${re.message}`);
-  console.log(`✅ ${project.name}: ${cards.length} cards, ${rels.length} relationships`);
+  if (groups && groups.length) {
+    let { error: ge } = await db.from('groups').insert(groups);
+    if (ge) throw new Error(`groups ${project.name}: ${ge.message}`);
+  }
+  console.log(
+    `✅ ${project.name}: ${cards.length} cards, ${rels.length} relationships, ${(groups || []).length} groups`
+  );
 }
 console.log('🌱 Seed complete.');

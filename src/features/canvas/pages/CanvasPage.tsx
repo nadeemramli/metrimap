@@ -546,7 +546,17 @@ function CanvasPageInner() {
       convertToGroupNode(
         group,
         () => console.log('Edit group:', group.id),
-        () => console.log('Delete group:', group.id),
+        () => {
+          // Delete the frame (cards are kept). Was a console.log stub.
+          if (
+            typeof window !== 'undefined' &&
+            !window.confirm(
+              `Delete group "${group.name}"? The cards inside are kept.`
+            )
+          )
+            return;
+          void useCanvasStore.getState().deleteGroup(group.id);
+        },
         stableEvents.handleToggleCollapse,
         stableEvents.handleUpdateGroupSize
       )
