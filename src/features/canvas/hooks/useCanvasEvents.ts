@@ -1,5 +1,7 @@
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
+import { useCanvasStore } from '@/lib/stores';
 import { useAppStore } from '@/shared/stores/useAppStore';
+import { toast } from 'sonner';
 
 interface UseCanvasEventsOptions {
   state: any;
@@ -99,7 +101,20 @@ export function useCanvasEvents({
   };
 
   const handleGroupSelectedNodes = () => {
-    state.groupSelectedNodes?.();
+    // The page-state hook never implemented groupSelectedNodes, so the button
+    // was a no-op. Drive the real canvas-store action with the live selection,
+    // which persists a group (DB) and tags member cards with parentId.
+    const { selectedNodeIds, groupSelectedNodes } = useCanvasStore.getState();
+    if (!selectedNodeIds || selectedNodeIds.length < 2) {
+      toast.error('Select at least 2 cards to group');
+      return;
+    }
+    Promise.resolve(groupSelectedNodes(selectedNodeIds))
+      .then(() => toast.success('Grouped selected cards'))
+      .catch((err) => {
+        console.error('Group failed', err);
+        toast.error('Could not group selected cards');
+      });
   };
 
   const handleUngroupSelectedGroups = () => {
