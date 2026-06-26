@@ -105,6 +105,7 @@ export const useGroupStore = create<GroupStoreState>()(
           nodeIds: updates.nodeIds,
           position: updates.position,
           size: updates.size,
+          color: updates.color,
         });
 
         console.log('✅ Group updated successfully:', groupId);
