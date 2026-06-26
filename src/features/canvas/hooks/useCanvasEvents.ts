@@ -118,7 +118,17 @@ export function useCanvasEvents({
   };
 
   const handleUngroupSelectedGroups = () => {
-    state.ungroupSelectedGroups?.();
+    const groupIds = state.selectedGroupIds || [];
+    if (groupIds.length === 0) {
+      toast.error('Select a group to ungroup');
+      return;
+    }
+    Promise.resolve(useCanvasStore.getState().ungroupSelectedGroups(groupIds))
+      .then(() => toast.success('Ungrouped'))
+      .catch((err) => {
+        console.error('Ungroup failed', err);
+        toast.error('Could not ungroup');
+      });
   };
 
   const handleDeleteSelectedItems = () => {

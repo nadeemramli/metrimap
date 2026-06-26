@@ -42,6 +42,51 @@ const MET = 'Data/Metric';
 const ACT = 'Work/Action';
 const HYP = 'Ideas/Hypothesis';
 
+// --- sample time-series values (last 7 months) for quantitative cards ---
+const rand = (min, max) => min + Math.random() * (max - min);
+const round = (v, d = 0) => {
+  const p = 10 ** d;
+  return Math.round(v * p) / p;
+};
+function monthsBack(n) {
+  const out = [];
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return out;
+}
+function baseValueFor(title) {
+  const t = title.toLowerCase();
+  if (/(rate|%|conversion|churn|margin|retention|capture|abandon|open|ratio|nrr|nps)/.test(t))
+    return rand(2, 65); // percentage
+  if (/(revenue|profit|mrr|arr|arpa|cac|ltv|cost|spend|aov|basket|price|cogs|rent|wage|fees|payback|value)/.test(t))
+    return rand(2000, 800000); // currency
+  if (/(traffic|sessions|visitors|leads|orders|customers|foot|transactions|reach|followers|passersby|items|list|members|trials|seats)/.test(t))
+    return rand(400, 90000); // counts
+  return rand(40, 5000);
+}
+function makeSeries(title) {
+  const periods = monthsBack(7);
+  const down = /(churn|abandon|cost|cac|cogs|shrink|returns|queue|contraction)/.test(
+    title.toLowerCase()
+  );
+  const drift = (down ? -1 : 1) * rand(0.02, 0.08);
+  let v = baseValueFor(title);
+  let prev = null;
+  return periods.map((period, i) => {
+    if (i > 0) v = Math.max(0.1, v * (1 + drift + rand(-0.025, 0.025)));
+    const value = round(v, v < 100 ? 1 : 0);
+    const change_percent =
+      prev == null || prev === 0 ? 0 : round(((value - prev) / prev) * 100, 1);
+    const trend = change_percent > 1 ? 'up' : change_percent < -1 ? 'down' : 'neutral';
+    prev = value;
+    return { period, value, change_percent, trend };
+  });
+}
+const isQuantitative = (cat) => cat === MET || cat === VAL;
+
 // ===================== SaaS =====================
 const saas = {
   name: 'SaaS — Example Metric Tree',
@@ -429,6 +474,7 @@ function buildTree(tree) {
     position_x: pos.get(n.key).x,
     position_y: pos.get(n.key).y,
     created_by: OWNER,
+    data: isQuantitative(n.cat) ? makeSeries(n.title) : [],
   }));
   const rels = tree.edges.map((e) => ({
     id: randomUUID(),
@@ -445,7 +491,7 @@ function buildTree(tree) {
   sql += `\nDELETE FROM public.projects WHERE created_by='${OWNER}' AND name='${sqlEsc(tree.name)}';\n`;
   sql += `INSERT INTO public.projects (id,name,description,created_by,last_modified_by,is_public,tags,settings) VALUES ('${projectId}','${sqlEsc(tree.name)}','${sqlEsc(tree.description)}','${OWNER}','${OWNER}',${IS_PUBLIC},ARRAY['example','template'],'{}');\n`;
   for (const c of cards)
-    sql += `INSERT INTO public.metric_cards (id,project_id,title,description,category,position_x,position_y,created_by) VALUES ('${c.id}','${c.project_id}','${sqlEsc(c.title)}','${sqlEsc(c.description)}','${c.category}',${c.position_x},${c.position_y},'${OWNER}');\n`;
+    sql += `INSERT INTO public.metric_cards (id,project_id,title,description,category,position_x,position_y,created_by,data) VALUES ('${c.id}','${c.project_id}','${sqlEsc(c.title)}','${sqlEsc(c.description)}','${c.category}',${c.position_x},${c.position_y},'${OWNER}','${sqlEsc(JSON.stringify(c.data))}'::jsonb);\n`;
   for (const r of rels)
     sql += `INSERT INTO public.relationships (id,project_id,source_id,target_id,type,confidence,weight,created_by) VALUES ('${r.id}','${r.project_id}','${r.source_id}','${r.target_id}','${r.type}','${r.confidence}',${r.weight},'${OWNER}');\n`;
 
