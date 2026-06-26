@@ -365,8 +365,12 @@ function CanvasPageInner() {
         direction || (state.currentLayoutDirection as LayoutDirection) || 'TB';
 
       try {
-        // Apply the auto-layout algorithm
-        const layoutedNodes = applyAutoLayout(currentNodes, currentEdges, {
+        // Lay out everything EXCEPT group frames — frames wrap their cards, so
+        // they must not be Dagre-positioned as nodes.
+        const groupNodes = currentNodes.filter((n) => n.type === 'groupNode');
+        const flowNodes = currentNodes.filter((n) => n.type !== 'groupNode');
+
+        const layoutedFlow = applyAutoLayout(flowNodes, currentEdges, {
           direction: layoutDirection,
           nodeWidth: 320,
           nodeHeight: 200,
@@ -376,25 +380,80 @@ function CanvasPageInner() {
           marginY: 50,
         });
 
-        console.log('✅ Layout applied, updating nodes...');
+        // Recompute each frame to wrap its (newly laid-out) member cards so
+        // grouping and auto-layout coexist.
+        const posById = new Map(layoutedFlow.map((n) => [n.id, n.position]));
+        const HDR = 56;
+        const PAD = 30;
+        const CW = 280;
+        const CH = 170;
+        const adjustedGroups = groupNodes.map((gn) => {
+          const ids: string[] = ((gn.data as any)?.group?.nodeIds as string[]) || [];
+          const pts = ids
+            .map((id) => posById.get(id))
+            .filter(Boolean) as { x: number; y: number }[];
+          if (pts.length === 0) return gn;
+          const minX = Math.min(...pts.map((p) => p.x));
+          const maxX = Math.max(...pts.map((p) => p.x));
+          const minY = Math.min(...pts.map((p) => p.y));
+          const maxY = Math.max(...pts.map((p) => p.y));
+          const position = { x: minX - PAD, y: minY - HDR - PAD };
+          const size = {
+            width: maxX - minX + CW + PAD * 2,
+            height: maxY - minY + CH + HDR + PAD * 2,
+          };
+          void useCanvasStore.getState().updateGroup(gn.id, { position, size });
+          return {
+            ...gn,
+            position,
+            style: { ...gn.style, width: size.width, height: size.height },
+          };
+        });
 
-        // Update the nodes with new positions
-        setNodes(layoutedNodes);
+        // Frames first so they paint behind the cards.
+        setNodes([...adjustedGroups, ...layoutedFlow]);
 
-        // Update the current layout direction in state
+        // Persist the new card/node positions (mirror drag-stop routing) so the
+        // layout sticks and the frames match on reload.
+        for (const node of layoutedFlow) {
+          if (!node?.id || !node?.position) continue;
+          if (node.type === 'metricCard') {
+            useCanvasStore.getState().updateNodePosition(node.id, node.position);
+          } else if (node.type === 'evidenceNode') {
+            updateEvidencePosition(node.id, node.position);
+          } else if (
+            ['sourceNode', 'chartNode', 'operatorNode', 'commentNode', 'whiteboardNode'].includes(
+              node.type as string
+            )
+          ) {
+            updateCanvasNodePosition(node.id, node.position);
+          } else if (
+            ['valueNode', 'actionNode', 'hypothesisNode', 'metricNode'].includes(
+              node.type as string
+            )
+          ) {
+            updateNewNode(node.id, { position: node.position });
+          }
+        }
+
         state.setCurrentLayoutDirection(layoutDirection);
-
-        // Fit the view to show all nodes with some padding
         setTimeout(() => {
           fitView({ padding: 50, duration: 800 });
         }, 100);
-
-        console.log('✅ Auto-layout completed successfully');
       } catch (error) {
         console.error('❌ Error applying auto-layout:', error);
       }
     },
-    [getNodes, getEdges, setNodes, fitView, state]
+    [
+      getNodes,
+      getEdges,
+      setNodes,
+      fitView,
+      state,
+      updateEvidencePosition,
+      updateCanvasNodePosition,
+      updateNewNode,
+    ]
   );
 
   // Create stable event handlers to prevent circular dependencies
