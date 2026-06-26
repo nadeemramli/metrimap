@@ -1,4 +1,5 @@
 import { updateMetricCard as updateMetricCardInSupabase } from '@/shared/lib/supabase/services/metric-cards';
+import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
 import type { MetricCard } from '@/shared/types';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
@@ -48,6 +49,7 @@ export const useAutoSaveStore = create<AutoSaveStoreState>()(
       if (state.pendingChanges.size === 0 || state.isSaving) return;
 
       set({ isSaving: true });
+      const client = getClientForEnvironment();
 
       try {
         const failedNodes: string[] = [];
@@ -80,20 +82,24 @@ export const useAutoSaveStore = create<AutoSaveStoreState>()(
                 title: node.title?.substring(0, 20) + '...',
               });
 
-              await updateMetricCardInSupabase(nodeId, {
-                position: node.position,
-                title: node.title,
-                description: node.description,
-                tags: node.tags,
-                category: node.category,
-                subCategory: node.subCategory,
-                causalFactors: node.causalFactors,
-                dimensions: node.dimensions,
-                data: node.data,
-                sourceType: node.sourceType,
-                formula: node.formula,
-                assignees: node.assignees,
-              });
+              await updateMetricCardInSupabase(
+                nodeId,
+                {
+                  position: node.position,
+                  title: node.title,
+                  description: node.description,
+                  tags: node.tags,
+                  category: node.category,
+                  subCategory: node.subCategory,
+                  causalFactors: node.causalFactors,
+                  dimensions: node.dimensions,
+                  data: node.data,
+                  sourceType: node.sourceType,
+                  formula: node.formula,
+                  assignees: node.assignees,
+                },
+                client
+              );
 
               console.log(`✅ Successfully saved node ${nodeId}`);
             } catch (nodeError) {

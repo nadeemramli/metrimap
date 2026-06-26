@@ -621,6 +621,9 @@ export const useCanvasStore = create<CanvasStoreState>()(
       if (state.pendingChanges.size === 0 || state.isSaving) return;
 
       set({ isSaving: true });
+      // Use the Clerk-authenticated client — under RLS, anon updates match 0
+      // rows (PGRST116 "Cannot coerce the result to a single JSON object").
+      const client = getClientForEnvironment();
 
       try {
         const failedNodes: string[] = [];
@@ -653,20 +656,24 @@ export const useCanvasStore = create<CanvasStoreState>()(
                 title: node.title?.substring(0, 20) + '...',
               });
 
-              await updateMetricCardInSupabase(nodeId, {
-                position: node.position,
-                title: node.title,
-                description: node.description,
-                tags: node.tags,
-                category: node.category,
-                subCategory: node.subCategory,
-                causalFactors: node.causalFactors,
-                dimensions: node.dimensions,
-                data: node.data,
-                sourceType: node.sourceType,
-                formula: node.formula,
-                assignees: node.assignees,
-              });
+              await updateMetricCardInSupabase(
+                nodeId,
+                {
+                  position: node.position,
+                  title: node.title,
+                  description: node.description,
+                  tags: node.tags,
+                  category: node.category,
+                  subCategory: node.subCategory,
+                  causalFactors: node.causalFactors,
+                  dimensions: node.dimensions,
+                  data: node.data,
+                  sourceType: node.sourceType,
+                  formula: node.formula,
+                  assignees: node.assignees,
+                },
+                client
+              );
 
               console.log(`✅ Successfully saved node ${nodeId}`);
             } catch (nodeError) {
