@@ -463,12 +463,68 @@ function layout(tree) {
   return pos;
 }
 
+// --- group-clustered layout: each group's cards laid out in its own grid
+// region (non-overlapping frames), ungrouped cards in a row below. ---
+const GC = { CARD_W: 280, CARD_H: 170, CELL_W: 330, CELL_H: 220, HEADER: 56, PAD: 30, GAP_X: 160, GAP_Y: 200, PER_ROW: 2 };
+function groupClusteredLayout(tree) {
+  const pos = new Map();
+  const groups = tree.groups || [];
+  const dims = groups.map((g) => {
+    const n = g.keys.length;
+    const cols = Math.min(4, Math.max(1, Math.ceil(Math.sqrt(n))));
+    const rows = Math.ceil(n / cols);
+    const width = GC.PAD * 2 + (cols - 1) * GC.CELL_W + GC.CARD_W;
+    const height = GC.HEADER + GC.PAD * 2 + (rows - 1) * GC.CELL_H + GC.CARD_H;
+    return { g, cols, rows, width, height };
+  });
+
+  let placedInRow = 0;
+  let rowStartY = 0;
+  let rowHeight = 0;
+  let xCursor = 0;
+  for (const d of dims) {
+    if (placedInRow === GC.PER_ROW) {
+      rowStartY += rowHeight + GC.GAP_Y;
+      xCursor = 0;
+      placedInRow = 0;
+      rowHeight = 0;
+    }
+    const fx = xCursor;
+    const fy = rowStartY;
+    d.g.keys.forEach((k, i) => {
+      const col = i % d.cols;
+      const row = Math.floor(i / d.cols);
+      pos.set(k, {
+        x: Math.round(fx + GC.PAD + col * GC.CELL_W),
+        y: Math.round(fy + GC.HEADER + GC.PAD + row * GC.CELL_H),
+      });
+    });
+    xCursor += d.width + GC.GAP_X;
+    rowHeight = Math.max(rowHeight, d.height);
+    placedInRow++;
+  }
+
+  // ungrouped cards (profit, levers, hypotheses) in a row below the regions
+  const grouped = new Set(groups.flatMap((g) => g.keys));
+  const ungrouped = tree.nodes.filter((n) => !grouped.has(n.key));
+  const bottomY = rowStartY + rowHeight + GC.GAP_Y;
+  const uCols = 6;
+  ungrouped.forEach((n, i) => {
+    pos.set(n.key, {
+      x: Math.round((i % uCols) * GC.CELL_W),
+      y: Math.round(bottomY + Math.floor(i / uCols) * GC.CELL_H),
+    });
+  });
+
+  return pos;
+}
+
 // --- build rows + SQL ---
 const sqlEsc = (s) => String(s).replace(/'/g, "''");
 let sql = `-- Example metric trees (SaaS / E-commerce / Retail). Owner: ${OWNER}\n-- Re-runnable: deletes prior projects with the same names (cascade) first.\nBEGIN;\n`;
 
 function buildTree(tree) {
-  const pos = layout(tree);
+  const pos = groupClusteredLayout(tree);
   const projectId = randomUUID();
   const idOf = new Map();
   tree.nodes.forEach((n) => idOf.set(n.key, randomUUID()));
@@ -513,16 +569,16 @@ function buildTree(tree) {
     const maxX = Math.max(...xs);
     const minY = Math.min(...ys);
     const maxY = Math.max(...ys);
-    const pad = 40;
+    // Frame wraps the group's grid, with room above the cards for the header.
     return {
       id: randomUUID(),
       project_id: projectId,
       name: g.name,
       node_ids: g.keys.map((k) => idOf.get(k)).filter(Boolean),
-      position_x: Math.round(minX - pad),
-      position_y: Math.round(minY - pad),
-      width: Math.round(maxX - minX + 260 + pad * 2),
-      height: Math.round(maxY - minY + 130 + pad * 2),
+      position_x: Math.round(minX - GC.PAD),
+      position_y: Math.round(minY - GC.HEADER - GC.PAD),
+      width: Math.round(maxX - minX + GC.CARD_W + GC.PAD * 2),
+      height: Math.round(maxY - minY + GC.CARD_H + GC.HEADER + GC.PAD * 2),
       created_by: OWNER,
     };
   });
