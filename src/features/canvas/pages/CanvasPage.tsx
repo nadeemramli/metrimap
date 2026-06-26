@@ -110,6 +110,7 @@ function CanvasPageInner() {
     loadCanvasNodes,
     clearNodes: clearCanvasNodes,
     createNode: createCanvasNode,
+    updateNode: updateCanvasNode,
     updateNodePosition: updateCanvasNodePosition,
     deleteNode: deleteCanvasNode,
   } = useCanvasNodesStore();
@@ -983,23 +984,24 @@ function CanvasPageInner() {
                       nodes.filter((n) => n.type === 'operatorNode') as any
                     }
                     onUpdateNode={(nodeId, updates) => {
-                      // Update local operator node data in state.extraNodes for simplicity
-                      const target = (state.extraNodes || []).find(
-                        (n) => n.id === nodeId
-                      );
+                      // Persist to the real operator node (useCanvasNodesStore),
+                      // not the dead state.extraNodes array.
+                      const target = canvasNodes.find((n) => n.id === nodeId);
                       if (target) {
-                        target.data = { ...target.data, ...updates } as any;
-                        state.setExtraNodes([...(state.extraNodes || [])]);
+                        updateCanvasNode(nodeId, {
+                          data: { ...(target.data || {}), ...updates },
+                        });
                       }
                     }}
                     onBulkUpdate={(updates) => {
-                      const opNodes = nodes.filter(
-                        (n) => n.type === 'operatorNode'
-                      );
-                      opNodes.forEach((n: any) => {
-                        n.data = { ...n.data, ...updates };
-                      });
-                      state.setExtraNodes([...(state.extraNodes || [])]);
+                      // Apply to every real operator node and persist.
+                      canvasNodes
+                        .filter((n) => n.nodeType === 'operatorNode')
+                        .forEach((n) =>
+                          updateCanvasNode(n.id, {
+                            data: { ...(n.data || {}), ...updates },
+                          })
+                        );
                     }}
                     onSimulate={() => {
                       console.log('Simulate operative nodes');
