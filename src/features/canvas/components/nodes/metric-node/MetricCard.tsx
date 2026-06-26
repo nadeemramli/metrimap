@@ -143,6 +143,25 @@ const getCategoryColor = (category: MetricCardType['category']) => {
   }
 };
 
+// Single accent color per category — for the white-card restyle (left stripe +
+// dot). Keeps cards clean/white with color used only as a type indicator.
+const getCategoryAccent = (category: MetricCardType['category']): string => {
+  switch (category) {
+    case 'Core/Value':
+      return '#3b82f6'; // blue
+    case 'Data/Metric':
+      return '#22c55e'; // green
+    case 'Work/Action':
+      return '#f97316'; // orange
+    case 'Ideas/Hypothesis':
+      return '#a855f7'; // purple
+    case 'Metadata':
+      return '#6b7280'; // gray
+    default:
+      return '#6b7280';
+  }
+};
+
 // Handle colors - reversed design with dark as default
 const getHandleStyles = () => {
   return {
@@ -253,9 +272,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const isDataMetric = card.category === 'Data/Metric';
-  const categoryColor = getCategoryColor(card.category);
-  const categoryHoverColor = getCategoryHoverColor(card.category);
-  const categorySelectedColor = getCategorySelectedColor(card.category);
+  const accent = getCategoryAccent(card.category);
   const handleStyles = getHandleStyles();
 
   // Canvas store for updates
@@ -560,13 +577,13 @@ export default function MetricCard({ data, selected }: NodeProps) {
     <div
       ref={cardRef}
       className={cn(
-        'bg-card border-2 rounded-lg shadow-lg min-w-[280px] max-w-[320px] cursor-pointer transition-all duration-200 relative',
+        'bg-card border border-border rounded-xl shadow-sm min-w-[280px] max-w-[320px] cursor-pointer transition-all duration-200 relative',
         selected
-          ? `shadow-xl bg-card/98 ${categorySelectedColor}`
-          : `hover:shadow-xl ${categoryHoverColor}`,
-        categoryColor,
+          ? 'shadow-lg ring-2 ring-primary/50 border-primary/40'
+          : 'hover:shadow-md hover:border-foreground/20',
         isPreview && 'min-w-[200px] max-w-[240px] scale-75'
       )}
+      style={{ borderLeftWidth: 4, borderLeftColor: accent }}
       onClick={handleCardClick}
       onDoubleClick={handleCardDoubleClick}
       onMouseDown={(e) => {
@@ -676,9 +693,11 @@ export default function MetricCard({ data, selected }: NodeProps) {
       <div className="p-3 border-b border-border/50">
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2 flex-1">
-            <span className="nodrag text-lg">
-              {getCategoryIcon(card.category)}
-            </span>
+            <span
+              className="nodrag inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: accent }}
+              title={card.category}
+            />
 
             {/* Category and Subcategory - Editable when editing */}
             {!isPreview && (

@@ -18,6 +18,22 @@ interface GroupNodeData {
   ) => void;
 }
 
+// Translucent color palette so overlapping/adjacent frames read as distinct
+// regions. Deterministic per group name (until a user color-picker is added).
+const FRAME_PALETTE = [
+  { border: '#3b82f6', bg: 'rgba(59,130,246,0.05)', head: 'rgba(59,130,246,0.12)' },
+  { border: '#22c55e', bg: 'rgba(34,197,94,0.05)', head: 'rgba(34,197,94,0.12)' },
+  { border: '#f59e0b', bg: 'rgba(245,158,11,0.06)', head: 'rgba(245,158,11,0.14)' },
+  { border: '#a855f7', bg: 'rgba(168,85,247,0.05)', head: 'rgba(168,85,247,0.12)' },
+  { border: '#ec4899', bg: 'rgba(236,72,153,0.05)', head: 'rgba(236,72,153,0.12)' },
+  { border: '#14b8a6', bg: 'rgba(20,184,166,0.05)', head: 'rgba(20,184,166,0.12)' },
+];
+function frameColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return FRAME_PALETTE[h % FRAME_PALETTE.length];
+}
+
 /**
  * Figma-style frame. The header bar is the only drag handle (class
  * `group-drag-handle`, matched in convertToGroupNode), and the frame paints
@@ -33,6 +49,8 @@ export default function GroupNode({ id, data, selected }: NodeProps) {
   } = (data as unknown as GroupNodeData) || {};
 
   if (!group) return null;
+
+  const c = frameColor(group.name);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,18 +79,21 @@ export default function GroupNode({ id, data, selected }: NodeProps) {
 
       <div
         className={cn(
-          'flex flex-col overflow-hidden rounded-xl border transition-colors',
-          selected
-            ? 'border-primary bg-primary/[0.04] shadow-lg shadow-primary/10 ring-1 ring-primary/30'
-            : 'border-border/70 bg-muted/40 hover:border-border'
+          'flex flex-col overflow-hidden rounded-xl border-2 transition-colors',
+          selected && 'shadow-lg ring-1 ring-primary/30'
         )}
         style={{
           width: group.size.width,
           height: isCollapsed ? 40 : group.size.height,
+          borderColor: selected ? 'hsl(var(--primary))' : c.border,
+          backgroundColor: c.bg,
         }}
       >
         {/* Header = the drag handle */}
-        <div className="group-drag-handle flex cursor-grab select-none items-center justify-between gap-2 border-b border-border/60 bg-background/85 px-3 py-1.5 backdrop-blur-sm active:cursor-grabbing">
+        <div
+          className="group-drag-handle flex cursor-grab select-none items-center justify-between gap-2 border-b border-border/40 px-3 py-1.5 backdrop-blur-sm active:cursor-grabbing"
+          style={{ backgroundColor: c.head }}
+        >
           <div className="flex min-w-0 items-center gap-1.5">
             <button
               type="button"
@@ -86,7 +107,10 @@ export default function GroupNode({ id, data, selected }: NodeProps) {
                 <ChevronDown className="h-3.5 w-3.5" />
               )}
             </button>
-            <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <Folder
+              className="h-3.5 w-3.5 shrink-0"
+              style={{ color: c.border }}
+            />
             <span className="truncate text-sm font-semibold text-foreground">
               {group.name}
             </span>
