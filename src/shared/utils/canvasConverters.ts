@@ -27,7 +27,8 @@ import type {
   Relationship,
   RelationshipType,
 } from '@/shared/types';
-import type { Edge, Node } from '@xyflow/react';
+import { MarkerType, type Edge, type Node } from '@xyflow/react';
+import type { LayoutDirection } from '@/shared/utils/autoLayout';
 
 // Convert MetricCard to ReactFlow Node
 export const convertToNode = (
@@ -55,12 +56,44 @@ export const convertToNode = (
   // Let React Flow handle layering naturally
 });
 
+// Anchor an edge to direction-appropriate handles so the tree reads with clear
+// parent→child direction instead of edges sweeping out sideways. The metric card
+// only exposes source handles on bottom/right and target handles on top/left, so
+// only TB (top-down) and LR are cleanly anchorable; BT/RL fall back to RF's auto
+// handle pick.
+const handlesForDirection = (
+  dir: LayoutDirection
+): { sourceHandle?: string; targetHandle?: string } => {
+  switch (dir) {
+    case 'TB':
+      return { sourceHandle: 'bottom-source', targetHandle: 'top-target' };
+    case 'LR':
+      return { sourceHandle: 'right-source', targetHandle: 'left-target' };
+    default:
+      return {};
+  }
+};
+
+// Arrowhead color mirrors DynamicEdge's stroke logic (gray for formulaic/zero,
+// green for positive weight, red for negative).
+const arrowColorForRelationship = (relationship: Relationship): string => {
+  if (
+    relationship.type === 'Deterministic' ||
+    relationship.type === 'Compositional'
+  )
+    return '#6b7280';
+  const w = relationship.weight;
+  if (w === undefined || w === 0) return '#6b7280';
+  return w > 0 ? '#16a34a' : '#dc2626';
+};
+
 // Convert Relationship to ReactFlow Edge with DynamicEdge
 export const convertToEdge = (
   relationship: Relationship,
   onOpenRelationshipSheet: (relationshipId: string) => void,
   onSwitchToRelationship: (relationshipId: string) => void,
-  isRelationshipSheetOpen: boolean
+  isRelationshipSheetOpen: boolean,
+  layoutDirection: LayoutDirection = 'TB'
 ): Edge => {
   // Determine if edge should be animated based on relationship type
   const shouldAnimate =
@@ -83,13 +116,24 @@ export const convertToEdge = (
     }
   };
 
+  const { sourceHandle, targetHandle } = handlesForDirection(layoutDirection);
+
   return {
     id: relationship.id,
     source: relationship.sourceId,
     target: relationship.targetId,
+    sourceHandle,
+    targetHandle,
     type: 'dynamicEdge',
     animated: shouldAnimate, // Animate dotted lines (Probabilistic and Compositional)
     zIndex: getEdgeZIndex(relationship.type), // Use React Flow's edge z-index system
+    // Explicit arrowhead so every relationship shows parent→child direction.
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 18,
+      height: 18,
+      color: arrowColorForRelationship(relationship),
+    },
     data: {
       relationship,
       onOpenRelationshipSheet,

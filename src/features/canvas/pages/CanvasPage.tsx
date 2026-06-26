@@ -16,7 +16,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { SlidersHorizontal } from 'lucide-react';
+import { Layers, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 
 // Extracted utilities and hooks
@@ -28,8 +28,13 @@ import { useCanvasHeader } from '@/shared/contexts/CanvasHeaderContext';
 import { PortalContainerProvider } from '@/shared/contexts/PortalContainerContext';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
-import { getProjectById } from '@/shared/lib/supabase/services/projects';
+import {
+  getProjectById,
+  mergeProjectSettings,
+} from '@/shared/lib/supabase/services/projects';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import { runSimulation } from '@/features/canvas/utils/runSimulation';
+import { toast } from 'sonner';
 import {
   applyAutoLayout,
   type LayoutDirection,
@@ -47,7 +52,6 @@ import {
   convertToCanvasNode,
   convertToEdge,
   convertToEvidenceNode,
-  convertToGroupNode,
   convertToNode,
   edgeTypes,
   nodeTypes,
@@ -61,6 +65,7 @@ import CanvasModals from '@/features/canvas/components/layout/CanvasModals';
 import BulkOperationsToolbar from '@/features/canvas/components/bulk/BulkOperationsToolbar';
 import SelectionPanel from '@/features/canvas/components/grouping/SelectionPanel';
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
+import GroupsPanel from '@/features/canvas/components/left-sidepanel/GroupsPanel';
 import TopCanvasToolbar from '@/features/canvas/components/mini-control/TopCanvasToolbar';
 import QuickSearchCommand from '@/features/canvas/components/search/QuickSearchCommand';
 import {
@@ -87,6 +92,11 @@ function CanvasPageInner() {
 
   // Operator/tools control panel is hidden by default; toggled from the right.
   const [showOperatorPanel, setShowOperatorPanel] = useState(false);
+  // Run Simulation in-flight flag (Phase C).
+  const [isSimulating, setIsSimulating] = useState(false);
+  // Groups side list + focus mode (grouping redesign).
+  const [showGroupsPanel, setShowGroupsPanel] = useState(false);
+  const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
 
   // Initialize canvas stores and data
   const {
@@ -245,6 +255,15 @@ function CanvasPageInner() {
           });
           loadCanvas(projectData);
 
+          // Phase B: hydrate persisted data-flow / reference edges (operator
+          // pipeline) from projects.settings.dataFlowEdges into the in-memory
+          // extraEdges array so the pipeline survives reload.
+          const persistedDataFlowEdges =
+            (projectData as any).settings?.dataFlowEdges;
+          state.setExtraEdges(
+            Array.isArray(persistedDataFlowEdges) ? persistedDataFlowEdges : []
+          );
+
           // Load canvas nodes for this project
           try {
             await loadCanvasNodes(canvasId);
@@ -365,53 +384,21 @@ function CanvasPageInner() {
         direction || (state.currentLayoutDirection as LayoutDirection) || 'TB';
 
       try {
-        // Lay out everything EXCEPT group frames — frames wrap their cards, so
-        // they must not be Dagre-positioned as nodes.
-        const groupNodes = currentNodes.filter((n) => n.type === 'groupNode');
-        const flowNodes = currentNodes.filter((n) => n.type !== 'groupNode');
-
-        const layoutedFlow = applyAutoLayout(flowNodes, currentEdges, {
+        // Bias depth over width so the metric tree reads as a TREE (clear
+        // hierarchy levels) instead of collapsing into a wide flat line:
+        // bigger rank gap (vertical hierarchy), tighter sibling gap (narrower).
+        // Groups no longer render as frames, so there's nothing to exclude.
+        const layoutedFlow = applyAutoLayout(currentNodes, currentEdges, {
           direction: layoutDirection,
           nodeWidth: 320,
           nodeHeight: 200,
-          rankSeparation: 150,
-          nodeSeparation: 100,
+          rankSeparation: 240,
+          nodeSeparation: 70,
           marginX: 50,
           marginY: 50,
         });
 
-        // Recompute each frame to wrap its (newly laid-out) member cards so
-        // grouping and auto-layout coexist.
-        const posById = new Map(layoutedFlow.map((n) => [n.id, n.position]));
-        const HDR = 56;
-        const PAD = 30;
-        const CW = 280;
-        const CH = 170;
-        const adjustedGroups = groupNodes.map((gn) => {
-          const ids: string[] = ((gn.data as any)?.group?.nodeIds as string[]) || [];
-          const pts = ids
-            .map((id) => posById.get(id))
-            .filter(Boolean) as { x: number; y: number }[];
-          if (pts.length === 0) return gn;
-          const minX = Math.min(...pts.map((p) => p.x));
-          const maxX = Math.max(...pts.map((p) => p.x));
-          const minY = Math.min(...pts.map((p) => p.y));
-          const maxY = Math.max(...pts.map((p) => p.y));
-          const position = { x: minX - PAD, y: minY - HDR - PAD };
-          const size = {
-            width: maxX - minX + CW + PAD * 2,
-            height: maxY - minY + CH + HDR + PAD * 2,
-          };
-          void useCanvasStore.getState().updateGroup(gn.id, { position, size });
-          return {
-            ...gn,
-            position,
-            style: { ...gn.style, width: size.width, height: size.height },
-          };
-        });
-
-        // Frames first so they paint behind the cards.
-        setNodes([...adjustedGroups, ...layoutedFlow]);
+        setNodes(layoutedFlow);
 
         // Persist the new card/node positions (mirror drag-stop routing) so the
         // layout sticks and the frames match on reload.
@@ -455,6 +442,87 @@ function CanvasPageInner() {
       updateNewNode,
     ]
   );
+
+  // ── Grouping redesign: focus mode + group CRUD (driven by GroupsPanel) ──
+
+  // Focus a group: dim everything else (handled in the nodes/edges memos) and
+  // fit the view to the group's members wherever they sit in the tree.
+  const handleFocusGroup = useCallback(
+    (groupId: string) => {
+      const group = (canvas?.groups || []).find((g) => g.id === groupId);
+      if (!group) return;
+      setFocusedGroupId(groupId);
+      const memberIds = new Set(group.nodeIds || []);
+      setTimeout(() => {
+        const toFit = getNodes().filter((n) => memberIds.has(n.id));
+        if (toFit.length > 0) {
+          fitView({ nodes: toFit as any, padding: 0.35, duration: 600 });
+        }
+      }, 60);
+    },
+    [canvas?.groups, getNodes, fitView]
+  );
+
+  const handleClearFocus = useCallback(() => setFocusedGroupId(null), []);
+
+  const handleAddSelectedToGroup = useCallback(
+    (groupId: string) => {
+      const group = (canvas?.groups || []).find((g) => g.id === groupId);
+      if (!group || selectedNodeIds.length === 0) return;
+      const next = Array.from(
+        new Set([...(group.nodeIds || []), ...selectedNodeIds])
+      );
+      void useCanvasStore.getState().updateGroup(groupId, { nodeIds: next });
+      toast.success(`Added ${selectedNodeIds.length} to "${group.name}"`);
+    },
+    [canvas?.groups, selectedNodeIds]
+  );
+
+  const handleRemoveSelectedFromGroup = useCallback(
+    (groupId: string) => {
+      const group = (canvas?.groups || []).find((g) => g.id === groupId);
+      if (!group || selectedNodeIds.length === 0) return;
+      const next = (group.nodeIds || []).filter(
+        (id) => !selectedNodeIds.includes(id)
+      );
+      void useCanvasStore.getState().updateGroup(groupId, { nodeIds: next });
+      toast.success(`Removed from "${group.name}"`);
+    },
+    [canvas?.groups, selectedNodeIds]
+  );
+
+  const handleRenameGroup = useCallback((groupId: string, name: string) => {
+    void useCanvasStore.getState().updateGroup(groupId, { name });
+  }, []);
+
+  const handleRecolorGroup = useCallback((groupId: string, color: string) => {
+    void useCanvasStore.getState().updateGroup(groupId, { color });
+  }, []);
+
+  const handleDeleteGroup = useCallback(
+    (groupId: string) => {
+      const group = (canvas?.groups || []).find((g) => g.id === groupId);
+      const name = group?.name || 'this group';
+      if (
+        typeof window !== 'undefined' &&
+        !window.confirm(`Delete "${name}"? The cards inside are kept.`)
+      )
+        return;
+      setFocusedGroupId((cur) => (cur === groupId ? null : cur));
+      void useCanvasStore.getState().deleteGroup(groupId);
+    },
+    [canvas?.groups]
+  );
+
+  // Esc exits focus mode.
+  useEffect(() => {
+    if (!focusedGroupId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFocusedGroupId(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [focusedGroupId]);
 
   // Create stable event handlers to prevent circular dependencies
   const stableHandleOpenSettingsSheet = useCallback(
@@ -601,33 +669,10 @@ function CanvasPageInner() {
       )
     );
 
-    const convertedGroupNodes = (canvas?.groups || []).map((group) =>
-      convertToGroupNode(
-        group,
-        () => console.log('Edit group:', group.id),
-        () => {
-          // Delete the frame (cards are kept). Was a console.log stub.
-          if (
-            typeof window !== 'undefined' &&
-            !window.confirm(
-              `Delete group "${group.name}"? The cards inside are kept.`
-            )
-          )
-            return;
-          void useCanvasStore.getState().deleteGroup(group.id);
-        },
-        stableEvents.handleToggleCollapse,
-        stableEvents.handleUpdateGroupSize,
-        (groupId: string, color: string) =>
-          void useCanvasStore.getState().updateGroup(groupId, { color })
-      )
-    );
-
-    // UNIFIED: Only use persisted canvas nodes, no more extraNodes
+    // Grouping redesign: the on-canvas group frame is gone. Group data still
+    // lives in canvas.groups (used by the Groups side panel + dashboard scope);
+    // it just no longer renders as a rectangle node here.
     const allNodes = [
-      // Groups first so they paint BEHIND the cards — background frames that
-      // don't steal clicks from the cards inside them.
-      ...convertedGroupNodes,
       ...convertedMetricCardNodes,
       ...convertedEvidenceNodes,
       ...convertedPersistedCanvasNodes,
@@ -636,21 +681,29 @@ function CanvasPageInner() {
       ...(temporaryExtraNodes.length > 0 ? temporaryExtraNodes : []),
     ];
 
-    console.log('🔄 Nodes computed:', {
-      metricCardNodes: convertedMetricCardNodes.length,
-      evidenceNodes: convertedEvidenceNodes.length,
-      groupNodes: convertedGroupNodes.length,
-      persistedCanvasNodes: convertedPersistedCanvasNodes.length,
-      newNodeTypes: convertedNewNodeTypes.length,
-      temporaryExtraNodes: temporaryExtraNodes.length,
-      total: allNodes.length,
-    });
+    // Focus mode: dim every node that isn't a member of the focused group to
+    // faint context (members stay bright). Edges are dimmed in the edges memo.
+    if (focusedGroupId) {
+      const fg = (canvas?.groups || []).find((g) => g.id === focusedGroupId);
+      const members = new Set(fg?.nodeIds || []);
+      return allNodes.map((n) =>
+        members.has(n.id)
+          ? n
+          : {
+              ...n,
+              className: [(n as any).className, 'rf-node-dimmed']
+                .filter(Boolean)
+                .join(' '),
+            }
+      );
+    }
 
     return allNodes;
   }, [
     canvasId,
     canvas?.nodes,
     canvas?.groups,
+    focusedGroupId,
     evidenceList,
     canvasNodes, // Unified canvas nodes from Zustand store
     newNodes, // New node types from Zustand store
@@ -664,23 +717,47 @@ function CanvasPageInner() {
     const canvasEdges = canvas?.edges || [];
     const extraEdges = state.extraEdges || [];
 
+    const layoutDirection =
+      (state.currentLayoutDirection as LayoutDirection) || 'TB';
     const convertedCanvasEdges = canvasEdges.map((relationship) =>
       convertToEdge(
         relationship,
         events.handleOpenRelationshipSheet,
         events.handleSwitchToRelationship,
-        state.isRelationshipSheetOpen
+        state.isRelationshipSheetOpen,
+        layoutDirection
       )
     );
 
     const allEdges = [...convertedCanvasEdges, ...extraEdges];
 
+    // Focus mode: dim any edge that isn't fully inside the focused group. Must
+    // be done via className — DynamicEdge hardcodes its own path opacity, so an
+    // inline edge style.opacity would be ignored.
+    if (focusedGroupId) {
+      const fg = (canvas?.groups || []).find((g) => g.id === focusedGroupId);
+      const members = new Set(fg?.nodeIds || []);
+      return allEdges.map((e) =>
+        members.has(e.source) && members.has(e.target)
+          ? e
+          : {
+              ...e,
+              className: [(e as any).className, 'rf-edge-dimmed']
+                .filter(Boolean)
+                .join(' '),
+            }
+      );
+    }
+
     return allEdges;
   }, [
     canvasId,
     canvas?.edges,
+    canvas?.groups,
+    focusedGroupId,
     state.extraEdges,
     state.isRelationshipSheetOpen,
+    state.currentLayoutDirection,
     events.handleOpenRelationshipSheet,
     events.handleSwitchToRelationship,
   ]);
@@ -771,6 +848,24 @@ function CanvasPageInner() {
     [state, updateEvidencePosition, updateCanvasNodePosition, updateNewNode]
   );
 
+  // Phase B: persist data-flow / reference edges (operator pipeline) in
+  // projects.settings.dataFlowEdges (jsonb) so they survive reload. The local
+  // state.extraEdges array stays the in-memory source of truth.
+  const persistDataFlowEdges = useCallback(
+    (nextEdges: any[]) => {
+      if (!canvasId) return;
+      const client = supabaseClient || getClientForEnvironment();
+      void mergeProjectSettings(
+        canvasId,
+        { dataFlowEdges: nextEdges },
+        client
+      ).catch((err) =>
+        console.error('❌ Failed to persist data-flow edges:', err)
+      );
+    },
+    [canvasId, supabaseClient]
+  );
+
   // Enhanced edge connection handler
   const handleConnect = useCallback(
     (connection: Connection) => {
@@ -803,14 +898,16 @@ function CanvasPageInner() {
           }
         },
         onCreateDataFlow: (edgeData) => {
-          const currentEdges = state.extraEdges || [];
-          state.setExtraEdges([...currentEdges, edgeData]);
-          console.log('✅ Data flow edge created successfully');
+          const nextEdges = [...(state.extraEdges || []), edgeData];
+          state.setExtraEdges(nextEdges);
+          persistDataFlowEdges(nextEdges);
+          console.log('✅ Data flow edge created + persisted');
         },
         onCreateReference: (edgeData) => {
-          const currentEdges = state.extraEdges || [];
-          state.setExtraEdges([...currentEdges, edgeData]);
-          console.log('✅ Reference edge created successfully');
+          const nextEdges = [...(state.extraEdges || []), edgeData];
+          state.setExtraEdges(nextEdges);
+          persistDataFlowEdges(nextEdges);
+          console.log('✅ Reference edge created + persisted');
         },
       });
 
@@ -820,7 +917,24 @@ function CanvasPageInner() {
         alert(`Connection failed: ${result.error}`);
       }
     },
-    [nodes, canvas?.edges, state]
+    [nodes, canvas?.edges, state, persistDataFlowEdges]
+  );
+
+  // Phase B: when data-flow / reference edges are deleted from the canvas, drop
+  // them from state.extraEdges and re-persist. Relationship edges (not in
+  // extraEdges) are untouched here — they're managed via the Relationship sheet.
+  const handleEdgesDelete = useCallback(
+    (deleted: Array<{ id: string }>) => {
+      const current = state.extraEdges || [];
+      const deletedIds = new Set(deleted.map((e) => e.id));
+      const next = current.filter((e: any) => !deletedIds.has(e.id));
+      if (next.length !== current.length) {
+        state.setExtraEdges(next);
+        persistDataFlowEdges(next);
+        console.log('✅ Data-flow edge(s) deleted + persisted');
+      }
+    },
+    [state, persistDataFlowEdges]
   );
 
   // Apply generic node changes for extra nodes (selection/resize etc.)
@@ -955,6 +1069,7 @@ function CanvasPageInner() {
               events.handleOpenRelationshipSheet(edge.id);
             }}
             onConnect={handleConnect}
+            onEdgesDelete={handleEdgesDelete}
             // Enhanced navigation behavior - adjust based on active whiteboard tool
             panOnDrag={
               state.toolbarMode === 'edit' ||
@@ -1076,28 +1191,90 @@ function CanvasPageInner() {
                           })
                         );
                     }}
-                    onSimulate={() => {
-                      console.log('Simulate operative nodes');
+                    onSimulate={async () => {
+                      if (isSimulating) return;
+                      setIsSimulating(true);
+                      try {
+                        // Feed the operator graph the persisted data-flow edges.
+                        const dfEdges = (state.extraEdges || []).filter(
+                          (e: any) => e?.source && e?.target
+                        );
+                        const { updated, warnings } =
+                          await runSimulation(dfEdges);
+                        if (updated > 0) {
+                          toast.success(
+                            `Simulation complete — ${updated} card${
+                              updated === 1 ? '' : 's'
+                            } updated`
+                          );
+                        } else {
+                          toast.info(
+                            'Simulation ran but no cards were updated. Wire an operator to an output card.'
+                          );
+                        }
+                        if (warnings.length > 0) {
+                          console.warn('⚠️ Simulation warnings:', warnings);
+                          toast.warning(warnings[0]);
+                        }
+                      } catch (err) {
+                        console.error('❌ Simulation failed:', err);
+                        toast.error(
+                          `Simulation failed: ${
+                            err instanceof Error ? err.message : 'unknown error'
+                          }`
+                        );
+                      } finally {
+                        setIsSimulating(false);
+                      }
                     }}
-                    isSimulating={false}
+                    isSimulating={isSimulating}
                   />
                 </div>
               </Panel>
             )}
 
-            {/* Tools toggle (top-right) — opens the operator control panel */}
+            {/* Top-right toggles: Groups (focus/filter) + Tools (operators) */}
             {state.toolbarMode === 'edit' && (
               <Panel position="top-right">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowOperatorPanel((v) => !v)}
-                  className="h-8 gap-1.5 border bg-background/90 shadow-sm backdrop-blur"
-                  title={showOperatorPanel ? 'Hide tools' : 'Show tools'}
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                  {showOperatorPanel ? 'Hide tools' : 'Tools'}
-                </Button>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={showGroupsPanel ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setShowGroupsPanel((v) => !v)}
+                      className="h-8 gap-1.5 border bg-background/90 shadow-sm backdrop-blur"
+                      title={showGroupsPanel ? 'Hide groups' : 'Show groups'}
+                    >
+                      <Layers className="h-4 w-4" />
+                      {showGroupsPanel ? 'Hide groups' : 'Groups'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowOperatorPanel((v) => !v)}
+                      className="h-8 gap-1.5 border bg-background/90 shadow-sm backdrop-blur"
+                      title={showOperatorPanel ? 'Hide tools' : 'Show tools'}
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
+                      {showOperatorPanel ? 'Hide tools' : 'Tools'}
+                    </Button>
+                  </div>
+                  {showGroupsPanel && (
+                    <GroupsPanel
+                      groups={canvas?.groups || []}
+                      selectedNodeIds={selectedNodeIds}
+                      focusedGroupId={focusedGroupId}
+                      onFocus={handleFocusGroup}
+                      onClearFocus={handleClearFocus}
+                      onCreateFromSelection={events.handleGroupSelectedNodes}
+                      onAddSelected={handleAddSelectedToGroup}
+                      onRemoveSelected={handleRemoveSelectedFromGroup}
+                      onRename={handleRenameGroup}
+                      onRecolor={handleRecolorGroup}
+                      onDelete={handleDeleteGroup}
+                    />
+                  )}
+                </div>
               </Panel>
             )}
 

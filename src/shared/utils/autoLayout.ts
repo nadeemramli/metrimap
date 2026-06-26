@@ -67,7 +67,10 @@ export function applyAutoLayout(
       // Additional dagre options for better layout
       edgesep: 10, // Separation between edges
       acyclicer: 'greedy', // Algorithm for removing cycles
-      ranker: 'tight-tree', // Ranking algorithm
+      // network-simplex minimizes total edge length → more balanced, centered
+      // tree shape (parents sit above the middle of their children) vs the
+      // looser tight-tree ranker.
+      ranker: 'network-simplex',
     });
 
     // Validate and add nodes to dagre graph

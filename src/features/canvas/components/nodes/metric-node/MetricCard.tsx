@@ -474,7 +474,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
   // Inject custom handle styles for touch device states
   useEffect(() => {
     const styleId = 'handle-neutral-styles';
-    let existingStyle = document.getElementById(styleId);
+    const existingStyle = document.getElementById(styleId);
 
     if (!existingStyle) {
       const style = document.createElement('style');
@@ -884,7 +884,10 @@ export default function MetricCard({ data, selected }: NodeProps) {
       {isDataMetric && card.data && isExpanded && (
         <div className="nodrag p-3 border-b border-border/50 bg-background/50">
           <div className="nodrag space-y-2">
-            {card.data.slice(0, 3).map((metric: MetricValue, index: number) => (
+            {[...card.data]
+              .slice(-3)
+              .reverse()
+              .map((metric: MetricValue, index: number) => (
               <div
                 key={index}
                 className="nodrag flex items-center justify-between"

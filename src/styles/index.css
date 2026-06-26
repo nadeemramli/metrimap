@@ -276,3 +276,23 @@ body[data-scroll-locked='1'] .sheet-content {
   background: hsl(var(--card)) !important;
   border: 1px solid hsl(var(--border)) !important;
 }
+
+/* ── Group focus mode ───────────────────────────────────────────────
+   When a group is "focused" from the Groups panel, non-member nodes and
+   edges are dimmed to faint context so the user can zoom into one objective.
+   Edges must be dimmed via the edge group className because DynamicEdge
+   hardcodes its own path opacity (inline edge style is overridden). */
+.react-flow__node.rf-node-dimmed {
+  opacity: 0.15 !important;
+  filter: grayscale(0.35);
+  transition: opacity 0.25s ease, filter 0.25s ease;
+  pointer-events: none;
+}
+.react-flow__edge.rf-edge-dimmed {
+  opacity: 0.1 !important;
+  transition: opacity 0.25s ease;
+}
+.react-flow__node:not(.rf-node-dimmed),
+.react-flow__edge:not(.rf-edge-dimmed) {
+  transition: opacity 0.25s ease;
+}
