@@ -564,9 +564,11 @@ function CanvasPageInner() {
 
     // UNIFIED: Only use persisted canvas nodes, no more extraNodes
     const allNodes = [
+      // Groups first so they paint BEHIND the cards — background frames that
+      // don't steal clicks from the cards inside them.
+      ...convertedGroupNodes,
       ...convertedMetricCardNodes,
       ...convertedEvidenceNodes,
-      ...convertedGroupNodes,
       ...convertedPersistedCanvasNodes,
       ...convertedNewNodeTypes,
       // Only include temporary nodes if they exist (for immediate UI feedback)

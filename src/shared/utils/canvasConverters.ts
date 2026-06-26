@@ -145,10 +145,11 @@ export const convertToGroupNode = (
   },
   draggable: true,
   selectable: true,
-  // Configure as subflow container
+  // Drag the frame only from its header bar (Figma-style); the body sits behind
+  // the cards (zIndex 0 + ordered first) so the cards stay interactive.
+  dragHandle: '.group-drag-handle',
+  zIndex: 0,
   className: 'group-node',
-  // Ensure group is treated as a container
-  extent: 'parent',
 });
 
 // Import additional node components
