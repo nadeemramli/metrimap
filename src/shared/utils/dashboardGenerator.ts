@@ -27,9 +27,12 @@ export function generateDashboardsFromGroups(canvas: CanvasProject): DashboardCo
   }
 
   return canvas.groups.map((group) => {
-    // Get metrics that belong to this group using parentId
-    const groupMetrics = canvas.nodes.filter(node => 
-      node.parentId === group.id
+    // Membership is persisted as group.nodeIds (DB node_ids). parentId is a
+    // client-only React Flow field with no DB column, so it's empty after a
+    // reload — prefer nodeIds and keep parentId only as an in-session fallback.
+    const memberIds = new Set(group.nodeIds || []);
+    const groupMetrics = canvas.nodes.filter(
+      (node) => memberIds.has(node.id) || node.parentId === group.id
     );
 
     return {
