@@ -524,7 +524,10 @@ const sqlEsc = (s) => String(s).replace(/'/g, "''");
 let sql = `-- Example metric trees (SaaS / E-commerce / Retail). Owner: ${OWNER}\n-- Re-runnable: deletes prior projects with the same names (cascade) first.\nBEGIN;\n`;
 
 function buildTree(tree) {
-  const pos = groupClusteredLayout(tree);
+  // Tree (dependency) layout is the example default; frames wrap their members
+  // and overlap (translucent), which the user accepted. Auto-layout (group-aware)
+  // re-flows to Dagre on demand. Swap to groupClusteredLayout for clean grids.
+  const pos = layout(tree);
   const projectId = randomUUID();
   const idOf = new Map();
   tree.nodes.forEach((n) => idOf.set(n.key, randomUUID()));
@@ -561,7 +564,8 @@ function buildTree(tree) {
     created_by: OWNER,
   }));
 
-  const groupRows = (tree.groups || []).map((g) => {
+  const SEED_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6'];
+  const groupRows = (tree.groups || []).map((g, gi) => {
     const ps = g.keys.map((k) => pos.get(k)).filter(Boolean);
     const xs = ps.map((p) => p.x);
     const ys = ps.map((p) => p.y);
@@ -569,11 +573,12 @@ function buildTree(tree) {
     const maxX = Math.max(...xs);
     const minY = Math.min(...ys);
     const maxY = Math.max(...ys);
-    // Frame wraps the group's grid, with room above the cards for the header.
+    // Frame wraps the group's members, with room above the cards for the header.
     return {
       id: randomUUID(),
       project_id: projectId,
       name: g.name,
+      color: SEED_COLORS[gi % SEED_COLORS.length],
       node_ids: g.keys.map((k) => idOf.get(k)).filter(Boolean),
       position_x: Math.round(minX - GC.PAD),
       position_y: Math.round(minY - GC.HEADER - GC.PAD),
@@ -591,7 +596,7 @@ function buildTree(tree) {
   for (const r of rels)
     sql += `INSERT INTO public.relationships (id,project_id,source_id,target_id,type,confidence,weight,created_by) VALUES ('${r.id}','${r.project_id}','${r.source_id}','${r.target_id}','${r.type}','${r.confidence}',${r.weight},'${OWNER}');\n`;
   for (const g of groupRows)
-    sql += `INSERT INTO public.groups (id,project_id,name,node_ids,position_x,position_y,width,height,created_by) VALUES ('${g.id}','${g.project_id}','${sqlEsc(g.name)}',ARRAY[${g.node_ids.map((id) => `'${id}'`).join(',')}]::uuid[],${g.position_x},${g.position_y},${g.width},${g.height},'${OWNER}');\n`;
+    sql += `INSERT INTO public.groups (id,project_id,name,color,node_ids,position_x,position_y,width,height,created_by) VALUES ('${g.id}','${g.project_id}','${sqlEsc(g.name)}','${g.color}',ARRAY[${g.node_ids.map((id) => `'${id}'`).join(',')}]::uuid[],${g.position_x},${g.position_y},${g.width},${g.height},'${OWNER}');\n`;
 
   return { project, cards, rels, groups: groupRows };
 }

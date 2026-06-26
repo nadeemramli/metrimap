@@ -1,5 +1,10 @@
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/shared/components/ui/popover';
 import type { GroupNode as GroupNodeType } from '@/shared/types';
 import { cn } from '@/shared/utils';
 import type { NodeProps } from '@xyflow/react';
@@ -12,32 +17,39 @@ interface GroupNodeData {
   onEditGroup?: (groupId: string) => void;
   onDeleteGroup?: (groupId: string) => void;
   onToggleCollapse?: (groupId: string) => void;
+  onColorChange?: (groupId: string, color: string) => void;
   onResizeGroup?: (
     groupId: string,
     size: { width: number; height: number }
   ) => void;
 }
 
-// Translucent color palette so overlapping/adjacent frames read as distinct
-// regions. Deterministic per group name (until a user color-picker is added).
-const FRAME_PALETTE = [
-  { border: '#3b82f6', bg: 'rgba(59,130,246,0.05)', head: 'rgba(59,130,246,0.12)' },
-  { border: '#22c55e', bg: 'rgba(34,197,94,0.05)', head: 'rgba(34,197,94,0.12)' },
-  { border: '#f59e0b', bg: 'rgba(245,158,11,0.06)', head: 'rgba(245,158,11,0.14)' },
-  { border: '#a855f7', bg: 'rgba(168,85,247,0.05)', head: 'rgba(168,85,247,0.12)' },
-  { border: '#ec4899', bg: 'rgba(236,72,153,0.05)', head: 'rgba(236,72,153,0.12)' },
-  { border: '#14b8a6', bg: 'rgba(20,184,166,0.05)', head: 'rgba(20,184,166,0.12)' },
+// Preset colors for the frame color picker (also the deterministic fallback).
+const PALETTE = [
+  '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899',
+  '#14b8a6', '#ef4444', '#6366f1', '#0ea5e9', '#64748b',
 ];
-function frameColor(name: string) {
+
+function hexToRgba(hex: string, a: number): string {
+  const m = hex.replace('#', '');
+  const n = m.length === 3 ? m.split('').map((x) => x + x).join('') : m;
+  const r = parseInt(n.slice(0, 2), 16);
+  const g = parseInt(n.slice(2, 4), 16);
+  const b = parseInt(n.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function paletteFor(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return FRAME_PALETTE[h % FRAME_PALETTE.length];
+  return PALETTE[h % PALETTE.length];
 }
 
 /**
  * Figma-style frame. The header bar is the only drag handle (class
  * `group-drag-handle`, matched in convertToGroupNode), and the frame paints
  * behind the cards, so cards stay interactive while the frame is movable.
+ * Color comes from group.color (user-picked) or a deterministic palette.
  */
 export default function GroupNode({ id, data, selected }: NodeProps) {
   const {
@@ -45,12 +57,15 @@ export default function GroupNode({ id, data, selected }: NodeProps) {
     isCollapsed = false,
     onDeleteGroup,
     onToggleCollapse,
+    onColorChange,
     onResizeGroup,
   } = (data as unknown as GroupNodeData) || {};
 
   if (!group) return null;
 
-  const c = frameColor(group.name);
+  const base = group.color || paletteFor(group.name);
+  const bg = hexToRgba(base, 0.05);
+  const head = hexToRgba(base, 0.12);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -85,14 +100,14 @@ export default function GroupNode({ id, data, selected }: NodeProps) {
         style={{
           width: group.size.width,
           height: isCollapsed ? 40 : group.size.height,
-          borderColor: selected ? 'hsl(var(--primary))' : c.border,
-          backgroundColor: c.bg,
+          borderColor: selected ? 'hsl(var(--primary))' : base,
+          backgroundColor: bg,
         }}
       >
         {/* Header = the drag handle */}
         <div
           className="group-drag-handle flex cursor-grab select-none items-center justify-between gap-2 border-b border-border/40 px-3 py-1.5 backdrop-blur-sm active:cursor-grabbing"
-          style={{ backgroundColor: c.head }}
+          style={{ backgroundColor: head }}
         >
           <div className="flex min-w-0 items-center gap-1.5">
             <button
@@ -107,10 +122,7 @@ export default function GroupNode({ id, data, selected }: NodeProps) {
                 <ChevronDown className="h-3.5 w-3.5" />
               )}
             </button>
-            <Folder
-              className="h-3.5 w-3.5 shrink-0"
-              style={{ color: c.border }}
-            />
+            <Folder className="h-3.5 w-3.5 shrink-0" style={{ color: base }} />
             <span className="truncate text-sm font-semibold text-foreground">
               {group.name}
             </span>
@@ -118,15 +130,55 @@ export default function GroupNode({ id, data, selected }: NodeProps) {
               {group.nodeIds.length}
             </Badge>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDelete}
-            className="nodrag h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-destructive"
-            title="Delete group (cards are kept)"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+
+          <div className="flex shrink-0 items-center gap-0.5">
+            {/* Color picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="nodrag h-4 w-4 rounded-full border border-black/10 transition-transform hover:scale-110"
+                  style={{ backgroundColor: base }}
+                  title="Frame color"
+                />
+              </PopoverTrigger>
+              <PopoverContent
+                className="nodrag w-auto p-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="grid grid-cols-5 gap-1.5">
+                  {PALETTE.map((hex) => (
+                    <button
+                      key={hex}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onColorChange?.(id as string, hex);
+                      }}
+                      className={cn(
+                        'h-5 w-5 rounded-full border transition-transform hover:scale-110',
+                        base.toLowerCase() === hex
+                          ? 'border-foreground ring-1 ring-foreground'
+                          : 'border-black/10'
+                      )}
+                      style={{ backgroundColor: hex }}
+                      title={hex}
+                    />
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              className="nodrag h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+              title="Delete group (cards are kept)"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
 
         {/* Body — sits behind the cards */}

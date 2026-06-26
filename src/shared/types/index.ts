@@ -262,6 +262,7 @@ export interface GroupNode {
   nodeIds: string[];
   position: { x: number; y: number };
   size: { width: number; height: number };
+  color?: string;
   // React Flow subflow properties
   isCollapsed?: boolean;
   zIndex?: number;

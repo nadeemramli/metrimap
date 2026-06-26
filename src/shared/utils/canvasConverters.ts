@@ -127,7 +127,8 @@ export const convertToGroupNode = (
   onResizeGroup: (
     groupId: string,
     size: { width: number; height: number }
-  ) => void
+  ) => void,
+  onColorChange?: (groupId: string, color: string) => void
 ): Node => ({
   id: group.id,
   position: group.position,
@@ -137,6 +138,7 @@ export const convertToGroupNode = (
     onDeleteGroup,
     onToggleCollapse,
     onResizeGroup,
+    onColorChange,
   },
   type: 'groupNode',
   style: {

@@ -617,7 +617,9 @@ function CanvasPageInner() {
           void useCanvasStore.getState().deleteGroup(group.id);
         },
         stableEvents.handleToggleCollapse,
-        stableEvents.handleUpdateGroupSize
+        stableEvents.handleUpdateGroupSize,
+        (groupId: string, color: string) =>
+          void useCanvasStore.getState().updateGroup(groupId, { color })
       )
     );
 

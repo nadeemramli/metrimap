@@ -104,6 +104,7 @@ export function transformGroup(group: DBGroup): GroupNode {
     nodeIds: group.node_ids || [],
     position: { x: group.position_x, y: group.position_y },
     size: { width: group.width, height: group.height },
+    color: group.color || undefined,
     isCollapsed: false,
   };
 }

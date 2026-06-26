@@ -518,12 +518,14 @@ export async function updateGroup(
     nodeIds?: string[];
     position?: { x: number; y: number };
     size?: { width: number; height: number };
+    color?: string;
   },
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const updateData: any = {};
 
   if (updates.name !== undefined) updateData.name = updates.name;
+  if (updates.color !== undefined) updateData.color = updates.color;
   if (updates.nodeIds !== undefined) updateData.node_ids = updates.nodeIds;
   if (updates.position !== undefined) {
     updateData.position_x = updates.position.x;
