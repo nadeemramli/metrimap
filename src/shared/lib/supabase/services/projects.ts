@@ -38,6 +38,9 @@ async function fetchOwnedProjects(
     `
     )
     .eq('created_by', userId)
+    // Example/template projects live only in the homepage Showcase (read-only),
+    // never in the user's own (deletable) list.
+    .not('tags', 'cs', '{example}')
     .order('updated_at', { ascending: false });
   if (error) throw error;
   return data || [];
@@ -109,6 +112,22 @@ export async function getUserProjects(
     client
   );
   return combineAndSortProjects(owned, collaborated);
+}
+
+// Public example/template projects for the homepage Showcase (read-only).
+// Public RLS lets anyone (even signed-out) read these, so no auth needed.
+export async function getShowcaseProjects(
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase();
+  const { data, error } = await client
+    .from('projects')
+    .select(`*, metric_cards(count), relationships(count), groups(count)`)
+    .contains('tags', ['example'])
+    .eq('is_public', true)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
 }
 
 // Fetch a single project with all its data

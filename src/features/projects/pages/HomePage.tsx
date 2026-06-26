@@ -24,6 +24,7 @@ import { useProjectActions } from '@/shared/hooks/useProjectActions';
 import { useProjectFiltering } from '@/shared/hooks/useProjectFiltering2';
 import { EmptyState } from '../components/EmptyState';
 import { ProjectCard } from '../components/ProjectCard';
+import { ShowcaseSection } from '../components/ShowcaseSection';
 import { ProjectControls } from '../components/ProjectControls';
 import { ProjectTable } from '../components/ProjectTable';
 
@@ -126,6 +127,9 @@ export default function HomePage() {
 
       {/* Main Content */}
       <div className="px-8 py-8 max-w-19/20 mx-auto">
+        {/* Read-only examples showcase (can't be deleted from the UI) */}
+        <ShowcaseSection onOpenCanvas={handleOpenCanvas} />
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex items-center justify-between mb-6">
             <TabsList className="bg-gray-100 rounded-lg p-[3px] shadow-sm">
