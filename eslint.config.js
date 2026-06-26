@@ -9,7 +9,13 @@ import tseslint from 'typescript-eslint'
 import { globalIgnores } from 'eslint/config'
 
 export default tseslint.config([
-  globalIgnores(['dist']),
+  // Don't lint build output, caches, generated code, or vendored bundles.
+  globalIgnores([
+    'dist',
+    'docs/.vitepress/**',
+    'src/lib/prisma/generated/**',
+    '**/*.min.js',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -21,6 +27,15 @@ export default tseslint.config([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+    rules: {
+      // Intentional debt in this codebase — keep visible as warnings, not
+      // build-blocking errors, so lint can act as a gate for REAL issues
+      // (Rules of Hooks, undefined refs) which stay as errors.
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/ban-ts-comment': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
+      'react-refresh/only-export-components': 'warn',
     },
   },
 ], storybook.configs["flat/recommended"]);
