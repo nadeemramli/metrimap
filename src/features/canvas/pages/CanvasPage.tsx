@@ -9,6 +9,7 @@ import {
   Panel,
   ReactFlow,
   ReactFlowProvider,
+  SelectionMode,
   useReactFlow,
   type Connection,
   type NodeChange,
@@ -959,6 +960,25 @@ function CanvasPageInner() {
     [canvasNodes, nodeTitleOf, updateCanvasNode]
   );
 
+  // Sync React Flow's selection into the canvas store so grouping / the
+  // selection panel / operator panel see it. (The store's selectNodes delegates
+  // to a different store than the component reads, so set it directly here.)
+  const handleSelectionChange = useCallback(
+    ({ nodes: selNodes }: { nodes: { id: string; type?: string }[] }) => {
+      const ids = selNodes.map((n) => n.id);
+      const cur = useCanvasStore.getState().selectedNodeIds || [];
+      const a = [...ids].sort().join(',');
+      const b = [...cur].sort().join(',');
+      if (a !== b) useCanvasStore.setState({ selectedNodeIds: ids });
+      // Reflect a single selected operator in the contextual panel.
+      if (ids.length === 1) {
+        const only = selNodes[0];
+        if (only?.type === 'operatorNode') setSelectedOperatorId(only.id);
+      }
+    },
+    []
+  );
+
   const handleConnect = useCallback(
     (connection: Connection) => {
       console.log('🔗 Enhanced connection handler triggered:', connection);
@@ -1232,13 +1252,23 @@ function CanvasPageInner() {
             }}
             onConnect={handleConnect}
             onEdgesDelete={handleEdgesDelete}
-            // Enhanced navigation behavior - adjust based on active whiteboard tool
+            // Navigation: in edit mode, left-drag is a SELECTION box (marquee)
+            // and pan is on middle/right mouse or by holding Space — unless the
+            // Hand tool is active, where left-drag pans.
+            onSelectionChange={handleSelectionChange}
+            selectionOnDrag={
+              state.toolbarMode === 'edit' && state.navigationTool !== 'hand'
+            }
+            selectionMode={SelectionMode.Partial}
             panOnDrag={
-              state.toolbarMode === 'edit' ||
-              state.whiteboardTool === 'select' ||
-              state.whiteboardTool === 'hand'
-                ? [1, 2] // Edit mode, select tool, or hand tool: allow panning
-                : false // Draw mode with active drawing tool: disable React Flow panning
+              state.toolbarMode === 'edit'
+                ? state.navigationTool === 'hand'
+                  ? true // Hand tool: left-drag pans
+                  : [1, 2] // Select tool: middle/right pan; left-drag selects
+                : state.whiteboardTool === 'select' ||
+                    state.whiteboardTool === 'hand'
+                  ? [1, 2]
+                  : false // Draw mode with an active drawing tool
             }
             panOnScroll={
               state.toolbarMode === 'edit' ||
@@ -1271,8 +1301,10 @@ function CanvasPageInner() {
             maxZoom={3}
             snapToGrid={true}
             snapGrid={[15, 15]}
-            multiSelectionKeyCode={['Shift']}
-            selectionKeyCode={['Shift']}
+            // Marquee needs no modifier (selectionOnDrag); Shift adds to an
+            // existing selection / click-selects additional nodes.
+            multiSelectionKeyCode={['Shift', 'Meta', 'Control']}
+            selectionKeyCode={null}
             deleteKeyCode={['Backspace', 'Delete']}
             onMoveEnd={(_, viewport) =>
               viewportSync.syncFromReactFlow(viewport)
