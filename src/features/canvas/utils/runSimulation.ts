@@ -31,7 +31,8 @@ export interface RunResult {
  * Re-running in the same period replaces that period's point instead of stacking.
  */
 export async function runPipeline(
-  dataFlowEdges: DataFlowEdge[]
+  dataFlowEdges: DataFlowEdge[],
+  opts: { period?: string } = {}
 ): Promise<RunResult> {
   const canvasStore = useCanvasStore.getState();
   const cards: MetricCard[] = canvasStore.canvas?.nodes || [];
@@ -39,7 +40,7 @@ export async function runPipeline(
 
   const { cardValues, warnings } = await computePipeline(dataFlowEdges);
 
-  const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const period = opts.period || new Date().toISOString().slice(0, 7); // YYYY-MM
   const changes: CardChange[] = [];
   let updated = 0;
 

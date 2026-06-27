@@ -29,6 +29,7 @@ import type {
 } from '@/shared/types';
 import { MarkerType, type Edge, type Node } from '@xyflow/react';
 import type { LayoutDirection } from '@/shared/utils/autoLayout';
+import { normalizeOperatorData } from '@/features/canvas/utils/operatorMigration';
 
 // Convert MetricCard to ReactFlow Node
 export const convertToNode = (
@@ -219,11 +220,10 @@ export const convertToCanvasNode = (
     ...(canvasNode.nodeType === 'commentNode' && {
       title: canvasNode.title || 'Comment',
     }),
-    ...(canvasNode.nodeType === 'operatorNode' && {
-      label: canvasNode.data?.label || 'Operator',
-      operationType: canvasNode.data?.operationType || 'formula',
-      isActive: canvasNode.data?.isActive ?? true,
-    }),
+    // Operator: normalize legacy data (boolean→toggle, datePicker→passthrough)
+    // and the new shape (named inputs, per-type config) at read time.
+    ...(canvasNode.nodeType === 'operatorNode' &&
+      normalizeOperatorData(canvasNode.data as any)),
     ...(canvasNode.nodeType === 'sourceNode' && {
       title: canvasNode.title || 'Source',
       sourceType: canvasNode.data?.sourceType || 'warehouse',

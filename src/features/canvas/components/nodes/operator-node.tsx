@@ -1,80 +1,83 @@
-"use client";
+'use client';
 
-import { memo, useState } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Switch } from "@/shared/components/ui/switch";
-import { Calendar } from "@/shared/components/ui/calendar";
+import { memo } from 'react';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/components/ui/popover";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/shared/components/ui/card';
+import { Badge } from '@/shared/components/ui/badge';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/select";
-import {
-  Settings,
-  CalendarIcon,
+  Activity,
   Calculator,
-  ToggleLeft,
+  Filter,
   GripVertical,
-} from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/shared/utils";
+  Sigma,
+  ToggleLeft,
+} from 'lucide-react';
+import { cn } from '@/shared/utils';
+import { useOperatorPreviewStore } from '@/features/canvas/stores/useOperatorPreviewStore';
+import { normalizeOperatorData } from '@/features/canvas/utils/operatorMigration';
+import type { OperatorNodeData } from '@/features/canvas/types/operator';
 
-type OperatorNodeData = {
-  label: string;
-  operationType: "formula" | "boolean" | "datePicker";
-  isActive: boolean;
-  formula?: string;
-  booleanValue?: boolean;
-  dateValue?: string;
+const TYPE_META: Record<
+  OperatorNodeData['operationType'],
+  { icon: typeof Calculator; color: string; label: string }
+> = {
+  formula: { icon: Calculator, color: 'bg-blue-500', label: 'Formula' },
+  aggregate: { icon: Sigma, color: 'bg-indigo-500', label: 'Aggregate' },
+  gate: { icon: Filter, color: 'bg-amber-500', label: 'Gate' },
+  toggle: { icon: ToggleLeft, color: 'bg-green-500', label: 'Toggle' },
+  statistical: { icon: Activity, color: 'bg-purple-500', label: 'Statistical' },
 };
 
-const OperatorNodeInner = memo(({ data, selected }: NodeProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [localData, setLocalData] = useState((data || {}) as OperatorNodeData);
+function formatValue(v: number | undefined): string {
+  if (v === undefined || !isFinite(v)) return '—';
+  const abs = Math.abs(v);
+  if (abs >= 1000)
+    return new Intl.NumberFormat('en-US', {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(v);
+  return Number(v.toFixed(abs < 100 ? 2 : 0)).toLocaleString();
+}
 
-  const getOperationIcon = () => {
-    switch (localData.operationType) {
-      case "formula":
-        return <Calculator className="w-4 h-4" />;
-      case "boolean":
-        return <ToggleLeft className="w-4 h-4" />;
-      case "datePicker":
-        return <CalendarIcon className="w-4 h-4" />;
-      default:
-        return <Settings className="w-4 h-4" />;
-    }
-  };
+// A short expression summary for the node body, by operation type.
+function opSummary(data: OperatorNodeData): string {
+  switch (data.operationType) {
+    case 'formula':
+      return data.formula || 'x';
+    case 'aggregate':
+      return `${(data.aggregateOp || 'sum').toUpperCase()}(inputs)`;
+    case 'gate':
+      return data.gate
+        ? `pass if ${data.gate.inputKey || 'x'} ${data.gate.compare} ${data.gate.threshold}`
+        : 'gate';
+    case 'toggle':
+      return data.toggleValue ? 'on → x' : 'off → 0';
+    case 'statistical':
+      return data.statistic?.method || 'statistic';
+    default:
+      return '';
+  }
+}
 
-  const getOperationColor = () => {
-    switch (localData.operationType) {
-      case "formula":
-        return "bg-blue-500";
-      case "boolean":
-        return "bg-green-500";
-      case "datePicker":
-        return "bg-purple-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
+const OperatorNodeInner = memo(({ id, data, selected }: NodeProps) => {
+  const op = normalizeOperatorData(data as any) as OperatorNodeData;
+  const output = useOperatorPreviewStore((s) => s.operatorValues[id]);
+
+  const meta = TYPE_META[op.operationType] ?? TYPE_META.formula;
+  const Icon = meta.icon;
+  const inputs = op.inputs || [];
 
   return (
     <Card
       className={cn(
-        "min-w-[220px] bg-white dark:bg-white-300 border-2 rounded-lg shadow-lg transition-all duration-200",
-        selected && "ring-2 ring-blue-500",
-        localData.isActive ? "opacity-100" : "opacity-60"
+        'min-w-[230px] bg-white dark:bg-white-300 border-2 rounded-lg shadow-lg transition-all duration-200',
+        selected && 'ring-2 ring-blue-500',
+        op.isActive ? 'opacity-100' : 'opacity-60'
       )}
     >
       <Handle
@@ -84,109 +87,52 @@ const OperatorNodeInner = memo(({ data, selected }: NodeProps) => {
       />
 
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium">
-            {localData.label}
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm font-medium truncate">
+            {op.label || 'Operator'}
           </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="h-6 w-6 p-0"
-          >
-            <Settings className="w-3 h-3" />
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className={cn("w-2 h-2 rounded-full", getOperationColor())} />
-          <Badge variant="secondary" className="text-xs">
-            {getOperationIcon()}
-            <span className="ml-1 capitalize">{localData.operationType}</span>
+          <Badge variant="secondary" className="shrink-0 text-xs">
+            <span className={cn('mr-1 inline-block h-2 w-2 rounded-full', meta.color)} />
+            <Icon className="mr-1 h-3 w-3" />
+            {meta.label}
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
-        {isExpanded && (
-          <div className="space-y-3 mt-2">
-            <Select
-              value={localData.operationType}
-              onValueChange={(value: "formula" | "boolean" | "datePicker") =>
-                setLocalData({ ...localData, operationType: value })
-              }
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="formula">Formula</SelectItem>
-                <SelectItem value="boolean">Boolean</SelectItem>
-                <SelectItem value="datePicker">Date Picker</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {localData.operationType === "formula" && (
-              <Input
-                placeholder="Enter formula (e.g., x * 2)"
-                value={localData.formula || ""}
-                onChange={(e) =>
-                  setLocalData({ ...localData, formula: e.target.value })
-                }
-                className="h-8 text-xs"
-              />
-            )}
-
-            {localData.operationType === "boolean" && (
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={localData.booleanValue || false}
-                  onCheckedChange={(checked) =>
-                    setLocalData({ ...localData, booleanValue: checked })
-                  }
-                />
-                <span className="text-xs">
-                  {localData.booleanValue ? "True" : "False"}
-                </span>
-              </div>
-            )}
-
-            {localData.operationType === "datePicker" && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="h-8 text-xs justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-3 w-3" />
-                    {localData.dateValue
-                      ? format(new Date(localData.dateValue), "PPP")
-                      : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={
-                      localData.dateValue
-                        ? new Date(localData.dateValue)
-                        : undefined
-                    }
-                    onSelect={(date) =>
-                      setLocalData({
-                        ...localData,
-                        dateValue: date?.toISOString() || "",
-                      })
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
+      <CardContent className="pt-0 space-y-2">
+        {/* Named input chips */}
+        {inputs.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {inputs.map((inp) => (
+              <span
+                key={inp.key}
+                className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                title={inp.label}
+              >
+                <span className="font-semibold text-foreground">{inp.key}</span>
+                <span className="max-w-[90px] truncate">{inp.label}</span>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className="text-[10px] text-muted-foreground/70 italic">
+            No inputs — connect a card or source
           </div>
         )}
 
-        <div className="mt-2 text-xs text-gray-500">
-          Status: {localData.isActive ? "Active" : "Inactive"}
+        {/* Operation summary */}
+        <div className="rounded bg-muted/50 px-2 py-1 font-mono text-[11px] text-foreground/80 truncate">
+          {opSummary(op)}
+        </div>
+
+        {/* Live output */}
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Output
+          </span>
+          <span className="text-sm font-bold tabular-nums">
+            {formatValue(output)}
+          </span>
         </div>
       </CardContent>
 
@@ -195,7 +141,8 @@ const OperatorNodeInner = memo(({ data, selected }: NodeProps) => {
         position={Position.Right}
         className="w-3 h-3 !bg-gray-400"
       />
-      {/* Drag Section */}
+
+      {/* Drag handle */}
       <div className="p-2 border-t border-border/30 bg-muted/20">
         <div className="drag-handle__custom flex justify-center cursor-grab active:cursor-grabbing">
           <div className="flex items-center gap-1 px-3 py-1.5 bg-muted/80 backdrop-blur-sm rounded-full text-xs text-muted-foreground hover:bg-muted/90 transition-colors border border-border/50 shadow-sm">
@@ -209,5 +156,5 @@ const OperatorNodeInner = memo(({ data, selected }: NodeProps) => {
   );
 });
 
-OperatorNodeInner.displayName = "OperatorNode";
+OperatorNodeInner.displayName = 'OperatorNode';
 export default OperatorNodeInner;

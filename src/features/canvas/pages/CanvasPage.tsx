@@ -32,7 +32,15 @@ import {
   mergeProjectSettings,
 } from '@/shared/lib/supabase/services/projects';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
-import { runSimulation } from '@/features/canvas/utils/runSimulation';
+import { runPipeline } from '@/features/canvas/utils/runSimulation';
+import { normalizeOperatorData } from '@/features/canvas/utils/operatorMigration';
+import {
+  addInput,
+  deriveInputsFromEdges,
+  removeInputBySource,
+} from '@/features/canvas/utils/operatorInputs';
+import { useLivePreview } from '@/features/canvas/hooks/useLivePreview';
+import { useOperatorPreviewStore } from '@/features/canvas/stores/useOperatorPreviewStore';
 import { toast } from 'sonner';
 import { type LayoutDirection } from '@/shared/utils/autoLayout';
 import { elkLayout } from '@/shared/utils/elkLayout';
@@ -89,8 +97,18 @@ function CanvasPageInner() {
 
   // Operator/tools control panel is hidden by default; toggled from the right.
   const [showOperatorPanel, setShowOperatorPanel] = useState(false);
-  // Run Simulation in-flight flag (Phase C).
+  // Run pipeline in-flight flag + last-run summary + selected operator + period.
   const [isSimulating, setIsSimulating] = useState(false);
+  const [selectedOperatorId, setSelectedOperatorId] = useState<string | null>(
+    null
+  );
+  const [lastRun, setLastRun] = useState<{
+    changes: any[];
+    warnings: string[];
+  } | null>(null);
+  const [globalPeriod, setGlobalPeriod] = useState(() =>
+    new Date().toISOString().slice(0, 7)
+  );
   // Groups side list + focus mode (grouping redesign).
   const [showGroupsPanel, setShowGroupsPanel] = useState(false);
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
@@ -738,6 +756,33 @@ function CanvasPageInner() {
     events.handleSwitchToRelationship,
   ]);
 
+  // Live preview: recompute the operator pipeline (no writes) whenever operator
+  // config, card latest-values, or data-flow edges change. A primitive digest is
+  // the effect trigger so display reads can't feed back into compute (loop-safe).
+  const previewDigest = useMemo(() => {
+    const ops = (canvasNodes || [])
+      .filter((n) => n.nodeType === 'operatorNode')
+      .map((n) => `${n.id}:${JSON.stringify(n.data)}`)
+      .join('|');
+    const cards = (canvas?.nodes || [])
+      .map(
+        (c) =>
+          `${c.id}:${
+            Array.isArray(c.data) && c.data.length
+              ? c.data[c.data.length - 1].value
+              : ''
+          }`
+      )
+      .join('|');
+    const e = (state.extraEdges || []).map((x: any) => x.id).join(',');
+    return `${ops}#${cards}#${e}`;
+  }, [canvasNodes, canvas?.nodes, state.extraEdges]);
+
+  useLivePreview(state.extraEdges || [], previewDigest);
+  const previewOperatorValues = useOperatorPreviewStore(
+    (s) => s.operatorValues
+  );
+
   // Memoized filter options
   const availableFilterOptions = useMemo(() => {
     return getAvailableFilterOptions(canvas?.nodes || [], canvas?.edges || []);
@@ -874,6 +919,46 @@ function CanvasPageInner() {
   );
 
   // Enhanced edge connection handler
+  // Phase B: resolve a node's display title (card title / source title / operator
+  // label) for default input labels.
+  const nodeTitleOf = useCallback(
+    (nodeId: string): string => {
+      const card = (canvas?.nodes || []).find((n) => n.id === nodeId);
+      if (card) return card.title || 'Card';
+      const cn = canvasNodes.find((n) => n.id === nodeId);
+      if (cn)
+        return (
+          (cn.data as any)?.label ||
+          (cn.data as any)?.title ||
+          cn.title ||
+          'Node'
+        );
+      return nodeId.slice(0, 8);
+    },
+    [canvas?.nodes, canvasNodes]
+  );
+
+  // Phase B: when a data-flow edge lands on an operator, bind the source as the
+  // operator's next named input (a, b, c…), defaulting the label to the source's
+  // title. Persisted on the operator's data.
+  const bindOperatorInput = useCallback(
+    (operatorId: string, sourceId: string, edgesForDerive: any[]) => {
+      const op = canvasNodes.find((n) => n.id === operatorId);
+      if (!op || op.nodeType !== 'operatorNode') return;
+      const data = normalizeOperatorData(op.data as any);
+      const baseInputs =
+        data.inputs && data.inputs.length
+          ? data.inputs
+          : deriveInputsFromEdges(edgesForDerive, operatorId, nodeTitleOf);
+      const nextInputs = addInput(baseInputs, sourceId, nodeTitleOf(sourceId));
+      if (nextInputs === baseInputs && data.inputs) return; // already bound
+      void updateCanvasNode(operatorId, {
+        data: { ...data, inputs: nextInputs },
+      });
+    },
+    [canvasNodes, nodeTitleOf, updateCanvasNode]
+  );
+
   const handleConnect = useCallback(
     (connection: Connection) => {
       console.log('🔗 Enhanced connection handler triggered:', connection);
@@ -905,9 +990,12 @@ function CanvasPageInner() {
           }
         },
         onCreateDataFlow: (edgeData) => {
-          const nextEdges = [...(state.extraEdges || []), edgeData];
+          const prevEdges = state.extraEdges || [];
+          const nextEdges = [...prevEdges, edgeData];
           state.setExtraEdges(nextEdges);
           persistDataFlowEdges(nextEdges);
+          // If this edge feeds an operator, bind the source as a named input.
+          bindOperatorInput(edgeData.target, edgeData.source, prevEdges);
           console.log('✅ Data flow edge created + persisted');
         },
         onCreateReference: (edgeData) => {
@@ -924,7 +1012,7 @@ function CanvasPageInner() {
         alert(`Connection failed: ${result.error}`);
       }
     },
-    [nodes, canvas?.edges, state, persistDataFlowEdges]
+    [nodes, canvas?.edges, state, persistDataFlowEdges, bindOperatorInput]
   );
 
   // Phase B: when data-flow / reference edges are deleted from the canvas, drop
@@ -934,14 +1022,28 @@ function CanvasPageInner() {
     (deleted: Array<{ id: string }>) => {
       const current = state.extraEdges || [];
       const deletedIds = new Set(deleted.map((e) => e.id));
+      const removed = current.filter((e: any) => deletedIds.has(e.id));
       const next = current.filter((e: any) => !deletedIds.has(e.id));
       if (next.length !== current.length) {
         state.setExtraEdges(next);
         persistDataFlowEdges(next);
+        // Drop the operator input bindings for any removed inbound-to-operator
+        // edges (don't re-key the rest — that would break formulas).
+        for (const e of removed) {
+          const op = canvasNodes.find((n) => n.id === e.target);
+          if (!op || op.nodeType !== 'operatorNode') continue;
+          const data = normalizeOperatorData(op.data as any);
+          const nextInputs = removeInputBySource(data.inputs || [], e.source);
+          if (nextInputs !== (data.inputs || [])) {
+            void updateCanvasNode(op.id, {
+              data: { ...data, inputs: nextInputs },
+            });
+          }
+        }
         console.log('✅ Data-flow edge(s) deleted + persisted');
       }
     },
-    [state, persistDataFlowEdges]
+    [state, persistDataFlowEdges, canvasNodes, updateCanvasNode]
   );
 
   // Apply generic node changes for extra nodes (selection/resize etc.)
@@ -979,6 +1081,53 @@ function CanvasPageInner() {
     [state, canvasMachine]
   );
 
+  // ── Operator tooling handlers (Phase D/F) ──
+  const handleUpdateOperator = useCallback(
+    (opId: string, partial: Record<string, any>) => {
+      const op = canvasNodes.find((n) => n.id === opId);
+      if (!op) return;
+      const data = normalizeOperatorData(op.data as any);
+      void updateCanvasNode(opId, { data: { ...data, ...partial } });
+    },
+    [canvasNodes, updateCanvasNode]
+  );
+
+  const handleBulkUpdateOperators = useCallback(
+    (partial: Record<string, any>) => {
+      canvasNodes
+        .filter((n) => n.nodeType === 'operatorNode')
+        .forEach((n) => {
+          const data = normalizeOperatorData(n.data as any);
+          void updateCanvasNode(n.id, { data: { ...data, ...partial } });
+        });
+    },
+    [canvasNodes, updateCanvasNode]
+  );
+
+  const handleRunPipeline = useCallback(async () => {
+    if (isSimulating) return;
+    setIsSimulating(true);
+    try {
+      const dfEdges = (state.extraEdges || []).filter(
+        (e: any) => e?.source && e?.target
+      );
+      const { updated, warnings, changes } = await runPipeline(dfEdges, {
+        period: globalPeriod,
+      });
+      setLastRun({ changes, warnings });
+      if (updated > 0)
+        toast.success(`${updated} card${updated === 1 ? '' : 's'} updated`);
+      else toast.info('No cards updated — wire an operator to an output card.');
+      if (warnings.length) toast.warning(warnings[0]);
+    } catch (err) {
+      toast.error(
+        `Run failed: ${err instanceof Error ? err.message : 'unknown error'}`
+      );
+    } finally {
+      setIsSimulating(false);
+    }
+  }, [isSimulating, state.extraEdges, globalPeriod]);
+
   const handleAddCustomNode = useCallback(
     async (
       type:
@@ -1001,6 +1150,8 @@ function CanvasPageInner() {
         nodeData.label = 'Operator';
         nodeData.operationType = 'formula';
         nodeData.isActive = true;
+        nodeData.formula = 'x';
+        nodeData.inputs = [];
       }
 
       if (type === 'commentNode') {
@@ -1067,6 +1218,10 @@ function CanvasPageInner() {
             onNodesChange={handleNodesChange}
             onNodeDrag={handleNodeDrag}
             onNodeDragStop={handleNodeDragStop}
+            onNodeClick={(_, node) => {
+              // Selecting an operator drives the contextual Operator tab.
+              if (node.type === 'operatorNode') setSelectedOperatorId(node.id);
+            }}
             onNodeDoubleClick={(_, node) => {
               console.log('🔧 Node double-clicked:', node.id);
               events.handleOpenSettingsSheet(node.id);
@@ -1173,70 +1328,23 @@ function CanvasPageInner() {
             {/* Operative control panel - top-left - edit mode + toggled on */}
             {state.toolbarMode === 'edit' && showOperatorPanel && (
               <Panel position="top-left">
-                <div className="w-80 max-h-[70vh] overflow-auto bg-background/90 backdrop-blur border rounded-lg shadow-lg">
-                  <ControlPanel
-                    operatorNodes={
-                      nodes.filter((n) => n.type === 'operatorNode') as any
-                    }
-                    onUpdateNode={(nodeId, updates) => {
-                      // Persist to the real operator node (useCanvasNodesStore),
-                      // not the dead state.extraNodes array.
-                      const target = canvasNodes.find((n) => n.id === nodeId);
-                      if (target) {
-                        updateCanvasNode(nodeId, {
-                          data: { ...(target.data || {}), ...updates },
-                        });
-                      }
-                    }}
-                    onBulkUpdate={(updates) => {
-                      // Apply to every real operator node and persist.
-                      canvasNodes
-                        .filter((n) => n.nodeType === 'operatorNode')
-                        .forEach((n) =>
-                          updateCanvasNode(n.id, {
-                            data: { ...(n.data || {}), ...updates },
-                          })
-                        );
-                    }}
-                    onSimulate={async () => {
-                      if (isSimulating) return;
-                      setIsSimulating(true);
-                      try {
-                        // Feed the operator graph the persisted data-flow edges.
-                        const dfEdges = (state.extraEdges || []).filter(
-                          (e: any) => e?.source && e?.target
-                        );
-                        const { updated, warnings } =
-                          await runSimulation(dfEdges);
-                        if (updated > 0) {
-                          toast.success(
-                            `Simulation complete — ${updated} card${
-                              updated === 1 ? '' : 's'
-                            } updated`
-                          );
-                        } else {
-                          toast.info(
-                            'Simulation ran but no cards were updated. Wire an operator to an output card.'
-                          );
-                        }
-                        if (warnings.length > 0) {
-                          console.warn('⚠️ Simulation warnings:', warnings);
-                          toast.warning(warnings[0]);
-                        }
-                      } catch (err) {
-                        console.error('❌ Simulation failed:', err);
-                        toast.error(
-                          `Simulation failed: ${
-                            err instanceof Error ? err.message : 'unknown error'
-                          }`
-                        );
-                      } finally {
-                        setIsSimulating(false);
-                      }
-                    }}
-                    isSimulating={isSimulating}
-                  />
-                </div>
+                <ControlPanel
+                  operators={
+                    (canvasNodes || []).filter(
+                      (n) => n.nodeType === 'operatorNode'
+                    ) as any
+                  }
+                  selectedOperatorId={selectedOperatorId}
+                  onSelectOperator={setSelectedOperatorId}
+                  previewOperatorValues={previewOperatorValues}
+                  onUpdateOperator={handleUpdateOperator}
+                  onBulkUpdate={handleBulkUpdateOperators}
+                  onRun={handleRunPipeline}
+                  isRunning={isSimulating}
+                  lastRun={lastRun}
+                  globalPeriod={globalPeriod}
+                  onChangePeriod={setGlobalPeriod}
+                />
               </Panel>
             )}
 
