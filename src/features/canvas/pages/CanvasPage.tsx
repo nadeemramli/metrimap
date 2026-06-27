@@ -42,6 +42,8 @@ import {
 } from '@/features/canvas/utils/operatorInputs';
 import { useLivePreview } from '@/features/canvas/hooks/useLivePreview';
 import { useOperatorPreviewStore } from '@/features/canvas/stores/useOperatorPreviewStore';
+import { useCanvasActions } from '@/features/canvas/hooks/useCanvasActions';
+import { useCanvasHistoryStore } from '@/features/canvas/stores/useCanvasHistoryStore';
 import { toast } from 'sonner';
 import { type LayoutDirection } from '@/shared/utils/autoLayout';
 import { elkLayout } from '@/shared/utils/elkLayout';
@@ -784,6 +786,47 @@ function CanvasPageInner() {
     (s) => s.operatorValues
   );
 
+  // Clipboard / duplicate / delete + undo.
+  const canvasActions = useCanvasActions(
+    canvasId,
+    useAppStore.getState().user?.id || 'anonymous'
+  );
+
+  // Reset undo history when switching canvases.
+  useEffect(() => {
+    useCanvasHistoryStore.getState().clear();
+  }, [canvasId]);
+
+  // Keyboard: Ctrl/Cmd + C / V / D / Z (ignored while typing in a field).
+  useEffect(() => {
+    const isEditable = (el: EventTarget | null) => {
+      const n = el as HTMLElement | null;
+      if (!n) return false;
+      return (
+        n.tagName === 'INPUT' ||
+        n.tagName === 'TEXTAREA' ||
+        n.tagName === 'SELECT' ||
+        n.isContentEditable
+      );
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (isEditable(e.target)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'c') canvasActions.copySelection();
+      else if (k === 'v') canvasActions.paste();
+      else if (k === 'd') {
+        e.preventDefault();
+        canvasActions.duplicateSelection();
+      } else if (k === 'z') {
+        e.preventDefault();
+        canvasActions.undo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canvasActions]);
+
   // Memoized filter options
   const availableFilterOptions = useMemo(() => {
     return getAvailableFilterOptions(canvas?.nodes || [], canvas?.edges || []);
@@ -1180,7 +1223,7 @@ function CanvasPageInner() {
 
       try {
         // UNIFIED: Create the canvas node in the database and store
-        await createCanvasNode({
+        const created = await createCanvasNode({
           projectId: currentCanvas.id,
           nodeType: type,
           title: type === 'commentNode' ? 'Comment' : type.replace('Node', ''),
@@ -1190,6 +1233,15 @@ function CanvasPageInner() {
         });
 
         console.log(`✅ Created ${type} node successfully`);
+        // Record an undo (Ctrl+Z removes the just-added node).
+        if (created?.id) {
+          const newId = created.id;
+          useCanvasHistoryStore.getState().push({
+            label: `Add ${type}`,
+            undo: async () =>
+              useCanvasNodesStore.getState().deleteNode(newId),
+          });
+        }
         // Clear any temporary nodes since the persisted node was created successfully
         state.setExtraNodes([]);
       } catch (error) {
@@ -1251,6 +1303,7 @@ function CanvasPageInner() {
               events.handleOpenRelationshipSheet(edge.id);
             }}
             onConnect={handleConnect}
+            onNodesDelete={() => void canvasActions.deleteSelection()}
             onEdgesDelete={handleEdgesDelete}
             // Navigation: in edit mode, left-drag is a SELECTION box (marquee)
             // and pan is on middle/right mouse or by holding Space — unless the
@@ -1433,8 +1486,8 @@ function CanvasPageInner() {
                   selectedGroupIds={state.selectedGroupIds}
                   onGroupNodes={events.handleGroupSelectedNodes}
                   onUngroupNodes={events.handleUngroupSelectedGroups}
-                  onDeleteNodes={events.handleDeleteSelectedItems}
-                  onDuplicateNodes={events.handleDuplicateSelectedItems}
+                  onDeleteNodes={() => void canvasActions.deleteSelection()}
+                  onDuplicateNodes={canvasActions.duplicateSelection}
                   onOpenSettings={events.handleOpenSelectedSettings}
                 />
               </Panel>
