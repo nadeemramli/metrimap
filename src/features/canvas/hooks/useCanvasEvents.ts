@@ -1,6 +1,8 @@
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
 import { useAppStore } from '@/shared/stores/useAppStore';
+import { getViewportCenterPosition } from '@/features/canvas/utils/viewportCenter';
+import { useReactFlow } from '@xyflow/react';
 import { toast } from 'sonner';
 
 interface UseCanvasEventsOptions {
@@ -19,6 +21,8 @@ export function useCanvasEvents({
   state,
   onApplyLayout,
 }: UseCanvasEventsOptions) {
+  const { screenToFlowPosition } = useReactFlow();
+
   const handlePaneClick = () => {
     // Clear any transient UI or selections if neededs
   };
@@ -81,7 +85,10 @@ export function useCanvasEvents({
       createdAt: now,
       updatedAt: now,
       createdBy: user?.id || 'unknown',
-      position: { x: 250 + Math.random() * 200, y: 150 + Math.random() * 200 },
+      position: getViewportCenterPosition(
+        screenToFlowPosition,
+        state.reactFlowRef?.current
+      ),
       isVisible: true,
       isExpanded: false,
       comments: [],

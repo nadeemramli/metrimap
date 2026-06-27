@@ -16,7 +16,8 @@ import type {
   MetricNode,
   ValueNode,
 } from '@/shared/types/nodeTypes';
-import { ControlButton } from '@xyflow/react';
+import { getViewportCenterPosition } from '@/features/canvas/utils/viewportCenter';
+import { ControlButton, useReactFlow } from '@xyflow/react';
 import { Plus } from 'lucide-react';
 
 interface AddNodeButtonProps {
@@ -73,6 +74,7 @@ export default function AddNodeButton({
 }: AddNodeButtonProps) {
   const { createNewNode } = useNewNodeTypesStore();
   const canvas = useCanvasStore((state) => state.canvas);
+  const { screenToFlowPosition } = useReactFlow();
 
   // Handle creating new PRD-based node types
   const handleAddNewNodeType = async (
@@ -84,10 +86,9 @@ export default function AddNodeButton({
       return;
     }
 
-    const basePosition = position || {
-      x: Math.random() * 400,
-      y: Math.random() * 400,
-    };
+    // Drop the node at the center of the user's current viewport.
+    const basePosition =
+      position || getViewportCenterPosition(screenToFlowPosition);
 
     let nodeData: Partial<AnyNode>;
 

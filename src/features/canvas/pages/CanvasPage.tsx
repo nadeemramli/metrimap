@@ -15,7 +15,7 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Layers, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -84,6 +84,7 @@ import {
   type WhiteboardTool,
 } from '@/features/canvas/components/whiteboard';
 import { generateUUID } from '@/shared/utils/validation';
+import { getViewportCenterPosition } from '@/features/canvas/utils/viewportCenter';
 
 // Auto-save and realtime hooks
 import { useAutoSave } from '@/shared/hooks/useAutoSave';
@@ -120,6 +121,9 @@ function CanvasPageInner() {
   const [routedEdgePoints, setRoutedEdgePoints] = useState<
     Record<string, { x: number; y: number }[]>
   >({});
+  // Guards the evidence → settings save so it only runs after this canvas's
+  // evidence has been hydrated (never persists stale localStorage evidence).
+  const evidenceHydratedFor = useRef<string | null>(null);
 
   // Initialize canvas stores and data
   const {
@@ -289,6 +293,15 @@ function CanvasPageInner() {
             Array.isArray(persistedDataFlowEdges) ? persistedDataFlowEdges : []
           );
 
+          // Evidence persistence: hydrate this project's evidence from
+          // projects.settings.evidence (jsonb) into the evidence store, scoping
+          // it to the current project. Gates the debounced save below.
+          const persistedEvidence = (projectData as any).settings?.evidence;
+          useEvidenceStore.setState({
+            evidence: Array.isArray(persistedEvidence) ? persistedEvidence : [],
+          });
+          evidenceHydratedFor.current = canvasId;
+
           // Load canvas nodes for this project
           try {
             await loadCanvasNodes(canvasId);
@@ -355,8 +368,14 @@ function CanvasPageInner() {
   ]);
 
   // React Flow hooks
-  const { getViewport, getNodes, getEdges, setNodes, fitView } =
-    useReactFlow() as any;
+  const {
+    getViewport,
+    getNodes,
+    getEdges,
+    setNodes,
+    fitView,
+    screenToFlowPosition,
+  } = useReactFlow() as any;
 
   // Auto-layout handler
   const handleApplyLayout = useCallback(
@@ -797,6 +816,24 @@ function CanvasPageInner() {
     useCanvasHistoryStore.getState().clear();
   }, [canvasId]);
 
+  // Evidence persistence: debounce-save this project's evidence to
+  // projects.settings.evidence. Gated on hydration so it never clobbers the
+  // stored evidence with stale (pre-load) localStorage state.
+  useEffect(() => {
+    if (!canvasId || evidenceHydratedFor.current !== canvasId) return;
+    const t = setTimeout(() => {
+      const client = supabaseClient || getClientForEnvironment();
+      void mergeProjectSettings(
+        canvasId,
+        { evidence: evidenceList },
+        client
+      ).catch((err) =>
+        console.error('❌ Failed to persist evidence:', err)
+      );
+    }, 600);
+    return () => clearTimeout(t);
+  }, [evidenceList, canvasId, supabaseClient]);
+
   // Keyboard: Ctrl/Cmd + C / V / D / Z (ignored while typing in a field).
   useEffect(() => {
     const isEditable = (el: EventTarget | null) => {
@@ -842,6 +879,54 @@ function CanvasPageInner() {
   // Mode change is now handled in the header toggle
 
   // Keep nodes in sync while dragging (controlled ReactFlow)
+  // Set a node's position via the right store for its type (used by move undo).
+  const applyNodePosition = useCallback(
+    (type: string, id: string, position: { x: number; y: number }) => {
+      if (type === 'metricCard')
+        useCanvasStore.getState().updateNodePosition(id, position);
+      else if (type === 'evidenceNode')
+        useEvidenceStore.getState().updateEvidencePosition(id, position);
+      else if (
+        [
+          'sourceNode',
+          'chartNode',
+          'operatorNode',
+          'commentNode',
+          'whiteboardNode',
+        ].includes(type)
+      )
+        useCanvasNodesStore.getState().updateNodePosition(id, position);
+      else if (
+        ['valueNode', 'actionNode', 'hypothesisNode', 'metricNode'].includes(
+          type
+        )
+      )
+        useNewNodeTypesStore.getState().updateNewNode(id, { position });
+    },
+    []
+  );
+
+  // Snapshot the drag group's start positions so a drag becomes an undo entry.
+  const dragStart = useRef<
+    Record<string, { type: string; position: { x: number; y: number } }>
+  >({});
+  const handleNodeDragStart = useCallback(
+    (_: any, node: any) => {
+      const sel = new Set(useCanvasStore.getState().selectedNodeIds || []);
+      const snap: Record<
+        string,
+        { type: string; position: { x: number; y: number } }
+      > = {};
+      for (const n of getNodes()) {
+        if (n.id === node.id || sel.has(n.id)) {
+          snap[n.id] = { type: n.type as string, position: { ...n.position } };
+        }
+      }
+      dragStart.current = snap;
+    },
+    [getNodes]
+  );
+
   const handleNodeDrag = useCallback(
     (_: any, node: any) => {
       if (node?.id && node?.position) {
@@ -938,10 +1023,49 @@ function CanvasPageInner() {
           state.setExtraNodes(next);
         }
       }
+
+      // Record the move (group-aware) for undo/redo.
+      const starts = dragStart.current;
+      const ids = Object.keys(starts);
+      if (ids.length) {
+        const ends: Record<string, { x: number; y: number }> = {};
+        for (const n of getNodes())
+          if (starts[n.id]) ends[n.id] = { ...n.position };
+        const moved = ids
+          .filter((id) => {
+            const s = starts[id].position;
+            const e = ends[id];
+            return (
+              e &&
+              (Math.round(s.x) !== Math.round(e.x) ||
+                Math.round(s.y) !== Math.round(e.y))
+            );
+          })
+          .map((id) => ({
+            id,
+            type: starts[id].type,
+            from: starts[id].position,
+            to: ends[id],
+          }));
+        if (moved.length) {
+          useCanvasHistoryStore.getState().push({
+            label: `Move ${moved.length}`,
+            undo: async () => {
+              for (const m of moved) applyNodePosition(m.type, m.id, m.from);
+            },
+            redo: async () => {
+              for (const m of moved) applyNodePosition(m.type, m.id, m.to);
+            },
+          });
+        }
+        dragStart.current = {};
+      }
     },
     [
       state,
       canvas?.edges,
+      getNodes,
+      applyNodePosition,
       updateEvidencePosition,
       updateCanvasNodePosition,
       updateNewNode,
@@ -1050,7 +1174,31 @@ function CanvasPageInner() {
         existingEdges,
         onCreateRelationship: async (relationshipData) => {
           try {
+            const idsOf = () =>
+              new Set(
+                (useCanvasStore.getState().canvas?.edges || []).map((e) => e.id)
+              );
+            const before = idsOf();
             await useCanvasStore.getState().createEdge(relationshipData);
+            const created = (
+              useCanvasStore.getState().canvas?.edges || []
+            ).find((e) => !before.has(e.id));
+            if (created) {
+              let currentId = created.id;
+              useCanvasHistoryStore.getState().push({
+                label: 'Add relationship',
+                undo: async () =>
+                  useCanvasStore.getState().persistEdgeDelete(currentId),
+                redo: async () => {
+                  const b2 = idsOf();
+                  await useCanvasStore.getState().createEdge(relationshipData);
+                  const c2 = (
+                    useCanvasStore.getState().canvas?.edges || []
+                  ).find((e) => !b2.has(e.id));
+                  if (c2) currentId = c2.id;
+                },
+              });
+            }
             console.log('✅ Relationship edge created successfully');
           } catch (error) {
             console.error('❌ Failed to create relationship edge:', error);
@@ -1109,8 +1257,45 @@ function CanvasPageInner() {
         }
         console.log('✅ Data-flow edge(s) deleted + persisted');
       }
+
+      // Relationship edges (canvas.edges): persist the delete and record an undo
+      // that recreates them. (Previously the Delete key didn't remove these.)
+      const rels = (canvas?.edges || []).filter((e) => deletedIds.has(e.id));
+      if (rels.length) {
+        for (const r of rels)
+          void useCanvasStore.getState().persistEdgeDelete(r.id);
+        let recreated: string[] = [];
+        useCanvasHistoryStore.getState().push({
+          label: `Delete ${rels.length} relationship(s)`,
+          undo: async () => {
+            recreated = [];
+            for (const r of rels) {
+              const before = new Set(
+                (useCanvasStore.getState().canvas?.edges || []).map((e) => e.id)
+              );
+              const { id, createdAt, updatedAt, ...rest } = r as any;
+              await useCanvasStore.getState().createEdge(rest);
+              const c = (
+                useCanvasStore.getState().canvas?.edges || []
+              ).find((e) => !before.has(e.id));
+              if (c) recreated.push(c.id);
+            }
+          },
+          redo: async () => {
+            for (const id of recreated)
+              await useCanvasStore.getState().persistEdgeDelete(id);
+            recreated = [];
+          },
+        });
+      }
     },
-    [state, persistDataFlowEdges, canvasNodes, updateCanvasNode]
+    [
+      state,
+      persistDataFlowEdges,
+      canvasNodes,
+      updateCanvasNode,
+      canvas?.edges,
+    ]
   );
 
   // Apply generic node changes for extra nodes (selection/resize etc.)
@@ -1202,7 +1387,8 @@ function CanvasPageInner() {
         | 'chartNode'
         | 'operatorNode'
         | 'whiteboardNode'
-        | 'commentNode'
+        | 'commentNode',
+      position?: { x: number; y: number }
     ) => {
       const currentCanvas = useCanvasStore.getState().canvas;
       if (!currentCanvas?.id) {
@@ -1210,7 +1396,13 @@ function CanvasPageInner() {
         return;
       }
 
-      const basePosition = { x: 100, y: 100 };
+      // Drop the node at the center of what the user is currently viewing.
+      const basePosition =
+        position ??
+        getViewportCenterPosition(
+          screenToFlowPosition,
+          state.reactFlowRef.current
+        );
       const nodeData: any = {};
 
       if (type === 'operatorNode') {
@@ -1284,7 +1476,7 @@ function CanvasPageInner() {
         }, 5000); // Increased timeout to give more time for debugging
       }
     },
-    [createCanvasNode, state]
+    [createCanvasNode, state, screenToFlowPosition]
   );
 
   return (
@@ -1307,6 +1499,7 @@ function CanvasPageInner() {
             }}
             onPaneClick={events.handlePaneClick}
             onNodesChange={handleNodesChange}
+            onNodeDragStart={handleNodeDragStart}
             onNodeDrag={handleNodeDrag}
             onNodeDragStop={handleNodeDragStop}
             onNodeClick={(_, node) => {
