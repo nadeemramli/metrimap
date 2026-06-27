@@ -1,19 +1,25 @@
-// Canvas clipboard + duplicate/delete actions with undo recording. Supports
-// metric cards (useCanvasStore) and canvas nodes — operator/source/chart/comment/
-// whiteboard (useCanvasNodesStore) — both of which have persisted create/delete.
-// Each create/delete pushes an inverse onto useCanvasHistoryStore so Ctrl+Z works.
-// (Evidence + PRD nodes are a follow-up — their create paths are local/multi-step.)
+// Canvas clipboard + duplicate/delete actions with undo/redo. Covers:
+//  - metric cards (useCanvasStore) — this also covers PRD value/action/hypothesis/
+//    metric nodes, which persist AS metric_cards.
+//  - canvas nodes — operator/source/chart/comment/whiteboard (useCanvasNodesStore).
+//  - evidence (useEvidenceStore).
+// Each create/delete pushes an undo+redo pair onto useCanvasHistoryStore.
 
 import { useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
-import type { CanvasNode, MetricCard } from '@/shared/types';
+import type { CanvasNode, EvidenceItem, MetricCard } from '@/shared/types';
 import { useCanvasStore } from '@/features/canvas/stores/useCanvasStore';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
+import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasHistoryStore } from '@/features/canvas/stores/useCanvasHistoryStore';
+import { generateUUID } from '@/shared/utils/validation';
 
+type Family = 'card' | 'canvasNode' | 'evidence';
 type ClipItem =
   | { family: 'card'; node: MetricCard }
-  | { family: 'canvasNode'; node: CanvasNode };
+  | { family: 'canvasNode'; node: CanvasNode }
+  | { family: 'evidence'; node: EvidenceItem };
+type Ref = { family: Family; id: string };
 
 const OFFSET = 48;
 
@@ -29,16 +35,20 @@ export function useCanvasActions(
     if (ids.size === 0) return [];
     const cards = useCanvasStore.getState().canvas?.nodes || [];
     const cnodes = useCanvasNodesStore.getState().canvasNodes || [];
+    const evidence = useEvidenceStore.getState().evidence || [];
     const items: ClipItem[] = [];
     for (const c of cards) if (ids.has(c.id)) items.push({ family: 'card', node: c });
     for (const n of cnodes)
       if (ids.has(n.id)) items.push({ family: 'canvasNode', node: n });
+    for (const e of evidence)
+      if (ids.has(e.id) && e.position)
+        items.push({ family: 'evidence', node: e });
     return items;
   }, []);
 
-  // Create one copy at a position offset; returns the new node id (or null).
+  // Create one copy at a position offset; returns the new node ref (or null).
   const createCopy = useCallback(
-    async (item: ClipItem, d: number): Promise<{ family: ClipItem['family']; id: string } | null> => {
+    async (item: ClipItem, d: number): Promise<Ref | null> => {
       if (item.family === 'card') {
         const before = new Set(
           (useCanvasStore.getState().canvas?.nodes || []).map((n) => n.id)
@@ -56,6 +66,16 @@ export function useCanvasActions(
         );
         return created ? { family: 'card', id: created.id } : null;
       }
+      if (item.family === 'evidence') {
+        const newId = generateUUID();
+        const pos = item.node.position || { x: 100, y: 100 };
+        useEvidenceStore.getState().addEvidence({
+          ...item.node,
+          id: newId,
+          position: { x: pos.x + d, y: pos.y + d },
+        } as EvidenceItem);
+        return { family: 'evidence', id: newId };
+      }
       const created = await useCanvasNodesStore.getState().createNode({
         projectId: projectId || (item.node as any).projectId,
         nodeType: item.node.nodeType,
@@ -72,31 +92,37 @@ export function useCanvasActions(
     [projectId, createdBy]
   );
 
-  const deleteOne = useCallback(
-    async (family: ClipItem['family'], id: string) => {
-      if (family === 'card') await useCanvasStore.getState().persistNodeDelete(id);
-      else await useCanvasNodesStore.getState().deleteNode(id);
-    },
-    []
-  );
+  const deleteOne = useCallback(async (family: Family, id: string) => {
+    if (family === 'card') await useCanvasStore.getState().persistNodeDelete(id);
+    else if (family === 'evidence')
+      useEvidenceStore.getState().deleteEvidence(id);
+    else await useCanvasNodesStore.getState().deleteNode(id);
+  }, []);
 
-  // Create copies of `items` and record an undo that deletes them.
+  // Create copies of `items` and record an undo (delete) + redo (recreate).
   const pasteItems = useCallback(
     async (items: ClipItem[], gen: number) => {
       if (!items.length) return;
-      const created: { family: ClipItem['family']; id: string }[] = [];
-      for (const item of items) {
-        const c = await createCopy(item, OFFSET * gen);
-        if (c) created.push(c);
-      }
-      if (!created.length) return;
+      const recreate = async (): Promise<Ref[]> => {
+        const made: Ref[] = [];
+        for (const item of items) {
+          const c = await createCopy(item, OFFSET * gen);
+          if (c) made.push(c);
+        }
+        return made;
+      };
+      let current = await recreate();
+      if (!current.length) return;
       useCanvasHistoryStore.getState().push({
-        label: `Add ${created.length}`,
+        label: `Add ${current.length}`,
         undo: async () => {
-          for (const { family, id } of created) await deleteOne(family, id);
+          for (const r of current) await deleteOne(r.family, r.id);
+        },
+        redo: async () => {
+          current = await recreate();
         },
       });
-      toast.success(`Pasted ${created.length} item${created.length === 1 ? '' : 's'}`);
+      toast.success(`Pasted ${current.length} item${current.length === 1 ? '' : 's'}`);
     },
     [createCopy, deleteOne]
   );
@@ -125,11 +151,23 @@ export function useCanvasActions(
     const items = getSelection();
     if (!items.length) return;
     for (const item of items) await deleteOne(item.family, item.node.id);
-    // Undo = recreate at the original position (new ids).
+    let current: Ref[] = []; // alive copies (none after delete)
+    const recreate = async (): Promise<Ref[]> => {
+      const made: Ref[] = [];
+      for (const item of items) {
+        const c = await createCopy(item, 0);
+        if (c) made.push(c);
+      }
+      return made;
+    };
     useCanvasHistoryStore.getState().push({
       label: `Delete ${items.length}`,
       undo: async () => {
-        for (const item of items) await createCopy(item, 0);
+        current = await recreate();
+      },
+      redo: async () => {
+        for (const r of current) await deleteOne(r.family, r.id);
+        current = [];
       },
     });
     useCanvasStore.setState({ selectedNodeIds: [] });
@@ -139,9 +177,19 @@ export function useCanvasActions(
   const undo = useCallback(() => {
     void useCanvasHistoryStore.getState().undo();
   }, []);
+  const redo = useCallback(() => {
+    void useCanvasHistoryStore.getState().redo();
+  }, []);
 
   return useMemo(
-    () => ({ copySelection, paste, duplicateSelection, deleteSelection, undo }),
-    [copySelection, paste, duplicateSelection, deleteSelection, undo]
+    () => ({
+      copySelection,
+      paste,
+      duplicateSelection,
+      deleteSelection,
+      undo,
+      redo,
+    }),
+    [copySelection, paste, duplicateSelection, deleteSelection, undo, redo]
   );
 }

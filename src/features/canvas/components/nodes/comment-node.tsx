@@ -41,6 +41,7 @@ export default function CommentNode({ id, data }: NodeProps) {
   const [comments, setComments] = React.useState<CommentRow[]>([]);
   const [content, setContent] = React.useState('');
   const [isSending, setIsSending] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(true);
 
   React.useEffect(() => {
     let mounted = true;
@@ -116,12 +117,36 @@ export default function CommentNode({ id, data }: NodeProps) {
     }
   };
 
+  // Collapsed: render only the pin marker. The pin is NOT marked `nodrag` so a
+  // stationary click toggles open (below the React Flow drag threshold) while a
+  // drag still moves the node — important since the pin is the only grabbable
+  // element when collapsed.
+  if (!isOpen) {
+    return (
+      <div className="relative select-none cursor-move">
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="rounded-full bg-rose-500 text-white w-8 h-8 flex items-center justify-center shadow cursor-pointer"
+          title="Open comments"
+        >
+          <MapPin className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="relative select-none cursor-move">
-      {/* Pin marker */}
-      <div className="absolute -left-6 -top-6 rounded-full bg-rose-500 text-white w-8 h-8 flex items-center justify-center shadow">
+      {/* Pin marker — click to collapse */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(false)}
+        className="absolute -left-6 -top-6 rounded-full bg-rose-500 text-white w-8 h-8 flex items-center justify-center shadow cursor-pointer"
+        title="Collapse comments"
+      >
         <MapPin className="w-4 h-4" />
-      </div>
+      </button>
 
       <Card className="w-[280px] p-3 shadow-md border rounded-xl bg-white/95">
         <div className="flex items-center justify-between mb-2">

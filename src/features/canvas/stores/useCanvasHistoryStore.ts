@@ -1,37 +1,62 @@
-// Lightweight undo stack for canvas actions. Each entry knows how to reverse
-// itself (an inverse closure). Scoped to add / paste / duplicate / delete — the
-// "I just did that wrong, take it back" case. Not persisted; cleared per canvas.
+// Undo/redo stacks for canvas actions. Each entry knows how to reverse itself
+// (undo) and re-apply itself (redo). Scoped to add / paste / duplicate / delete.
+// Not persisted; cleared per canvas.
 
 import { create } from 'zustand';
 
 export interface HistoryEntry {
   label: string;
   undo: () => void | Promise<void>;
+  redo: () => void | Promise<void>;
 }
 
 interface CanvasHistoryState {
-  stack: HistoryEntry[];
+  undoStack: HistoryEntry[];
+  redoStack: HistoryEntry[];
   push: (entry: HistoryEntry) => void;
   undo: () => Promise<void>;
+  redo: () => Promise<void>;
   clear: () => void;
 }
 
 const MAX = 50;
 
 export const useCanvasHistoryStore = create<CanvasHistoryState>((set, get) => ({
-  stack: [],
+  undoStack: [],
+  redoStack: [],
+  // A fresh action invalidates the redo stack.
   push: (entry) =>
-    set((s) => ({ stack: [...s.stack, entry].slice(-MAX) })),
+    set((s) => ({
+      undoStack: [...s.undoStack, entry].slice(-MAX),
+      redoStack: [],
+    })),
   undo: async () => {
-    const { stack } = get();
-    const entry = stack[stack.length - 1];
+    const { undoStack } = get();
+    const entry = undoStack[undoStack.length - 1];
     if (!entry) return;
-    set({ stack: stack.slice(0, -1) });
+    set((s) => ({
+      undoStack: s.undoStack.slice(0, -1),
+      redoStack: [...s.redoStack, entry].slice(-MAX),
+    }));
     try {
       await entry.undo();
     } catch (err) {
       console.error('❌ Undo failed:', err);
     }
   },
-  clear: () => set({ stack: [] }),
+  redo: async () => {
+    const { redoStack } = get();
+    const entry = redoStack[redoStack.length - 1];
+    if (!entry) return;
+    set((s) => ({
+      redoStack: s.redoStack.slice(0, -1),
+      undoStack: [...s.undoStack, entry].slice(-MAX),
+    }));
+    try {
+      await entry.redo();
+    } catch (err) {
+      console.error('❌ Redo failed:', err);
+    }
+  },
+  clear: () => set({ undoStack: [], redoStack: [] }),
 }));

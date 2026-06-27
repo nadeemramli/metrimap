@@ -136,6 +136,8 @@ function CanvasPageInner() {
   const updateEvidencePosition = useEvidenceStore(
     (s) => s.updateEvidencePosition
   );
+  const updateEvidence = useEvidenceStore((s) => s.updateEvidence);
+  const deleteEvidence = useEvidenceStore((s) => s.deleteEvidence);
 
   // Canvas nodes store for extra nodes (comment, source, chart, operator, whiteboard)
   const {
@@ -650,11 +652,7 @@ function CanvasPageInner() {
     }));
 
     const convertedEvidenceNodes = evidenceNodes.map((evidence) =>
-      convertToEvidenceNode(
-        evidence,
-        () => console.log('Update evidence:', evidence.id),
-        () => console.log('Delete evidence:', evidence.id)
-      )
+      convertToEvidenceNode(evidence, updateEvidence, deleteEvidence)
     );
 
     // Grouping redesign: the on-canvas group frame is gone. Group data still
@@ -693,6 +691,8 @@ function CanvasPageInner() {
     canvas?.groups,
     focusedGroupId,
     evidenceList,
+    updateEvidence,
+    deleteEvidence,
     canvasNodes, // Unified canvas nodes from Zustand store
     newNodes, // New node types from Zustand store
     temporaryExtraNodes, // Only temporary fallback nodes
@@ -820,7 +820,11 @@ function CanvasPageInner() {
         canvasActions.duplicateSelection();
       } else if (k === 'z') {
         e.preventDefault();
-        canvasActions.undo();
+        if (e.shiftKey) canvasActions.redo();
+        else canvasActions.undo();
+      } else if (k === 'y') {
+        e.preventDefault();
+        canvasActions.redo();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -1233,13 +1237,28 @@ function CanvasPageInner() {
         });
 
         console.log(`✅ Created ${type} node successfully`);
-        // Record an undo (Ctrl+Z removes the just-added node).
+        // Record undo (Ctrl+Z removes it) + redo (re-creates it).
         if (created?.id) {
-          const newId = created.id;
+          let currentId = created.id;
+          const payload = {
+            projectId: currentCanvas.id,
+            nodeType: type,
+            title:
+              type === 'commentNode' ? 'Comment' : type.replace('Node', ''),
+            position: basePosition,
+            data: nodeData,
+            createdBy: useAppStore.getState().user?.id || 'anonymous',
+          };
           useCanvasHistoryStore.getState().push({
             label: `Add ${type}`,
             undo: async () =>
-              useCanvasNodesStore.getState().deleteNode(newId),
+              useCanvasNodesStore.getState().deleteNode(currentId),
+            redo: async () => {
+              const re = await useCanvasNodesStore
+                .getState()
+                .createNode(payload as any);
+              if (re?.id) currentId = re.id;
+            },
           });
         }
         // Clear any temporary nodes since the persisted node was created successfully
