@@ -79,11 +79,11 @@ export async function elkLayout(
       'elk.edgeRouting': 'ORTHOGONAL',
       // Spacing: keep ranks tall (it's a tree) and give edges roomy channels so
       // parallel lanes read clearly rather than crowding each other.
-      'elk.layered.spacing.nodeNodeBetweenLayers': '200',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '175',
       'elk.spacing.nodeNode': '100',
-      'elk.spacing.edgeEdge': '40',
+      'elk.spacing.edgeEdge': '80',
       'elk.spacing.edgeNode': '56',
-      'elk.layered.spacing.edgeEdgeBetweenLayers': '40',
+      'elk.layered.spacing.edgeEdgeBetweenLayers': '80',
       'elk.layered.spacing.edgeNodeBetweenLayers': '48',
       // Balanced, centered tree shape; respect existing order for stability.
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
