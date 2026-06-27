@@ -54,6 +54,13 @@ import {
   getTypeColor,
   relationshipTypeOptions,
 } from './constants';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
+import { InfoHint } from '@/shared/components/common/InfoHint';
 import { useRelationshipEvidence, useRelationshipTags } from './hooks';
 
 interface RelationshipSheetProps {
@@ -556,35 +563,52 @@ export default function RelationshipSheet({
               <div className="space-y-6">
                 {/* Relationship Type */}
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
                     Relationship Type
+                    <InfoHint
+                      side="right"
+                      content="How this metric relates to its target. Components (Deterministic, Compositional) are true by definition; influences (Probabilistic, Causal) are empirical levers. Hover a type for details."
+                    />
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {relationshipTypeOptions.map((type) => {
-                      const Icon = type.icon;
-                      return (
-                        <button
-                          key={type.value}
-                          onClick={() => handleFieldChange('type', type.value)}
-                          className={`p-3 rounded-lg border-2 text-left transition-all ${
-                            formData.type === type.value
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Icon className="w-4 h-4" />
-                            <span className="font-medium text-sm">
-                              {type.label}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            {type.description}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <TooltipProvider delayDuration={150}>
+                    <div className="grid grid-cols-2 gap-3">
+                      {relationshipTypeOptions.map((type) => {
+                        const Icon = type.icon;
+                        return (
+                          <Tooltip key={type.value}>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() =>
+                                  handleFieldChange('type', type.value)
+                                }
+                                className={`p-3 rounded-lg border-2 text-left transition-all ${
+                                  formData.type === type.value
+                                    ? 'border-blue-500 bg-blue-50'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Icon className="w-4 h-4" />
+                                  <span className="font-medium text-sm">
+                                    {type.label}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {type.description}
+                                </p>
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="top"
+                              className="max-w-xs text-xs leading-relaxed"
+                            >
+                              {type.tooltip}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  </TooltipProvider>
                 </div>
 
                 {/* Confidence & Strength */}

@@ -15,12 +15,13 @@ import {
   Copy,
   Share,
   Tag,
-  ArrowRight,
-  TrendingUp,
-  Zap,
   Link2,
   GitBranch,
 } from 'lucide-react';
+import {
+  getRelationshipTypeMeta,
+  getRelationshipWeightLabel,
+} from '@/features/canvas/constants/relationshipTypeMeta';
 
 interface EnhancedEdgeButtonProps {
   // Position
@@ -56,49 +57,18 @@ interface EnhancedEdgeButtonProps {
 // Get configuration for different edge types
 function getEdgeConfig(edgeType: string, relationshipType?: string, weight?: number) {
   switch (edgeType) {
-    case 'relationshipEdge':
-      switch (relationshipType) {
-        case 'Deterministic':
-          return {
-            icon: ArrowRight,
-            color: 'text-gray-700',
-            bgColor: 'bg-blue-50',
-            borderColor: 'border-blue-300',
-            hoverBg: 'hover:bg-blue-100',
-            label: weight ? `${weight}` : '1.0',
-            description: 'Deterministic relationship',
-          };
-        case 'Probabilistic':
-          return {
-            icon: TrendingUp,
-            color: 'text-orange-700',
-            bgColor: 'bg-orange-50',
-            borderColor: 'border-orange-300',
-            hoverBg: 'hover:bg-orange-100',
-            label: weight ? `${weight}` : '0.0',
-            description: 'Probabilistic relationship',
-          };
-        case 'Causal':
-          return {
-            icon: Zap,
-            color: 'text-purple-700',
-            bgColor: 'bg-purple-50',
-            borderColor: 'border-purple-300',
-            hoverBg: 'hover:bg-purple-100',
-            label: weight ? `${weight}` : '0.0',
-            description: 'Causal relationship',
-          };
-        default:
-          return {
-            icon: Link2,
-            color: 'text-gray-700',
-            bgColor: 'bg-gray-50',
-            borderColor: 'border-gray-300',
-            hoverBg: 'hover:bg-gray-100',
-            label: 'REL',
-            description: 'Relationship',
-          };
-      }
+    case 'relationshipEdge': {
+      const meta = getRelationshipTypeMeta(relationshipType);
+      return {
+        icon: meta.icon,
+        color: meta.textColor,
+        bgColor: meta.bgColor,
+        borderColor: meta.borderColor,
+        hoverBg: meta.hoverBg,
+        label: getRelationshipWeightLabel(relationshipType, weight),
+        description: `${meta.label} relationship`,
+      };
+    }
     case 'dataFlowEdge':
       return {
         icon: GitBranch,

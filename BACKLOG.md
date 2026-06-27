@@ -7,6 +7,8 @@ _Generated 2026-06-26 from a multi-agent codebase audit (39 items: 9 P0, 18 P1, 
 > Note: **RLS hardening** (Clerk `auth.uid()` → JWT `sub` migration across `comment_threads`, `comments`, `comment_mentions`, `notifications`, `canvas_nodes`) and **build warnings** (type-only imports, chunk size, Storybook addons) are partially tracked by separate in-flight work. They are listed here for completeness but may already be moving.
 >
 > **Feature plans** live under `docs/backlog/` — e.g. [operator-as-control / data-flow simulation](docs/backlog/operator-control-feature.md).
+>
+> **Product-value plans (drafted 2026-06-27, methodology-aligned — see [`docs/reference/metric-tree-methodology.md`](docs/reference/metric-tree-methodology.md)):** [orphan auto-group + focus](docs/backlog/orphan-auto-group-focus.md) · [data source architecture](docs/backlog/data-source-architecture.md) · [RCA + drift engine](docs/backlog/rca-drift-engine.md) · [accountability (typed owner)](docs/backlog/accountability-typed-owner.md) · [governance lenses (parked)](docs/backlog/governance-lenses.md). These are DRAFTS for discussion, not scheduled work.
 
 ## Status snapshot (re-audited 2026-06-27)
 

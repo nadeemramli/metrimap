@@ -22,21 +22,16 @@ import {
   getSmoothStepPath,
   useReactFlow,
 } from '@xyflow/react';
-import {
-  ArrowRight,
-  Eye,
-  Layers,
-  MoreHorizontal,
-  Network,
-  Settings,
-  Trash2,
-  TrendingUp,
-  Zap,
-} from 'lucide-react';
+import { Eye, MoreHorizontal, Settings, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import EnhancedEdgeButton, {
   useEdgeActions,
 } from './shared/EnhancedEdgeButton';
+import {
+  getRelationshipStroke,
+  getRelationshipTypeMeta,
+  getRelationshipWeightLabel,
+} from '@/features/canvas/constants/relationshipTypeMeta';
 
 interface DynamicEdgeData {
   relationship: Relationship;
@@ -80,75 +75,20 @@ function roundedOrthogonalPath(
   return d;
 }
 
-// Relationship type styling based on PRD specifications
+// Relationship type styling — sourced from the canonical metadata map so the
+// edge, the edge button, and the relationship panel never disagree.
 const getRelationshipTypeConfig = (type: RelationshipType, weight?: number) => {
-  const getColorByWeight = (weight?: number) => {
-    if (weight === undefined || weight === 0) return '#6b7280'; // Gray for no correlation
-    return weight > 0 ? '#16a34a' : '#dc2626'; // Green for positive, red for negative
+  const meta = getRelationshipTypeMeta(type);
+  return {
+    icon: meta.icon,
+    color: meta.textColor,
+    stroke: getRelationshipStroke(type, weight),
+    label: meta.label,
+    description: meta.description,
+    lineStyle: meta.lineStyle,
+    buttonValue: getRelationshipWeightLabel(type, weight),
+    showButton: meta.showWeightButton,
   };
-
-  // Check if relationship type needs numeric button - TODO: Use when implementing dynamic button logic
-  // const needsNumericButton = (type: RelationshipType) => {
-  //   return ["Deterministic", "Probabilistic", "Causal"].includes(type);
-  // };
-
-  switch (type) {
-    case 'Deterministic':
-      return {
-        icon: ArrowRight,
-        color: 'text-gray-600',
-        stroke: '#6b7280', // Gray base color
-        label: 'Deterministic',
-        description: 'Formulaic relationship',
-        lineStyle: 'smoothstep', // Rigid/formulaic
-        buttonValue: weight ? `${weight}` : '1.0',
-        showButton: true,
-      };
-    case 'Probabilistic':
-      return {
-        icon: TrendingUp,
-        color: 'text-gray-600',
-        stroke: getColorByWeight(weight),
-        label: 'Probabilistic',
-        description: 'Statistical correlation',
-        lineStyle: 'dotted',
-        buttonValue: weight ? `${weight}` : '0.0',
-        showButton: true,
-      };
-    case 'Causal':
-      return {
-        icon: Zap,
-        color: 'text-gray-600',
-        stroke: getColorByWeight(weight),
-        label: 'Causal',
-        description: 'Proven causal influence',
-        lineStyle: 'solid',
-        buttonValue: weight ? `${weight}` : '0.0',
-        showButton: true,
-      };
-    case 'Compositional':
-      return {
-        icon: Layers,
-        color: 'text-gray-600',
-        stroke: '#6b7280', // Gray base color
-        label: 'Compositional',
-        description: 'Part-of relationship',
-        lineStyle: 'dotted-smoothstep', // Hierarchical with dots
-        buttonValue: weight ? `${weight}` : '1.0',
-        showButton: false, // No numeric value needed
-      };
-    default:
-      return {
-        icon: Network,
-        color: 'text-gray-600',
-        stroke: '#6b7280',
-        label: 'Unknown',
-        description: 'Undefined relationship',
-        lineStyle: 'solid',
-        buttonValue: '0.0',
-        showButton: false,
-      };
-  }
 };
 
 // Confidence level styling - affects button appearance, not line style

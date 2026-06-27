@@ -1,7 +1,11 @@
 import { memo } from 'react';
 import { getSmoothStepPath, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
-import { ArrowRight, TrendingUp, Zap, BarChart3 } from 'lucide-react';
 import type { RelationshipType } from '@/shared/types';
+import {
+  getRelationshipStroke,
+  getRelationshipTypeMeta,
+  getRelationshipWeightLabel,
+} from '@/features/canvas/constants/relationshipTypeMeta';
 
 interface ErasableDynamicEdgeData {
   relationship: any;
@@ -17,70 +21,19 @@ interface ErasableDynamicEdgeProps extends EdgeProps {
   data: ErasableDynamicEdgeData;
 }
 
-// Relationship type styling based on PRD specifications
+// Relationship type styling — sourced from the canonical metadata map.
 const getRelationshipTypeConfig = (type: RelationshipType, weight?: number) => {
-  const getColorByWeight = (weight?: number) => {
-    if (weight === undefined || weight === 0) return "#6b7280"; // Gray for no correlation
-    return weight > 0 ? "#16a34a" : "#dc2626"; // Green for positive, red for negative
+  const meta = getRelationshipTypeMeta(type);
+  return {
+    icon: meta.icon,
+    color: meta.textColor,
+    stroke: getRelationshipStroke(type, weight),
+    label: meta.label,
+    description: meta.description,
+    lineStyle: meta.lineStyle,
+    buttonValue: getRelationshipWeightLabel(type, weight),
+    showButton: meta.showWeightButton,
   };
-
-  switch (type) {
-    case "Deterministic":
-      return {
-        icon: ArrowRight,
-        color: "text-gray-600",
-        stroke: "#6b7280",
-        label: "Deterministic",
-        description: "Formulaic relationship",
-        lineStyle: "smoothstep",
-        buttonValue: weight ? `${weight}` : "1.0",
-        showButton: true,
-      };
-    case "Probabilistic":
-      return {
-        icon: TrendingUp,
-        color: "text-gray-600",
-        stroke: getColorByWeight(weight),
-        label: "Probabilistic",
-        description: "Statistical correlation",
-        lineStyle: "dotted",
-        buttonValue: weight ? `${weight}` : "0.0",
-        showButton: true,
-      };
-    case "Causal":
-      return {
-        icon: Zap,
-        color: "text-gray-600",
-        stroke: getColorByWeight(weight),
-        label: "Causal",
-        description: "Cause and effect",
-        lineStyle: "smoothstep",
-        buttonValue: weight ? `${weight}` : "0.0",
-        showButton: true,
-      };
-    case "Compositional":
-      return {
-        icon: BarChart3,
-        color: "text-gray-600",
-        stroke: "#6b7280",
-        label: "Compositional",
-        description: "Part of whole",
-        lineStyle: "straight",
-        buttonValue: "1.0",
-        showButton: false,
-      };
-    default:
-      return {
-        icon: ArrowRight,
-        color: "text-gray-600",
-        stroke: "#6b7280",
-        label: "Unknown",
-        description: "Unknown relationship",
-        lineStyle: "smoothstep",
-        buttonValue: "1.0",
-        showButton: false,
-      };
-  }
 };
 
 const ErasableDynamicEdge = memo(({

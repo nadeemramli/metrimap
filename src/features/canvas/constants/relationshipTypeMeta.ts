@@ -1,0 +1,183 @@
+/**
+ * Canonical metadata for the four relationship types.
+ *
+ * SINGLE SOURCE OF TRUTH — every place that renders a relationship's icon,
+ * label, color, stroke, or help text must read from here. Previously this
+ * mapping was duplicated across DynamicEdge / ErasableDynamicEdge /
+ * EnhancedEdgeButton / the relationship panel, and the copies drifted (e.g.
+ * the panel showed `Zap` for Deterministic while the edge used `Zap` for
+ * Causal). Keep it here and only here.
+ *
+ * The `tooltip` copy is kept in sync with docs/reference/metric-tree-methodology.md
+ * (components vs. influences). It powers the in-app `(!)` InfoHint.
+ */
+import { ArrowRight, Layers, Network, TrendingUp, Zap } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import type { RelationshipType } from '@/shared/types';
+
+export type RelationshipLayer = 'component' | 'influence';
+
+export interface RelationshipTypeMeta {
+  value: RelationshipType;
+  label: string;
+  icon: LucideIcon;
+  /** One-line summary (used as title attr / chip subtitle). */
+  description: string;
+  /** Long-form help shown in the `(!)` tooltip. Methodology-aligned. */
+  tooltip: string;
+  /** Which methodology layer this type belongs to. */
+  layer: RelationshipLayer;
+  /** Tailwind text color for the icon. */
+  textColor: string;
+  /** Chip styling (EnhancedEdgeButton). */
+  bgColor: string;
+  borderColor: string;
+  hoverBg: string;
+  /** Base stroke when weight does not drive the color. */
+  baseStroke: string;
+  /** If true, stroke color is derived from the weight's sign. */
+  strokeByWeight: boolean;
+  /** xyflow path style hint used by DynamicEdge. */
+  lineStyle: 'smoothstep' | 'dotted' | 'solid' | 'dotted-smoothstep';
+  /** Whether the mid-edge numeric weight button is shown. */
+  showWeightButton: boolean;
+  /** Default button label when weight is undefined. */
+  defaultWeightLabel: string;
+}
+
+const GRAY = '#6b7280';
+
+export const RELATIONSHIP_TYPE_META: Record<
+  RelationshipType,
+  RelationshipTypeMeta
+> = {
+  Deterministic: {
+    value: 'Deterministic',
+    label: 'Deterministic',
+    icon: ArrowRight,
+    description: 'Formulaic, exact — true by definition',
+    tooltip:
+      'A component relationship: a mathematical identity that holds by definition (e.g. Revenue = Customers × ASP). Use it for the structural skeleton of the tree where the link is exact and always true.',
+    layer: 'component',
+    textColor: 'text-gray-700',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-300',
+    hoverBg: 'hover:bg-blue-100',
+    baseStroke: GRAY,
+    strokeByWeight: false,
+    lineStyle: 'smoothstep',
+    showWeightButton: true,
+    defaultWeightLabel: '1.0',
+  },
+  Probabilistic: {
+    value: 'Probabilistic',
+    label: 'Probabilistic',
+    icon: TrendingUp,
+    description: 'Statistical correlation — observed, not guaranteed',
+    tooltip:
+      'An influence relationship backed by a statistical correlation rather than a definition. The link is empirical and may change over time. Weight encodes the strength/sign of the correlation.',
+    layer: 'influence',
+    textColor: 'text-orange-700',
+    bgColor: 'bg-orange-50',
+    borderColor: 'border-orange-300',
+    hoverBg: 'hover:bg-orange-100',
+    baseStroke: GRAY,
+    strokeByWeight: true,
+    lineStyle: 'dotted',
+    showWeightButton: true,
+    defaultWeightLabel: '0.0',
+  },
+  Causal: {
+    value: 'Causal',
+    label: 'Causal',
+    icon: Zap,
+    description: 'Proven causal influence — a validated lever',
+    tooltip:
+      'An influence relationship promoted to causal: a validated lever (e.g. via experiment) where moving the input is shown to move the output. These are the levers operators pull.',
+    layer: 'influence',
+    textColor: 'text-purple-700',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-300',
+    hoverBg: 'hover:bg-purple-100',
+    baseStroke: GRAY,
+    strokeByWeight: true,
+    lineStyle: 'solid',
+    showWeightButton: true,
+    defaultWeightLabel: '0.0',
+  },
+  Compositional: {
+    value: 'Compositional',
+    label: 'Compositional',
+    icon: Layers,
+    description: 'Part-of / hierarchical decomposition',
+    tooltip:
+      'A component relationship expressing part-of / hierarchy: this metric composes its parent (a breakdown rather than an arithmetic identity). Structural, so no weight is needed.',
+    layer: 'component',
+    textColor: 'text-gray-700',
+    bgColor: 'bg-gray-50',
+    borderColor: 'border-gray-300',
+    hoverBg: 'hover:bg-gray-100',
+    baseStroke: GRAY,
+    strokeByWeight: false,
+    lineStyle: 'dotted-smoothstep',
+    showWeightButton: false,
+    defaultWeightLabel: '1.0',
+  },
+};
+
+/** Fallback used when a relationship has an unknown/empty type. */
+export const UNKNOWN_RELATIONSHIP_META: RelationshipTypeMeta = {
+  value: 'Deterministic',
+  label: 'Unknown',
+  icon: Network,
+  description: 'Undefined relationship',
+  tooltip: 'This relationship has no recognized type.',
+  layer: 'component',
+  textColor: 'text-gray-600',
+  bgColor: 'bg-gray-50',
+  borderColor: 'border-gray-300',
+  hoverBg: 'hover:bg-gray-100',
+  baseStroke: GRAY,
+  strokeByWeight: false,
+  lineStyle: 'solid',
+  showWeightButton: false,
+  defaultWeightLabel: '1.0',
+};
+
+/** Ordered list for pickers / legends. */
+export const RELATIONSHIP_TYPE_LIST: RelationshipTypeMeta[] = [
+  RELATIONSHIP_TYPE_META.Deterministic,
+  RELATIONSHIP_TYPE_META.Probabilistic,
+  RELATIONSHIP_TYPE_META.Causal,
+  RELATIONSHIP_TYPE_META.Compositional,
+];
+
+export function getRelationshipTypeMeta(
+  type: RelationshipType | string | undefined
+): RelationshipTypeMeta {
+  if (type && type in RELATIONSHIP_TYPE_META) {
+    return RELATIONSHIP_TYPE_META[type as RelationshipType];
+  }
+  return UNKNOWN_RELATIONSHIP_META;
+}
+
+/** Resolve the stroke color for an edge given its type + weight. */
+export function getRelationshipStroke(
+  type: RelationshipType | string | undefined,
+  weight?: number
+): string {
+  const meta = getRelationshipTypeMeta(type);
+  if (!meta.strokeByWeight) return meta.baseStroke;
+  if (weight === undefined || weight === 0) return GRAY;
+  return weight > 0 ? '#16a34a' : '#dc2626';
+}
+
+/** Resolve the mid-edge weight button label. */
+export function getRelationshipWeightLabel(
+  type: RelationshipType | string | undefined,
+  weight?: number
+): string {
+  const meta = getRelationshipTypeMeta(type);
+  // Truthy check matches prior edge behavior (weight 0 falls back to default).
+  return weight ? `${weight}` : meta.defaultWeightLabel;
+}

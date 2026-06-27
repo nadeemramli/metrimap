@@ -4,49 +4,27 @@
  */
 
 import type { RelationshipType } from '@/shared/types';
+import { BookOpen, FileText, FlaskConical, Globe, Users } from 'lucide-react';
 import {
-  BarChart3,
-  BookOpen,
-  FileText,
-  FlaskConical,
-  Globe,
-  Layers,
-  TrendingUp,
-  Users,
-  Zap,
-} from 'lucide-react';
+  getRelationshipTypeMeta,
+  RELATIONSHIP_TYPE_LIST,
+} from '@/features/canvas/constants/relationshipTypeMeta';
 
+// Derived from the canonical relationship metadata so icons/labels/help never
+// drift from what the canvas edges render. `tooltip` powers the (!) InfoHint.
 export const relationshipTypeOptions: Array<{
   value: RelationshipType;
   label: string;
   description: string;
+  tooltip: string;
   icon: any;
-}> = [
-  {
-    value: 'Deterministic',
-    label: 'Deterministic',
-    description: 'Direct causal relationship with predictable outcomes',
-    icon: Zap,
-  },
-  {
-    value: 'Probabilistic',
-    label: 'Probabilistic',
-    description: 'Statistical correlation with probabilistic outcomes',
-    icon: TrendingUp,
-  },
-  {
-    value: 'Causal',
-    label: 'Causal',
-    description: 'Proven causal influence through experimentation',
-    icon: BarChart3,
-  },
-  {
-    value: 'Compositional',
-    label: 'Compositional',
-    description: 'Part-of or hierarchical relationship',
-    icon: Layers,
-  },
-];
+}> = RELATIONSHIP_TYPE_LIST.map((m) => ({
+  value: m.value,
+  label: m.label,
+  description: m.description,
+  tooltip: m.tooltip,
+  icon: m.icon,
+}));
 
 export const evidenceTypeOptions = [
   {
@@ -129,8 +107,7 @@ export function getTypeColor(type: string): string {
 
 // Helper function to get relationship type icon
 export function getRelationshipTypeIcon(type: RelationshipType) {
-  const option = relationshipTypeOptions.find((opt) => opt.value === type);
-  return option?.icon || Zap;
+  return getRelationshipTypeMeta(type).icon;
 }
 
 // Helper function to get evidence type icon
