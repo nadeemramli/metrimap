@@ -10,6 +10,8 @@ Guidance for AI coding agents (Claude Code, Cursor, Codex, Devin, Copilot, etc.)
 
 **Metrimap** (`metric-mapping`) is a visual-first web app for building, managing, and analyzing metric trees and business-architecture maps. Users place **cards** (metrics, business processes, work/actions) on an infinite **canvas** and connect them with typed **relationships** (deterministic, probabilistic, causal, compositional). It includes an evidence repository, dashboards, source management, formula/correlation computation, and rich text/whiteboard editing.
 
+> **Product north star & methodology (read before proposing product features).** The app exists to help users **build metric trees and govern their business value chain**. The methodology we draw inspiration from (Levers Labs / Abe Gong "metric trees") is captured in **[`docs/reference/metric-tree-methodology.md`](docs/reference/metric-tree-methodology.md)**. Important: that doc is the *principle*, **not our spec** — Metrimap has its own deliberate approach and diverges where noted in the doc's "Our approach" section. Do **not** auto-generate tasks/features from the methodology; align with the product owner first. Prioritize end-to-end **value pipelines** (build the tree → diagnose drivers → govern/act) over isolated infrastructure items.
+
 ## Tech stack
 
 - **Framework:** React 19 + TypeScript (~5.8), built with Vite 7 (`@vitejs/plugin-react-swc`)

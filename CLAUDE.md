@@ -6,6 +6,7 @@ The cross-tool project guide (architecture, stack, commands, conventions, Supaba
 
 ## Claude-specific notes
 
+- **Product methodology:** the metric-tree principle the app draws from lives in `docs/reference/metric-tree-methodology.md`. It's the *principle*, not our spec — Metrimap has its own approach. Don't auto-generate features from it; discuss with the owner first and prioritize end-to-end **value pipelines**.
 - Root `README.md` is **not** the project readme (it's the upstream Supabase CLI readme by mistake). For project context use `docs/index.md`, the PRD in `docs/prd/`, and `@AGENTS.md`.
 - Quick commands: `npm run dev` (port 3000), `npm run build` (type-check + build), `npm run lint`, `npm run test`, `npm run test:rls`. Use `npx supabase` for the CLI.
 - After non-trivial changes, run `npm run type-check` and `npm run lint`; run `npm run test` for logic changes.
