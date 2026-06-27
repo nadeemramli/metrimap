@@ -45,6 +45,9 @@ export default defineConfig({
           if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
           if (id.includes("mathjs") || id.includes("simple-statistics")) return "vendor-math";
           if (id.includes("@automerge")) return "vendor-automerge";
+          // elkjs is large (~1.5MB) and only used on-demand for auto-layout;
+          // give it its own chunk so the dynamic import stays lazy.
+          if (id.includes("elkjs")) return "vendor-elk";
           return "vendor";
         }
       },

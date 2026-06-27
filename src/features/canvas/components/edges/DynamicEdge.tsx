@@ -51,6 +51,35 @@ interface DynamicEdgeProps extends EdgeProps {
   data: DynamicEdgeData;
 }
 
+// Build an SVG path from an orthogonal polyline (ELK bend-points), rounding the
+// corners so routed edges match the smoothstep aesthetic.
+function roundedOrthogonalPath(
+  points: { x: number; y: number }[],
+  r = 12
+): string {
+  if (!points || points.length < 2) return '';
+  if (points.length === 2) {
+    return `M ${points[0].x},${points[0].y} L ${points[1].x},${points[1].y}`;
+  }
+  let d = `M ${points[0].x},${points[0].y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const next = points[i + 1];
+    const len1 = Math.hypot(curr.x - prev.x, curr.y - prev.y) || 1;
+    const len2 = Math.hypot(next.x - curr.x, next.y - curr.y) || 1;
+    const rr = Math.min(r, len1 / 2, len2 / 2);
+    const p1x = curr.x - ((curr.x - prev.x) / len1) * rr;
+    const p1y = curr.y - ((curr.y - prev.y) / len1) * rr;
+    const p2x = curr.x + ((next.x - curr.x) / len2) * rr;
+    const p2y = curr.y + ((next.y - curr.y) / len2) * rr;
+    d += ` L ${p1x},${p1y} Q ${curr.x},${curr.y} ${p2x},${p2y}`;
+  }
+  const last = points[points.length - 1];
+  d += ` L ${last.x},${last.y}`;
+  return d;
+}
+
 // Relationship type styling based on PRD specifications
 const getRelationshipTypeConfig = (type: RelationshipType, weight?: number) => {
   const getColorByWeight = (weight?: number) => {
@@ -257,13 +286,18 @@ export default function DynamicEdge({
     ]
   );
 
-  // All relationship paths use orthogonal "smoothstep" routing so same-rank /
-  // straight connections bend into a readable zig-zag (org-chart style) instead
-  // of collapsing into a flat overlapping line. Relationship type is still
-  // distinguished by stroke dash/color/arrowhead, not by curve shape.
-  // `offset` pushes the edge out of the handle before it turns (bigger step);
-  // `borderRadius` rounds the corners.
+  // Prefer the ELK-routed polyline (orthogonal channels, no overlaps) when the
+  // last auto-layout produced one for this edge; otherwise fall back to
+  // smoothstep (e.g. freshly drawn edges, or after a node was dragged).
   const getEdgePath = () => {
+    const routed = (data as any)?.routedPoints as
+      | { x: number; y: number }[]
+      | undefined;
+    if (routed && routed.length >= 2) {
+      const path = roundedOrthogonalPath(routed, 14);
+      const mid = routed[Math.floor(routed.length / 2)];
+      return [path, mid.x, mid.y] as [string, number, number];
+    }
     return getSmoothStepPath({
       sourceX,
       sourceY,

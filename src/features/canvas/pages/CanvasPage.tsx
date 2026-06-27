@@ -35,10 +35,8 @@ import {
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
 import { runSimulation } from '@/features/canvas/utils/runSimulation';
 import { toast } from 'sonner';
-import {
-  applyAutoLayout,
-  type LayoutDirection,
-} from '@/shared/utils/autoLayout';
+import { type LayoutDirection } from '@/shared/utils/autoLayout';
+import { elkLayout } from '@/shared/utils/elkLayout';
 import { handleNodeConnection } from '@/shared/utils/edgeConnectionHandler';
 import { getAvailableFilterOptions } from '@/shared/utils/filterUtils';
 import { useCanvasEvents } from '../hooks/useCanvasEvents';
@@ -97,6 +95,11 @@ function CanvasPageInner() {
   // Groups side list + focus mode (grouping redesign).
   const [showGroupsPanel, setShowGroupsPanel] = useState(false);
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
+  // ELK-routed edge polylines keyed by edge id, produced by the last auto-layout
+  // so DynamicEdge can draw the no-overlap orthogonal channel ELK reserved.
+  const [routedEdgePoints, setRoutedEdgePoints] = useState<
+    Record<string, { x: number; y: number }[]>
+  >({});
 
   // Initialize canvas stores and data
   const {
@@ -384,20 +387,16 @@ function CanvasPageInner() {
         direction || (state.currentLayoutDirection as LayoutDirection) || 'TB';
 
       try {
-        // Bias depth over width so the metric tree reads as a TREE (clear
-        // hierarchy levels) instead of collapsing into a wide flat line:
-        // bigger rank gap (vertical hierarchy), tighter sibling gap (narrower).
-        // Groups no longer render as frames, so there's nothing to exclude.
-        const layoutedFlow = applyAutoLayout(currentNodes, currentEdges, {
-          direction: layoutDirection,
-          nodeWidth: 320,
-          nodeHeight: 200,
-          rankSeparation: 240,
-          nodeSeparation: 70,
-          marginX: 50,
-          marginY: 50,
-        });
+        // ELK 'layered' layout with ORTHOGONAL edge routing: positions nodes as
+        // a tree AND returns routed edge channels so edges don't overlap. The
+        // routed points feed DynamicEdge via the edges memo.
+        const { nodes: layoutedFlow, edgePoints } = await elkLayout(
+          currentNodes,
+          currentEdges,
+          { direction: layoutDirection }
+        );
 
+        setRoutedEdgePoints(edgePoints);
         setNodes(layoutedFlow);
 
         // Persist the new card/node positions (mirror drag-stop routing) so the
@@ -729,7 +728,15 @@ function CanvasPageInner() {
       )
     );
 
-    const allEdges = [...convertedCanvasEdges, ...extraEdges];
+    // Attach the ELK-routed polyline (from the last auto-layout) so DynamicEdge
+    // draws the no-overlap orthogonal channel instead of a handle-to-handle
+    // curve. Edges without a routed entry fall back to smoothstep.
+    const allEdges = [...convertedCanvasEdges, ...extraEdges].map((e) => {
+      const pts = routedEdgePoints[e.id];
+      return pts
+        ? { ...e, data: { ...((e as any).data || {}), routedPoints: pts } }
+        : e;
+    });
 
     // Focus mode: dim any edge that isn't fully inside the focused group. Must
     // be done via className — DynamicEdge hardcodes its own path opacity, so an
@@ -752,6 +759,7 @@ function CanvasPageInner() {
     return allEdges;
   }, [
     canvasId,
+    routedEdgePoints,
     canvas?.edges,
     canvas?.groups,
     focusedGroupId,
@@ -812,6 +820,31 @@ function CanvasPageInner() {
 
   const handleNodeDragStop = useCallback(
     (_: any, node: any) => {
+      // A moved node invalidates the ELK-routed channels of its incident edges —
+      // drop those so they fall back to smoothstep until the next auto-layout.
+      if (node?.id) {
+        setRoutedEdgePoints((prev) => {
+          if (Object.keys(prev).length === 0) return prev;
+          const incident = new Set(
+            [
+              ...(canvas?.edges || []),
+              ...((state.extraEdges || []) as any[]),
+            ]
+              .filter((e: any) => {
+                const s = e.sourceId ?? e.source;
+                const t = e.targetId ?? e.target;
+                return s === node.id || t === node.id;
+              })
+              .map((e: any) => e.id)
+          );
+          if (incident.size === 0) return prev;
+          const next: Record<string, { x: number; y: number }[]> = {};
+          for (const [id, pts] of Object.entries(prev)) {
+            if (!incident.has(id)) next[id] = pts;
+          }
+          return next;
+        });
+      }
       // Reuse same logic on drag stop to ensure final commit
       if (node?.id && node?.position) {
         if (node.type === 'metricCard') {
@@ -845,7 +878,13 @@ function CanvasPageInner() {
         }
       }
     },
-    [state, updateEvidencePosition, updateCanvasNodePosition, updateNewNode]
+    [
+      state,
+      canvas?.edges,
+      updateEvidencePosition,
+      updateCanvasNodePosition,
+      updateNewNode,
+    ]
   );
 
   // Phase B: persist data-flow / reference edges (operator pipeline) in
