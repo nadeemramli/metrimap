@@ -160,6 +160,8 @@ export const convertToEvidenceNode = (
     onUpdateEvidence,
     onDeleteEvidence,
   },
+  selectable: true,
+  draggable: true,
 });
 
 // Convert GroupNode to ReactFlow Node

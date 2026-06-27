@@ -927,6 +927,75 @@ function CanvasPageInner() {
     [getNodes]
   );
 
+  // Push a group-aware Move entry (undo restores start, redo restores end) from
+  // the dragStart snapshot vs the current positions. Shared by single-node and
+  // multi-selection drag stop.
+  const recordMoveUndo = useCallback(() => {
+    const starts = dragStart.current;
+    const ids = Object.keys(starts);
+    if (!ids.length) return;
+    const ends: Record<string, { x: number; y: number }> = {};
+    for (const n of getNodes()) if (starts[n.id]) ends[n.id] = { ...n.position };
+    const moved = ids
+      .filter((id) => {
+        const s = starts[id].position;
+        const e = ends[id];
+        return (
+          e &&
+          (Math.round(s.x) !== Math.round(e.x) ||
+            Math.round(s.y) !== Math.round(e.y))
+        );
+      })
+      .map((id) => ({
+        id,
+        type: starts[id].type,
+        from: starts[id].position,
+        to: ends[id],
+      }));
+    if (moved.length) {
+      useCanvasHistoryStore.getState().push({
+        label: `Move ${moved.length}`,
+        undo: async () => {
+          for (const m of moved) applyNodePosition(m.type, m.id, m.from);
+        },
+        redo: async () => {
+          for (const m of moved) applyNodePosition(m.type, m.id, m.to);
+        },
+      });
+    }
+    dragStart.current = {};
+  }, [getNodes, applyNodePosition]);
+
+  // Multi-selection drag: React Flow fires these (not onNodeDrag) when dragging a
+  // group of selected nodes. We must apply positions for the non-grabbed nodes
+  // ourselves (they're controlled), then record one Move undo for the group.
+  const handleSelectionDragStart = useCallback((_: any, dragNodes: any[]) => {
+    const snap: Record<
+      string,
+      { type: string; position: { x: number; y: number } }
+    > = {};
+    for (const n of dragNodes)
+      snap[n.id] = { type: n.type as string, position: { ...n.position } };
+    dragStart.current = snap;
+  }, []);
+
+  const handleSelectionDrag = useCallback(
+    (_: any, dragNodes: any[]) => {
+      for (const n of dragNodes) applyNodePosition(n.type, n.id, n.position);
+    },
+    [applyNodePosition]
+  );
+
+  const handleSelectionDragStop = useCallback(
+    (_: any, dragNodes: any[]) => {
+      for (const n of dragNodes) applyNodePosition(n.type, n.id, n.position);
+      // A bulk move invalidates ELK-routed channels; drop them all.
+      setRoutedEdgePoints({});
+      recordMoveUndo();
+    },
+    [applyNodePosition, recordMoveUndo]
+  );
+
   const handleNodeDrag = useCallback(
     (_: any, node: any) => {
       if (node?.id && node?.position) {
@@ -1025,47 +1094,12 @@ function CanvasPageInner() {
       }
 
       // Record the move (group-aware) for undo/redo.
-      const starts = dragStart.current;
-      const ids = Object.keys(starts);
-      if (ids.length) {
-        const ends: Record<string, { x: number; y: number }> = {};
-        for (const n of getNodes())
-          if (starts[n.id]) ends[n.id] = { ...n.position };
-        const moved = ids
-          .filter((id) => {
-            const s = starts[id].position;
-            const e = ends[id];
-            return (
-              e &&
-              (Math.round(s.x) !== Math.round(e.x) ||
-                Math.round(s.y) !== Math.round(e.y))
-            );
-          })
-          .map((id) => ({
-            id,
-            type: starts[id].type,
-            from: starts[id].position,
-            to: ends[id],
-          }));
-        if (moved.length) {
-          useCanvasHistoryStore.getState().push({
-            label: `Move ${moved.length}`,
-            undo: async () => {
-              for (const m of moved) applyNodePosition(m.type, m.id, m.from);
-            },
-            redo: async () => {
-              for (const m of moved) applyNodePosition(m.type, m.id, m.to);
-            },
-          });
-        }
-        dragStart.current = {};
-      }
+      recordMoveUndo();
     },
     [
       state,
       canvas?.edges,
-      getNodes,
-      applyNodePosition,
+      recordMoveUndo,
       updateEvidencePosition,
       updateCanvasNodePosition,
       updateNewNode,
@@ -1502,6 +1536,9 @@ function CanvasPageInner() {
             onNodeDragStart={handleNodeDragStart}
             onNodeDrag={handleNodeDrag}
             onNodeDragStop={handleNodeDragStop}
+            onSelectionDragStart={handleSelectionDragStart}
+            onSelectionDrag={handleSelectionDrag}
+            onSelectionDragStop={handleSelectionDragStop}
             onNodeClick={(_, node) => {
               // Selecting an operator drives the contextual Operator tab.
               if (node.type === 'operatorNode') setSelectedOperatorId(node.id);

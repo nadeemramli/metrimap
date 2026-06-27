@@ -324,11 +324,14 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
         <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
 
         <div className="flex flex-col items-center">
+          {/* Pin is intentionally NOT `nodrag`: a stationary click expands it
+              (below React Flow's drag threshold) while a drag still moves the
+              node — the pin is the only grabbable element when collapsed. */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleToggleExpanded}
-            className="nodrag h-8 w-8 p-0 rounded-full bg-white border-2 border-blue-500 hover:bg-blue-50"
+            className="h-8 w-8 p-0 rounded-full bg-white border-2 border-blue-500 hover:bg-blue-50 cursor-move"
             title={`${evidence.title} - Click to expand`}
           >
             <MapPin className="h-4 w-4 text-blue-600" />
