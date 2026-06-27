@@ -77,14 +77,14 @@ export async function elkLayout(
       'elk.algorithm': 'layered',
       'elk.direction': DIRECTION_MAP[direction],
       'elk.edgeRouting': 'ORTHOGONAL',
-      // Spacing: keep ranks open (vertical hierarchy) and give edges room so
-      // they route in their own lanes rather than overlapping.
-      'elk.layered.spacing.nodeNodeBetweenLayers': '120',
-      'elk.spacing.nodeNode': '80',
-      'elk.spacing.edgeEdge': '24',
-      'elk.spacing.edgeNode': '40',
-      'elk.layered.spacing.edgeEdgeBetweenLayers': '24',
-      'elk.layered.spacing.edgeNodeBetweenLayers': '32',
+      // Spacing: keep ranks tall (it's a tree) and give edges roomy channels so
+      // parallel lanes read clearly rather than crowding each other.
+      'elk.layered.spacing.nodeNodeBetweenLayers': '200',
+      'elk.spacing.nodeNode': '100',
+      'elk.spacing.edgeEdge': '40',
+      'elk.spacing.edgeNode': '56',
+      'elk.layered.spacing.edgeEdgeBetweenLayers': '40',
+      'elk.layered.spacing.edgeNodeBetweenLayers': '48',
       // Balanced, centered tree shape; respect existing order for stability.
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
       'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
