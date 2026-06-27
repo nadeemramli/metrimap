@@ -1,10 +1,8 @@
-import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
 import { ClerkProvider } from '@clerk/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import App from './App.tsx';
-import DevUserbackInitializer from './shared/components/common/feedback/DevUserbackInitializer';
 import UserbackInitializer from './shared/components/common/feedback/UserbackInitializer';
 import './styles/index.css';
 
@@ -58,11 +56,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-        {isDevelopmentEnvironment() ? (
-          <DevUserbackInitializer />
-        ) : (
-          <UserbackInitializer />
-        )}
+        <UserbackInitializer />
         <Routes>
           <Route path="/*" element={<App />} />
         </Routes>

@@ -1,5 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createDevSupabaseClient } from '../lib/supabase/client';
 import type { Database } from '../lib/supabase/types';
 
 // This is a temporary solution to get authenticated client in stores
@@ -34,29 +33,18 @@ export function whenAuthenticatedClientReady(): Promise<
   });
 }
 
-// Enhanced function to get the appropriate client for the current environment
-import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
-
+// Cloud-only: always use the Clerk-authenticated client (no dev/service-role path).
 export function getClientForEnvironment(): SupabaseClient<Database> {
-  const isDevelopment = isDevelopmentEnvironment();
-
-  if (isDevelopment) {
-    console.log('🔧 Using development client (service role)');
-    return createDevSupabaseClient();
-  }
-
   const client = getAuthenticatedClient();
   if (!client) {
     throw new Error(
       'Authenticated client not available. Please ensure you are logged in.'
     );
   }
-
-  console.log('🔐 Using production client (Clerk authenticated)');
   return client;
 }
 
-// Helper function to check if we're in development mode
+// Build-time dev flag (Vite). False in production builds.
 export function isDevelopmentMode(): boolean {
-  return isDevelopmentEnvironment();
+  return import.meta.env.DEV;
 }

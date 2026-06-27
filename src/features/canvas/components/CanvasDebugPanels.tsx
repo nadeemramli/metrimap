@@ -9,7 +9,6 @@
 
 import { Button } from '@/shared/components/ui/button';
 import type { CanvasPageState } from '@/shared/hooks/useCanvasPageState';
-import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
 import { Panel } from '@xyflow/react';
 import { Bug, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useState } from 'react';
@@ -27,7 +26,7 @@ export default function CanvasDebugPanels({
   canvas,
   isDevelopment,
 }: CanvasDebugPanelsProps) {
-  if (!isDevelopment && !isDevelopmentEnvironment()) {
+  if (!isDevelopment && !import.meta.env.DEV) {
     return null;
   }
 
@@ -90,7 +89,7 @@ export default function CanvasDebugPanels({
         ))}
 
       {/* Navigation Controls - Inside ReactFlow Panel (development only) */}
-      {isDevelopmentEnvironment() && (
+      {import.meta.env.DEV && (
         <Panel
           position="bottom-right"
           className="bg-black/80 text-white p-3 rounded-lg text-xs max-w-xs"

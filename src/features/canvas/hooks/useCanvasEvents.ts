@@ -140,7 +140,14 @@ export function useCanvasEvents({
   };
 
   const handleOpenSelectedSettings = () => {
-    state.openSelectedSettings?.();
+    // Open the Settings sheet for the (first) selected node. The page-state hook
+    // never implemented openSelectedSettings, so wire it to the real opener.
+    const { selectedNodeIds } = useCanvasStore.getState();
+    if (selectedNodeIds.length > 0) {
+      handleOpenSettingsSheet(selectedNodeIds[0]);
+    } else {
+      toast.error('Select a card first');
+    }
   };
 
   // Modals/Sheets integration used by CanvasModals

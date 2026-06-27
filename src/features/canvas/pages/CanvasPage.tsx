@@ -27,7 +27,6 @@ import { useAppStore, useCanvasStore } from '@/lib/stores';
 import { useCanvasHeader } from '@/shared/contexts/CanvasHeaderContext';
 import { PortalContainerProvider } from '@/shared/contexts/PortalContainerContext';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
-import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
 import {
   getProjectById,
   mergeProjectSettings,
@@ -82,7 +81,7 @@ import { useCanvasRealtime } from '@/shared/hooks/useCanvasRealtime';
 function CanvasPageInner() {
   const { canvasId } = useParams();
   const supabaseClient = useClerkSupabase();
-  const isDevelopment = isDevelopmentEnvironment();
+  const isDevelopment = import.meta.env.DEV;
 
   // Initialize state management
   const state = useCanvasPageState();
@@ -292,37 +291,6 @@ function CanvasPageInner() {
             updatedAt: now,
             lastModifiedBy: 'system',
           } as any);
-
-          // Dev convenience: if running in development, auto-bootstrap a minimal project record
-          try {
-            if (isDevelopmentEnvironment()) {
-              const client = supabaseClient || getClientForEnvironment();
-              const userId = useAppStore.getState().user?.id || 'dev-user-001';
-              const { error: insertErr } = await client
-                .from('projects')
-                .insert({
-                  id: canvasId,
-                  name: 'Untitled Canvas',
-                  description: '',
-                  tags: [],
-                  settings: {},
-                  created_by: userId,
-                } as any);
-              if (insertErr) {
-                console.warn(
-                  '⚠️ Dev bootstrap project insert skipped/failed:',
-                  insertErr
-                );
-              } else {
-                console.log('✅ Dev bootstrap project created:', canvasId);
-              }
-            }
-          } catch (e) {
-            console.warn(
-              '⚠️ Dev bootstrap project creation errored but is non-fatal:',
-              e
-            );
-          }
         }
       } catch (error) {
         console.error('❌ Error loading canvas data:', error);

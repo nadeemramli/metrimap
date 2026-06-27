@@ -1,11 +1,10 @@
 import { useEffect } from "react";
 import { useUser } from "@clerk/react-router";
 import Userback from "@userback/widget";
-import { isDevelopmentEnvironment } from "@/shared/lib/supabase/client";
 
 export default function UserbackInitializer() {
   const { user, isLoaded } = useUser();
-  const isDevelopment = isDevelopmentEnvironment();
+  const isDevelopment = import.meta.env.DEV;
 
   useEffect(() => {
     const initializeUserback = async () => {

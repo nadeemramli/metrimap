@@ -12,13 +12,12 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
 import { useAppStore } from "@/lib/stores";
-import { isDevelopmentEnvironment } from "@/shared/lib/supabase/client";
 
 export function UserMenu() {
   const { user: clerkUser } = useUser();
   const clerk = useClerk();
   const devUser = useAppStore((s) => s.user);
-  const isDev = isDevelopmentEnvironment();
+  const isDev = import.meta.env.DEV;
 
   // Prefer Clerk user when available; otherwise use development user from app store
   const user =

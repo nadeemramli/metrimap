@@ -15,7 +15,6 @@ import {
   createShortcut,
   useKeyboardShortcuts,
 } from '@/shared/hooks/useKeyboardShortcuts';
-import { isDevelopmentEnvironment } from '@/shared/lib/supabase/client';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -33,7 +32,7 @@ type ViewMode = 'grid' | 'list';
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const isDevelopment = isDevelopmentEnvironment();
+  const isDevelopment = import.meta.env.DEV;
   const { projects, initializeProjects } = useProjectsStore();
   const safeProjects = Array.isArray(projects) ? projects : [];
   const { user } = useAppStore();

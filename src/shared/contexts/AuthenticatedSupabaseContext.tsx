@@ -1,8 +1,4 @@
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
-import {
-  createDevSupabaseClient,
-  isDevelopmentEnvironment,
-} from '@/shared/lib/supabase/client';
 import type { Database } from '@/shared/lib/supabase/types';
 import { setAuthenticatedClient } from '@/shared/utils/authenticatedClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -21,13 +17,8 @@ export function AuthenticatedSupabaseProvider({
 }: {
   children: ReactNode;
 }) {
-  // Hooks must run unconditionally (Rules-of-Hooks).
-  // Cloud-only: the dev/service-role path is dead, so always use the Clerk client.
-  const clerkClient = useClerkSupabase();
-  const isDevelopment = isDevelopmentEnvironment();
-  const supabaseClient = isDevelopment
-    ? createDevSupabaseClient()
-    : clerkClient;
+  // Cloud-only: always use the Clerk-authenticated client.
+  const supabaseClient = useClerkSupabase();
 
   // Set the authenticated client for stores to use
   useEffect(() => {

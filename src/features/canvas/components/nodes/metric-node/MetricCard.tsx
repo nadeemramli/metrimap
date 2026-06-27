@@ -52,6 +52,7 @@ import {
   MessageSquare,
   Minimize2,
   Minus,
+  Settings,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -524,25 +525,19 @@ export default function MetricCard({ data, selected }: NodeProps) {
 
   const handleCardClick = () => {
     // Don't stop propagation - let React Flow handle selection
-    // Only handle additional actions after React Flow processes the event
-
-    // If we're currently editing, don't open the sheet
+    // Single-click only SELECTS the card (use the gear button or double-click to
+    // open Settings). The one exception: if the Settings sheet is already open,
+    // clicking another card switches the open inspector to it.
     if (isEditing) {
       return;
     }
 
-    // If settings sheet is open, switch to this card instead of opening new sheet
     if (
       data.isSettingsSheetOpen &&
       data.onSwitchToCard &&
       typeof data.onSwitchToCard === 'function'
     ) {
       data.onSwitchToCard(card.id);
-    } else if (
-      data.onOpenSettings &&
-      typeof data.onOpenSettings === 'function'
-    ) {
-      data.onOpenSettings(card.id);
     } else if (onNodeClick) {
       onNodeClick(card.id, card.position);
     }
@@ -577,7 +572,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
     <div
       ref={cardRef}
       className={cn(
-        'bg-card border border-border rounded-xl shadow-sm min-w-[280px] max-w-[320px] cursor-pointer transition-all duration-200 relative',
+        'group/card bg-card border border-border rounded-xl shadow-sm min-w-[280px] max-w-[320px] cursor-pointer transition-all duration-200 relative',
         selected
           ? 'shadow-lg ring-2 ring-primary/50 border-primary/40'
           : 'hover:shadow-md hover:border-foreground/20',
@@ -772,7 +767,23 @@ export default function MetricCard({ data, selected }: NodeProps) {
             )}
           </div>
 
-          {/* Edit button moved to toolbar */}
+          {/* Settings (gear) — open the card's settings sheet without selecting
+              the whole card. Single-click on the card body only selects. */}
+          {!isPreview && (
+            <button
+              type="button"
+              className="nodrag shrink-0 rounded-md p-1 text-muted-foreground/60 opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover/card:opacity-100 data-[selected=true]:opacity-100"
+              data-selected={selected || undefined}
+              title="Card settings"
+              aria-label="Open card settings"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewDetails();
+              }}
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Title - Editable when editing */}

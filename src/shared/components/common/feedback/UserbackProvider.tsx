@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useUser } from "@clerk/react-router";
 import Userback from "@userback/widget";
-import { isDevelopmentEnvironment } from "@/shared/lib/supabase/client";
 
 interface UserbackProviderProps {
   children: React.ReactNode;
@@ -9,7 +8,7 @@ interface UserbackProviderProps {
 
 export default function UserbackProvider({ children }: UserbackProviderProps) {
   const { user, isLoaded } = useUser();
-  const isDevelopment = isDevelopmentEnvironment();
+  const isDevelopment = import.meta.env.DEV;
 
   useEffect(() => {
     const initializeUserback = async () => {
