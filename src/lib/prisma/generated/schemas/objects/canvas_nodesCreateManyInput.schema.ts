@@ -17,8 +17,8 @@ export const canvas_nodesCreateManyInputObjectSchema: z.ZodType<Prisma.canvas_no
   position_x: z.number().optional(),
   position_y: z.number().optional(),
   data: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   created_by: z.string()
 }).strict();
 export const canvas_nodesCreateManyInputObjectZodSchema = z.object({
@@ -29,7 +29,7 @@ export const canvas_nodesCreateManyInputObjectZodSchema = z.object({
   position_x: z.number().optional(),
   position_y: z.number().optional(),
   data: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   created_by: z.string()
 }).strict();

@@ -9,8 +9,8 @@ export const commentsUncheckedCreateInputObjectSchema: z.ZodType<Prisma.comments
   author_id: z.string().optional().nullable(),
   content: z.string(),
   resolved: z.boolean().optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional()
+  created_at: z.union([z.date(), z.string().datetime()]).optional(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional()
 }).strict();
 export const commentsUncheckedCreateInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -18,6 +18,6 @@ export const commentsUncheckedCreateInputObjectZodSchema = z.object({
   author_id: z.string().optional().nullable(),
   content: z.string(),
   resolved: z.boolean().optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional()
+  created_at: z.union([z.date(), z.string().datetime()]).optional(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional()
 }).strict();

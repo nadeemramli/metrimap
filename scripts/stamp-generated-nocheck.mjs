@@ -28,11 +28,31 @@ function walk(dir) {
 }
 
 let stamped = 0;
+let zodFixed = 0;
 for (const file of walk(GENERATED_DIR)) {
-  const content = readFileSync(file, 'utf8');
-  if (content.startsWith(STAMP)) continue;
-  writeFileSync(file, `${STAMP}\n${content}`);
-  stamped += 1;
+  let content = readFileSync(file, 'utf8');
+  let changed = false;
+
+  // Zod v3 compatibility: prisma-zod-generator (>=1.4) emits the Zod v4 ISO
+  // helper `z.iso.datetime()`, but this project runs Zod 3 where `z.iso` is
+  // undefined — so importing these schemas throws
+  // `Cannot read properties of undefined (reading 'datetime')` at runtime.
+  // Rewrite to the Zod 3 equivalent. (Remove once the project moves to Zod 4.)
+  if (content.includes('z.iso.datetime()')) {
+    content = content.replaceAll('z.iso.datetime()', 'z.string().datetime()');
+    zodFixed += 1;
+    changed = true;
+  }
+
+  if (!content.startsWith(STAMP)) {
+    content = `${STAMP}\n${content}`;
+    stamped += 1;
+    changed = true;
+  }
+
+  if (changed) writeFileSync(file, content);
 }
 
-console.log(`stamp-generated-nocheck: stamped ${stamped} file(s) in ${GENERATED_DIR}`);
+console.log(
+  `stamp-generated-nocheck: stamped ${stamped} file(s), zod3-fixed ${zodFixed} file(s) in ${GENERATED_DIR}`
+);

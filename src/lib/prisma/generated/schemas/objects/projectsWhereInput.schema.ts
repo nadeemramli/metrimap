@@ -16,13 +16,13 @@ export const projectsWhereInputObjectSchema: z.ZodType<Prisma.projectsWhereInput
   description: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   tags: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   settings: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   last_modified_by: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   is_public: z.union([z.lazy(() => BoolFilterObjectSchema), z.boolean()]).optional(),
   is_starred: z.union([z.lazy(() => BoolFilterObjectSchema), z.boolean()]).optional(),
-  archived_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  archived_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();
 export const projectsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => projectsWhereInputObjectSchema), z.lazy(() => projectsWhereInputObjectSchema).array()]).optional(),
@@ -32,11 +32,11 @@ export const projectsWhereInputObjectZodSchema = z.object({
   description: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   tags: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   settings: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   last_modified_by: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   is_public: z.union([z.lazy(() => BoolFilterObjectSchema), z.boolean()]).optional(),
   is_starred: z.union([z.lazy(() => BoolFilterObjectSchema), z.boolean()]).optional(),
-  archived_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
+  archived_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
 }).strict();

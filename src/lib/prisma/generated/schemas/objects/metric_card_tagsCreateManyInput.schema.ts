@@ -7,11 +7,11 @@ export const metric_card_tagsCreateManyInputObjectSchema: z.ZodType<Prisma.metri
   id: z.string().optional(),
   metric_card_id: z.string().optional().nullable(),
   tag_id: z.string().optional().nullable(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();
 export const metric_card_tagsCreateManyInputObjectZodSchema = z.object({
   id: z.string().optional(),
   metric_card_id: z.string().optional().nullable(),
   tag_id: z.string().optional().nullable(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();

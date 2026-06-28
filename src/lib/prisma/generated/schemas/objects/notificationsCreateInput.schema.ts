@@ -17,7 +17,7 @@ export const notificationsCreateInputObjectSchema: z.ZodType<Prisma.notification
   description: z.string().optional().nullable(),
   read: z.boolean().optional(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional()
+  created_at: z.union([z.date(), z.string().datetime()]).optional()
 }).strict();
 export const notificationsCreateInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -27,5 +27,5 @@ export const notificationsCreateInputObjectZodSchema = z.object({
   description: z.string().optional().nullable(),
   read: z.boolean().optional(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional()
+  created_at: z.union([z.date(), z.string().datetime()]).optional()
 }).strict();

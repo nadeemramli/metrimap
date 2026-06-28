@@ -18,8 +18,8 @@ export const canvas_nodesWhereInputObjectSchema: z.ZodType<Prisma.canvas_nodesWh
   position_x: z.union([z.lazy(() => FloatFilterObjectSchema), z.number()]).optional(),
   position_y: z.union([z.lazy(() => FloatFilterObjectSchema), z.number()]).optional(),
   data: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();
 export const canvas_nodesWhereInputObjectZodSchema = z.object({
@@ -32,7 +32,7 @@ export const canvas_nodesWhereInputObjectZodSchema = z.object({
   position_x: z.union([z.lazy(() => FloatFilterObjectSchema), z.number()]).optional(),
   position_y: z.union([z.lazy(() => FloatFilterObjectSchema), z.number()]).optional(),
   data: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable(),
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
 }).strict();

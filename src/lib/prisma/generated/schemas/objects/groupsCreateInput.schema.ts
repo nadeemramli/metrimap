@@ -14,8 +14,8 @@ export const groupsCreateInputObjectSchema: z.ZodType<Prisma.groupsCreateInput, 
   width: z.number().optional(),
   height: z.number().optional(),
   node_ids: z.union([z.lazy(() => groupsCreatenode_idsInputObjectSchema), z.string().array()]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   created_by: z.string()
 }).strict();
 export const groupsCreateInputObjectZodSchema = z.object({
@@ -29,7 +29,7 @@ export const groupsCreateInputObjectZodSchema = z.object({
   width: z.number().optional(),
   height: z.number().optional(),
   node_ids: z.union([z.lazy(() => groupsCreatenode_idsInputObjectSchema), z.string().array()]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   created_by: z.string()
 }).strict();

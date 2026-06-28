@@ -11,8 +11,8 @@ export const relationshipsUncheckedCreateInputObjectSchema: z.ZodType<Prisma.rel
   type: z.string(),
   confidence: z.string().optional(),
   weight: z.number().optional().nullable(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   created_by: z.string()
 }).strict();
 export const relationshipsUncheckedCreateInputObjectZodSchema = z.object({
@@ -23,7 +23,7 @@ export const relationshipsUncheckedCreateInputObjectZodSchema = z.object({
   type: z.string(),
   confidence: z.string().optional(),
   weight: z.number().optional().nullable(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   created_by: z.string()
 }).strict();

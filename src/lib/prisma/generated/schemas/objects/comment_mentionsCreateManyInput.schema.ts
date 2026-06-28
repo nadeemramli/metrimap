@@ -7,11 +7,11 @@ export const comment_mentionsCreateManyInputObjectSchema: z.ZodType<Prisma.comme
   id: z.string().optional(),
   comment_id: z.string(),
   mentioned_user_id: z.string(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional()
+  created_at: z.union([z.date(), z.string().datetime()]).optional()
 }).strict();
 export const comment_mentionsCreateManyInputObjectZodSchema = z.object({
   id: z.string().optional(),
   comment_id: z.string(),
   mentioned_user_id: z.string(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional()
+  created_at: z.union([z.date(), z.string().datetime()]).optional()
 }).strict();

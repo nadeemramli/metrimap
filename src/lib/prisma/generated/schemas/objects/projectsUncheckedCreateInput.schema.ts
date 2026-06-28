@@ -16,13 +16,13 @@ export const projectsUncheckedCreateInputObjectSchema: z.ZodType<Prisma.projects
   description: z.string().optional().nullable(),
   tags: z.union([z.lazy(() => projectsCreatetagsInputObjectSchema), z.string().array()]).optional(),
   settings: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   last_modified_by: z.string().optional().nullable(),
   created_by: z.string(),
   is_public: z.boolean().optional(),
   is_starred: z.boolean().optional(),
-  archived_at: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  archived_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();
 export const projectsUncheckedCreateInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -30,11 +30,11 @@ export const projectsUncheckedCreateInputObjectZodSchema = z.object({
   description: z.string().optional().nullable(),
   tags: z.union([z.lazy(() => projectsCreatetagsInputObjectSchema), z.string().array()]).optional(),
   settings: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   last_modified_by: z.string().optional().nullable(),
   created_by: z.string(),
   is_public: z.boolean().optional(),
   is_starred: z.boolean().optional(),
-  archived_at: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  archived_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();

@@ -19,7 +19,7 @@ export const changelogUncheckedCreateInputObjectSchema: z.ZodType<Prisma.changel
   target_name: z.string(),
   description: z.string(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  timestamp: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  timestamp: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();
 export const changelogUncheckedCreateInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -31,5 +31,5 @@ export const changelogUncheckedCreateInputObjectZodSchema = z.object({
   target_name: z.string(),
   description: z.string(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  timestamp: z.union([z.date(), z.iso.datetime()]).optional().nullable()
+  timestamp: z.union([z.date(), z.string().datetime()]).optional().nullable()
 }).strict();
