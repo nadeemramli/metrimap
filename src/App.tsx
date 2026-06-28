@@ -22,6 +22,7 @@ import EnhancedCanvasPage from './features/canvas/pages/EnhancedCanvasPage';
 import DashboardPage from './features/dashboard/pages/DashboardPage';
 import EvidencePage from './features/evidence/pages/EvidencePage';
 import EvidenceRepositoryPage from './features/evidence/pages/EvidenceRepositoryPage';
+import CatalogPage from './features/catalog/pages/CatalogPage';
 import HomePage from './features/projects/pages/HomePage';
 import SourcePage from './features/sources/pages/SourcePage';
 
@@ -119,6 +120,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <EvidencePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/catalog"
+                  element={
+                    <ProtectedRoute>
+                      <CatalogPage />
                     </ProtectedRoute>
                   }
                 />

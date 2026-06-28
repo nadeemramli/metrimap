@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      tracked_metrics: {
+        Row: {
+          created_at: string
+          created_by: string
+          formula: string | null
+          id: string
+          name: string
+          origin_card_id: string | null
+          origin_project_id: string | null
+          owner_label: string | null
+          source_kind: string | null
+          state: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          formula?: string | null
+          id?: string
+          name: string
+          origin_card_id?: string | null
+          origin_project_id?: string | null
+          owner_label?: string | null
+          source_kind?: string | null
+          state?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          formula?: string | null
+          id?: string
+          name?: string
+          origin_card_id?: string | null
+          origin_project_id?: string | null
+          owner_label?: string | null
+          source_kind?: string | null
+          state?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       canvas_nodes: {
         Row: {
           created_at: string
@@ -468,6 +513,7 @@ export type Database = {
       position_x: number
       position_y: number
       source_type: string | null
+      tracked_metric_id: string | null
       formula: string | null
       causal_factors: string[] | null
       dimensions: string[] | null
@@ -489,6 +535,7 @@ export type Database = {
       position_x?: number
       position_y?: number
       source_type?: string | null
+      tracked_metric_id?: string | null
       formula?: string | null
       causal_factors?: string[] | null
       dimensions?: string[] | null
@@ -510,6 +557,7 @@ export type Database = {
       position_x?: number
       position_y?: number
       source_type?: string | null
+      tracked_metric_id?: string | null
       formula?: string | null
       causal_factors?: string[] | null
       dimensions?: string[] | null

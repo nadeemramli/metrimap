@@ -4,6 +4,7 @@ import QuickSearchCommand, {
 } from '@/features/canvas/components/search/QuickSearchCommand';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import FeedbackButton from '@/shared/components/common/feedback/FeedbackButton';
+import { Database } from 'lucide-react';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { cn } from '@/shared/utils';
 import {
@@ -116,6 +117,13 @@ export default function HomePage() {
               Metrimap
             </h1>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/catalog')}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Database className="h-4 w-4" />
+                Metric Catalog
+              </button>
               {isDevelopment && <FeedbackButton variant="outline" size="sm" />}
               <UserMenu />
             </div>

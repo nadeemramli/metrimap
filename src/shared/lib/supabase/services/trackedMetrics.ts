@@ -1,0 +1,156 @@
+// Semantic layer — the workspace Metric Catalog. A Tracked Metric is the shared
+// definition of a real, sourced metric (see docs/backlog/object-model-and-catalog.md).
+// Born when an operationalized card (Source Node -> Metric Card with real data) is
+// explicitly catalogued; other canvases reference it via metric_cards.tracked_metric_id.
+// Owner-scoped for now (created_by); re-scoped to the Clerk-org workspace later.
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../client';
+import type { Database } from '../types';
+
+type Client = SupabaseClient<Database>;
+
+export interface TrackedMetric {
+  id: string;
+  name: string;
+  unit: string | null;
+  formula: string | null;
+  owner_label: string | null;
+  state: string;
+  origin_card_id: string | null;
+  origin_project_id: string | null;
+  source_kind: string | null;
+  created_at: string;
+}
+
+/** A card that is operationalized (has data) but not yet catalogued. */
+export interface CandidateCard {
+  id: string;
+  title: string;
+  project_id: string | null;
+  source_type: string | null;
+  formula: string | null;
+  points: number; // length of its MetricValue[] series
+}
+
+/** List the workspace's catalogued (tracked) metrics. */
+export async function listTrackedMetrics(
+  client?: Client
+): Promise<TrackedMetric[]> {
+  const c = client || supabase();
+  const { data, error } = await c
+    .from('tracked_metrics')
+    .select(
+      'id, name, unit, formula, owner_label, state, origin_card_id, origin_project_id, source_kind, created_at'
+    )
+    .eq('state', 'tracked')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as TrackedMetric[];
+}
+
+/**
+ * Candidate cards: operationalized (have a real MetricValue[] series) but not yet
+ * catalogued (tracked_metric_id is null). The data-length check is client-side
+ * because there's no cheap jsonb-array-length filter via PostgREST.
+ */
+export async function listCandidateCards(
+  client?: Client
+): Promise<CandidateCard[]> {
+  const c = client || supabase();
+  const { data, error } = await c
+    .from('metric_cards')
+    .select('id, title, project_id, source_type, formula, data, tracked_metric_id')
+    .is('tracked_metric_id', null);
+  if (error) throw new Error(error.message);
+  return (data ?? [])
+    .filter(
+      (card: any) => Array.isArray(card.data) && card.data.length > 0
+    )
+    .map((card: any) => ({
+      id: card.id,
+      title: card.title,
+      project_id: card.project_id,
+      source_type: card.source_type,
+      formula: card.formula,
+      points: card.data.length,
+    }));
+}
+
+export interface PromoteInput {
+  cardId: string;
+  projectId?: string | null;
+  name: string;
+  unit?: string | null;
+  formula?: string | null;
+  owner_label?: string | null;
+  source_kind?: string | null;
+}
+
+/**
+ * Promote an operationalized card into the catalog: create the tracked_metrics
+ * row (state='tracked') and link the card to it. Returns the new metric id.
+ */
+export async function promoteCardToTrackedMetric(
+  input: PromoteInput,
+  client?: Client
+): Promise<string> {
+  const c = client || supabase();
+  const { data, error } = await c
+    .from('tracked_metrics')
+    .insert({
+      name: input.name,
+      unit: input.unit ?? null,
+      formula: input.formula ?? null,
+      owner_label: input.owner_label ?? null,
+      state: 'tracked',
+      origin_card_id: input.cardId,
+      origin_project_id: input.projectId ?? null,
+      source_kind: input.source_kind ?? null,
+    })
+    .select('id')
+    .single();
+  if (error) throw new Error(error.message);
+  await linkCardToMetric(input.cardId, data.id, c);
+  return data.id;
+}
+
+/**
+ * Link (or unlink, with null) a card to a catalog metric. Direct update — bypasses
+ * the metric-cards zod validator, which doesn't know `tracked_metric_id`.
+ */
+export async function linkCardToMetric(
+  cardId: string,
+  trackedMetricId: string | null,
+  client?: Client
+): Promise<void> {
+  const c = client || supabase();
+  const { error } = await c
+    .from('metric_cards')
+    .update({ tracked_metric_id: trackedMetricId })
+    .eq('id', cardId);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateTrackedMetric(
+  id: string,
+  updates: Partial<Pick<TrackedMetric, 'name' | 'unit' | 'formula' | 'owner_label'>>,
+  client?: Client
+): Promise<void> {
+  const c = client || supabase();
+  const { error } = await c
+    .from('tracked_metrics')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+/** Delete a catalog metric (cards referencing it unlink via FK ON DELETE SET NULL). */
+export async function deleteTrackedMetric(
+  id: string,
+  client?: Client
+): Promise<void> {
+  const c = client || supabase();
+  const { error } = await c.from('tracked_metrics').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
