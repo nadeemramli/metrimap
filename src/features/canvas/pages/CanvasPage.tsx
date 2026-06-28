@@ -5,6 +5,7 @@
 import {
   applyNodeChanges,
   Background,
+  ConnectionMode,
   Controls,
   Panel,
   ReactFlow,
@@ -1583,6 +1584,11 @@ function CanvasPageInner() {
             edges={edges}
             nodeTypes={nodeTypes as any}
             edgeTypes={edgeTypes}
+            // Loose mode: every handle works as BOTH source and target, so a
+            // connection can start/end on any side (top/bottom/left/right) — not
+            // just bottom/right-out and top/left-in. The connection handler then
+            // normalizes direction (it swaps to the valid rule orientation).
+            connectionMode={ConnectionMode.Loose}
             style={{
               cursor: state.whiteboardTool === 'hand' ? 'grab' : 'default',
             }}
