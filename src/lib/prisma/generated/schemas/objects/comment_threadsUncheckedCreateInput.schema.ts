@@ -10,20 +10,22 @@ const jsonSchema = z.lazy(() =>
 );
 
 export const comment_threadsUncheckedCreateInputObjectSchema: z.ZodType<Prisma.comment_threadsUncheckedCreateInput, Prisma.comment_threadsUncheckedCreateInput> = z.object({
+  id: z.string().optional(),
   project_id: z.string(),
   source: z.string(),
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.boolean().optional(),
   created_by: z.string().optional().nullable(),
-  created_at: z.union([z.date(), z.string().datetime()]).optional(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+  created_at: z.union([z.date(), z.iso.datetime()]).optional(),
+  updated_at: z.union([z.date(), z.iso.datetime()]).optional()
 }).strict();
 export const comment_threadsUncheckedCreateInputObjectZodSchema = z.object({
+  id: z.string().optional(),
   project_id: z.string(),
   source: z.string(),
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.boolean().optional(),
   created_by: z.string().optional().nullable(),
-  created_at: z.union([z.date(), z.string().datetime()]).optional(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+  created_at: z.union([z.date(), z.iso.datetime()]).optional(),
+  updated_at: z.union([z.date(), z.iso.datetime()]).optional()
 }).strict();

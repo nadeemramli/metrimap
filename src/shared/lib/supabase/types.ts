@@ -14,6 +14,121 @@ export type Database = {
   }
   public: {
     Tables: {
+      canvas_nodes: {
+        Row: {
+          created_at: string
+          created_by: string
+          data: Json | null
+          id: string
+          node_type: string
+          position_x: number
+          position_y: number
+          project_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          data?: Json | null
+          id?: string
+          node_type: string
+          position_x?: number
+          position_y?: number
+          project_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          data?: Json | null
+          id?: string
+          node_type?: string
+          position_x?: number
+          position_y?: number
+          project_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_nodes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_connection_secrets: {
+        Row: {
+          connection_id: string
+          password: string
+          updated_at: string
+        }
+        Insert: {
+          connection_id: string
+          password: string
+          updated_at?: string
+        }
+        Update: {
+          connection_id?: string
+          password?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_connection_secrets_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: true
+            referencedRelation: "source_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_connections: {
+        Row: {
+          created_at: string
+          created_by: string
+          database: string
+          host: string
+          id: string
+          name: string
+          port: number
+          ssl: boolean
+          updated_at: string
+          username: string
+          warehouse_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          database: string
+          host: string
+          id?: string
+          name: string
+          port?: number
+          ssl?: boolean
+          updated_at?: string
+          username: string
+          warehouse_type?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          database?: string
+          host?: string
+          id?: string
+          name?: string
+          port?: number
+          ssl?: boolean
+          updated_at?: string
+          username?: string
+          warehouse_type?: string
+        }
+        Relationships: []
+      }
       comment_threads: {
         Row: {
           id: string
@@ -513,10 +628,13 @@ export type Database = {
       }
       projects: {
         Row: {
+          archived_at: string | null
           created_at: string | null
           created_by: string
           description: string | null
           id: string
+          is_public: boolean
+          is_starred: boolean
           last_modified_by: string | null
           name: string
           settings: Json | null
@@ -524,10 +642,13 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string | null
           created_by: string
           description?: string | null
           id?: string
+          is_public?: boolean
+          is_starred?: boolean
           last_modified_by?: string | null
           name: string
           settings?: Json | null
@@ -535,10 +656,13 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           created_at?: string | null
           created_by?: string
           description?: string | null
           id?: string
+          is_public?: boolean
+          is_starred?: boolean
           last_modified_by?: string | null
           name?: string
           settings?: Json | null

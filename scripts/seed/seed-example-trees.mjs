@@ -523,6 +523,154 @@ function groupClusteredLayout(tree) {
 const sqlEsc = (s) => String(s).replace(/'/g, "''");
 let sql = `-- Example metric trees (SaaS / E-commerce / Retail). Owner: ${OWNER}\n-- Re-runnable: deletes prior projects with the same names (cascade) first.\nBEGIN;\n`;
 
+// Derive change_percent + trend from raw {period,value} points (mirrors the app's
+// deriveSeries in sourceBinding.ts — keep the two in sync conceptually).
+function derive(rows) {
+  let prev = null;
+  return rows.map(({ period, value }) => {
+    const change_percent =
+      prev == null || prev === 0 ? 0 : round(((value - prev) / prev) * 100, 1);
+    const trend =
+      change_percent > 1 ? 'up' : change_percent < -1 ? 'down' : 'neutral';
+    prev = value;
+    return { period, value, change_percent, trend };
+  });
+}
+
+// Pick a meaningful quantitative card to anchor the showcase pipeline on
+// (revenue-like preferred), falling back to any non-root quantitative card.
+function pickAnchor(tree) {
+  const pref = /(mrr|revenue|orders|transactions|sales|gmv|bookings)/i;
+  const q = tree.nodes.filter((n) => isQuantitative(n.cat));
+  return (
+    q.find((n) => pref.test(n.key)) ||
+    q.find((n) => pref.test(n.title)) ||
+    q.find((n) => n.key !== 'profit') ||
+    q[0]
+  );
+}
+
+// Build a complete, COMPUTABLE showcase pipeline that exercises every canvas node
+// type: Source → Operator → (Projection) Card → Chart, plus a Comment + a
+// Whiteboard label. Placed in a clear region to the right of the tree. The
+// operator's output is pre-baked into the projection card so charts look good on
+// load; "Run Simulation" recomputes the latest point live.
+function buildShowcase({ tree, idOf, pos, projectId, dataByKey }) {
+  const anchor = pickAnchor(tree);
+  if (!anchor) return null;
+  const anchorId = idOf.get(anchor.key);
+  const anchorTitle = anchor.title;
+  const anchorData = dataByKey.get(anchor.key) || [];
+  const periods = anchorData.length
+    ? anchorData.map((d) => d.period)
+    : monthsBack(7);
+
+  // Source: a small "live feed" that grows ~4%/mo, ~5% the size of the anchor.
+  const feedBase = Math.max(100, round((anchorData.at(-1)?.value || 10000) * 0.05));
+  const sourceRaw = periods.map((period, i) => ({
+    period,
+    value: round(feedBase * (1 + 0.04 * i)),
+  }));
+  const sourceSeries = derive(sourceRaw);
+
+  // Operator output (pre-baked): anchor × 1.1 + feed, per period.
+  const projectionRaw = periods.map((period, i) => ({
+    period,
+    value: round((anchorData[i]?.value || 0) * 1.1 + (sourceRaw[i]?.value || 0)),
+  }));
+  const projectionData = derive(projectionRaw);
+
+  const sourceId = randomUUID();
+  const operatorId = randomUUID();
+  const projectionCardId = randomUUID();
+  const chartId = randomUUID();
+  const commentId = randomUUID();
+  const whiteboardId = randomUUID();
+
+  // Region to the right of the widest card column.
+  const maxX = Math.max(0, ...[...pos.values()].map((p) => p.x));
+  const x0 = maxX + 520;
+  const baseY = 0;
+
+  const projectionCard = {
+    id: projectionCardId,
+    project_id: projectId,
+    title: `${anchorTitle} — Projection`,
+    description: `Operator output: ${anchorTitle} × 1.1 + live feed`,
+    category: MET,
+    position_x: x0 + 720,
+    position_y: baseY,
+    created_by: OWNER,
+    data: projectionData,
+  };
+
+  const node = (id, nodeType, title, x, y, data) => ({
+    id,
+    project_id: projectId,
+    node_type: nodeType,
+    title,
+    position_x: x,
+    position_y: y,
+    data,
+    created_by: OWNER,
+  });
+
+  const canvasNodes = [
+    node(whiteboardId, 'whiteboardNode', 'Label', x0, baseY - 170, {
+      shape: 'text',
+      text: '📊 Live Data Pipeline',
+      fontSize: 18,
+      width: 300,
+      height: 96,
+      fill: '#eef2ff',
+      stroke: '#6366f1',
+    }),
+    node(sourceId, 'sourceNode', 'Live Feed', x0, baseY, {
+      title: 'Live Feed (new bookings)',
+      config: { origin: 'manual', rows: sourceRaw },
+      series: sourceSeries,
+      refreshedAt: new Date().toISOString(),
+    }),
+    node(operatorId, 'operatorNode', 'Projection', x0 + 360, baseY, {
+      label: 'Projection (a × 1.1 + feed)',
+      operationType: 'formula',
+      isActive: true,
+      formula: 'a * 1.1 + b',
+      inputs: [
+        { key: 'a', sourceId: anchorId, label: anchorTitle },
+        { key: 'b', sourceId: sourceId, label: 'Live feed' },
+      ],
+    }),
+    node(chartId, 'chartNode', 'Actual vs Projection', x0 + 1100, baseY, {
+      chartType: 'area',
+      title: 'Actual vs Projection',
+      seriesCardIds: [anchorId, projectionCardId],
+      showLegend: true,
+    }),
+    node(commentId, 'commentNode', 'Pipeline', x0, baseY + 260, {
+      title:
+        'Live pipeline: Source → Operator → Card → Chart. Edit the Source, then Run Simulation.',
+      projectId,
+    }),
+  ];
+
+  const edge = (source, target) => ({
+    id: randomUUID(),
+    source,
+    target,
+    type: 'dataFlow',
+  });
+  const dataFlowEdges = [
+    edge(sourceId, operatorId), // feed → operator input b
+    edge(anchorId, operatorId), // anchor card → operator input a
+    edge(operatorId, projectionCardId), // operator writes the projection card
+    edge(anchorId, chartId), // chart plots the anchor…
+    edge(projectionCardId, chartId), // …and the projection
+  ];
+
+  return { canvasNodes, projectionCard, dataFlowEdges };
+}
+
 function buildTree(tree) {
   // Tree (dependency) layout is the example default; frames wrap their members
   // and overlap (translucent), which the user accepted. Auto-layout (group-aware)
@@ -531,6 +679,15 @@ function buildTree(tree) {
   const projectId = randomUUID();
   const idOf = new Map();
   tree.nodes.forEach((n) => idOf.set(n.key, randomUUID()));
+
+  // Generate each card's series once and reuse it (so the showcase pipeline can
+  // read the anchor card's actual data, not a fresh random series).
+  const dataByKey = new Map(
+    tree.nodes.map((n) => [
+      n.key,
+      isQuantitative(n.cat) ? makeSeries(n.title) : [],
+    ])
+  );
 
   const project = {
     id: projectId,
@@ -551,7 +708,7 @@ function buildTree(tree) {
     position_x: pos.get(n.key).x,
     position_y: pos.get(n.key).y,
     created_by: OWNER,
-    data: isQuantitative(n.cat) ? makeSeries(n.title) : [],
+    data: dataByKey.get(n.key),
   }));
   const rels = tree.edges.map((e) => ({
     id: randomUUID(),
@@ -588,17 +745,28 @@ function buildTree(tree) {
     };
   });
 
+  // Showcase pipeline: source → operator → projection card → chart (+ comment +
+  // whiteboard). Adds canvas_nodes + dataFlowEdges so every node type is used.
+  const showcase = buildShowcase({ tree, idOf, pos, projectId, dataByKey });
+  const canvasNodes = showcase?.canvasNodes || [];
+  if (showcase) {
+    cards.push(showcase.projectionCard);
+    project.settings = { dataFlowEdges: showcase.dataFlowEdges };
+  }
+
   // SQL
   sql += `\nDELETE FROM public.projects WHERE created_by='${OWNER}' AND name='${sqlEsc(tree.name)}';\n`;
-  sql += `INSERT INTO public.projects (id,name,description,created_by,last_modified_by,is_public,tags,settings) VALUES ('${projectId}','${sqlEsc(tree.name)}','${sqlEsc(tree.description)}','${OWNER}','${OWNER}',${IS_PUBLIC},ARRAY['example','template'],'{}');\n`;
+  sql += `INSERT INTO public.projects (id,name,description,created_by,last_modified_by,is_public,tags,settings) VALUES ('${projectId}','${sqlEsc(tree.name)}','${sqlEsc(tree.description)}','${OWNER}','${OWNER}',${IS_PUBLIC},ARRAY['example','template'],'${sqlEsc(JSON.stringify(project.settings))}'::jsonb);\n`;
   for (const c of cards)
     sql += `INSERT INTO public.metric_cards (id,project_id,title,description,category,position_x,position_y,created_by,data) VALUES ('${c.id}','${c.project_id}','${sqlEsc(c.title)}','${sqlEsc(c.description)}','${c.category}',${c.position_x},${c.position_y},'${OWNER}','${sqlEsc(JSON.stringify(c.data))}'::jsonb);\n`;
   for (const r of rels)
     sql += `INSERT INTO public.relationships (id,project_id,source_id,target_id,type,confidence,weight,created_by) VALUES ('${r.id}','${r.project_id}','${r.source_id}','${r.target_id}','${r.type}','${r.confidence}',${r.weight},'${OWNER}');\n`;
   for (const g of groupRows)
     sql += `INSERT INTO public.groups (id,project_id,name,color,node_ids,position_x,position_y,width,height,created_by) VALUES ('${g.id}','${g.project_id}','${sqlEsc(g.name)}','${g.color}',ARRAY[${g.node_ids.map((id) => `'${id}'`).join(',')}]::uuid[],${g.position_x},${g.position_y},${g.width},${g.height},'${OWNER}');\n`;
+  for (const cn of canvasNodes)
+    sql += `INSERT INTO public.canvas_nodes (id,project_id,node_type,title,position_x,position_y,data,created_by) VALUES ('${cn.id}','${cn.project_id}','${cn.node_type}','${sqlEsc(cn.title)}',${cn.position_x},${cn.position_y},'${sqlEsc(JSON.stringify(cn.data))}'::jsonb,'${OWNER}');\n`;
 
-  return { project, cards, rels, groups: groupRows };
+  return { project, cards, rels, groups: groupRows, canvasNodes };
 }
 
 const built = TREES.map(buildTree);
@@ -609,6 +777,14 @@ mkdirSync(resolve(ROOT, 'scripts/seed'), { recursive: true });
 writeFileSync(resolve(ROOT, 'scripts/seed/example-metric-trees.sql'), sql);
 console.log('📝 Wrote scripts/seed/example-metric-trees.sql');
 
+// Dry run: generate + write the SQL for inspection without touching the DB.
+if (process.argv.includes('--dry')) {
+  console.log(
+    `🧪 Dry run — wrote SQL only. ${built.reduce((s, b) => s + (b.canvasNodes?.length || 0), 0)} canvas nodes across ${built.length} projects.`
+  );
+  process.exit(0);
+}
+
 // --- insert via service role (bypasses RLS) ---
 if (!SUPABASE_URL || !SERVICE_KEY) {
   console.error('❌ Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env');
@@ -618,7 +794,7 @@ const db = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false },
 });
 
-for (const { project, cards, rels, groups } of built) {
+for (const { project, cards, rels, groups, canvasNodes } of built) {
   await db.from('projects').delete().eq('created_by', OWNER).eq('name', project.name);
   let { error: pe } = await db.from('projects').insert(project);
   if (pe) throw new Error(`project ${project.name}: ${pe.message}`);
@@ -630,8 +806,12 @@ for (const { project, cards, rels, groups } of built) {
     let { error: ge } = await db.from('groups').insert(groups);
     if (ge) throw new Error(`groups ${project.name}: ${ge.message}`);
   }
+  if (canvasNodes && canvasNodes.length) {
+    let { error: ne } = await db.from('canvas_nodes').insert(canvasNodes);
+    if (ne) throw new Error(`canvas_nodes ${project.name}: ${ne.message}`);
+  }
   console.log(
-    `✅ ${project.name}: ${cards.length} cards, ${rels.length} relationships, ${(groups || []).length} groups`
+    `✅ ${project.name}: ${cards.length} cards, ${rels.length} relationships, ${(groups || []).length} groups, ${(canvasNodes || []).length} canvas nodes`
   );
 }
 console.log('🌱 Seed complete.');

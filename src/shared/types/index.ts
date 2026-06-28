@@ -235,6 +235,10 @@ export interface CanvasProject {
   tags: string[];
   collaborators: string[];
 
+  // Real flags (replace the legacy 'starred' tag hack / enable soft-delete).
+  isStarred?: boolean;
+  archivedAt?: string | null;
+
   // Canvas content
   nodes: MetricCard[];
   edges: Relationship[];

@@ -1165,6 +1165,22 @@ function CanvasPageInner() {
     [canvasNodes, nodeTitleOf, updateCanvasNode]
   );
 
+  // When a data-flow edge lands on a chart node, add the source as one of the
+  // chart's plotted series (data.seriesCardIds). Edge + picker converge here.
+  const bindChartSeries = useCallback(
+    (chartId: string, sourceId: string) => {
+      const chart = canvasNodes.find((n) => n.id === chartId);
+      if (!chart || chart.nodeType !== 'chartNode') return;
+      const data = (chart.data || {}) as { seriesCardIds?: string[] };
+      const current = data.seriesCardIds || [];
+      if (current.includes(sourceId)) return; // already plotted
+      void updateCanvasNode(chartId, {
+        data: { ...data, seriesCardIds: [...current, sourceId] },
+      });
+    },
+    [canvasNodes, updateCanvasNode]
+  );
+
   // Sync React Flow's selection into the canvas store so grouping / the
   // selection panel / operator panel see it. (The store's selectNodes delegates
   // to a different store than the component reads, so set it directly here.)
@@ -1245,6 +1261,8 @@ function CanvasPageInner() {
           persistDataFlowEdges(nextEdges);
           // If this edge feeds an operator, bind the source as a named input.
           bindOperatorInput(edgeData.target, edgeData.source, prevEdges);
+          // If this edge feeds a chart, add the source as a plotted series.
+          bindChartSeries(edgeData.target, edgeData.source);
           console.log('✅ Data flow edge created + persisted');
         },
         onCreateReference: (edgeData) => {
@@ -1279,14 +1297,28 @@ function CanvasPageInner() {
         // Drop the operator input bindings for any removed inbound-to-operator
         // edges (don't re-key the rest — that would break formulas).
         for (const e of removed) {
-          const op = canvasNodes.find((n) => n.id === e.target);
-          if (!op || op.nodeType !== 'operatorNode') continue;
-          const data = normalizeOperatorData(op.data as any);
-          const nextInputs = removeInputBySource(data.inputs || [], e.source);
-          if (nextInputs !== (data.inputs || [])) {
-            void updateCanvasNode(op.id, {
-              data: { ...data, inputs: nextInputs },
-            });
+          const target = canvasNodes.find((n) => n.id === e.target);
+          if (!target) continue;
+          if (target.nodeType === 'operatorNode') {
+            const data = normalizeOperatorData(target.data as any);
+            const nextInputs = removeInputBySource(data.inputs || [], e.source);
+            if (nextInputs !== (data.inputs || [])) {
+              void updateCanvasNode(target.id, {
+                data: { ...data, inputs: nextInputs },
+              });
+            }
+          } else if (target.nodeType === 'chartNode') {
+            // Drop only the just-removed edge's source; picker-added series stay.
+            const data = (target.data || {}) as { seriesCardIds?: string[] };
+            const current = data.seriesCardIds || [];
+            if (current.includes(e.source)) {
+              void updateCanvasNode(target.id, {
+                data: {
+                  ...data,
+                  seriesCardIds: current.filter((id) => id !== e.source),
+                },
+              });
+            }
           }
         }
         console.log('✅ Data-flow edge(s) deleted + persisted');
@@ -1449,6 +1481,13 @@ function CanvasPageInner() {
 
       if (type === 'commentNode') {
         nodeData.title = 'Comment';
+      }
+
+      if (type === 'chartNode') {
+        nodeData.title = 'Chart';
+        nodeData.chartType = 'area';
+        nodeData.seriesCardIds = [];
+        nodeData.showLegend = true;
       }
 
       try {

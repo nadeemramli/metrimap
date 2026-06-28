@@ -13,6 +13,7 @@ const jsonSchema = z.lazy(() =>
 );
 
 export const metric_cardsCreateManyInputObjectSchema: z.ZodType<Prisma.metric_cardsCreateManyInput, Prisma.metric_cardsCreateManyInput> = z.object({
+  id: z.string().optional(),
   project_id: z.string().optional().nullable(),
   title: z.string(),
   description: z.string().optional().nullable(),
@@ -27,11 +28,12 @@ export const metric_cardsCreateManyInputObjectSchema: z.ZodType<Prisma.metric_ca
   dimensions: z.union([z.lazy(() => metric_cardsCreatedimensionsInputObjectSchema), z.string().array()]).optional(),
   owner_id: z.string().optional().nullable(),
   assignees: z.union([z.lazy(() => metric_cardsCreateassigneesInputObjectSchema), z.string().array()]).optional(),
-  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
   created_by: z.string()
 }).strict();
 export const metric_cardsCreateManyInputObjectZodSchema = z.object({
+  id: z.string().optional(),
   project_id: z.string().optional().nullable(),
   title: z.string(),
   description: z.string().optional().nullable(),
@@ -46,7 +48,7 @@ export const metric_cardsCreateManyInputObjectZodSchema = z.object({
   dimensions: z.union([z.lazy(() => metric_cardsCreatedimensionsInputObjectSchema), z.string().array()]).optional(),
   owner_id: z.string().optional().nullable(),
   assignees: z.union([z.lazy(() => metric_cardsCreateassigneesInputObjectSchema), z.string().array()]).optional(),
-  created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  created_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
+  updated_at: z.union([z.date(), z.iso.datetime()]).optional().nullable(),
   created_by: z.string()
 }).strict();

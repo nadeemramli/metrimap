@@ -19,7 +19,7 @@ export const changelogScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Pris
   target_name: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   description: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   metadata: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
-  timestamp: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  timestamp: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
 }).strict();
 export const changelogScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => changelogScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => changelogScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -33,5 +33,5 @@ export const changelogScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   target_name: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   description: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   metadata: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
-  timestamp: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  timestamp: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.iso.datetime()])]).optional().nullable()
 }).strict();

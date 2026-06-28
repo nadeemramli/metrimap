@@ -9,9 +9,10 @@ export function useProjectActions() {
   const [isCreatingCanvas, setIsCreatingCanvas] = useState(false);
   const {
     addProject,
-    updateProject,
     deleteProject: deleteProjectStore,
     duplicateProject: duplicateProjectStore,
+    setStarred,
+    setArchived,
     getProjectById,
   } = useProjectsStore();
 
@@ -58,37 +59,37 @@ export function useProjectActions() {
   }, []);
 
   const starProject = useCallback(
-    async (projectId: string) => {
-      try {
-        const project = getProjectById(projectId);
-        if (!project) return;
-        const tags = Array.isArray(project.tags) ? project.tags : [];
-        if (!tags.includes('starred')) {
-          await updateProject(projectId, { tags: [...tags, 'starred'] });
-        }
-      } catch (error) {
-        console.error('Failed to star project:', error);
-      }
-    },
-    [getProjectById, updateProject]
+    (projectId: string) => setStarred(projectId, true).catch(() => {}),
+    [setStarred]
   );
 
   const unstarProject = useCallback(
+    (projectId: string) => setStarred(projectId, false).catch(() => {}),
+    [setStarred]
+  );
+
+  const archiveProject = useCallback(
     async (projectId: string) => {
       try {
-        const project = getProjectById(projectId);
-        if (!project) return;
-        const tags = Array.isArray(project.tags) ? project.tags : [];
-        if (tags.includes('starred')) {
-          await updateProject(projectId, {
-            tags: tags.filter((t) => t !== 'starred'),
-          });
-        }
-      } catch (error) {
-        console.error('Failed to unstar project:', error);
+        await setArchived(projectId, true);
+        toast.success('Canvas archived');
+      } catch {
+        toast.error('Failed to archive canvas');
       }
     },
-    [getProjectById, updateProject]
+    [setArchived]
+  );
+
+  const restoreProject = useCallback(
+    async (projectId: string) => {
+      try {
+        await setArchived(projectId, false);
+        toast.success('Canvas restored');
+      } catch {
+        toast.error('Failed to restore canvas');
+      }
+    },
+    [setArchived]
   );
 
   // Aliases expected by features/projects/pages/HomePage
@@ -124,14 +125,9 @@ export function useProjectActions() {
     async (projectId: string) => {
       const project = getProjectById(projectId);
       if (!project) return;
-      const tags = Array.isArray(project.tags) ? project.tags : [];
-      if (tags.includes('starred')) {
-        await unstarProject(projectId);
-      } else {
-        await starProject(projectId);
-      }
+      await setStarred(projectId, !project.isStarred);
     },
-    [getProjectById, starProject, unstarProject]
+    [getProjectById, setStarred]
   );
 
   const handleCreateCanvas = useCallback(async () => {
@@ -183,6 +179,8 @@ export function useProjectActions() {
     shareProject,
     starProject,
     unstarProject,
+    archiveProject,
+    restoreProject,
     // aliases used by HomePage and children
     handleOpenCanvas,
     handleDuplicateProject,

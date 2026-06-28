@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-export type ViewFilter = 'all' | 'recent' | 'starred';
+export type ViewFilter = 'all' | 'recent' | 'starred' | 'archived';
 
 interface UseProjectFilteringArgs {
   projects: any[];
@@ -11,9 +11,10 @@ interface UseProjectFilteringArgs {
   viewFilter: ViewFilter;
 }
 
-const isStarred = (p: any) =>
-  p?.is_starred === true ||
-  (Array.isArray(p?.tags) && p.tags.includes('starred')); // legacy tag fallback
+// is_starred is the source of truth (the legacy 'starred' tag was backfilled
+// into it by migration, so no tag fallback — that would break un-starring).
+const isStarred = (p: any) => p?.isStarred === true;
+const isArchived = (p: any) => Boolean(p?.archivedAt);
 
 function sortProjects(list: any[], sortBy: string, sortOrder: 'asc' | 'desc') {
   const dir = sortOrder === 'asc' ? 1 : -1;
@@ -62,8 +63,8 @@ export function useProjectFiltering({
   sortOrder,
   viewFilter,
 }: UseProjectFilteringArgs) {
-  // Base = search + tags (shared by every chip; drives the chip counts).
-  const base = useMemo(() => {
+  // Search + tags applied to ALL projects, then split into active / archived.
+  const searched = useMemo(() => {
     let filtered = Array.isArray(projects) ? [...projects] : [];
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -84,30 +85,40 @@ export function useProjectFiltering({
     return filtered;
   }, [projects, searchQuery, selectedTags]);
 
+  const active = useMemo(
+    () => searched.filter((p) => !isArchived(p)),
+    [searched]
+  );
+  const archived = useMemo(() => searched.filter(isArchived), [searched]);
+
   const counts = useMemo(
     () => ({
-      all: base.length,
-      starred: base.filter(isStarred).length,
-      recent: Math.min(10, base.length),
+      all: active.length,
+      recent: Math.min(10, active.length),
+      starred: active.filter(isStarred).length,
+      archived: archived.length,
     }),
-    [base]
+    [active, archived]
   );
 
   const filteredProjects = useMemo(() => {
+    if (viewFilter === 'archived') {
+      return sortProjects(archived, sortBy, sortOrder);
+    }
     if (viewFilter === 'starred') {
-      return sortProjects(base.filter(isStarred), sortBy, sortOrder);
+      return sortProjects(active.filter(isStarred), sortBy, sortOrder);
     }
     if (viewFilter === 'recent') {
       // Recent ignores the chosen sort — it's always the 10 freshest.
-      return [...base]
+      return [...active]
         .sort(
           (a, b) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         )
         .slice(0, 10);
     }
-    return sortProjects(base, sortBy, sortOrder);
-  }, [base, viewFilter, sortBy, sortOrder]);
+    return sortProjects(active, sortBy, sortOrder);
+  }, [active, archived, viewFilter, sortBy, sortOrder]);
 
   return { filteredProjects, counts };
 }

@@ -154,12 +154,9 @@ export async function duplicateProjectDeep(
     .single();
   if (origErr || !orig) throw origErr ?? new Error('Project not found');
 
-  // canvas_nodes isn't in the generated Database type yet (regen pending), so it
-  // goes through an untyped client like the rest of the canvasNodes service.
-  const anyClient = client as any;
   const [cardsRes, nodesRes, relsRes, groupsRes] = await Promise.all([
     client.from('metric_cards').select('*').eq('project_id', projectId),
-    anyClient.from('canvas_nodes').select('*').eq('project_id', projectId),
+    client.from('canvas_nodes').select('*').eq('project_id', projectId),
     client.from('relationships').select('*').eq('project_id', projectId),
     client.from('groups').select('*').eq('project_id', projectId),
   ]);
@@ -227,8 +224,8 @@ export async function duplicateProjectDeep(
     if (error) throw error;
   }
   if (nodes.length) {
-    const { error } = await anyClient.from('canvas_nodes').insert(
-      nodes.map((n: any) => ({
+    const { error } = await client.from('canvas_nodes').insert(
+      nodes.map((n) => ({
         ...strip(n),
         id: remap(n.id),
         project_id: newProjectId,
@@ -266,6 +263,36 @@ export async function duplicateProjectDeep(
   }
 
   return newProjectId;
+}
+
+// Star / archive use direct, single-column updates. (The generic updateProject
+// store path maps only a fixed camelCase field set, so it can't carry these
+// flags.) The columns are in the live DB, the Supabase Database type, and the
+// regenerated prisma-zod schema.
+export async function setProjectStarred(
+  id: string,
+  starred: boolean,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<void> {
+  const client = authenticatedClient || supabase();
+  const { error } = await client
+    .from('projects')
+    .update({ is_starred: starred })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function setProjectArchived(
+  id: string,
+  archived: boolean,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<void> {
+  const client = authenticatedClient || supabase();
+  const { error } = await client
+    .from('projects')
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 // Fetch a single project with all its data

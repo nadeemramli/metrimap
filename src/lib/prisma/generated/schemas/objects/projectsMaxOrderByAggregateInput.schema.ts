@@ -11,7 +11,9 @@ export const projectsMaxOrderByAggregateInputObjectSchema: z.ZodType<Prisma.proj
   updated_at: SortOrderSchema.optional(),
   last_modified_by: SortOrderSchema.optional(),
   created_by: SortOrderSchema.optional(),
-  is_public: SortOrderSchema.optional()
+  is_public: SortOrderSchema.optional(),
+  is_starred: SortOrderSchema.optional(),
+  archived_at: SortOrderSchema.optional()
 }).strict();
 export const projectsMaxOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -21,5 +23,7 @@ export const projectsMaxOrderByAggregateInputObjectZodSchema = z.object({
   updated_at: SortOrderSchema.optional(),
   last_modified_by: SortOrderSchema.optional(),
   created_by: SortOrderSchema.optional(),
-  is_public: SortOrderSchema.optional()
+  is_public: SortOrderSchema.optional(),
+  is_starred: SortOrderSchema.optional(),
+  archived_at: SortOrderSchema.optional()
 }).strict();

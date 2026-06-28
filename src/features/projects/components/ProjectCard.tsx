@@ -34,6 +34,8 @@ interface ProjectCardProps {
   onToggleStar: (projectId: string) => void;
   onDeleteProject: (projectId: string) => void;
   onProjectSettings: (projectId: string) => void;
+  onArchive: (projectId: string) => void;
+  onRestore: (projectId: string) => void;
 }
 
 export function ProjectCard({
@@ -43,7 +45,10 @@ export function ProjectCard({
   onToggleStar,
   onDeleteProject,
   onProjectSettings,
+  onArchive,
+  onRestore,
 }: ProjectCardProps) {
+  const isArchived = Boolean(project.archivedAt);
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 ease-out border hover:border-primary/20 hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
       <CardHeader className="pb-3">
@@ -54,7 +59,7 @@ export function ProjectCard({
           >
             <div className="flex items-center gap-2 mb-1">
               <CardTitle className="text-lg">{project.name}</CardTitle>
-              {project.tags.includes('starred') && (
+              {project.isStarred && (
                 <Star className="h-4 w-4 text-yellow-500 fill-current" />
               )}
             </div>
@@ -92,11 +97,7 @@ export function ProjectCard({
                 onClick={() => onToggleStar(project.id)}
                 className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
               >
-                <span>
-                  {project.tags.includes('starred')
-                    ? 'Remove Star'
-                    : 'Add Star'}
-                </span>
+                <span>{project.isStarred ? 'Remove Star' : 'Add Star'}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1 bg-gray-200" />
               <DropdownMenuItem
@@ -105,11 +106,26 @@ export function ProjectCard({
               >
                 <span>Project Settings</span>
               </DropdownMenuItem>
+              {isArchived ? (
+                <DropdownMenuItem
+                  onClick={() => onRestore(project.id)}
+                  className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                >
+                  <span>Restore from Archive</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() => onArchive(project.id)}
+                  className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                >
+                  <span>Archive</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={() => onDeleteProject(project.id)}
                 className="flex items-center px-3 py-2.5 rounded-md hover:bg-red-50 transition-colors cursor-pointer text-sm font-medium text-red-600 hover:text-red-700"
               >
-                <span>Delete Project</span>
+                <span>{isArchived ? 'Delete Permanently' : 'Delete Project'}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

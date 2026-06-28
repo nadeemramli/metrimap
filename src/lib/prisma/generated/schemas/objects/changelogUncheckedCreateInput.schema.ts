@@ -10,6 +10,7 @@ const jsonSchema = z.lazy(() =>
 );
 
 export const changelogUncheckedCreateInputObjectSchema: z.ZodType<Prisma.changelogUncheckedCreateInput, Prisma.changelogUncheckedCreateInput> = z.object({
+  id: z.string().optional(),
   project_id: z.string().optional().nullable(),
   user_id: z.string().optional().nullable(),
   action: z.string(),
@@ -18,9 +19,10 @@ export const changelogUncheckedCreateInputObjectSchema: z.ZodType<Prisma.changel
   target_name: z.string(),
   description: z.string(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  timestamp: z.union([z.date(), z.string().datetime()]).optional().nullable()
+  timestamp: z.union([z.date(), z.iso.datetime()]).optional().nullable()
 }).strict();
 export const changelogUncheckedCreateInputObjectZodSchema = z.object({
+  id: z.string().optional(),
   project_id: z.string().optional().nullable(),
   user_id: z.string().optional().nullable(),
   action: z.string(),
@@ -29,5 +31,5 @@ export const changelogUncheckedCreateInputObjectZodSchema = z.object({
   target_name: z.string(),
   description: z.string(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  timestamp: z.union([z.date(), z.string().datetime()]).optional().nullable()
+  timestamp: z.union([z.date(), z.iso.datetime()]).optional().nullable()
 }).strict();

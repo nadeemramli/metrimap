@@ -33,6 +33,8 @@ interface ProjectTableProps {
   onToggleStar: (projectId: string) => void;
   onDeleteProject: (projectId: string) => void;
   onProjectSettings: (projectId: string) => void;
+  onArchive: (projectId: string) => void;
+  onRestore: (projectId: string) => void;
 }
 
 export function ProjectTable({
@@ -42,6 +44,8 @@ export function ProjectTable({
   onToggleStar,
   onDeleteProject,
   onProjectSettings,
+  onArchive,
+  onRestore,
 }: ProjectTableProps) {
   return (
     <Table className="transition-all duration-300">
@@ -87,7 +91,7 @@ export function ProjectTable({
                     <span className="font-medium transition-all duration-300 group-hover:font-semibold">
                       {project.name}
                     </span>
-                    {project.tags.includes('starred') && (
+                    {project.isStarred && (
                       <Star className="h-4 w-4 text-yellow-500 fill-current transition-transform duration-300 group-hover:scale-110" />
                     )}
                   </div>
@@ -202,9 +206,7 @@ export function ProjectTable({
                       className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
                     >
                       <span>
-                        {project.tags.includes('starred')
-                          ? 'Remove Star'
-                          : 'Add Star'}
+                        {project.isStarred ? 'Remove Star' : 'Add Star'}
                       </span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 bg-gray-200" />
@@ -214,11 +216,30 @@ export function ProjectTable({
                     >
                       <span>Project Settings</span>
                     </DropdownMenuItem>
+                    {project.archivedAt ? (
+                      <DropdownMenuItem
+                        onClick={() => onRestore(project.id)}
+                        className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                      >
+                        <span>Restore from Archive</span>
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() => onArchive(project.id)}
+                        className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                      >
+                        <span>Archive</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={() => onDeleteProject(project.id)}
                       className="flex items-center px-3 py-2.5 rounded-md hover:bg-red-50 transition-colors cursor-pointer text-sm font-medium text-red-600 hover:text-red-700"
                     >
-                      <span>Delete Project</span>
+                      <span>
+                        {project.archivedAt
+                          ? 'Delete Permanently'
+                          : 'Delete Project'}
+                      </span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

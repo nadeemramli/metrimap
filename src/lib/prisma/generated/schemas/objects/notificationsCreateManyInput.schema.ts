@@ -10,20 +10,22 @@ const jsonSchema = z.lazy(() =>
 );
 
 export const notificationsCreateManyInputObjectSchema: z.ZodType<Prisma.notificationsCreateManyInput, Prisma.notificationsCreateManyInput> = z.object({
+  id: z.string().optional(),
   user_id: z.string(),
   type: z.string(),
   title: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   read: z.boolean().optional(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.string().datetime()]).optional()
+  created_at: z.union([z.date(), z.iso.datetime()]).optional()
 }).strict();
 export const notificationsCreateManyInputObjectZodSchema = z.object({
+  id: z.string().optional(),
   user_id: z.string(),
   type: z.string(),
   title: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   read: z.boolean().optional(),
   metadata: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
-  created_at: z.union([z.date(), z.string().datetime()]).optional()
+  created_at: z.union([z.date(), z.iso.datetime()]).optional()
 }).strict();

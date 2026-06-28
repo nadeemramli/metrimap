@@ -37,6 +37,8 @@ model projects {
   last_modified_by String?
   created_by       String
   is_public        Boolean   @default(false)
+  is_starred       Boolean   @default(false)
+  archived_at      DateTime? @db.Timestamptz(6)
 
   @@map("projects")
 }

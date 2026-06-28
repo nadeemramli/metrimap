@@ -13,7 +13,9 @@ export const projectsCountOrderByAggregateInputObjectSchema: z.ZodType<Prisma.pr
   updated_at: SortOrderSchema.optional(),
   last_modified_by: SortOrderSchema.optional(),
   created_by: SortOrderSchema.optional(),
-  is_public: SortOrderSchema.optional()
+  is_public: SortOrderSchema.optional(),
+  is_starred: SortOrderSchema.optional(),
+  archived_at: SortOrderSchema.optional()
 }).strict();
 export const projectsCountOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -25,5 +27,7 @@ export const projectsCountOrderByAggregateInputObjectZodSchema = z.object({
   updated_at: SortOrderSchema.optional(),
   last_modified_by: SortOrderSchema.optional(),
   created_by: SortOrderSchema.optional(),
-  is_public: SortOrderSchema.optional()
+  is_public: SortOrderSchema.optional(),
+  is_starred: SortOrderSchema.optional(),
+  archived_at: SortOrderSchema.optional()
 }).strict();

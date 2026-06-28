@@ -231,11 +231,22 @@ export const convertToCanvasNode = (
     }),
     ...(canvasNode.nodeType === 'chartNode' && {
       title: canvasNode.title || 'Chart',
+      chartType: canvasNode.data?.chartType || 'area',
+      seriesCardIds: canvasNode.data?.seriesCardIds || [],
+      showLegend: canvasNode.data?.showLegend ?? true,
     }),
     ...(canvasNode.nodeType === 'whiteboardNode' && {
       shape: canvasNode.data?.shape || 'rect',
     }),
   },
+  // Whiteboard nodes render at 100% of their container, so they need an explicit
+  // node size. Honour data.width/height (set on create / in seeds), else default.
+  ...(canvasNode.nodeType === 'whiteboardNode' && {
+    style: {
+      width: canvasNode.data?.width ?? 240,
+      height: canvasNode.data?.height ?? 120,
+    },
+  }),
   selected: selectedNodeIds.includes(canvasNode.id),
   selectable: true,
   draggable: true,
