@@ -50,13 +50,33 @@ export function handleNodeConnection(
   } = options;
 
   // Find source and target nodes
-  const sourceNode = nodes.find((n) => n.id === connection.source);
-  const targetNode = nodes.find((n) => n.id === connection.target);
+  let sourceNode = nodes.find((n) => n.id === connection.source);
+  let targetNode = nodes.find((n) => n.id === connection.target);
 
   if (!sourceNode || !targetNode) {
     const error = 'Source or target node not found';
     console.error('❌', error);
     return { success: false, error };
+  }
+
+  // Direction tolerance: connection rules are directional (e.g. metricCard ->
+  // chartNode is valid but the reverse isn't). If the user dragged the "wrong"
+  // way but the REVERSE orientation is a valid rule, swap source/target so the
+  // edge still forms in its canonical direction instead of silently failing —
+  // this is what made source/operator/chart connections intermittently "missing".
+  let conn = connection;
+  if (
+    !validateConnection(sourceNode, targetNode).isValid &&
+    validateConnection(targetNode, sourceNode).isValid
+  ) {
+    conn = {
+      ...connection,
+      source: connection.target,
+      target: connection.source,
+      sourceHandle: connection.targetHandle,
+      targetHandle: connection.sourceHandle,
+    };
+    [sourceNode, targetNode] = [targetNode, sourceNode];
   }
 
   // Validate connection
@@ -78,7 +98,7 @@ export function handleNodeConnection(
   // Check for cycles in data flow connections
   if (edgeInfo.edgeType === 'dataFlowEdge') {
     if (
-      wouldCreateCycle(connection.source!, connection.target!, existingEdges)
+      wouldCreateCycle(conn.source!, conn.target!, existingEdges)
     ) {
       const error = 'Connection would create a cycle in data flow';
       console.error('❌', error);
@@ -91,7 +111,7 @@ export function handleNodeConnection(
     switch (edgeInfo.edgeType) {
       case 'relationshipEdge':
         return handleRelationshipEdge(
-          connection,
+          conn,
           sourceNode,
           targetNode,
           edgeInfo,
@@ -100,7 +120,7 @@ export function handleNodeConnection(
 
       case 'dataFlowEdge':
         return handleDataFlowEdge(
-          connection,
+          conn,
           sourceNode,
           targetNode,
           onCreateDataFlow
@@ -108,7 +128,7 @@ export function handleNodeConnection(
 
       case 'referenceEdge':
         return handleReferenceEdge(
-          connection,
+          conn,
           sourceNode,
           targetNode,
           onCreateReference

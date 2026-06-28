@@ -554,24 +554,46 @@ export async function setProjectPublic(
 }
 
 // Convenience helpers for settings JSON merges
+// Serialize settings writes PER PROJECT. mergeProjectSettings is a
+// read-modify-write of the whole `settings` jsonb, so two concurrent merges
+// (e.g. a data-flow-edge persist + the evidence debounce) would both read the
+// same base and the second would CLOBBER the first's key — silently dropping a
+// just-created connection. Chaining ensures each merge reads the prior result.
+const settingsWriteChain = new Map<string, Promise<unknown>>();
+
 export async function mergeProjectSettings(
   projectId: string,
   partialSettings: Record<string, any>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
-  const { data: proj, error: fetchErr } = await client
-    .from('projects')
-    .select('settings')
-    .eq('id', projectId)
-    .single();
-  if (fetchErr) throw fetchErr;
-  const base: Record<string, any> =
-    proj && proj.settings && typeof proj.settings === 'object'
-      ? (proj.settings as Record<string, any>)
-      : {};
-  const next = { ...base, ...partialSettings } as any;
-  return updateProject(projectId, { settings: next } as any, client);
+  const run = async () => {
+    const client = authenticatedClient || supabase();
+    const { data: proj, error: fetchErr } = await client
+      .from('projects')
+      .select('settings')
+      .eq('id', projectId)
+      .single();
+    if (fetchErr) throw fetchErr;
+    const base: Record<string, any> =
+      proj && proj.settings && typeof proj.settings === 'object'
+        ? (proj.settings as Record<string, any>)
+        : {};
+    const next = { ...base, ...partialSettings } as any;
+    return updateProject(projectId, { settings: next } as any, client);
+  };
+
+  // Queue after any in-flight write for this project (ignore its rejection so a
+  // failed write doesn't poison the chain), then run our read-modify-write.
+  const prev = settingsWriteChain.get(projectId) ?? Promise.resolve();
+  const result = prev.catch(() => {}).then(run);
+  settingsWriteChain.set(projectId, result);
+  // Best-effort cleanup so the map doesn't grow unbounded.
+  result.finally(() => {
+    if (settingsWriteChain.get(projectId) === result) {
+      settingsWriteChain.delete(projectId);
+    }
+  });
+  return result;
 }
 
 // Delete a project
