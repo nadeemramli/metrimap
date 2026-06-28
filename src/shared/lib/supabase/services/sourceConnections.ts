@@ -8,6 +8,7 @@
 import type { MetricValue } from '@/shared/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../client';
+import type { Database } from '../types';
 import { seriesFromRows } from '@/features/canvas/utils/sourceBinding';
 
 export interface SourceConnectionInput {
@@ -25,19 +26,18 @@ export interface SourceConnection extends SourceConnectionInput {
   created_at: string;
 }
 
-type Client = SupabaseClient<any>;
-
-// `source_connections` isn't in the generated Database types until the migration
-// is applied and `npm run prisma:types` is run. Until then, query through `any`.
-const asDb = (c?: Client): any => c || supabase();
+type Client = SupabaseClient<Database>;
 
 /** List the caller's saved warehouse connections (no secrets). */
 export async function listConnections(
   authenticatedClient?: Client
 ): Promise<SourceConnection[]> {
-  const { data, error } = await asDb(authenticatedClient)
+  const client = authenticatedClient || supabase();
+  const { data, error } = await client
     .from('source_connections')
-    .select('id, name, warehouse_type, host, port, database, username, ssl, created_at')
+    .select(
+      'id, name, warehouse_type, host, port, database, username, ssl, created_at'
+    )
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as SourceConnection[];
@@ -77,7 +77,8 @@ export async function deleteConnection(
   id: string,
   authenticatedClient?: Client
 ): Promise<void> {
-  const { error } = await asDb(authenticatedClient)
+  const client = authenticatedClient || supabase();
+  const { error } = await client
     .from('source_connections')
     .delete()
     .eq('id', id);

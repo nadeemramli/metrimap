@@ -53,6 +53,8 @@ export default function HomePage() {
     handleDeleteProject,
     handleProjectSettings,
     toggleStar,
+    archiveProject,
+    restoreProject,
   } = useProjectActions();
 
   const { filteredProjects, counts } = useProjectFiltering({
@@ -133,6 +135,10 @@ export default function HomePage() {
               { key: 'all', label: 'All' },
               { key: 'recent', label: 'Recent' },
               { key: 'starred', label: 'Starred' },
+              // Archived chip only appears once something is archived.
+              ...(counts.archived > 0 || viewFilter === 'archived'
+                ? [{ key: 'archived' as const, label: 'Archived' }]
+                : []),
             ] as { key: ViewFilter; label: string }[]
           ).map((chip) => (
             <button
@@ -185,6 +191,8 @@ export default function HomePage() {
                     onToggleStar={toggleStar}
                     onDeleteProject={handleDeleteProject}
                     onProjectSettings={handleProjectSettings}
+                    onArchive={archiveProject}
+                    onRestore={restoreProject}
                   />
                 ))}
               </div>
@@ -196,6 +204,8 @@ export default function HomePage() {
                 onToggleStar={toggleStar}
                 onDeleteProject={handleDeleteProject}
                 onProjectSettings={handleProjectSettings}
+                onArchive={archiveProject}
+                onRestore={restoreProject}
               />
             )
           ) : (

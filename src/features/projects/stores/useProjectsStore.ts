@@ -3,6 +3,8 @@ import {
   deleteProject as deleteProjectInSupabase,
   duplicateProjectDeep as duplicateProjectDeepInSupabase,
   getUserProjects,
+  setProjectArchived as setProjectArchivedInSupabase,
+  setProjectStarred as setProjectStarredInSupabase,
   updateProject as updateProjectInSupabase,
 } from '@/shared/lib/supabase/services/projects';
 import { useAppStore } from '@/shared/stores/useAppStore';
@@ -33,6 +35,8 @@ interface ProjectsStoreState {
   ) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   duplicateProject: (projectId: string) => Promise<string>;
+  setStarred: (projectId: string, starred: boolean) => Promise<void>;
+  setArchived: (projectId: string, archived: boolean) => Promise<void>;
 
   // Local Read-Only Actions (No Auth Required)
   getProjectById: (id: string) => CanvasProject | undefined;
@@ -104,6 +108,8 @@ export const useProjectsStore = create<ProjectsStoreState>()(
                 description: project.description || '',
                 tags: project.tags || [],
                 collaborators,
+                isStarred: project.is_starred ?? false,
+                archivedAt: project.archived_at ?? null,
                 // Lightweight nodes/edges JUST for the homepage CanvasPreview
                 // (id/title/category + edge endpoints). Full canvas data is still
                 // lazy-loaded on open. Capped so a huge canvas can't bloat the list.
@@ -338,6 +344,42 @@ export const useProjectsStore = create<ProjectsStoreState>()(
                 ? error.message
                 : 'Failed to duplicate project',
           });
+          throw error;
+        }
+      },
+
+      setStarred: async (projectId, starred) => {
+        const prev = get().projects;
+        // Optimistic local update, then persist.
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId ? { ...p, isStarred: starred } : p
+          ),
+        }));
+        try {
+          const client = getClientForEnvironment();
+          await setProjectStarredInSupabase(projectId, starred, client);
+        } catch (error) {
+          console.error('Failed to set starred:', error);
+          set({ projects: prev }); // rollback
+          throw error;
+        }
+      },
+
+      setArchived: async (projectId, archived) => {
+        const prev = get().projects;
+        const archivedAt = archived ? new Date().toISOString() : null;
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId ? { ...p, archivedAt } : p
+          ),
+        }));
+        try {
+          const client = getClientForEnvironment();
+          await setProjectArchivedInSupabase(projectId, archived, client);
+        } catch (error) {
+          console.error('Failed to set archived:', error);
+          set({ projects: prev }); // rollback
           throw error;
         }
       },
