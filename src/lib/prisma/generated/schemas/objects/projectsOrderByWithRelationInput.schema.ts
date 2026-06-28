@@ -14,7 +14,9 @@ export const projectsOrderByWithRelationInputObjectSchema: z.ZodType<Prisma.proj
   updated_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   last_modified_by: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   created_by: SortOrderSchema.optional(),
-  is_public: SortOrderSchema.optional()
+  is_public: SortOrderSchema.optional(),
+  is_starred: SortOrderSchema.optional(),
+  archived_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional()
 }).strict();
 export const projectsOrderByWithRelationInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -26,5 +28,7 @@ export const projectsOrderByWithRelationInputObjectZodSchema = z.object({
   updated_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   last_modified_by: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   created_by: SortOrderSchema.optional(),
-  is_public: SortOrderSchema.optional()
+  is_public: SortOrderSchema.optional(),
+  is_starred: SortOrderSchema.optional(),
+  archived_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional()
 }).strict();

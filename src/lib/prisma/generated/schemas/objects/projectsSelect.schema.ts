@@ -13,7 +13,9 @@ export const projectsSelectObjectSchema: z.ZodType<Prisma.projectsSelect, Prisma
   updated_at: z.boolean().optional(),
   last_modified_by: z.boolean().optional(),
   created_by: z.boolean().optional(),
-  is_public: z.boolean().optional()
+  is_public: z.boolean().optional(),
+  is_starred: z.boolean().optional(),
+  archived_at: z.boolean().optional()
 }).strict();
 export const projectsSelectObjectZodSchema = z.object({
   id: z.boolean().optional(),
@@ -25,5 +27,7 @@ export const projectsSelectObjectZodSchema = z.object({
   updated_at: z.boolean().optional(),
   last_modified_by: z.boolean().optional(),
   created_by: z.boolean().optional(),
-  is_public: z.boolean().optional()
+  is_public: z.boolean().optional(),
+  is_starred: z.boolean().optional(),
+  archived_at: z.boolean().optional()
 }).strict();
