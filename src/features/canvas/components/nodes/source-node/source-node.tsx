@@ -10,7 +10,8 @@ import {
 } from '@/shared/components/ui/card';
 import { cn } from '@/shared/utils';
 import type { SourceNodeData } from '@/features/canvas/utils/sourceResolver';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { type NodeProps } from '@xyflow/react';
+import { FourSideHandles } from '../FourSideHandles';
 import {
   Database,
   FileSpreadsheet,
@@ -47,7 +48,7 @@ export const SourceNode = memo(({ id, data, selected }: NodeProps) => {
           selected && 'ring-2 ring-blue-500'
         )}
       >
-        <Handle type="source" position={Position.Right} />
+        <FourSideHandles />
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center justify-between">
             <span>{d.title || 'Data Source'}</span>

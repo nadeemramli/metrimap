@@ -67,6 +67,7 @@ import {
   convertToEvidenceNode,
   convertToNode,
   edgeTypes,
+  handlesForDirection,
   nodeTypes,
 } from '@/shared/utils/canvasConverters';
 
@@ -747,10 +748,20 @@ function CanvasPageInner() {
       )
     );
 
+    // Anchor data-flow (operative/reference) edges to the same direction-aware
+    // handles relationship edges use, so source/operator/chart connections enter
+    // and leave from the layout-appropriate side instead of one fixed handle.
+    const dirHandles = handlesForDirection(layoutDirection);
+    const extraEdgesAnchored = extraEdges.map((e: any) => ({
+      ...e,
+      sourceHandle: dirHandles.sourceHandle ?? e.sourceHandle,
+      targetHandle: dirHandles.targetHandle ?? e.targetHandle,
+    }));
+
     // Attach the ELK-routed polyline (from the last auto-layout) so DynamicEdge
     // draws the no-overlap orthogonal channel instead of a handle-to-handle
     // curve. Edges without a routed entry fall back to smoothstep.
-    const allEdges = [...convertedCanvasEdges, ...extraEdges].map((e) => {
+    const allEdges = [...convertedCanvasEdges, ...extraEdgesAnchored].map((e) => {
       const pts = routedEdgePoints[e.id];
       return pts
         ? { ...e, data: { ...((e as any).data || {}), routedPoints: pts } }

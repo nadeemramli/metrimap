@@ -1,7 +1,8 @@
 'use client';
 
 import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { type NodeProps } from '@xyflow/react';
+import { FourSideHandles } from './FourSideHandles';
 import {
   Card,
   CardContent,
@@ -80,11 +81,7 @@ const OperatorNodeInner = memo(({ id, data, selected }: NodeProps) => {
         op.isActive ? 'opacity-100' : 'opacity-60'
       )}
     >
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="w-3 h-3 !bg-gray-400"
-      />
+      <FourSideHandles />
 
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
@@ -135,12 +132,6 @@ const OperatorNodeInner = memo(({ id, data, selected }: NodeProps) => {
           </span>
         </div>
       </CardContent>
-
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="w-3 h-3 !bg-gray-400"
-      />
 
       {/* Drag handle */}
       <div className="p-2 border-t border-border/30 bg-muted/20">

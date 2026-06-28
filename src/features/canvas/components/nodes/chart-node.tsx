@@ -18,7 +18,8 @@ import {
 } from '@/shared/components/ui/chart';
 import type { MetricCard } from '@/shared/types';
 import { cn } from '@/shared/utils';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { type NodeProps } from '@xyflow/react';
+import { FourSideHandles } from './FourSideHandles';
 import {
   AreaChartIcon,
   BarChart3,
@@ -247,11 +248,7 @@ const ChartNodeInner = memo(({ id, data, selected }: NodeProps) => {
           selected ? 'ring-2 ring-primary border-primary/40' : 'border-border'
         )}
       >
-        <Handle
-          type="target"
-          position={Position.Left}
-          className="!h-3 !w-3 !bg-primary !border-2 !border-background"
-        />
+        <FourSideHandles />
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between gap-2 text-sm">
             <span className="flex items-center gap-2 truncate">
