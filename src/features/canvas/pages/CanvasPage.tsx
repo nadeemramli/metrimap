@@ -45,6 +45,7 @@ import { useOperatorPreviewStore } from '@/features/canvas/stores/useOperatorPre
 import { useCanvasActions } from '@/features/canvas/hooks/useCanvasActions';
 import { useCanvasHistoryStore } from '@/features/canvas/stores/useCanvasHistoryStore';
 import { toast } from 'sonner';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { type LayoutDirection } from '@/shared/utils/autoLayout';
 import { elkLayout } from '@/shared/utils/elkLayout';
 import { handleNodeConnection } from '@/shared/utils/edgeConnectionHandler';
@@ -98,6 +99,7 @@ function CanvasPageInner() {
   // Initialize state management
   const state = useCanvasPageState();
   const { setHeaderInfo } = useCanvasHeader();
+  const confirm = useConfirm();
 
   // Operator/tools control panel is hidden by default; toggled from the right.
   const [showOperatorPanel, setShowOperatorPanel] = useState(false);
@@ -509,18 +511,20 @@ function CanvasPageInner() {
   }, []);
 
   const handleDeleteGroup = useCallback(
-    (groupId: string) => {
+    async (groupId: string) => {
       const group = (canvas?.groups || []).find((g) => g.id === groupId);
       const name = group?.name || 'this group';
-      if (
-        typeof window !== 'undefined' &&
-        !window.confirm(`Delete "${name}"? The cards inside are kept.`)
-      )
-        return;
+      const confirmed = await confirm({
+        title: `Delete "${name}"?`,
+        description: 'The cards inside are kept.',
+        actionLabel: 'Delete Group',
+        destructive: true,
+      });
+      if (!confirmed) return;
       setFocusedGroupId((cur) => (cur === groupId ? null : cur));
       void useCanvasStore.getState().deleteGroup(groupId);
     },
-    [canvas?.groups]
+    [canvas?.groups, confirm]
   );
 
   // Esc exits focus mode.
@@ -1275,8 +1279,7 @@ function CanvasPageInner() {
 
       if (!result.success) {
         console.error('❌ Connection failed:', result.error);
-        // You could show a toast notification here
-        alert(`Connection failed: ${result.error}`);
+        toast.error(`Connection failed: ${result.error}`);
       }
     },
     [nodes, canvas?.edges, state, persistDataFlowEdges, bindOperatorInput]

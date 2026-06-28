@@ -2,6 +2,7 @@ import { AssetsEmptyState } from '@/features/assets/components/emptystate/Assets
 import CardSettingsSheet from '@/features/canvas/components/panels/metric-panel/CardSettingsSheet';
 import RelationshipSheet from '@/features/canvas/components/panels/relationship-panel/RelationshipSheet';
 import { useCanvasStore, useTagStore } from '@/lib/stores';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -10,6 +11,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,10 +42,12 @@ import {
   addTagsToRelationship,
 } from '@/shared/lib/supabase/services/tags';
 import type { MetricCard, Relationship } from '@/shared/types';
+import { formatDate } from '@/shared/utils/formatDate';
 import {
   getCategoryColor,
   getRelationshipTypeColor,
 } from '@/shared/utils/metricUtils';
+import { toast } from 'sonner';
 import {
   AlertTriangle,
   BarChart3,
@@ -73,6 +85,7 @@ type SortOrder = 'asc' | 'desc';
 
 export default function AssetsPage() {
   const { persistNodeDelete, persistEdgeDelete } = useCanvasStore();
+  const confirm = useConfirm();
 
   const [activeTab, setActiveTab] = useState<TabType>('metrics');
   const [searchQuery, setSearchQuery] = useState('');
@@ -270,24 +283,34 @@ export default function AssetsPage() {
   };
 
   const handleDeleteMetric = async (metricId: string) => {
-    if (confirm('Are you sure you want to delete this metric?')) {
-      try {
-        await persistNodeDelete(metricId);
-      } catch (error) {
-        console.error('Failed to delete metric:', error);
-        alert('Failed to delete metric. Please try again.');
-      }
+    const confirmed = await confirm({
+      title: 'Delete this metric?',
+      description: 'This action cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await persistNodeDelete(metricId);
+    } catch (error) {
+      console.error('Failed to delete metric:', error);
+      toast.error('Failed to delete metric. Please try again.');
     }
   };
 
   const handleDeleteRelationship = async (relationshipId: string) => {
-    if (confirm('Are you sure you want to delete this relationship?')) {
-      try {
-        await persistEdgeDelete(relationshipId);
-      } catch (error) {
-        console.error('Failed to delete relationship:', error);
-        alert('Failed to delete relationship. Please try again.');
-      }
+    const confirmed = await confirm({
+      title: 'Delete this relationship?',
+      description: 'This action cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await persistEdgeDelete(relationshipId);
+    } catch (error) {
+      console.error('Failed to delete relationship:', error);
+      toast.error('Failed to delete relationship. Please try again.');
     }
   };
 
@@ -379,40 +402,42 @@ export default function AssetsPage() {
   const handleBulkDeleteMetrics = async () => {
     if (selectedMetricIds.size === 0) return;
 
-    if (
-      confirm(
-        `Are you sure you want to delete ${selectedMetricIds.size} metrics?`
-      )
-    ) {
-      try {
-        for (const metricId of selectedMetricIds) {
-          await persistNodeDelete(metricId);
-        }
-        setSelectedMetricIds(new Set());
-      } catch (error) {
-        console.error('Failed to delete metrics:', error);
-        alert('Failed to delete some metrics. Please try again.');
+    const confirmed = await confirm({
+      title: `Delete ${selectedMetricIds.size} metric${selectedMetricIds.size === 1 ? '' : 's'}?`,
+      description: 'This action cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      for (const metricId of selectedMetricIds) {
+        await persistNodeDelete(metricId);
       }
+      setSelectedMetricIds(new Set());
+    } catch (error) {
+      console.error('Failed to delete metrics:', error);
+      toast.error('Failed to delete some metrics. Please try again.');
     }
   };
 
   const handleBulkDeleteRelationships = async () => {
     if (selectedRelationshipIds.size === 0) return;
 
-    if (
-      confirm(
-        `Are you sure you want to delete ${selectedRelationshipIds.size} relationships?`
-      )
-    ) {
-      try {
-        for (const relationshipId of selectedRelationshipIds) {
-          await persistEdgeDelete(relationshipId);
-        }
-        setSelectedRelationshipIds(new Set());
-      } catch (error) {
-        console.error('Failed to delete relationships:', error);
-        alert('Failed to delete some relationships. Please try again.');
+    const confirmed = await confirm({
+      title: `Delete ${selectedRelationshipIds.size} relationship${selectedRelationshipIds.size === 1 ? '' : 's'}?`,
+      description: 'This action cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      for (const relationshipId of selectedRelationshipIds) {
+        await persistEdgeDelete(relationshipId);
       }
+      setSelectedRelationshipIds(new Set());
+    } catch (error) {
+      console.error('Failed to delete relationships:', error);
+      toast.error('Failed to delete some relationships. Please try again.');
     }
   };
 
@@ -502,7 +527,7 @@ export default function AssetsPage() {
       }
     } catch (error) {
       console.error('❌ Error adding tags:', error);
-      alert('Failed to add tags. Please try again.');
+      toast.error('Failed to add tags. Please try again.');
     } finally {
       setIsAddingTags(false);
     }
@@ -545,7 +570,7 @@ export default function AssetsPage() {
       activeTab === 'metrics' ? filteredMetrics : filteredRelationships;
 
     if (dataToExport.length === 0) {
-      alert('No data to export');
+      toast.error('No data to export');
       return;
     }
 
@@ -572,7 +597,7 @@ export default function AssetsPage() {
           `"${metric.description || ''}"`,
           `"${metric.data && metric.data.length > 0 ? metric.data[0].value : ''}"`,
           `${relationships.filter((r: Relationship) => r.sourceId === metric.id || r.targetId === metric.id).length}`,
-          `"${new Date(metric.updatedAt).toLocaleDateString()}"`,
+          `"${formatDate(metric.updatedAt)}"`,
           `"${(metric.tags || []).join('; ')}"`,
         ];
         csvContent += row.join(',') + '\n';
@@ -598,7 +623,7 @@ export default function AssetsPage() {
           `"${rel.type}"`,
           `"${rel.confidence}"`,
           `${rel.weight || 0}`,
-          `"${new Date(rel.updatedAt).toLocaleDateString()}"`,
+          `"${formatDate(rel.updatedAt)}"`,
         ];
         csvContent += row.join(',') + '\n';
       });
@@ -735,12 +760,12 @@ export default function AssetsPage() {
         className="w-full"
       >
         <div className="mb-6">
-          <TabsList className="bg-gray-100 rounded-lg p-[3px] shadow-sm w-fit h-auto">
+          <TabsList className="bg-muted rounded-lg p-[3px] shadow-sm w-fit h-auto">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}
                 value={tab.id}
-                className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
               >
                 {tab.label} ({tab.count})
               </TabsTrigger>
@@ -911,14 +936,14 @@ export default function AssetsPage() {
                       draggedColumn === column.key ? 'opacity-50' : ''
                     } ${
                       dragOverColumn === column.key
-                        ? 'bg-blue-100 border-l-2 border-blue-500'
+                        ? 'bg-accent border-l-2 border-primary'
                         : ''
                     }`}
                   >
                     <div className="w-4 h-4 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
                     </div>
-                    <CheckSquare className="h-4 w-4 text-green-600" />
+                    <CheckSquare className="h-4 w-4 text-success" />
                     <span className="text-sm">{column.label}</span>
                   </div>
                 );
@@ -967,8 +992,8 @@ export default function AssetsPage() {
                     className="flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-muted"
                   >
                     <div className="w-4 h-4"></div>
-                    <Square className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-500">
+                    <Square className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
                       {column.label}
                     </span>
                   </div>
@@ -982,10 +1007,10 @@ export default function AssetsPage() {
       {((activeTab === 'metrics' && selectedMetricIds.size > 0) ||
         (activeTab === 'relationships' &&
           selectedRelationshipIds.size > 0)) && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-info/10 border border-info/20 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-blue-900">
+              <span className="text-sm font-medium text-foreground">
                 {activeTab === 'metrics'
                   ? `${selectedMetricIds.size} metric${selectedMetricIds.size > 1 ? 's' : ''} selected`
                   : `${selectedRelationshipIds.size} relationship${selectedRelationshipIds.size > 1 ? 's' : ''} selected`}
@@ -1000,7 +1025,7 @@ export default function AssetsPage() {
                     setSelectedRelationshipIds(new Set());
                   }
                 }}
-                className="text-blue-700 hover:text-blue-900"
+                className="text-muted-foreground hover:text-foreground"
               >
                 Clear Selection
               </Button>
@@ -1086,7 +1111,7 @@ export default function AssetsPage() {
         {isLoadingProject && (
           <div className="flex items-center justify-center p-8">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
               <p className="text-muted-foreground">Loading project data...</p>
             </div>
           </div>
@@ -1098,8 +1123,7 @@ export default function AssetsPage() {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-12">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={
                           activeTab === 'metrics'
                             ? selectedMetricIds.size ===
@@ -1109,12 +1133,11 @@ export default function AssetsPage() {
                                 filteredRelationships.length &&
                               filteredRelationships.length > 0
                         }
-                        onChange={(e) =>
+                        onCheckedChange={(checked) =>
                           activeTab === 'metrics'
-                            ? handleSelectAllMetrics(e.target.checked)
-                            : handleSelectAllRelationships(e.target.checked)
+                            ? handleSelectAllMetrics(checked === true)
+                            : handleSelectAllRelationships(checked === true)
                         }
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </th>
                     {getOrderedVisibleColumns(
@@ -1147,16 +1170,11 @@ export default function AssetsPage() {
                           className="hover:bg-muted/30 transition-colors duration-150"
                         >
                           <td className="px-6 py-4 w-12">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={selectedMetricIds.has(metric.id)}
-                              onChange={(e) =>
-                                handleMetricSelection(
-                                  metric.id,
-                                  e.target.checked
-                                )
+                              onCheckedChange={(checked) =>
+                                handleMetricSelection(metric.id, checked === true)
                               }
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                           </td>
                           {getOrderedVisibleColumns('metrics').map(
@@ -1217,9 +1235,7 @@ export default function AssetsPage() {
                                   {columnKey === 'updated' && (
                                     <div className="flex items-center gap-1 text-sm text-muted-foreground min-h-[2.5rem]">
                                       <Calendar className="h-3 w-3" />
-                                      {new Date(
-                                        metric.updatedAt
-                                      ).toLocaleDateString()}
+                                      {formatDate(metric.updatedAt)}
                                     </div>
                                   )}
                                   {columnKey === 'description' && (
@@ -1334,16 +1350,14 @@ export default function AssetsPage() {
                           className="hover:bg-muted/30 transition-colors duration-150"
                         >
                           <td className="px-6 py-4 w-12">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={selectedRelationshipIds.has(rel.id)}
-                              onChange={(e) =>
+                              onCheckedChange={(checked) =>
                                 handleRelationshipSelection(
                                   rel.id,
-                                  e.target.checked
+                                  checked === true
                                 )
                               }
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                           </td>
                           {getOrderedVisibleColumns('relationships').map(
@@ -1391,13 +1405,13 @@ export default function AssetsPage() {
                                   {columnKey === 'confidence' && (
                                     <div className="flex items-center gap-2 min-h-[2.5rem]">
                                       {rel.confidence === 'High' && (
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                        <CheckCircle className="h-4 w-4 text-success" />
                                       )}
                                       {rel.confidence === 'Medium' && (
-                                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                                        <AlertTriangle className="h-4 w-4 text-warning" />
                                       )}
                                       {rel.confidence === 'Low' && (
-                                        <Clock className="h-4 w-4 text-red-500" />
+                                        <Clock className="h-4 w-4 text-destructive" />
                                       )}
                                       <span className="text-sm">
                                         {rel.confidence}
@@ -1415,9 +1429,7 @@ export default function AssetsPage() {
                                   {columnKey === 'updated' && (
                                     <div className="flex items-center gap-1 text-sm text-muted-foreground min-h-[2.5rem]">
                                       <Calendar className="h-3 w-3" />
-                                      {new Date(
-                                        rel.updatedAt
-                                      ).toLocaleDateString()}
+                                      {formatDate(rel.updatedAt)}
                                     </div>
                                   )}
                                   {columnKey === 'weight' && (
@@ -1541,251 +1553,201 @@ export default function AssetsPage() {
       />
 
       {/* Tag Dialog */}
-      {isTagDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Add Tags</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCloseTagDialog}
-                disabled={isAddingTags}
-              >
-                ×
-              </Button>
-            </div>
+      <Dialog
+        open={isTagDialogOpen}
+        onOpenChange={(open) => !open && handleCloseTagDialog()}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Tags</DialogTitle>
+            <DialogDescription>
+              Adding to{' '}
+              {activeTab === 'metrics'
+                ? selectedMetricIds.size
+                : selectedRelationshipIds.size}{' '}
+              selected {activeTab === 'metrics' ? 'metrics' : 'relationships'}
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <EnhancedTagInput
-                tags={selectedTags}
-                onAdd={(tag) => {
-                  console.log('Adding tag:', tag);
-                  setSelectedTags([...new Set([...selectedTags, tag])]);
-                }}
-                onRemove={(tag) => {
-                  console.log('Removing tag:', tag);
-                  setSelectedTags(selectedTags.filter((t) => t !== tag));
-                }}
-                placeholder="Add tags..."
-                className="min-h-[2.5rem]"
-              />
+          <div className="space-y-4">
+            <EnhancedTagInput
+              tags={selectedTags}
+              onAdd={(tag) =>
+                setSelectedTags([...new Set([...selectedTags, tag])])
+              }
+              onRemove={(tag) =>
+                setSelectedTags(selectedTags.filter((t) => t !== tag))
+              }
+              placeholder="Add tags..."
+              className="min-h-[2.5rem]"
+            />
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  Adding to{' '}
-                  {activeTab === 'metrics'
-                    ? selectedMetricIds.size
-                    : selectedRelationshipIds.size}{' '}
-                  selected{' '}
-                  {activeTab === 'metrics' ? 'metrics' : 'relationships'}
-                </span>
+            {selectedTags.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                Selected tags: {selectedTags.join(', ')}
               </div>
-
-              <div className="text-sm text-gray-500">
-                Selected tags: {selectedTags.length} - {selectedTags.join(', ')}
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={handleCloseTagDialog}
-                  disabled={isAddingTags}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSubmitTags}
-                  disabled={isAddingTags || selectedTags.length === 0}
-                >
-                  {isAddingTags ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Adding...
-                    </>
-                  ) : (
-                    'Add Tags'
-                  )}
-                </Button>
-              </div>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCloseTagDialog}
+              disabled={isAddingTags}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitTags}
+              disabled={isAddingTags || selectedTags.length === 0}
+            >
+              {isAddingTags ? 'Adding...' : 'Add Tags'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Tag Management Dialog */}
-      {isTagManagementOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Manage Project Tags</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsTagManagementOpen(false)}
+      <Dialog open={isTagManagementOpen} onOpenChange={setIsTagManagementOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Project Tags</DialogTitle>
+            <DialogDescription>
+              {tags.length} tag{tags.length === 1 ? '' : 's'} in this project
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4">
+            {tags.map((tag: any) => (
+              <div
+                key={tag.id}
+                className="flex items-center justify-between p-3 border rounded-lg"
               >
-                ×
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="text-sm text-gray-500">
-                Debug: {tags.length} tags loaded for project {canvasId}
-              </div>
-
-              <div className="grid gap-4">
-                {tags.map((tag: any) => (
-                  <div
-                    key={tag.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <Tag className="h-3 w-3" />
+                    {tag.name}
+                  </Badge>
+                  {tag.description && (
+                    <span className="text-sm text-muted-foreground">
+                      {tag.description}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // TODO: Implement tag editing
+                      console.log('Edit tag:', tag);
+                    }}
                   >
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant="secondary"
-                        className="flex items-center gap-1"
-                      >
-                        <Tag className="h-3 w-3" />
-                        {tag.name}
-                      </Badge>
-                      {tag.description && (
-                        <span className="text-sm text-muted-foreground">
-                          {tag.description}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // TODO: Implement tag editing
-                          console.log('Edit tag:', tag);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={async () => {
-                          if (
-                            confirm(
-                              `Are you sure you want to delete the tag "${tag.name}"?`
-                            )
-                          ) {
-                            try {
-                              await deleteProjectTag(tag.id);
-                            } catch (error) {
-                              console.error('Failed to delete tag:', error);
-                              alert('Failed to delete tag. Please try again.');
-                            }
-                          }
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-                {tags.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Tag className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No tags created yet</p>
-                    <p className="text-sm">
-                      Create your first tag to get started
-                    </p>
-                  </div>
-                )}
+                    Edit
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={async () => {
+                      const confirmed = await confirm({
+                        title: `Delete tag "${tag.name}"?`,
+                        description: 'This action cannot be undone.',
+                        actionLabel: 'Delete',
+                        destructive: true,
+                      });
+                      if (!confirmed) return;
+                      try {
+                        await deleteProjectTag(tag.id);
+                      } catch (error) {
+                        console.error('Failed to delete tag:', error);
+                        toast.error('Failed to delete tag. Please try again.');
+                      }
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
+            ))}
 
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsTagManagementOpen(false)}
-                >
-                  Close
-                </Button>
+            {tags.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Tag className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No tags created yet</p>
+                <p className="text-sm">Create your first tag to get started</p>
               </div>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsTagManagementOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Asset Dialog */}
-      {isAddAssetOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Add New Asset</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsAddAssetOpen(false)}
+      <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Asset</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Asset Type</label>
+              <Select
+                value={newAssetType}
+                onValueChange={(value) =>
+                  setNewAssetType(value as 'metric' | 'relationship')
+                }
               >
-                ×
-              </Button>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="metric">Metric</SelectItem>
+                  <SelectItem value="relationship">Relationship</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Asset Type
-                </label>
-                <Select
-                  value={newAssetType}
-                  onValueChange={(value) =>
-                    setNewAssetType(value as 'metric' | 'relationship')
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="metric">Metric</SelectItem>
-                    <SelectItem value="relationship">Relationship</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="text-sm text-muted-foreground">
-                {newAssetType === 'metric' ? (
-                  <p>
-                    Create a new metric card that will appear on the canvas and
-                    in the metrics table.
-                  </p>
-                ) : (
-                  <p>
-                    Create a new relationship between existing metrics on the
-                    canvas.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAddAssetOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => {
-                    // TODO: Implement actual asset creation
-                    console.log('Creating new', newAssetType);
-                    alert(
-                      `${newAssetType} creation functionality coming soon!`
-                    );
-                    setIsAddAssetOpen(false);
-                  }}
-                >
-                  Create {newAssetType === 'metric' ? 'Metric' : 'Relationship'}
-                </Button>
-              </div>
+            <div className="text-sm text-muted-foreground">
+              {newAssetType === 'metric' ? (
+                <p>
+                  Create a new metric card that will appear on the canvas and in
+                  the metrics table.
+                </p>
+              ) : (
+                <p>
+                  Create a new relationship between existing metrics on the
+                  canvas.
+                </p>
+              )}
             </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddAssetOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                // TODO: Implement actual asset creation
+                console.log('Creating new', newAssetType);
+                toast.info(`${newAssetType} creation functionality coming soon!`);
+                setIsAddAssetOpen(false);
+              }}
+            >
+              Create {newAssetType === 'metric' ? 'Metric' : 'Relationship'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

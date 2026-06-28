@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
@@ -144,7 +145,7 @@ export function CorrelationsTab({
 
   const handleComputeCorrelations = async () => {
     if (!hasDefinedRelationships) {
-      alert(
+      toast.error(
         "Please define at least one relationship before computing correlations."
       );
       return;

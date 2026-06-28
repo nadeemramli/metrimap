@@ -2,6 +2,8 @@
 // TODO(type-debt): pre-existing type errors quarantined when strict type-checking
 // was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
 // this directive — do not add new code here assuming it is type-checked.
+import { toast } from 'sonner';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -79,6 +81,7 @@ export default function RelationshipSheet({
   const { canvasId } = useParams();
   const { getEdgeById, persistEdgeUpdate, persistEdgeDelete, getNodeById } =
     useCanvasStore();
+  const confirm = useConfirm();
   const { getProjectById } = useProjectsStore();
   const currentProject = canvasId ? getProjectById(canvasId) : null;
   const relationship = relationshipId ? getEdgeById(relationshipId) : null;
@@ -412,26 +415,26 @@ export default function RelationshipSheet({
         onClose();
       } catch (error) {
         console.error('Failed to save relationship:', error);
-        alert('Failed to save relationship. Please try again.');
+        toast.error('Failed to save relationship. Please try again.');
       }
     }
   };
 
   const handleDelete = async () => {
-    if (
-      relationship &&
-      relationshipId &&
-      confirm(
-        'Are you sure you want to delete this relationship? This action cannot be undone.'
-      )
-    ) {
-      try {
-        await persistEdgeDelete(relationshipId);
-        onClose();
-      } catch (error) {
-        console.error('Failed to delete relationship:', error);
-        alert('Failed to delete relationship. Please try again.');
-      }
+    if (!relationship || !relationshipId) return;
+    const confirmed = await confirm({
+      title: 'Delete this relationship?',
+      description: 'This action cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await persistEdgeDelete(relationshipId);
+      onClose();
+    } catch (error) {
+      console.error('Failed to delete relationship:', error);
+      toast.error('Failed to delete relationship. Please try again.');
     }
   };
 

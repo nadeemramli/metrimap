@@ -2,6 +2,7 @@
 // TODO(type-debt): pre-existing type errors quarantined when strict type-checking
 // was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
 // this directive — do not add new code here assuming it is type-checked.
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -139,6 +140,7 @@ export default function DynamicEdge({
   selected,
 }: DynamicEdgeProps) {
   const { deleteElements } = useReactFlow();
+  const confirm = useConfirm();
   const [isHovered, setIsHovered] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
@@ -252,11 +254,17 @@ export default function DynamicEdge({
 
   const [edgePath, labelX, labelY] = getEdgePath();
 
-  const handleDelete = useCallback(() => {
-    if (confirm('Are you sure you want to delete this relationship?')) {
+  const handleDelete = useCallback(async () => {
+    const confirmed = await confirm({
+      title: 'Delete this relationship?',
+      description: 'This action cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (confirmed) {
       deleteElements({ edges: [{ id }] });
     }
-  }, [deleteElements, id]);
+  }, [confirm, deleteElements, id]);
 
   const handleOpenSheet = useCallback(() => {
     console.log('🔗 handleOpenSheet called for relationship:', relationship.id);
@@ -450,11 +458,7 @@ export default function DynamicEdge({
           }}
           onView={handleView}
           onEdit={handleEdit}
-          onDelete={() => {
-            if (confirm('Are you sure you want to delete this relationship?')) {
-              deleteElements({ edges: [{ id }] });
-            }
-          }}
+          onDelete={handleDelete}
           onCopy={handleCopy}
           onShare={handleShare}
           onAddTag={handleAddTag}

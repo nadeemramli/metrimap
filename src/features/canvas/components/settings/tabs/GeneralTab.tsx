@@ -11,6 +11,10 @@ import {
   CardTitle,
 } from '@/shared/components/ui/card';
 import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { formatDate } from '@/shared/utils/formatDate';
 import { Copy, Tag, Trash2 } from 'lucide-react';
 
 interface Props {
@@ -63,29 +67,25 @@ export function GeneralTab({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Canvas Name
-              </label>
-              <input
-                className="w-full border rounded px-3 py-2 text-sm"
+            <div className="space-y-1.5">
+              <Label htmlFor="canvas-name">Canvas Name</Label>
+              <Input
+                id="canvas-name"
                 value={canvasName}
                 onChange={(e) => onNameChange(e.target.value)}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Description
-              </label>
-              <textarea
-                className="w-full border rounded px-3 py-2 text-sm"
+            <div className="space-y-1.5">
+              <Label htmlFor="canvas-description">Description</Label>
+              <Textarea
+                id="canvas-description"
                 rows={4}
                 value={canvasDescription}
                 onChange={(e) => onDescriptionChange(e.target.value)}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Tags</label>
+            <div className="space-y-1.5">
+              <Label>Tags</Label>
               <EnhancedTagInput
                 tags={canvasTags}
                 onAdd={(tag) => onTagsChange([...canvasTags, tag])}
@@ -98,7 +98,7 @@ export function GeneralTab({
               </div>
             </div>
             <div className="flex items-center gap-2 pt-2">
-              <Button variant="outline" disabled={!isDirty} onClick={onSave}>
+              <Button disabled={!isDirty} onClick={onSave}>
                 Save Changes
               </Button>
               {onDuplicate && (
@@ -124,9 +124,7 @@ export function GeneralTab({
               <div className="text-xs font-medium text-muted-foreground mb-1">
                 Created
               </div>
-              <div className="text-sm">
-                {createdAt ? new Date(createdAt).toLocaleDateString() : '-'}
-              </div>
+              <div className="text-sm">{formatDate(createdAt)}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-muted-foreground mb-1">

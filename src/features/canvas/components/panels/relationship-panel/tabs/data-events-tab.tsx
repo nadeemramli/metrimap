@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import { useCanvasStore } from '@/lib/stores';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -333,7 +334,7 @@ export function DataEventsTab({
         setEditValue('');
       } catch (error) {
         console.error('Failed to save data:', error);
-        alert('Failed to save data. Please try again.');
+        toast.error('Failed to save data. Please try again.');
       }
     } else {
       setEditingRow(null);

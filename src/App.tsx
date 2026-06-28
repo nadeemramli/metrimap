@@ -1,11 +1,14 @@
 import { SignedIn, SignedOut, SignUp } from '@clerk/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from 'next-themes';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 // Components
 import ClerkSupabaseProvider from './features/auth/components/ClerkSupabaseProvider';
 import ProtectedRoute from './features/auth/components/ProtectedRoute';
 import { ErrorBoundary } from './shared/components/common/error/ErrorBoundary';
+import { ConfirmDialogProvider } from './shared/components/ConfirmDialog';
+import { Toaster } from './shared/components/ui/sonner';
 import { AuthenticatedSupabaseProvider } from './shared/contexts/AuthenticatedSupabaseContext';
 import { CanvasHeaderProvider } from './shared/contexts/CanvasHeaderContext';
 
@@ -31,9 +34,16 @@ const queryClient = new QueryClient();
 export default function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ClerkSupabaseProvider>
-          <AuthenticatedSupabaseProvider>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="light"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <QueryClientProvider client={queryClient}>
+          <ClerkSupabaseProvider>
+            <AuthenticatedSupabaseProvider>
+              <ConfirmDialogProvider>
               <Routes>
                 {/* Auth routes with Clerk */}
                 <Route
@@ -150,9 +160,12 @@ export default function App() {
                   }
                 />
               </Routes>
+              <Toaster richColors closeButton position="bottom-right" />
+              </ConfirmDialogProvider>
             </AuthenticatedSupabaseProvider>
           </ClerkSupabaseProvider>
-      </QueryClientProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

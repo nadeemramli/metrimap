@@ -2,6 +2,7 @@
 // TODO(type-debt): pre-existing type errors quarantined when strict type-checking
 // was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
 // this directive — do not add new code here assuming it is type-checked.
+import { toast } from 'sonner';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 import TagsList from '@/shared/components/common/TagsList';
 import {
@@ -331,7 +332,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
       setIsDimensionSliceOpen(false);
     } catch (error) {
       console.error('Error slicing metric:', error);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : 'An error occurred while slicing the metric'

@@ -2,8 +2,17 @@ import { ChangelogFilters } from '@/features/canvas/components/settings/filters/
 import { ChangelogTab } from '@/features/canvas/components/settings/tabs/ChangelogTab';
 import { GeneralTab } from '@/features/canvas/components/settings/tabs/GeneralTab';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
 import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
 import {
   Tabs,
@@ -17,9 +26,10 @@ import { useChangelogData } from '@/shared/hooks/useChangelogData';
 import type { Collaborator } from '@/shared/lib/supabase/services/collaborators';
 import { getProjectCollaborators } from '@/shared/lib/supabase/services/collaborators';
 import { useTagStore } from '@/shared/stores/useTagStore';
-import { Edit, Trash2, X } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 type TabType = 'general' | 'changelog';
 
@@ -29,6 +39,7 @@ export default function CanvasSettingsPage() {
   const navigate = useNavigate();
   const { projects, updateProject, deleteProject } = useProjectsStore();
   const { user } = useAppStore();
+  const confirm = useConfirm();
 
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,7 +173,7 @@ export default function CanvasSettingsPage() {
   const handleSave = async () => {
     if (!currentProject) return;
     if (!user?.id) {
-      alert('Please log in to save changes.');
+      toast.error('Please log in to save changes.');
       return;
     }
 
@@ -177,17 +188,25 @@ export default function CanvasSettingsPage() {
 
     try {
       await updateProject(currentProject.id, updatedProject);
-      // Show success message or handle success
       console.log('Canvas updated successfully');
-      alert('Canvas updated successfully!');
+      toast.success('Canvas updated successfully');
     } catch (error) {
       console.error('Failed to update canvas:', error);
-      alert('Failed to update canvas. Please try again.');
+      toast.error('Failed to update canvas. Please try again.');
     }
   };
 
   const handleDeleteCanvas = async () => {
     if (!currentProject) return;
+
+    const confirmed = await confirm({
+      title: `Delete "${currentProject.name}"?`,
+      description:
+        'This action cannot be undone. All metrics, relationships, and history will be permanently deleted.',
+      actionLabel: 'Delete Canvas',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     setIsDeleting(true);
     try {
@@ -196,7 +215,7 @@ export default function CanvasSettingsPage() {
       navigate('/');
     } catch (error) {
       console.error('Failed to delete canvas:', error);
-      alert('Failed to delete canvas. Please try again.');
+      toast.error('Failed to delete canvas. Please try again.');
     } finally {
       setIsDeleting(false);
     }
@@ -245,19 +264,19 @@ export default function CanvasSettingsPage() {
         className="w-full"
       >
         <div className="flex items-center justify-between mb-6">
-          <TabsList className="bg-gray-100 rounded-lg p-[3px] shadow-sm">
+          <TabsList className="bg-muted rounded-lg p-[3px] shadow-sm">
             <TabsTrigger
               value="general"
-              className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+              className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
             >
               General
             </TabsTrigger>
             <TabsTrigger
               value="changelog"
-              className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+              className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
             >
               Changelog
-              <span className="inline-flex items-center justify-center rounded-full bg-gray-300 text-secondary-foreground text-xs font-medium w-5 h-5 min-w-5 min-h-5 p-0">
+              <span className="inline-flex items-center justify-center rounded-full bg-secondary text-secondary-foreground text-xs font-medium w-5 h-5 min-w-5 min-h-5 p-0">
                 {filteredChangelog.length}
               </span>
             </TabsTrigger>
@@ -317,109 +336,99 @@ export default function CanvasSettingsPage() {
       </Tabs>
 
       {/* Tag Management Dialog */}
-      {isTagManagementOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold">Manage Canvas Tags</h2>
-                <p className="text-sm text-muted-foreground">
-                  Create and manage tags used within this canvas
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsTagManagementOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+      <Dialog
+        open={isTagManagementOpen}
+        onOpenChange={setIsTagManagementOpen}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Canvas Tags</DialogTitle>
+            <DialogDescription>
+              Create and manage tags used within this canvas
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Create New Tag */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Create New Tag
+              </label>
+              <EnhancedTagInput
+                tags={[]}
+                onAdd={handleCreateTag}
+                onRemove={() => {}}
+                placeholder="Enter tag name..."
+                maxTags={1}
+                showCreateOption={true}
+                showSearchResults={false}
+              />
             </div>
 
-            <div className="space-y-4">
-              {/* Create New Tag */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Create New Tag
-                </label>
-                <EnhancedTagInput
-                  tags={[]}
-                  onAdd={handleCreateTag}
-                  onRemove={() => {}}
-                  placeholder="Enter tag name..."
-                  maxTags={1}
-                  showCreateOption={true}
-                  showSearchResults={false}
-                />
-              </div>
-
-              {/* Existing Tags */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Existing Tags ({tags.length})
-                </label>
-                {isLoadingTags ? (
-                  <div className="text-center py-4">
-                    <p className="text-muted-foreground">Loading tags...</p>
-                  </div>
-                ) : tags.length === 0 ? (
-                  <div className="text-center py-4">
-                    <p className="text-muted-foreground">
-                      No tags created yet.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {tags.map((tag) => (
-                      <div
-                        key={tag.id}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{tag.name}</Badge>
-                          {tag.description && (
-                            <span className="text-sm text-muted-foreground">
-                              {tag.description}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleUpdateTag(tag.id, { name: tag.name })
-                            }
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTag(tag.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+            {/* Existing Tags */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Existing Tags ({tags.length})
+              </label>
+              {isLoadingTags ? (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">Loading tags...</p>
+                </div>
+              ) : tags.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">No tags created yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {tags.map((tag) => (
+                    <div
+                      key={tag.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{tag.name}</Badge>
+                        {tag.description && (
+                          <span className="text-sm text-muted-foreground">
+                            {tag.description}
+                          </span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-              <Button
-                variant="outline"
-                onClick={() => setIsTagManagementOpen(false)}
-              >
-                Close
-              </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleUpdateTag(tag.id, { name: tag.name })
+                          }
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteTag(tag.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsTagManagementOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,6 +3,57 @@
 /* Import Editor.js styles */
 @import './editor.css';
 
+/* ──────────────────────────────────────────────────────────────────────
+   Tailwind v4 theme wiring.
+   The design tokens defined in :root / .dark below are exposed to Tailwind
+   as semantic color utilities (bg-card, text-muted-foreground, border-border,
+   bg-popover, …) via @theme inline. `inline` keeps the generated utilities
+   referencing var(--token) at runtime, so the .dark overrides take effect.
+   Without this block these utilities generate NO css and dark mode is inert. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
 @layer base {
   :root {
     --radius: 0.625rem;
@@ -21,6 +72,13 @@
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.985 0 0);
+    --success: oklch(0.648 0.15 152);
+    --success-foreground: oklch(0.985 0 0);
+    --warning: oklch(0.79 0.16 78);
+    --warning-foreground: oklch(0.205 0 0);
+    --info: oklch(0.62 0.18 256);
+    --info-foreground: oklch(0.985 0 0);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
@@ -55,6 +113,13 @@
     --accent: oklch(0.269 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.985 0 0);
+    --success: oklch(0.696 0.16 152);
+    --success-foreground: oklch(0.145 0 0);
+    --warning: oklch(0.82 0.16 80);
+    --warning-foreground: oklch(0.145 0 0);
+    --info: oklch(0.707 0.16 256);
+    --info-foreground: oklch(0.145 0 0);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
@@ -74,12 +139,12 @@
   }
 
   * {
-    border-color: hsl(var(--border));
+    border-color: var(--border);
   }
 
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: var(--background);
+    color: var(--foreground);
     font-family:
       system-ui,
       -apple-system,
@@ -118,92 +183,77 @@
 }
 
 .react-flow__edge.react-flow__edge-path {
-  stroke: hsl(var(--border));
+  stroke: var(--border);
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: hsl(var(--primary));
+  stroke: var(--primary);
 }
 
-/* Custom utility classes for MetricCard colors - using Tailwind utilities instead */
+/* ================================================================
+   DIALOG / MODAL / OVERLAY OPACITY + Z-INDEX
+   ----------------------------------------------------------------
+   These rules guarantee opaque, correctly-stacked overlays. They use
+   theme tokens (var(--background)/var(--popover)/var(--border)) so they
+   work in BOTH light and dark mode. (Previously hardcoded `white`, which
+   broke dark mode.) Z-index hierarchy:
+     Modal overlays: 1000 · Modal content: 1001
+     Dropdowns/Popovers: 9999 · Toasts: 9999
+   ================================================================ */
 
-/* COMPREHENSIVE DIALOG & MODAL TRANSPARENCY FIXES */
-/* ================================================ */
-/* This section completely resolves backdrop transparency issues */
-
-/* STANDARDIZED Z-INDEX HIERARCHY */
-/* ================================ */
-/* Modal overlays: z-[1000] */
-/* Modal content: z-[1001] */
-/* Dropdowns/Popovers: z-[1001] */
-/* Toasts: z-[9999] */
-
-/* All dialog overlays - LIGHT BACKDROP */
+/* All dialog overlays */
 [data-slot='dialog-overlay'],
 [data-slot='alert-dialog-overlay'],
 [role='presentation'][data-state='open'] {
   z-index: 1000 !important;
   background-color: rgba(0, 0, 0, 0.5) !important;
-  /* backdrop-filter: blur(2px) !important; */
   opacity: 1 !important;
 }
 
-/* Sheet overlay - LIGHT BACKDROP */
+/* Sheet overlay */
 [data-slot='sheet-overlay'] {
   z-index: 999 !important;
   background-color: rgba(0, 0, 0, 0.3) !important;
-  /* backdrop-filter: blur(2px) !important; */
   opacity: 1 !important;
   pointer-events: none !important;
 }
 
-/* All dialog content - FORCE OPAQUE BACKGROUNDS */
+/* All dialog content - opaque themed backgrounds */
 [data-slot='dialog-content'],
 [data-slot='alert-dialog-content'],
 [data-slot='sheet-content'],
 [role='dialog'] {
   z-index: 1001 !important;
-  background: white !important;
-  color: hsl(var(--foreground)) !important;
-  border: 2px solid hsl(var(--border)) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
   opacity: 1 !important;
-  /* backdrop-filter: none !important; */
-  /* -webkit-backdrop-filter: none !important; */
 }
 
-/* All dropdown/popover content - STRONGER BACKGROUNDS */
+/* All dropdown/popover/command content - opaque themed backgrounds */
 [data-slot='select-content'],
 [data-slot='popover-content'],
 [data-slot='dropdown-menu-content'],
 [data-slot='command'] {
   z-index: 9999 !important;
-  background: hsl(var(--background)) !important;
-  border: 2px solid hsl(var(--border)) !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border: 1px solid var(--border) !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
-  /* backdrop-filter: blur(4px) !important; */
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
-/* Additional support for dropdown menus specifically */
-[data-slot='dropdown-menu-content'] {
-  background: hsl(var(--background)) !important;
-  border: 2px solid hsl(var(--border)) !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
-}
-
-/* SHEET SPECIFIC FIXES - FORCE SOLID BACKGROUNDS */
+/* Sheet specific - force solid themed background + correct placement */
 [data-slot='sheet-content'],
 .sheet-content {
   z-index: 1002 !important;
-  background: white !important;
-  color: hsl(var(--foreground)) !important;
-  border: 2px solid hsl(var(--border)) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
   opacity: 1 !important;
-  /* backdrop-filter: none !important; */
-  /* -webkit-backdrop-filter: none !important; */
   position: fixed !important;
   top: 0 !important;
   right: 0 !important;
@@ -212,45 +262,38 @@
   pointer-events: auto !important;
 }
 
-/* OVERRIDE BODY POINTER-EVENTS FOR SHEET CONTENT */
+/* Override body pointer-events for sheet content */
 body[data-scroll-locked='1'] [data-slot='sheet-content'],
 body[data-scroll-locked='1'] .sheet-content {
   pointer-events: auto !important;
 }
 
-/* FORCE ALL SHEET CHILDREN TO BE INTERACTIVE */
+/* Force all sheet children to be interactive */
 [data-slot='sheet-content'] *,
 .sheet-content * {
   pointer-events: auto !important;
 }
 
-/* FORCE SHEET CHILDREN TO INHERIT PROPER COLORS */
-[data-slot='sheet-content'] * {
-  color: inherit !important;
-}
-
 [data-slot='sheet-content'] [data-slot='sheet-title'] {
-  color: hsl(var(--foreground)) !important;
+  color: var(--foreground) !important;
 }
 
 [data-slot='sheet-content'] [data-slot='sheet-description'] {
-  color: hsl(var(--muted-foreground)) !important;
+  color: var(--muted-foreground) !important;
 }
 
-/* SEARCH DIALOG SPECIFIC FIXES */
+/* Search dialog specific */
 .quick-search-dialog [data-slot='dialog-content'] {
-  background: white !important;
-  color: hsl(var(--foreground)) !important;
-  border: 2px solid hsl(var(--border)) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
-  /* backdrop-filter: none !important; */
-  /* -webkit-backdrop-filter: none !important; */
 }
 
-/* COMMAND PALETTE SPECIFIC OVERRIDES */
+/* Command palette specific */
 [data-slot='command'] {
-  background: hsl(var(--background)) !important;
-  color: hsl(var(--foreground)) !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
 }
 
 /* Toaster components */
@@ -273,8 +316,8 @@ body[data-scroll-locked='1'] .sheet-content {
 
 /* Custom React Flow node styles */
 .react-flow__node-metric {
-  background: hsl(var(--card)) !important;
-  border: 1px solid hsl(var(--border)) !important;
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
 }
 
 /* ── Group focus mode ───────────────────────────────────────────────

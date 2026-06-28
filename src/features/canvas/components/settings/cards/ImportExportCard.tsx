@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from '@/shared/components/ui/card';
 import { Download, FileText, Upload } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function ImportExportCard() {
   const { canvas, importCanvasData } = useCanvasStore();
@@ -29,7 +30,7 @@ export function ImportExportCard() {
       URL.revokeObjectURL(url);
     } catch (e) {
       console.error('Failed to export canvas:', e);
-      alert('Failed to export canvas.');
+      toast.error('Failed to export canvas.');
     }
   };
 
@@ -41,7 +42,7 @@ export function ImportExportCard() {
       const data = JSON.parse(text);
       if (typeof importCanvasData === 'function') {
         await importCanvasData(data);
-        alert('Canvas imported successfully');
+        toast.success('Canvas imported successfully');
       } else {
         console.warn(
           'importCanvasData not available in useCanvasStore; skipping apply'
@@ -49,7 +50,7 @@ export function ImportExportCard() {
       }
     } catch (err) {
       console.error('Failed to import canvas:', err);
-      alert('Invalid canvas file.');
+      toast.error('Invalid canvas file.');
     } finally {
       e.target.value = '';
     }

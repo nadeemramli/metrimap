@@ -53,6 +53,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 
 interface EvidenceNodeData extends Record<string, unknown> {
   evidence: EvidenceItem;
@@ -94,6 +95,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
   if (!data) return null;
   const { evidence, onUpdateEvidence, onDeleteEvidence } = data;
   const { addComment } = useEvidenceStore();
+  const confirm = useConfirm();
 
   const editorRef = useRef<EditorJS | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -308,8 +310,14 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
     }
   };
 
-  const handleDeleteEvidence = () => {
-    if (confirm('Are you sure you want to delete this evidence?')) {
+  const handleDeleteEvidence = async () => {
+    const confirmed = await confirm({
+      title: 'Delete this evidence?',
+      description: 'This action cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (confirmed) {
       onDeleteEvidence(evidence.id);
     }
   };

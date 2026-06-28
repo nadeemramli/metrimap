@@ -1,5 +1,6 @@
 import { useNewNodeTypesStore } from '@/features/canvas/stores/useNewNodeTypesStore';
 import { useCanvasStore } from '@/lib/stores';
+import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -82,7 +83,7 @@ export default function AddNodeButton({
   ) => {
     if (!canvas) {
       console.error('❌ No canvas loaded');
-      alert('No canvas loaded. Please try again.');
+      toast.error('No canvas loaded. Please try again.');
       return;
     }
 
@@ -163,7 +164,7 @@ export default function AddNodeButton({
       }
     } catch (error) {
       console.error('Failed to create new node type:', error);
-      alert('Failed to create node. Please try again.');
+      toast.error('Failed to create node. Please try again.');
     }
   };
 

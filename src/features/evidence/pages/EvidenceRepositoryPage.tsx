@@ -1,6 +1,16 @@
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
+import { EmptyState } from '@/shared/components/EmptyState';
 import { Badge } from '@/shared/components/ui/badge';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/shared/components/ui/breadcrumb';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -25,6 +35,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import type { EvidenceItem } from '@/shared/types';
+import { formatDate } from '@/shared/utils/formatDate';
 import {
   BookOpen,
   Calendar,
@@ -43,27 +54,22 @@ import {
   Users,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import EvidenceEditor from '../components/EvidenceEditor';
 
 const evidenceTypeOptions = [
-  {
-    value: 'Experiment',
-    icon: FlaskConical,
-    color: 'bg-blue-50 text-blue-700',
-  },
-  { value: 'Analysis', icon: FileText, color: 'bg-green-50 text-green-700' },
-  { value: 'Notebook', icon: BookOpen, color: 'bg-purple-50 text-purple-700' },
-  {
-    value: 'External Research',
-    icon: Globe,
-    color: 'bg-orange-50 text-orange-700',
-  },
-  { value: 'User Interview', icon: Users, color: 'bg-pink-50 text-pink-700' },
-];
+  { value: 'Experiment', icon: FlaskConical, variant: 'blue' },
+  { value: 'Analysis', icon: FileText, variant: 'green' },
+  { value: 'Notebook', icon: BookOpen, variant: 'purple' },
+  { value: 'External Research', icon: Globe, variant: 'orange' },
+  { value: 'User Interview', icon: Users, variant: 'pink' },
+] as const;
 
 export default function EvidenceRepositoryPage() {
+  const { canvasId } = useParams();
+  const isCanvasScoped = Boolean(canvasId);
   const { canvas } = useCanvasStore();
+  const confirm = useConfirm();
   const {
     evidence,
     addEvidence,
@@ -180,12 +186,15 @@ export default function EvidenceRepositoryPage() {
     setIsFullscreen(!isFullscreen);
   };
 
-  const handleDeleteEvidence = (evidenceId: string) => {
-    if (
-      confirm(
-        'Are you sure you want to delete this evidence? It will be removed from all relationships.'
-      )
-    ) {
+  const handleDeleteEvidence = async (evidenceId: string) => {
+    const confirmed = await confirm({
+      title: 'Delete this evidence?',
+      description:
+        'It will be removed from all relationships. This cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (confirmed) {
       deleteEvidence(evidenceId);
       // TODO: Also remove from relationships if needed
     }
@@ -225,20 +234,47 @@ export default function EvidenceRepositoryPage() {
     return option ? option.icon : FileText;
   };
 
-  const getTypeColor = (type: string) => {
+  const getTypeVariant = (type: string) => {
     const option = evidenceTypeOptions.find((opt) => opt.value === type);
-    return option ? option.color : 'bg-gray-50 text-gray-700';
+    return option ? option.variant : 'gray';
   };
 
   return (
     <div className="p-6 space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/">Home</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          {isCanvasScoped && canvas?.name && (
+            <>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to={`/canvas/${canvasId}`}>{canvas.name}</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            </>
+          )}
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Evidence</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Evidence Repository</h1>
             <p className="text-muted-foreground mt-1">
-              Centralized management of all evidence across relationships
+              {isCanvasScoped
+                ? 'Evidence used across this canvas and its relationships'
+                : 'Centralized management of all evidence across your canvases'}
             </p>
           </div>
         </div>
@@ -313,12 +349,10 @@ export default function EvidenceRepositoryPage() {
               <Card key={evidence.id} className="relative">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(evidence.type)}`}
-                    >
-                      <TypeIcon className="h-3 w-3 inline mr-1" />
+                    <Badge variant={getTypeVariant(evidence.type)}>
+                      <TypeIcon className="h-3 w-3" />
                       {evidence.type}
-                    </div>
+                    </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
@@ -388,7 +422,7 @@ export default function EvidenceRepositoryPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {new Date(evidence.date).toLocaleDateString()}
+                      {formatDate(evidence.date)}
                     </div>
                   </div>
 
@@ -405,7 +439,7 @@ export default function EvidenceRepositoryPage() {
                   )}
 
                   {evidence.hypothesis && (
-                    <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                    <div className="mt-3 p-2 bg-info/10 border border-info/20 rounded text-xs">
                       <strong>Hypothesis:</strong> {evidence.hypothesis}
                     </div>
                   )}
@@ -415,23 +449,25 @@ export default function EvidenceRepositoryPage() {
           })}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium text-muted-foreground mb-2">
-            {allEvidence.length === 0 ? 'No Evidence Yet' : 'No Evidence Found'}
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            {allEvidence.length === 0
+        <EmptyState
+          icon={<FileText />}
+          title={
+            allEvidence.length === 0 ? 'No evidence yet' : 'No evidence found'
+          }
+          description={
+            allEvidence.length === 0
               ? 'Start by creating evidence to support your relationships'
-              : 'Try adjusting your search terms or filters'}
-          </p>
-          {allEvidence.length === 0 && (
-            <Button onClick={handleCreateEvidence} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create First Evidence
-            </Button>
-          )}
-        </div>
+              : 'Try adjusting your search terms or filters'
+          }
+          action={
+            allEvidence.length === 0 ? (
+              <Button onClick={handleCreateEvidence} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create First Evidence
+              </Button>
+            ) : undefined
+          }
+        />
       )}
 
       {/* Evidence Editor */}

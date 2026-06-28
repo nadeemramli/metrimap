@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { InlineEditableField } from '@/features/canvas/components/node-function/inline-editable-field';
 import { CommentsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/comments-tab';
 import { DataEventsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/data-events-tab';
@@ -51,6 +52,7 @@ import React, { useEffect, useState } from 'react';
 
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   DropdownMenu,
@@ -86,6 +88,7 @@ function CardSettingsSheetComponent({
     useCanvasStore();
   const { getEvidenceForCard, addEvidence, updateEvidence, deleteEvidence } =
     useEvidenceStore();
+  const confirm = useConfirm();
   const card = cardId ? getNodeById(cardId) : null;
 
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -190,26 +193,26 @@ function CardSettingsSheetComponent({
         onClose();
       } catch (error) {
         console.error('Failed to save card:', error);
-        alert('Failed to save card. Please try again.');
+        toast.error('Failed to save card. Please try again.');
       }
     }
   };
 
   const handleDelete = async () => {
-    if (
-      card &&
-      cardId &&
-      confirm(
-        'Are you sure you want to delete this card? This action cannot be undone.'
-      )
-    ) {
-      try {
-        await persistNodeDelete(cardId);
-        onClose();
-      } catch (error) {
-        console.error('Failed to delete card:', error);
-        alert('Failed to delete card. Please try again.');
-      }
+    if (!card || !cardId) return;
+    const confirmed = await confirm({
+      title: 'Delete this card?',
+      description: 'This action cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await persistNodeDelete(cardId);
+      onClose();
+    } catch (error) {
+      console.error('Failed to delete card:', error);
+      toast.error('Failed to delete card. Please try again.');
     }
   };
 

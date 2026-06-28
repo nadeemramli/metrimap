@@ -1,3 +1,4 @@
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -48,9 +49,6 @@ import {
   Trash2,
   TrendingUp,
   Users,
-  Wifi,
-  WifiOff,
-  XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -64,6 +62,13 @@ import type {
 } from '@/features/sources/source';
 import { useSourcesStore } from '@/features/sources/stores/useSourcesStore';
 import { useSourceFiltering } from '@/shared/hooks/useSourceFiltering';
+import { cn } from '@/shared/utils';
+import { formatDate, formatRelative } from '@/shared/utils/formatDate';
+import {
+  getQualityTextClass,
+  getStatusMeta,
+  TONE_TEXT_CLASS,
+} from '@/shared/utils/statusHelpers';
 
 // Dialog components (moved under features/sources/components/dialogs)
 import ApiConnectionDialog from '@/features/sources/components/dialogs/ApiConnectionDialog';
@@ -81,6 +86,7 @@ import MonitoringSettingsDialog, {
 type InstrumentationStatus = 'Planned' | 'Instrumented' | 'Needs QA' | 'Live';
 
 export default function SourcePage() {
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<TabType>('sources');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -152,13 +158,13 @@ export default function SourcePage() {
   // Handler functions - Now fully implemented!
 
   const handleDelete = async (itemId: string) => {
-    if (
-      !window.confirm(
-        'Are you sure you want to delete this item? This action cannot be undone.'
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Delete this item?',
+      description: 'This action cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       // Determine which type of item to delete by finding it in the arrays
@@ -228,38 +234,20 @@ export default function SourcePage() {
     }
   };
 
-  const getStatusIcon = (status: InstrumentationStatus) => {
-    switch (status) {
-      case 'Live':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'Instrumented':
-        return <CheckCircle className="h-4 w-4 text-blue-500" />;
-      case 'Needs QA':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'Planned':
-        return <XCircle className="h-4 w-4 text-gray-400" />;
-    }
+  // Status icons/colors are derived from the shared statusHelpers so they map
+  // to semantic tones (token-based, theme-aware) instead of hardcoded colors.
+  const renderStatusIcon = (status: string) => {
+    const { tone, icon: Icon } = getStatusMeta(status);
+    return <Icon className={cn('h-4 w-4', TONE_TEXT_CLASS[tone])} />;
   };
 
-  const getApiStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Connected':
-        return <Wifi className="h-4 w-4 text-green-500" />;
-      case 'Warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'Disconnected':
-        return <WifiOff className="h-4 w-4 text-red-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-400" />;
-    }
-  };
+  const getStatusIcon = (status: InstrumentationStatus) =>
+    renderStatusIcon(status);
 
-  const getDataQualityColor = (quality: number | null) => {
-    if (!quality) return 'text-gray-500';
-    if (quality >= 95) return 'text-green-500';
-    if (quality >= 85) return 'text-yellow-500';
-    return 'text-red-500';
-  };
+  const getApiStatusIcon = (status: string) => renderStatusIcon(status);
+
+  const getDataQualityColor = (quality: number | null) =>
+    getQualityTextClass(quality);
 
   const uniqueSystems = useMemo(
     () =>
@@ -352,7 +340,7 @@ export default function SourcePage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-success">
               {dataSources.filter((s) => s.dataQuality).length > 0
                 ? Math.round(
                     dataSources.reduce(
@@ -389,7 +377,7 @@ export default function SourcePage() {
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-info">
               {governancePolicies.length > 0
                 ? Math.round(
                     governancePolicies.reduce((acc, p) => acc + p.coverage, 0) /
@@ -582,7 +570,9 @@ export default function SourcePage() {
                                 </div>
                               </div>
                             ) : (
-                              <span className="text-gray-500">N/A</span>
+                              <span className="text-muted-foreground">
+                                N/A
+                              </span>
                             )}
                           </td>
                           <td className="px-6 py-4">
@@ -594,7 +584,7 @@ export default function SourcePage() {
                             <div className="flex items-center gap-1 text-sm text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               {source.lastSync
-                                ? new Date(source.lastSync).toLocaleTimeString()
+                                ? formatRelative(source.lastSync)
                                 : 'Never'}
                             </div>
                           </td>
@@ -704,7 +694,7 @@ export default function SourcePage() {
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           Next review:{' '}
-                          {new Date(policy.nextReview).toLocaleDateString()}
+                          {formatDate(policy.nextReview)}
                         </div>
                       </div>
 
@@ -826,7 +816,7 @@ export default function SourcePage() {
                           </td>
                           <td className="px-6 py-4">
                             <div
-                              className={`text-sm font-medium ${api.errorRate > 1 ? 'text-red-500' : 'text-green-500'}`}
+                              className={`text-sm font-medium ${api.errorRate > 1 ? 'text-destructive' : 'text-success'}`}
                             >
                               {api.errorRate}%
                             </div>
@@ -900,7 +890,7 @@ export default function SourcePage() {
                           className="flex items-center justify-between p-3 border rounded-lg"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 bg-green-500 rounded-full" />
+                            <div className="w-2 h-2 bg-success rounded-full" />
                             <div>
                               <div className="font-medium text-sm">
                                 {source.metricName}
@@ -937,7 +927,7 @@ export default function SourcePage() {
                   {apiConnections.filter((api) => api.status !== 'Connected')
                     .length === 0 ? (
                     <div className="text-center py-8">
-                      <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                      <CheckCircle className="h-8 w-8 text-success mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">
                         All systems healthy
                       </p>
@@ -948,9 +938,9 @@ export default function SourcePage() {
                       .map((api) => (
                         <div
                           key={api.id}
-                          className="flex items-center gap-3 p-3 border border-yellow-200 bg-yellow-50 rounded-lg"
+                          className="flex items-center gap-3 p-3 border border-warning/30 bg-warning/10 rounded-lg"
                         >
-                          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                          <AlertTriangle className="h-4 w-4 text-warning" />
                           <div className="flex-1">
                             <div className="text-sm font-medium">
                               {api.name} - {api.status}

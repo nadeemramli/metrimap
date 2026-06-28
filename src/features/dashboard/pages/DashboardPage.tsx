@@ -1,7 +1,9 @@
 import { GroupHelpModal } from '@/features/canvas/components/grouping/GroupHelpModal';
 import { useCanvasStore } from '@/lib/stores';
+import { Sparkline } from '@/shared/components/Sparkline';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
+import { Progress } from '@/shared/components/ui/progress';
 import {
   Card,
   CardContent,
@@ -320,7 +322,7 @@ export default function DashboardPage() {
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-2xl font-bold text-success">
                     {dashboardData.overview.healthScore}%
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -362,13 +364,13 @@ export default function DashboardPage() {
                     >
                       <div className="mt-0.5">
                         {insight.type === 'opportunity' && (
-                          <TrendingUp className="h-5 w-5 text-green-500" />
+                          <TrendingUp className="h-5 w-5 text-success" />
                         )}
                         {insight.type === 'warning' && (
-                          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                          <AlertTriangle className="h-5 w-5 text-warning" />
                         )}
                         {insight.type === 'info' && (
-                          <CheckCircle className="h-5 w-5 text-blue-500" />
+                          <CheckCircle className="h-5 w-5 text-info" />
                         )}
                       </div>
                       <div className="flex-1">
@@ -459,7 +461,7 @@ export default function DashboardPage() {
                           {kpi.value.toLocaleString()}
                         </div>
                         <div
-                          className={`flex items-center gap-1 text-sm ${kpi.change > 0 ? 'text-green-600' : 'text-red-600'}`}
+                          className={`flex items-center gap-1 text-sm ${kpi.change > 0 ? 'text-success' : 'text-destructive'}`}
                         >
                           {kpi.change > 0 ? (
                             <TrendingUp className="h-3 w-3" />
@@ -481,20 +483,13 @@ export default function DashboardPage() {
                         )}
                       </div>
 
-                      {/* Simple trend visualization */}
-                      <div className="h-12 flex items-end gap-1">
-                        {Array.isArray(kpi.trend) ? (
-                          kpi.trend.map((value, index) => (
-                            <div
-                              key={index}
-                              className="bg-primary/20 rounded-sm flex-1"
-                              style={{ height: `${(value / 100) * 100}%` }}
-                            />
-                          ))
-                        ) : (
-                          <div className="w-full h-8 bg-primary/20 rounded-sm" />
-                        )}
-                      </div>
+                      {/* Trend sparkline */}
+                      <Sparkline
+                        data={Array.isArray(kpi.trend) ? kpi.trend : []}
+                        color={
+                          kpi.change >= 0 ? 'var(--success)' : 'var(--destructive)'
+                        }
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -520,13 +515,13 @@ export default function DashboardPage() {
                         <div className="flex items-start gap-4">
                           <div className="mt-0.5">
                             {insight.type === 'opportunity' && (
-                              <TrendingUp className="h-6 w-6 text-green-500" />
+                              <TrendingUp className="h-6 w-6 text-success" />
                             )}
                             {insight.type === 'warning' && (
-                              <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                              <AlertTriangle className="h-6 w-6 text-warning" />
                             )}
                             {insight.type === 'info' && (
-                              <CheckCircle className="h-6 w-6 text-blue-500" />
+                              <CheckCircle className="h-6 w-6 text-info" />
                             )}
                           </div>
                           <div className="flex-1">
@@ -597,27 +592,21 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between">
                       <span>Data Quality</span>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-muted rounded-full">
-                          <div className="w-20 h-2 bg-green-500 rounded-full" />
-                        </div>
+                        <Progress value={85} className="w-24" />
                         <span className="text-sm font-medium">85%</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Relationship Integrity</span>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-muted rounded-full">
-                          <div className="w-22 h-2 bg-green-500 rounded-full" />
-                        </div>
+                        <Progress value={92} className="w-24" />
                         <span className="text-sm font-medium">92%</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Update Frequency</span>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-muted rounded-full">
-                          <div className="w-18 h-2 bg-yellow-500 rounded-full" />
-                        </div>
+                        <Progress value={76} className="w-24" />
                         <span className="text-sm font-medium">76%</span>
                       </div>
                     </div>
@@ -633,7 +622,7 @@ export default function DashboardPage() {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <Zap className="h-4 w-4 text-blue-500" />
+                      <Zap className="h-4 w-4 text-info" />
                       <div className="flex-1">
                         <p className="text-sm">
                           New metric relationship created
@@ -644,7 +633,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <BarChart3 className="h-4 w-4 text-green-500" />
+                      <BarChart3 className="h-4 w-4 text-success" />
                       <div className="flex-1">
                         <p className="text-sm">Data source updated</p>
                         <p className="text-xs text-muted-foreground">

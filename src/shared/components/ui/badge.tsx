@@ -17,6 +17,21 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        // Semantic status variants (token-based, dark-mode aware)
+        success:
+          "border-transparent bg-success text-success-foreground [a&]:hover:bg-success/90",
+        warning:
+          "border-transparent bg-warning text-warning-foreground [a&]:hover:bg-warning/90",
+        info: "border-transparent bg-info text-info-foreground [a&]:hover:bg-info/90",
+        // Soft/subtle status variants for low-emphasis backgrounds
+        "success-soft":
+          "border-transparent bg-success/15 text-success [a&]:hover:bg-success/25",
+        "warning-soft":
+          "border-transparent bg-warning/15 text-warning [a&]:hover:bg-warning/25",
+        "info-soft":
+          "border-transparent bg-info/15 text-info [a&]:hover:bg-info/25",
+        "destructive-soft":
+          "border-transparent bg-destructive/15 text-destructive [a&]:hover:bg-destructive/25",
         // Enhanced colorful tag variants to match the design
         blue: "border-transparent bg-blue-100 text-blue-900 dark:bg-blue-900/20 dark:text-blue-200 [a&]:hover:bg-blue-200 dark:[a&]:hover:bg-blue-900/30",
         green:

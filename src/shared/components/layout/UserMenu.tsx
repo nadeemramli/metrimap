@@ -1,5 +1,14 @@
 import { useUser, SignOutButton, useClerk } from "@clerk/react-router";
-import { LogOut, User, Settings, MessageSquare } from "lucide-react";
+import {
+  LogOut,
+  User,
+  Settings,
+  MessageSquare,
+  Monitor,
+  Moon,
+  Sun,
+} from "lucide-react";
+import { useTheme } from "next-themes";
 import { Button } from "@/shared/components/ui/button";
 import { Separator } from "@/shared/components/ui/separator";
 import {
@@ -7,6 +16,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
@@ -18,6 +29,7 @@ export function UserMenu() {
   const clerk = useClerk();
   const devUser = useAppStore((s) => s.user);
   const isDev = import.meta.env.DEV;
+  const { theme, setTheme } = useTheme();
 
   // Prefer Clerk user when available; otherwise use development user from app store
   const user =
@@ -91,6 +103,24 @@ export function UserMenu() {
           <MessageSquare className="mr-2 h-4 w-4" />
           <span>Give Feedback</span>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          Theme
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+          <DropdownMenuRadioItem value="light">
+            <Sun className="mr-2 h-4 w-4" />
+            <span>Light</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">
+            <Moon className="mr-2 h-4 w-4" />
+            <span>Dark</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system">
+            <Monitor className="mr-2 h-4 w-4" />
+            <span>System</span>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <SignOutButton>
           <DropdownMenuItem>

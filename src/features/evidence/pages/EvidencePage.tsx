@@ -116,14 +116,16 @@ export default function EvidencePage() {
         try {
           editorRef.current.destroy();
           editorRef.current = null;
-        } catch {}
+        } catch {
+          /* editor already destroyed */
+        }
       }
     };
   }, [containerRef.current, initialEvidence?.content]);
 
   return (
     <div className="w-full min-h-screen flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b bg-white">
+      <div className="flex items-center justify-between p-4 border-b bg-background">
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
@@ -179,10 +181,12 @@ export default function EvidencePage() {
         </div>
       </div>
 
-      <div className="p-4 border-b bg-gray-50">
+      <div className="p-4 border-b bg-muted/40">
         <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
           <div>
-            <Label className="text-xs font-medium text-gray-600">Owner</Label>
+            <Label className="text-xs font-medium text-muted-foreground">
+              Owner
+            </Label>
             <Input
               value={formData.owner}
               onChange={(e) =>
@@ -193,7 +197,9 @@ export default function EvidencePage() {
             />
           </div>
           <div>
-            <Label className="text-xs font-medium text-gray-600">Date</Label>
+            <Label className="text-xs font-medium text-muted-foreground">
+              Date
+            </Label>
             <Input
               type="date"
               value={formData.date}
@@ -204,7 +210,7 @@ export default function EvidencePage() {
             />
           </div>
           <div>
-            <Label className="text-xs font-medium text-gray-600">
+            <Label className="text-xs font-medium text-muted-foreground">
               External Link
             </Label>
             <Input
