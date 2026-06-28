@@ -32,7 +32,10 @@ import {
   getProjectById,
   mergeProjectSettings,
 } from '@/shared/lib/supabase/services/projects';
-import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import {
+  getAuthenticatedClient,
+  whenAuthenticatedClientReady,
+} from '@/shared/utils/authenticatedClient';
 import { runPipeline } from '@/features/canvas/utils/runSimulation';
 import { normalizeOperatorData } from '@/features/canvas/utils/operatorMigration';
 import {
@@ -274,8 +277,11 @@ function CanvasPageInner() {
           return;
         }
 
-        // Use the appropriate client for the environment
-        const client = supabaseClient || getClientForEnvironment();
+        // Wait for the Clerk-authenticated client instead of throwing on the
+        // first render before AuthenticatedSupabaseProvider has set it (the
+        // "Authenticated client not available" race). Same pattern as
+        // initializeProjects — gates the load on auth readiness.
+        const client = supabaseClient || (await whenAuthenticatedClientReady());
         const projectData = await getProjectById(canvasId, client);
 
         if (projectData) {
@@ -826,7 +832,10 @@ function CanvasPageInner() {
   useEffect(() => {
     if (!canvasId || evidenceHydratedFor.current !== canvasId) return;
     const t = setTimeout(() => {
-      const client = supabaseClient || getClientForEnvironment();
+      // Skip (not throw) if the authed client isn't ready yet — the next
+      // evidence change re-fires this debounced save.
+      const client = supabaseClient || getAuthenticatedClient();
+      if (!client) return;
       void mergeProjectSettings(
         canvasId,
         { evidence: evidenceList },
@@ -1116,7 +1125,11 @@ function CanvasPageInner() {
   const persistDataFlowEdges = useCallback(
     (nextEdges: any[]) => {
       if (!canvasId) return;
-      const client = supabaseClient || getClientForEnvironment();
+      // Skip (not throw) if the authed client isn't ready yet — a later edge
+      // change re-persists, and this previously threw synchronously past the
+      // .catch during the auth-startup window.
+      const client = supabaseClient || getAuthenticatedClient();
+      if (!client) return;
       void mergeProjectSettings(
         canvasId,
         { dataFlowEdges: nextEdges },
