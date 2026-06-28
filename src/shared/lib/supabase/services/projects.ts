@@ -34,7 +34,9 @@ async function fetchOwnedProjects(
       ),
       metric_cards(count),
       relationships(count),
-      groups(count)
+      groups(count),
+      preview_cards:metric_cards(id, title, category),
+      preview_rels:relationships(id, source_id, target_id)
     `
     )
     .eq('created_by', userId)
@@ -76,7 +78,9 @@ async function fetchCollaboratedProjects(
       ),
       metric_cards(count),
       relationships(count),
-      groups(count)
+      groups(count),
+      preview_cards:metric_cards(id, title, category),
+      preview_rels:relationships(id, source_id, target_id)
     `
     )
     .in('id', projectIds)
@@ -128,6 +132,140 @@ export async function getShowcaseProjects(
     .order('created_at', { ascending: true });
   if (error) throw error;
   return data || [];
+}
+
+// Deep-copy a project (the real "Duplicate"): clones the project row PLUS all of
+// its metric_cards, canvas_nodes, relationships, groups, and the data-flow edges
+// in settings — remapping every id so the copy is fully independent. Selects `*`
+// and strips identity/timestamp columns, so it survives schema additions.
+// Known omission: tag junction rows (metric_card_tags / relationship_tags) are
+// not copied yet (project-level `tags[]` array is). Returns the new project id.
+export async function duplicateProjectDeep(
+  projectId: string,
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<string> {
+  const client = authenticatedClient || supabase();
+
+  const { data: orig, error: origErr } = await client
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single();
+  if (origErr || !orig) throw origErr ?? new Error('Project not found');
+
+  // canvas_nodes isn't in the generated Database type yet (regen pending), so it
+  // goes through an untyped client like the rest of the canvasNodes service.
+  const anyClient = client as any;
+  const [cardsRes, nodesRes, relsRes, groupsRes] = await Promise.all([
+    client.from('metric_cards').select('*').eq('project_id', projectId),
+    anyClient.from('canvas_nodes').select('*').eq('project_id', projectId),
+    client.from('relationships').select('*').eq('project_id', projectId),
+    client.from('groups').select('*').eq('project_id', projectId),
+  ]);
+  for (const r of [cardsRes, nodesRes, relsRes, groupsRes]) {
+    if (r.error) throw r.error;
+  }
+  const cards = cardsRes.data ?? [];
+  const nodes = nodesRes.data ?? [];
+  const rels = relsRes.data ?? [];
+  const groups = groupsRes.data ?? [];
+
+  // One old→new id map covering everything an edge / group / data-flow can point at.
+  const idMap = new Map<string, string>();
+  for (const c of cards) idMap.set(c.id, crypto.randomUUID());
+  for (const n of nodes) idMap.set(n.id, crypto.randomUUID());
+  const remap = (id: string) => idMap.get(id) ?? id;
+
+  const newProjectId = crypto.randomUUID();
+  const strip = (row: any) => {
+    const {
+      id: _id,
+      project_id: _pid,
+      created_at: _ca,
+      updated_at: _ua,
+      created_by: _cb,
+      last_modified_by: _lmb,
+      ...rest
+    } = row;
+    return rest;
+  };
+
+  // Remap the data-flow edges stored in settings (source/target = node/card ids).
+  const settings: any = orig.settings ? { ...(orig.settings as any) } : {};
+  if (Array.isArray(settings.dataFlowEdges)) {
+    settings.dataFlowEdges = settings.dataFlowEdges.map((e: any) => ({
+      ...e,
+      id: crypto.randomUUID(),
+      source: remap(e.source),
+      target: remap(e.target),
+    }));
+  }
+
+  // 1. The project row (copy not public; drop the showcase 'example' tag).
+  const { error: projErr } = await client.from('projects').insert({
+    ...strip(orig),
+    id: newProjectId,
+    name: `${orig.name} (Copy)`,
+    is_public: false,
+    tags: (orig.tags ?? []).filter((t: string) => t !== 'example'),
+    settings,
+    created_by: userId,
+  } as any);
+  if (projErr) throw projErr;
+
+  // 2. Cards + canvas nodes (only depend on the project).
+  if (cards.length) {
+    const { error } = await client.from('metric_cards').insert(
+      cards.map((c) => ({
+        ...strip(c),
+        id: remap(c.id),
+        project_id: newProjectId,
+        created_by: userId,
+      })) as any
+    );
+    if (error) throw error;
+  }
+  if (nodes.length) {
+    const { error } = await anyClient.from('canvas_nodes').insert(
+      nodes.map((n: any) => ({
+        ...strip(n),
+        id: remap(n.id),
+        project_id: newProjectId,
+        created_by: userId,
+      })) as any
+    );
+    if (error) throw error;
+  }
+
+  // 3. Relationships + groups (reference card/node ids → remap).
+  if (rels.length) {
+    const { error } = await client.from('relationships').insert(
+      rels.map((r) => ({
+        ...strip(r),
+        id: crypto.randomUUID(),
+        project_id: newProjectId,
+        source_id: remap(r.source_id),
+        target_id: remap(r.target_id),
+        created_by: userId,
+      })) as any
+    );
+    if (error) throw error;
+  }
+  if (groups.length) {
+    const { error } = await client.from('groups').insert(
+      groups.map((g) => ({
+        ...strip(g),
+        id: crypto.randomUUID(),
+        project_id: newProjectId,
+        node_ids: (g.node_ids ?? []).map(remap),
+        created_by: userId,
+      })) as any
+    );
+    if (error) throw error;
+  }
+
+  return newProjectId;
 }
 
 // Fetch a single project with all its data

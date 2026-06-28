@@ -14,6 +14,147 @@ export type Database = {
   }
   public: {
     Tables: {
+      comment_threads: {
+        Row: {
+          id: string
+          project_id: string
+          source: string
+          context: Json | null
+          is_resolved: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          source: string
+          context?: Json | null
+          is_resolved?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          source?: string
+          context?: Json | null
+          is_resolved?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_threads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comments: {
+        Row: {
+          id: string
+          thread_id: string
+          author_id: string | null
+          content: string
+          resolved: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          thread_id: string
+          author_id?: string | null
+          content: string
+          resolved?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          thread_id?: string
+          author_id?: string | null
+          content?: string
+          resolved?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "comment_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comment_mentions: {
+        Row: {
+          id: string
+          comment_id: string
+          mentioned_user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          mentioned_user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          comment_id?: string
+          mentioned_user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_mentions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string | null
+          description: string | null
+          read: boolean
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title?: string | null
+          description?: string | null
+          read?: boolean
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string | null
+          description?: string | null
+          read?: boolean
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       changelog: {
         Row: {
           action: string

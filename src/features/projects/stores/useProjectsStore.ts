@@ -1,6 +1,7 @@
 import {
   createProject as createProjectInSupabase,
   deleteProject as deleteProjectInSupabase,
+  duplicateProjectDeep as duplicateProjectDeepInSupabase,
   getUserProjects,
   updateProject as updateProjectInSupabase,
 } from '@/shared/lib/supabase/services/projects';
@@ -103,8 +104,21 @@ export const useProjectsStore = create<ProjectsStoreState>()(
                 description: project.description || '',
                 tags: project.tags || [],
                 collaborators,
-                nodes: [],
-                edges: [],
+                // Lightweight nodes/edges JUST for the homepage CanvasPreview
+                // (id/title/category + edge endpoints). Full canvas data is still
+                // lazy-loaded on open. Capped so a huge canvas can't bloat the list.
+                nodes: (project.preview_cards || [])
+                  .slice(0, 80)
+                  .map((c: any) => ({
+                    id: c.id,
+                    title: c.title,
+                    category: c.category,
+                  })) as any,
+                edges: (project.preview_rels || []).map((r: any) => ({
+                  id: r.id,
+                  source: r.source_id,
+                  target: r.target_id,
+                })) as any,
                 groups: [],
                 nodeCount: countOf(project.metric_cards),
                 edgeCount: countOf(project.relationships),
@@ -297,68 +311,24 @@ export const useProjectsStore = create<ProjectsStoreState>()(
       duplicateProject: async (projectId) => {
         try {
           const user = requireAuth();
-
-          const state = get();
-          const originalProject = state.projects.find(
-            (p) => p.id === projectId
-          );
-
-          if (!originalProject) {
-            throw new Error('Project not found');
-          }
-
           set({ isLoading: true, error: undefined });
 
-          const duplicatedProject = {
-            ...originalProject,
-            name: `${originalProject.name} (Copy)`,
-            created_by: user.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-
-          // Remove the ID so Supabase generates a new one
-          const { id, createdAt, updatedAt, lastModifiedBy, ...projectData } =
-            duplicatedProject;
-
-          // Convert settings to Json type
-          const projectDataWithSettings = {
-            ...projectData,
-            settings: projectData.settings
-              ? JSON.parse(JSON.stringify(projectData.settings))
-              : undefined,
-          };
-
           const client = getClientForEnvironment();
-          const newProject = await createProjectInSupabase(
-            projectDataWithSettings,
+          // Real deep copy: clones the project + all cards/nodes/relationships/
+          // groups/data-flow edges under a new id space (service layer).
+          const newProjectId = await duplicateProjectDeepInSupabase(
+            projectId,
+            user.id,
             client
           );
 
-          if (newProject) {
-            const canvasProject: CanvasProject = {
-              id: newProject.id,
-              name: newProject.name,
-              description: newProject.description || '',
-              tags: newProject.tags || [],
-              collaborators: [],
-              nodes: [...originalProject.nodes], // Copy nodes
-              edges: [...originalProject.edges], // Copy edges
-              groups: [...originalProject.groups], // Copy groups
-              createdAt: newProject.created_at || new Date().toISOString(),
-              updatedAt: newProject.updated_at || new Date().toISOString(),
-              lastModifiedBy: user.id,
-            };
+          // Force a list refresh so the copy appears with accurate counts +
+          // preview (initializeProjects no-ops while isInitialized is true).
+          set({ isInitialized: false });
+          await get().initializeProjects();
+          set({ isLoading: false });
 
-            set((state) => ({
-              projects: [...state.projects, canvasProject],
-              isLoading: false,
-            }));
-
-            return newProject.id;
-          }
-
-          throw new Error('Failed to duplicate project');
+          return newProjectId;
         } catch (error) {
           console.error('Failed to duplicate project:', error);
           set({

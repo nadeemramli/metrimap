@@ -73,6 +73,23 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
     projects: [{
       extends: true,
+      test: {
+        name: 'unit',
+        environment: 'jsdom',
+        include: ['src/**/*.{test,spec}.{ts,tsx}'],
+        // Quarantined: these XState integration tests assert an older canvasMachine
+        // shape (strokeColor/strokeWidth/designData) that has since drifted. They
+        // never ran (no unit project existed), so they rotted. Tracked for repair
+        // in docs/backlog/data-source-architecture.md build log; re-include once fixed.
+        exclude: [
+          'src/**/*.stories.*',
+          'node_modules/**',
+          'src/tests/xstate-canvas-integration.test.ts',
+          'src/tests/xstate-react-integration.test.tsx',
+        ],
+      }
+    }, {
+      extends: true,
       plugins: [
       // The plugin will run tests for the stories defined in your Storybook config
       // See options at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon#storybooktest

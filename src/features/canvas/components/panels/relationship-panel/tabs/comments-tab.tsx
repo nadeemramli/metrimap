@@ -1,205 +1,161 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Card, CardContent } from "@/shared/components/ui/card";
-import { Button } from "@/shared/components/ui/button";
-import { Textarea } from "@/shared/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
-import { MessageSquare, Reply, Save } from "lucide-react";
-import { useCanvasStore } from "@/lib/stores";
+import { CommentComposer } from '@/features/canvas/components/collaboration/CommentComposer';
+import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
+import { postComment } from '@/features/canvas/utils/comments';
+import { useAppStore } from '@/lib/stores';
+import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Card, CardContent } from '@/shared/components/ui/card';
+import {
+  listCommentThreads,
+  listComments,
+  type CommentRow,
+} from '@/shared/lib/supabase/services/collaboration';
+import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import * as React from 'react';
+import { useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface CommentsTabProps {
   cardId?: string;
+  // Kept for call-site compatibility; this tab now persists to the DB on post,
+  // so the explicit Save controls are no longer used.
   onSave?: () => void;
   isModified?: boolean;
   onFieldChange?: (field: string, value: any) => void;
 }
 
-export function CommentsTab({
-  cardId,
-  onSave,
-  isModified,
-  onFieldChange,
-}: CommentsTabProps) {
-  const { getNodeById, persistNodeUpdate } = useCanvasStore();
-  const card = cardId ? getNodeById(cardId) : null;
+function initials(name: string) {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
 
-  // Adapter function to match the v0 interface
-  const addComment = (comment: any) => {
-    if (card && cardId) {
-      const currentComments = (card as any).comments || [];
-      const updatedComments = [...currentComments, comment];
-      persistNodeUpdate(cardId, {
-        comments: updatedComments,
-        updatedAt: new Date().toISOString(),
-      } as any);
-      // Notify parent about changes
-      if (onFieldChange) {
-        onFieldChange("comments", updatedComments);
+/**
+ * Card discussion — backed by the real comment_threads/comments tables (one
+ * thread per card, keyed by `context.cardId`). Replaces the previous local
+ * card-JSON storage with hardcoded "Current User" authorship. Shares the
+ * @mention composer + persistence helper with the collaboration panel.
+ */
+export function CommentsTab({ cardId }: CommentsTabProps) {
+  const { canvasId } = useParams();
+  const projectId = canvasId && canvasId !== 'new' ? canvasId : undefined;
+  const user = useAppStore((s) => s.user);
+  const { members, byId } = useProjectMembers(projectId, Boolean(cardId));
+
+  const [threadId, setThreadId] = React.useState<string | null>(null);
+  const [comments, setComments] = React.useState<CommentRow[]>([]);
+  const [posting, setPosting] = React.useState(false);
+
+  const authorName = (id: string | null) =>
+    (id && byId[id]?.name) || id || 'Unknown';
+
+  // Resolve (but don't create) this card's thread on open.
+  React.useEffect(() => {
+    let mounted = true;
+    if (!projectId || !cardId) return;
+    const load = async () => {
+      try {
+        const client = getClientForEnvironment();
+        const threads = await listCommentThreads(projectId, client);
+        const match = threads.find(
+          (t) => t.source === 'node' && (t.context as any)?.cardId === cardId
+        );
+        if (!mounted) return;
+        if (match) {
+          setThreadId(match.id);
+          const c = await listComments(match.id, client);
+          if (mounted) setComments(c);
+        } else {
+          setThreadId(null);
+          setComments([]);
+        }
+      } catch (e) {
+        console.error('Failed to load card comments', e);
       }
-    }
-  };
-  const [newComment, setNewComment] = useState("");
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
+    };
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, [projectId, cardId]);
 
-  const handleAddComment = () => {
-    if (newComment.trim()) {
-      addComment({
-        id: Date.now().toString(),
-        author: "Current User",
-        content: newComment,
-        createdAt: new Date(),
-        replies: [],
+  const handlePost = async (content: string, mentionedIds: string[]) => {
+    if (!projectId || !cardId) {
+      toast.error('Save the canvas before commenting');
+      return;
+    }
+    setPosting(true);
+    try {
+      const { threadId: tid, comment } = await postComment({
+        threadId,
+        projectId,
+        source: 'node',
+        context: { cardId },
+        content,
+        mentionedIds,
+        userId: user?.id,
       });
-      setNewComment("");
+      setThreadId(tid);
+      setComments((prev) => [...prev, comment]);
+    } catch (e: any) {
+      console.error('Failed to post comment', e);
+      toast.error(e?.message || 'Could not post comment');
+    } finally {
+      setPosting(false);
     }
   };
-
-  const handleAddReply = (_parentId: string) => {
-    if (replyText.trim()) {
-      // In a real app, you'd update the specific comment's replies
-      setReplyText("");
-      setReplyingTo(null);
-    }
-  };
-
-  if (!card) return <></>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Discussion</h3>
-          <p className="text-sm text-muted-foreground">
-            Collaborate with your team on this metric
-          </p>
-        </div>
-        {onSave && (
-          <Button
-            size="sm"
-            onClick={onSave}
-            disabled={!isModified}
-            className="gap-2"
-          >
-            <Save className="h-4 w-4" />
-            Save Changes
-          </Button>
-        )}
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold mb-1">Discussion</h3>
+        <p className="text-sm text-muted-foreground">
+          Collaborate with your team on this metric. Type @ to mention someone.
+        </p>
       </div>
 
       <Card>
         <CardContent className="pt-6">
-          <div className="space-y-4">
-            <Textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add a comment..."
-              className="min-h-[80px]"
-            />
-            <Button onClick={handleAddComment} disabled={!newComment.trim()}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Add Comment
-            </Button>
-          </div>
+          <CommentComposer
+            members={members}
+            onPost={handlePost}
+            isPosting={posting}
+          />
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        {((card as any).comments || []).map((comment: any) => (
-          <Card key={comment.id}>
+      <div className="space-y-3">
+        {comments.map((c) => (
+          <Card key={c.id}>
             <CardContent className="pt-6">
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
-                      {comment.author
-                        .split(" ")
-                        .map((n: string) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-sm">
-                        {comment.author}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {comment.createdAt.toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-sm">{comment.content}</p>
+              <div className="flex items-start gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>
+                    {initials(authorName(c.author_id))}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-sm">
+                      {authorName(c.author_id)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(c.created_at).toLocaleString()}
+                    </span>
                   </div>
+                  <p className="text-sm whitespace-pre-wrap">{c.content}</p>
                 </div>
-
-                <div className="ml-11">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setReplyingTo(comment.id)}
-                  >
-                    <Reply className="h-3 w-3 mr-1" />
-                    Reply
-                  </Button>
-                </div>
-
-                {replyingTo === comment.id && (
-                  <div className="ml-11 space-y-2">
-                    <Textarea
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      placeholder="Write a reply..."
-                      className="min-h-[60px]"
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddReply(comment.id)}
-                      >
-                        Reply
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setReplyingTo(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {comment.replies.map((reply: any) => (
-                  <div key={reply.id} className="ml-11 pt-3 border-t">
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs">
-                          {reply.author
-                            .split(" ")
-                            .map((n: string) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-xs">
-                            {reply.author}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {reply.createdAt.toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="text-sm">{reply.content}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
         ))}
 
-        {((card as any).comments || []).length === 0 && (
+        {comments.length === 0 && (
           <Card>
             <CardContent className="pt-6">
               <div className="text-center py-8 text-muted-foreground">

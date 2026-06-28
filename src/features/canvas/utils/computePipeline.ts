@@ -29,10 +29,15 @@ export interface PipelineResult {
   warnings: string[];
 }
 
-// Best-effort numeric value for a source node (explicit numeric data.value, else
-// coerce data.sample, else 0).
+// Best-effort numeric value for a source node: latest point of its resolved
+// `series` (new Source Node shape), else explicit numeric data.value, else
+// coerce the legacy data.sample, else 0.
 function sourceNodeValue(node: any): number {
   const data = node?.data || {};
+  if (Array.isArray(data.series) && data.series.length > 0) {
+    const last = data.series[data.series.length - 1];
+    if (typeof last?.value === 'number' && isFinite(last.value)) return last.value;
+  }
   if (typeof data.value === 'number' && isFinite(data.value)) return data.value;
   const sample = data.sample;
   if (Array.isArray(sample) && sample.length > 0) {
@@ -131,7 +136,13 @@ export async function computePipeline(
     const card = cardById.get(id);
     if (card && Array.isArray(card.data)) return card.data.map((d) => d.value);
     if (computed.has(id)) return [computed.get(id)!];
-    if (srcById.has(id)) return [sourceNodeValue(srcById.get(id))];
+    if (srcById.has(id)) {
+      const sd: any = srcById.get(id)?.data;
+      if (Array.isArray(sd?.series) && sd.series.length > 0) {
+        return sd.series.map((d: any) => d.value);
+      }
+      return [sourceNodeValue(srcById.get(id))];
+    }
     return [];
   };
 

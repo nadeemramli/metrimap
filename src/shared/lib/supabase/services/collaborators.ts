@@ -45,7 +45,7 @@ export async function getProjectCollaborators(
 export async function addCollaborator(
   projectId: string,
   userEmail: string,
-  role: 'owner' | 'admin' | 'editor' | 'viewer' = 'viewer',
+  role: 'owner' | 'admin' | 'member' | 'viewer' = 'viewer',
   permissions: string[] = ['read'],
   authenticatedClient?: SupabaseClient<Database>
 ) {

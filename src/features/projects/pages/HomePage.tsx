@@ -5,12 +5,7 @@ import QuickSearchCommand, {
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import FeedbackButton from '@/shared/components/common/feedback/FeedbackButton';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/shared/components/ui/tabs';
+import { cn } from '@/shared/utils';
 import {
   createShortcut,
   useKeyboardShortcuts,
@@ -20,7 +15,10 @@ import { useNavigate } from 'react-router-dom';
 
 // Custom hooks and components
 import { useProjectActions } from '@/shared/hooks/useProjectActions';
-import { useProjectFiltering } from '@/shared/hooks/useProjectFiltering2';
+import {
+  useProjectFiltering,
+  type ViewFilter,
+} from '@/shared/hooks/useProjectFiltering2';
 import { EmptyState } from '../components/EmptyState';
 import { ProjectCard } from '../components/ProjectCard';
 import { ShowcaseSection } from '../components/ShowcaseSection';
@@ -42,7 +40,7 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<SortOption>('updated');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [activeTab, setActiveTab] = useState('all');
+  const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
 
   // Custom hooks
@@ -57,15 +55,14 @@ export default function HomePage() {
     toggleStar,
   } = useProjectActions();
 
-  const { filteredAndSortedProjects, recentProjects, starredProjects } =
-    useProjectFiltering({
-      projects: safeProjects,
-      searchQuery,
-      selectedTags,
-      sortBy,
-      sortOrder,
-      activeTab,
-    });
+  const { filteredProjects, counts } = useProjectFiltering({
+    projects: safeProjects,
+    searchQuery,
+    selectedTags,
+    sortBy,
+    sortOrder,
+    viewFilter,
+  });
 
   // Global keyboard shortcuts
   const shortcuts = useMemo(
@@ -129,157 +126,94 @@ export default function HomePage() {
         {/* Read-only examples showcase (can't be deleted from the UI) */}
         <ShowcaseSection onOpenCanvas={handleOpenCanvas} />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center justify-between mb-6">
-            <TabsList className="bg-gray-100 rounded-lg p-[3px] shadow-sm">
-              <TabsTrigger
-                value="all"
-                className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
-              >
-                All Projects
-                <span className="inline-flex items-center justify-center rounded-full bg-gray-300 text-secondary-foreground text-xs font-medium w-5 h-5 min-w-5 min-h-5 p-0">
-                  {safeProjects.length}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="recent"
-                className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
-              >
-                Recent
-                <span className="inline-flex items-center justify-center rounded-full bg-gray-300 text-secondary-foreground text-xs font-medium w-5 h-5 min-w-5 min-h-5 p-0">
-                  {recentProjects.length}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="starred"
-                className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground data-[state=inactive]:text-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
-              >
-                Starred
-                <span className="inline-flex items-center justify-center rounded-full bg-gray-300 text-secondary-foreground text-xs font-medium w-5 h-5 min-w-5 min-h-5 p-0">
-                  {starredProjects.length}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        {/* View filter chips — Recent & Starred are filters over one list, not tabs */}
+        <div className="flex items-center gap-2 mb-4">
+          {(
+            [
+              { key: 'all', label: 'All' },
+              { key: 'recent', label: 'Recent' },
+              { key: 'starred', label: 'Starred' },
+            ] as { key: ViewFilter; label: string }[]
+          ).map((chip) => (
+            <button
+              key={chip.key}
+              onClick={() => setViewFilter(chip.key)}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors',
+                viewFilter === chip.key
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
+              )}
+            >
+              {chip.label}
+              <span className="text-xs opacity-80">{counts[chip.key]}</span>
+            </button>
+          ))}
+        </div>
 
-          {/* Controls */}
-          <ProjectControls
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            sortBy={sortBy}
-            onSortByChange={setSortBy}
-            sortOrder={sortOrder}
-            onSortOrderChange={setSortOrder}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            selectedTags={selectedTags}
-            allTags={allTags}
-            onToggleTag={toggleTag}
-            onClearTags={() => setSelectedTags([])}
-            isCreatingCanvas={isCreatingCanvas}
-            onCreateCanvas={handleCreateCanvas}
-            filteredProjectsCount={filteredAndSortedProjects.length}
-            totalProjectsCount={safeProjects.length}
-          />
+        {/* Controls */}
+        <ProjectControls
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          selectedTags={selectedTags}
+          allTags={allTags}
+          onToggleTag={toggleTag}
+          onClearTags={() => setSelectedTags([])}
+          isCreatingCanvas={isCreatingCanvas}
+          onCreateCanvas={handleCreateCanvas}
+          filteredProjectsCount={filteredProjects.length}
+          totalProjectsCount={safeProjects.length}
+        />
 
-          {/* Project Lists */}
-          <TabsContent value="all" className="mt-0">
-            {filteredAndSortedProjects.length > 0 ? (
-              viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredAndSortedProjects.map((project) => (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      onOpenCanvas={handleOpenCanvas}
-                      onDuplicateProject={handleDuplicateProject}
-                      onToggleStar={toggleStar}
-                      onDeleteProject={handleDeleteProject}
-                      onProjectSettings={handleProjectSettings}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <ProjectTable
-                  projects={filteredAndSortedProjects}
-                  onOpenCanvas={handleOpenCanvas}
-                  onDuplicateProject={handleDuplicateProject}
-                  onToggleStar={toggleStar}
-                  onDeleteProject={handleDeleteProject}
-                  onProjectSettings={handleProjectSettings}
-                />
-              )
+        {/* Single project list (driven by chips + controls) */}
+        <div className="mt-0">
+          {filteredProjects.length > 0 ? (
+            viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    onOpenCanvas={handleOpenCanvas}
+                    onDuplicateProject={handleDuplicateProject}
+                    onToggleStar={toggleStar}
+                    onDeleteProject={handleDeleteProject}
+                    onProjectSettings={handleProjectSettings}
+                  />
+                ))}
+              </div>
             ) : (
-              <EmptyState
-                type={safeProjects.length === 0 ? 'no-projects' : 'no-results'}
-                onCreateCanvas={handleCreateCanvas}
-                isCreatingCanvas={isCreatingCanvas}
+              <ProjectTable
+                projects={filteredProjects}
+                onOpenCanvas={handleOpenCanvas}
+                onDuplicateProject={handleDuplicateProject}
+                onToggleStar={toggleStar}
+                onDeleteProject={handleDeleteProject}
+                onProjectSettings={handleProjectSettings}
               />
-            )}
-          </TabsContent>
-
-          <TabsContent value="recent" className="mt-0">
-            {recentProjects.length > 0 ? (
-              viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {recentProjects.map((project) => (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      onOpenCanvas={handleOpenCanvas}
-                      onDuplicateProject={handleDuplicateProject}
-                      onToggleStar={toggleStar}
-                      onDeleteProject={handleDeleteProject}
-                      onProjectSettings={handleProjectSettings}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <ProjectTable
-                  projects={recentProjects}
-                  onOpenCanvas={handleOpenCanvas}
-                  onDuplicateProject={handleDuplicateProject}
-                  onToggleStar={toggleStar}
-                  onDeleteProject={handleDeleteProject}
-                  onProjectSettings={handleProjectSettings}
-                />
-              )
-            ) : (
-              <EmptyState type="no-recent" />
-            )}
-          </TabsContent>
-
-          <TabsContent value="starred" className="mt-0">
-            {starredProjects.length > 0 ? (
-              viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {starredProjects.map((project) => (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      onOpenCanvas={handleOpenCanvas}
-                      onDuplicateProject={handleDuplicateProject}
-                      onToggleStar={toggleStar}
-                      onDeleteProject={handleDeleteProject}
-                      onProjectSettings={handleProjectSettings}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <ProjectTable
-                  projects={starredProjects}
-                  onOpenCanvas={handleOpenCanvas}
-                  onDuplicateProject={handleDuplicateProject}
-                  onToggleStar={toggleStar}
-                  onDeleteProject={handleDeleteProject}
-                  onProjectSettings={handleProjectSettings}
-                />
-              )
-            ) : (
-              <EmptyState type="no-starred" />
-            )}
-          </TabsContent>
-        </Tabs>
+            )
+          ) : (
+            <EmptyState
+              type={
+                safeProjects.length === 0
+                  ? 'no-projects'
+                  : viewFilter === 'starred'
+                    ? 'no-starred'
+                    : viewFilter === 'recent'
+                      ? 'no-recent'
+                      : 'no-results'
+              }
+              onCreateCanvas={handleCreateCanvas}
+              isCreatingCanvas={isCreatingCanvas}
+            />
+          )}
+        </div>
       </div>
 
       {/* Quick Search */}

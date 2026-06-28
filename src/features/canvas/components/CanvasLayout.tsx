@@ -1,11 +1,10 @@
 import AutoSaveIndicator from '@/features/canvas/components/header/AutoSaveIndicator';
 import CanvasModeToggle from '@/features/canvas/components/header/CanvasModeToggle';
 import CanvasTitleEditor from '@/features/canvas/components/header/CanvasTitleEditor';
-import { useAppStore, useProjectsStore } from '@/lib/stores';
+import { useProjectsStore } from '@/lib/stores';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { Button } from '@/shared/components/ui/button';
 import { useCanvasHeader } from '@/shared/contexts/CanvasHeaderContext';
-import { setProjectPublic } from '@/shared/lib/supabase/services/projects';
 import { cn } from '@/shared/utils';
 import {
   ArrowLeft,
@@ -17,12 +16,11 @@ import {
   Keyboard,
   Server,
   Settings,
-  Share2,
   Users,
 } from 'lucide-react';
+import { useState } from 'react';
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-import { CollaborationDialog } from './collaboration/collaboration-dialog';
+import { CollaborationPanel } from './collaboration/CollaborationPanel';
 
 const sidebarItems = [
   {
@@ -71,7 +69,7 @@ export default function CanvasLayout() {
   const navigate = useNavigate();
   const { getProjectById } = useProjectsStore();
   const { headerInfo } = useCanvasHeader();
-  const user = useAppStore((s) => s.user);
+  const [isCollabOpen, setIsCollabOpen] = useState(false);
 
   // Debug: Log header info changes
   console.log('🎯 CanvasLayout headerInfo:', headerInfo);
@@ -227,14 +225,6 @@ export default function CanvasLayout() {
                     onChangeMode={headerInfo.canvasMode.onChangeMode}
                   />
                 )}
-
-                {/* Collaboration Button (left side, after title/desc) */}
-                <CollaborationDialog>
-                  <Button variant="outline" size="sm" className="h-7 px-2">
-                    <Users className="h-3.5 w-3.5 mr-1" />
-                    Collaborate
-                  </Button>
-                </CollaborationDialog>
               </>
             ) : (
               <>
@@ -250,47 +240,22 @@ export default function CanvasLayout() {
                     </span>
                   </>
                 )}
-                <CollaborationDialog>
-                  <Button variant="outline" size="sm" className="h-7 px-2">
-                    <Users className="h-3.5 w-3.5 mr-1" />
-                    Collaborate
-                  </Button>
-                </CollaborationDialog>
               </>
             )}
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Share Button should be to the left of Auto-save */}
+            {/* Unified collaboration entry point (comments, mentions, members,
+                share link). Replaces the old split Collaborate + Share buttons. */}
             <Button
-              variant="default"
+              variant="outline"
               size="sm"
-              className="h-7 gap-1.5 px-3 rounded-md shadow-sm"
-              onClick={async () => {
-                if (!canvasId) return;
-                try {
-                  // If user is not signed in (prod), send to sign-up/sign-in
-                  if (!user) {
-                    navigate('/auth/sign-in');
-                    return;
-                  }
-                  // Ensure project is public
-                  await setProjectPublic(canvasId, true);
-                  const shareUrl = `${window.location.origin}/canvas/${canvasId}`;
-                  await navigator.clipboard.writeText(shareUrl);
-                  toast.success('Share link copied to clipboard', {
-                    description:
-                      'Canvas is public. Anyone with the link can view.',
-                  });
-                } catch (e) {
-                  console.error('Share failed', e);
-                  toast.error('Failed to prepare share link');
-                }
-              }}
-              title="Share canvas"
+              className="h-7 gap-1.5 px-3 rounded-md"
+              onClick={() => setIsCollabOpen(true)}
+              title="Collaborate"
             >
-              <Share2 className="h-3.5 w-3.5" />
-              Share
+              <Users className="h-3.5 w-3.5" />
+              Collaborate
             </Button>
 
             {/* Auto-save indicator in header */}
@@ -306,6 +271,13 @@ export default function CanvasLayout() {
           <Outlet />
         </div>
       </div>
+
+      {/* Right-side collaboration panel (non-modal: canvas stays interactive) */}
+      <CollaborationPanel
+        projectId={canvasId}
+        open={isCollabOpen}
+        onOpenChange={setIsCollabOpen}
+      />
     </div>
   );
 }

@@ -46,11 +46,19 @@ import {
   MoreHorizontal,
   Plus,
   Save,
+  Sparkles,
   Target,
   Trash2,
   TrendingUp,
 } from 'lucide-react';
 import { useState } from 'react';
+import {
+  deriveSeries,
+  generateSeries,
+  parseSeries,
+  type Granularity,
+} from '@/features/canvas/utils/sourceBinding';
+import { WarehouseSourceDialog } from './warehouse-source-dialog';
 import {
   Area,
   AreaChart,
@@ -183,6 +191,70 @@ export function DataEventsTab({
   const [editValue, setEditValue] = useState('');
   const [showEventDialog, setShowEventDialog] = useState(false);
 
+  // Generate-sample dialog (trend/seasonality/noise model -> MetricValue[])
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [genOptions, setGenOptions] = useState({
+    periods: 12,
+    granularity: 'Monthly' as Granularity,
+    start: 1000,
+    growth: 0.05,
+    seasonality: 0.15,
+    noise: 0.08,
+  });
+
+  // CSV/JSON paste-import dialog
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+
+  // Warehouse query dialog (Phase 3)
+  const [showWarehouseDialog, setShowWarehouseDialog] = useState(false);
+
+  // Persist a fully-derived series as the card's canonical data.
+  const applySeries = (series: { period: string; value: number }[]) => {
+    updateCard({ data: deriveSeries(series) });
+  };
+
+  const handleGenerate = () => {
+    applySeries(generateSeries({ ...genOptions, seed: 7 }));
+    setShowGenerateDialog(false);
+  };
+
+  const handleImport = () => {
+    try {
+      updateCard({ data: parseSeries(importText) });
+      setImportText('');
+      setImportError(null);
+      setShowImportDialog(false);
+    } catch (error) {
+      setImportError(
+        error instanceof Error ? error.message : 'Could not parse data.'
+      );
+    }
+  };
+
+  // Read an uploaded CSV/TSV/JSON file into the import textarea (text formats
+  // reuse the Phase 1 contract; binary Parquet would need DuckDB-WASM — deferred).
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (/\.parquet$/i.test(file.name)) {
+      setImportError(
+        'Parquet files need the DuckDB engine (not yet enabled). Export to CSV for now.'
+      );
+      return;
+    }
+    try {
+      const text = await file.text();
+      const normalized = /\.tsv$/i.test(file.name)
+        ? text.replace(/\t/g, ',')
+        : text;
+      setImportText(normalized);
+      setImportError(null);
+    } catch {
+      setImportError('Could not read that file.');
+    }
+  };
+
   const [newEvent, setNewEvent] = useState<{
     title: string;
     description: string;
@@ -242,25 +314,20 @@ export function DataEventsTab({
           (item: any) => item.period === editingRow
         );
 
+        const points = currentData.map((item: any) => ({
+          period: item.period,
+          value: item.value,
+        }));
         if (existingIndex !== -1) {
-          // Update existing entry
-          const updatedData = [...currentData];
-          updatedData[existingIndex] = {
-            ...updatedData[existingIndex],
-            value: parseFloat(editValue) || 0,
-          };
-          await updateCard({ data: updatedData });
-        } else {
-          // Create new entry
-          const newEntry = {
+          points[existingIndex] = {
             period: editingRow,
             value: parseFloat(editValue) || 0,
-            change_percent: 0,
-            trend: 'neutral' as const,
           };
-          const updatedData = [...currentData, newEntry];
-          await updateCard({ data: updatedData });
+        } else {
+          points.push({ period: editingRow, value: parseFloat(editValue) || 0 });
         }
+        // Re-derive change_percent/trend across the whole series after the edit.
+        await updateCard({ data: deriveSeries(points) });
 
         setEditingRow(null);
         setEditValue('');
@@ -514,6 +581,14 @@ export function DataEventsTab({
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowGenerateDialog(true)}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   const newRowDate = `Row ${(card?.data?.length || 0) + 1}`;
                   handleEditValue(newRowDate, 0);
@@ -610,13 +685,22 @@ export function DataEventsTab({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>Export Data</DropdownMenuItem>
-                  <DropdownMenuItem>Import Data</DropdownMenuItem>
-                  <DropdownMenuItem>Add Data Point</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowImportDialog(true)}>
+                    Import File (CSV/JSON)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowWarehouseDialog(true)}>
+                    Query Warehouse (SQL)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowGenerateDialog(true)}>
+                    Generate Sample Data
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowEventDialog(true)}>
                     Add Event
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => updateCard({ data: [] })}
+                  >
                     Clear All Data
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -744,6 +828,205 @@ export function DataEventsTab({
           </CardContent>
         </Card>
       )}
+
+      {/* Generate Sample Data */}
+      <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Generate Sample Data
+            </DialogTitle>
+            <DialogDescription>
+              Build a time series from a trend, seasonality, and noise model.
+              Replaces this card's current data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Periods</label>
+                <Input
+                  type="number"
+                  min={2}
+                  max={365}
+                  value={genOptions.periods}
+                  onChange={(e) =>
+                    setGenOptions({
+                      ...genOptions,
+                      periods: parseInt(e.target.value) || 12,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Granularity</label>
+                <Select
+                  value={genOptions.granularity}
+                  onValueChange={(value: Granularity) =>
+                    setGenOptions({ ...genOptions, granularity: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Daily">Daily</SelectItem>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    <SelectItem value="Monthly">Monthly</SelectItem>
+                    <SelectItem value="Quarterly">Quarterly</SelectItem>
+                    <SelectItem value="Yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Starting value</label>
+                <Input
+                  type="number"
+                  value={genOptions.start}
+                  onChange={(e) =>
+                    setGenOptions({
+                      ...genOptions,
+                      start: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Growth / period ({Math.round(genOptions.growth * 100)}%)
+                </label>
+                <Input
+                  type="number"
+                  step={0.01}
+                  value={genOptions.growth}
+                  onChange={(e) =>
+                    setGenOptions({
+                      ...genOptions,
+                      growth: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Seasonality ({Math.round(genOptions.seasonality * 100)}%)
+                </label>
+                <Input
+                  type="number"
+                  step={0.05}
+                  min={0}
+                  max={1}
+                  value={genOptions.seasonality}
+                  onChange={(e) =>
+                    setGenOptions({
+                      ...genOptions,
+                      seasonality: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Noise ({Math.round(genOptions.noise * 100)}%)
+                </label>
+                <Input
+                  type="number"
+                  step={0.05}
+                  min={0}
+                  max={1}
+                  value={genOptions.noise}
+                  onChange={(e) =>
+                    setGenOptions({
+                      ...genOptions,
+                      noise: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleGenerate} className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Generate
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowGenerateDialog(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Query Warehouse (Phase 3) */}
+      <WarehouseSourceDialog
+        open={showWarehouseDialog}
+        onOpenChange={setShowWarehouseDialog}
+        onApply={(series) => updateCard({ data: series })}
+      />
+
+      {/* Import CSV / JSON */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Data</DialogTitle>
+            <DialogDescription>
+              Paste CSV (<code>period,value</code> per line) or a JSON array of{' '}
+              <code>{'{ period, value }'}</code>. Replaces current data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Upload a file or paste below.
+              </p>
+              <label>
+                <input
+                  type="file"
+                  accept=".csv,.tsv,.txt,.json"
+                  className="hidden"
+                  onChange={(e) => handleFile(e.target.files?.[0])}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="cursor-pointer"
+                >
+                  <span>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Choose file
+                  </span>
+                </Button>
+              </label>
+            </div>
+            <Textarea
+              value={importText}
+              onChange={(e) => {
+                setImportText(e.target.value);
+                setImportError(null);
+              }}
+              placeholder={'2026-01,1000\n2026-02,1120\n2026-03,1080'}
+              className="min-h-40 font-mono text-sm"
+            />
+            {importError && (
+              <p className="text-sm text-destructive">{importError}</p>
+            )}
+            <div className="flex gap-2">
+              <Button onClick={handleImport}>Import</Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowImportDialog(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

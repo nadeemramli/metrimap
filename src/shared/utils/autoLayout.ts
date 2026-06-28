@@ -32,9 +32,14 @@ export function applyAutoLayout(
   edges: Edge[],
   options: Partial<LayoutOptions> = {}
 ): Node[] {
+  // Guard invalid input before any dereference (null/undefined from callers).
+  if (!nodes) {
+    return nodes;
+  }
+
   console.log('🔄 applyAutoLayout: Starting layout calculation', {
     nodeCount: nodes.length,
-    edgeCount: edges.length,
+    edgeCount: edges?.length ?? 0,
     options,
   });
 
@@ -247,6 +252,11 @@ export function validateLayoutResult(
   layoutedNodes: Node[]
 ): { isValid: boolean; issues: string[] } {
   const issues: string[] = [];
+
+  // Guard invalid input (null/undefined) — nothing to validate.
+  if (!originalNodes || !layoutedNodes) {
+    return { isValid: !originalNodes && !layoutedNodes, issues };
+  }
 
   // Check if all nodes are present
   if (originalNodes.length !== layoutedNodes.length) {

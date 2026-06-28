@@ -8,6 +8,10 @@ _Generated 2026-06-26 from a multi-agent codebase audit (39 items: 9 P0, 18 P1, 
 >
 > **Feature plans** live under `docs/backlog/` — e.g. [operator-as-control / data-flow simulation](docs/backlog/operator-control-feature.md).
 >
+> **Data Source is built + deployed (Phases 1–3, 2026-06-28)** — see [data source architecture](docs/backlog/data-source-architecture.md). ⚠️ **Open caveats** (warehouse 401 / Clerk-JWT-vs-`verify_jwt`, type regen, migration version, runtime-unverified DuckDB/warehouse) are documented with root-cause + fix in **[data-source-caveats.md](docs/backlog/data-source-caveats.md)** — read before debugging warehouse failures.
+>
+> **🤝 Collaboration UI consolidated (2026-06-28) — READ BEFORE touching comments / mentions / share / members / notifications:** the split Collaborate+Share buttons are now one right-side panel (people / comments / @mentions / activity); **the UI is built — do not rebuild it.** What remains (apply the `uuid→text` comment-columns migration, owner-row seeding, provisioning) is **owned by the collaboration pipeline** and spec'd in **[collaboration-consolidation.md](docs/backlog/collaboration-consolidation.md)**. Supersedes the old descriptions in P1-9, P1-18, P1-4, P1-10, P3-14.
+>
 > **Product-value plans (drafted 2026-06-27, methodology-aligned — see [`docs/reference/metric-tree-methodology.md`](docs/reference/metric-tree-methodology.md)):** [orphan auto-group + focus](docs/backlog/orphan-auto-group-focus.md) · [data source architecture](docs/backlog/data-source-architecture.md) · [RCA + drift engine](docs/backlog/rca-drift-engine.md) · [accountability (typed owner)](docs/backlog/accountability-typed-owner.md) · [governance lenses (parked)](docs/backlog/governance-lenses.md). These are DRAFTS for discussion, not scheduled work.
 
 ## Status snapshot (re-audited 2026-06-27)

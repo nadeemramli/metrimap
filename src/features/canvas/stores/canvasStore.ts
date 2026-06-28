@@ -942,15 +942,18 @@ export const useCanvasStore = create<CanvasStoreState>()(
         }
 
         // Persist to database
-        await createGroup({
-          id: group.id,
-          name: group.name,
-          nodeIds: group.nodeIds,
-          position: group.position,
-          size: group.size,
-          projectId: state.canvas.id,
-          createdBy: user.id,
-        });
+        await createGroup(
+          {
+            id: group.id,
+            name: group.name,
+            nodeIds: group.nodeIds,
+            position: group.position,
+            size: group.size,
+            projectId: state.canvas.id,
+            createdBy: user.id,
+          },
+          getClientForEnvironment()
+        );
 
         // Update local state
         set((state) => ({
@@ -991,13 +994,17 @@ export const useCanvasStore = create<CanvasStoreState>()(
     updateGroup: async (groupId: string, updates: Partial<GroupNode>) => {
       try {
         // Persist to database
-        await updateGroupInSupabase(groupId, {
-          name: updates.name,
-          nodeIds: updates.nodeIds,
-          position: updates.position,
-          size: updates.size,
-          color: updates.color,
-        });
+        await updateGroupInSupabase(
+          groupId,
+          {
+            name: updates.name,
+            nodeIds: updates.nodeIds,
+            position: updates.position,
+            size: updates.size,
+            color: updates.color,
+          },
+          getClientForEnvironment()
+        );
 
         // Update local state
         set((state) => ({
@@ -1040,7 +1047,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     deleteGroup: async (groupId: string) => {
       try {
         // Persist to database
-        await deleteGroupInSupabase(groupId);
+        await deleteGroupInSupabase(groupId, getClientForEnvironment());
 
         // Update local state
         set((state) => ({
@@ -1281,15 +1288,18 @@ export const useCanvasStore = create<CanvasStoreState>()(
         }
 
         // Persist to database
-        await createGroup({
-          id: groupId,
-          name: groupName,
-          nodeIds,
-          position: groupPosition,
-          size: groupSize,
-          projectId: state.canvas.id,
-          createdBy: user.id,
-        });
+        await createGroup(
+          {
+            id: groupId,
+            name: groupName,
+            nodeIds,
+            position: groupPosition,
+            size: groupSize,
+            projectId: state.canvas.id,
+            createdBy: user.id,
+          },
+          getClientForEnvironment()
+        );
 
         // Update local state
         set((state) => ({
@@ -1352,7 +1362,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       try {
         // Delete groups from database
         for (const groupId of groupIds) {
-          await deleteGroupInSupabase(groupId);
+          await deleteGroupInSupabase(groupId, getClientForEnvironment());
         }
 
         // Update local state
