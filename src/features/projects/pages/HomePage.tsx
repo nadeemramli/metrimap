@@ -4,6 +4,7 @@ import QuickSearchCommand, {
 } from '@/features/canvas/components/search/QuickSearchCommand';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import FeedbackButton from '@/shared/components/common/feedback/FeedbackButton';
+import { OrganizationSwitcher } from '@clerk/react-router';
 import { Database, Folder } from 'lucide-react';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { cn } from '@/shared/utils';
@@ -127,9 +128,19 @@ export default function HomePage() {
       <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 w-full">
         <div className="px-6 py-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold transition-all duration-300 hover:scale-105 cursor-pointer">
-              Metrimap
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold transition-all duration-300 hover:scale-105 cursor-pointer">
+                Metrimap
+              </h1>
+              {/* Workspace switcher (Clerk org = workspace). Personal account +
+                  auto-created org both appear here. */}
+              <OrganizationSwitcher
+                hidePersonal={false}
+                afterCreateOrganizationUrl="/"
+                afterSelectOrganizationUrl="/"
+                afterLeaveOrganizationUrl="/"
+              />
+            </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/catalog')}
