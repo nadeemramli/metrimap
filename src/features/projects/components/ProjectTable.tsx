@@ -38,6 +38,7 @@ interface ProjectTableProps {
   onRestore: (projectId: string) => void;
   spaces?: Array<{ id: string; name: string }>;
   onMoveToSpace?: (projectId: string, spaceId: string | null) => void;
+  onSaveAsTemplate?: (projectId: string) => void;
 }
 
 export function ProjectTable({
@@ -51,6 +52,7 @@ export function ProjectTable({
   onRestore,
   spaces = [],
   onMoveToSpace,
+  onSaveAsTemplate,
 }: ProjectTableProps) {
   return (
     <Table className="transition-all duration-300">
@@ -206,6 +208,14 @@ export function ProjectTable({
                     >
                       <span>Duplicate</span>
                     </DropdownMenuItem>
+                    {onSaveAsTemplate && (
+                      <DropdownMenuItem
+                        onClick={() => onSaveAsTemplate(project.id)}
+                        className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                      >
+                        <span>Save as Template</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={() => onToggleStar(project.id)}
                       className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"

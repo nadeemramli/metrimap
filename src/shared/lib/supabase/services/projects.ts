@@ -51,11 +51,50 @@ export async function getUserProjects(
       preview_rels:relationships(id, source_id, target_id)
     `
     )
-    // Example/template projects live only in the homepage Showcase (read-only).
+    // Examples live in the Showcase; templates live in the template gallery.
+    // Neither belongs in the working-canvas list.
     .not('tags', 'cs', '{example}')
+    .not('tags', 'cs', '{template}')
     .order('updated_at', { ascending: false });
   if (error) throw error;
   return data || [];
+}
+
+// Templates the user can start a canvas from: their workspace's own
+// 'template'-tagged projects (RLS-scoped). Public starter examples are fetched
+// separately via getShowcaseProjects.
+export async function listTemplates(
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase();
+  const { data, error } = await client
+    .from('projects')
+    .select(`*, metric_cards(count), relationships(count), groups(count)`)
+    .contains('tags', ['template'])
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+// Snapshot a canvas into a reusable template: a deep copy tagged 'template'
+// (the original stays a working canvas). Returns the new template's id.
+export async function saveAsTemplate(
+  projectId: string,
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<string> {
+  const client = authenticatedClient || supabase();
+  const { data: orig } = await client
+    .from('projects')
+    .select('name')
+    .eq('id', projectId)
+    .single();
+  const newId = await duplicateProjectDeep(projectId, userId, client);
+  await client
+    .from('projects')
+    .update({ name: `${orig?.name ?? 'Untitled'} (Template)`, tags: ['template'] })
+    .eq('id', newId);
+  return newId;
 }
 
 // Public example/template projects for the homepage Showcase (read-only).
@@ -145,7 +184,11 @@ export async function duplicateProjectDeep(
     id: newProjectId,
     name: `${orig.name} (Copy)`,
     is_public: false,
-    tags: (orig.tags ?? []).filter((t: string) => t !== 'example'),
+    // A duplicate/instantiation is a working canvas, never itself an
+    // example/template — strip those markers so it lands in the normal list.
+    tags: (orig.tags ?? []).filter(
+      (t: string) => t !== 'example' && t !== 'template'
+    ),
     settings,
     created_by: userId,
   } as any);

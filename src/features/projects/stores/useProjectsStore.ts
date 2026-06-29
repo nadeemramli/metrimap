@@ -3,6 +3,7 @@ import {
   deleteProject as deleteProjectInSupabase,
   duplicateProjectDeep as duplicateProjectDeepInSupabase,
   getUserProjects,
+  saveAsTemplate as saveAsTemplateInSupabase,
   setProjectArchived as setProjectArchivedInSupabase,
   setProjectStarred as setProjectStarredInSupabase,
   updateProject as updateProjectInSupabase,
@@ -44,6 +45,7 @@ interface ProjectsStoreState {
   ) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   duplicateProject: (projectId: string) => Promise<string>;
+  saveAsTemplate: (projectId: string) => Promise<void>;
   setStarred: (projectId: string, starred: boolean) => Promise<void>;
   setArchived: (projectId: string, archived: boolean) => Promise<void>;
   createSpace: (name: string) => Promise<void>;
@@ -375,6 +377,14 @@ export const useProjectsStore = create<ProjectsStoreState>()(
           });
           throw error;
         }
+      },
+
+      saveAsTemplate: async (projectId) => {
+        const user = requireAuth();
+        const client = getClientForEnvironment();
+        // Snapshots the canvas into a 'template'-tagged deep copy. Templates are
+        // excluded from the working list, so no list refresh is needed.
+        await saveAsTemplateInSupabase(projectId, user.id, client);
       },
 
       setStarred: async (projectId, starred) => {

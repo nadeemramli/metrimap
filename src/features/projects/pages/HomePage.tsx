@@ -8,6 +8,8 @@ import { OrganizationSwitcher, useOrganization } from '@clerk/react-router';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useProjectsRealtime } from '../hooks/useProjectsRealtime';
 import { NotificationInbox } from '@/features/notifications/components/NotificationInbox';
+import { TemplatePicker } from '../components/TemplatePicker';
+import { toast } from 'sonner';
 import { Activity, Database, Folder } from 'lucide-react';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { cn } from '@/shared/utils';
@@ -36,8 +38,14 @@ type ViewMode = 'grid' | 'list';
 export default function HomePage() {
   const navigate = useNavigate();
   const isDevelopment = import.meta.env.DEV;
-  const { projects, initializeProjects, spaces, createSpace, moveProjectToSpace } =
-    useProjectsStore();
+  const {
+    projects,
+    initializeProjects,
+    spaces,
+    createSpace,
+    moveProjectToSpace,
+    saveAsTemplate,
+  } = useProjectsStore();
   const safeProjects = Array.isArray(projects) ? projects : [];
   const { user } = useAppStore();
 
@@ -49,6 +57,16 @@ export default function HomePage() {
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [spaceFilter, setSpaceFilter] = useState<string>('all');
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const handleSaveAsTemplate = async (projectId: string) => {
+    try {
+      await saveAsTemplate(projectId);
+      toast.success('Saved as template — find it under “From template”.');
+    } catch {
+      toast.error('Failed to save template');
+    }
+  };
 
   const handleNewSpace = async () => {
     const name = window.prompt('New Space name')?.trim();
@@ -260,6 +278,7 @@ export default function HomePage() {
           onClearTags={() => setSelectedTags([])}
           isCreatingCanvas={isCreatingCanvas}
           onCreateCanvas={handleCreateCanvas}
+          onNewFromTemplate={() => setTemplatePickerOpen(true)}
           filteredProjectsCount={filteredProjects.length}
           totalProjectsCount={safeProjects.length}
         />
@@ -282,6 +301,7 @@ export default function HomePage() {
                     onRestore={restoreProject}
                     spaces={spaces}
                     onMoveToSpace={moveProjectToSpace}
+                    onSaveAsTemplate={handleSaveAsTemplate}
                   />
                 ))}
               </div>
@@ -297,6 +317,7 @@ export default function HomePage() {
                 onRestore={restoreProject}
                 spaces={spaces}
                 onMoveToSpace={moveProjectToSpace}
+                onSaveAsTemplate={handleSaveAsTemplate}
               />
             )
           ) : (
@@ -373,6 +394,10 @@ export default function HomePage() {
           }
           setShowAdvancedSearch(false);
         }}
+      />
+      <TemplatePicker
+        open={templatePickerOpen}
+        onOpenChange={setTemplatePickerOpen}
       />
     </div>
   );

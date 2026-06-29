@@ -39,6 +39,7 @@ interface ProjectCardProps {
   onRestore: (projectId: string) => void;
   spaces?: Array<{ id: string; name: string }>;
   onMoveToSpace?: (projectId: string, spaceId: string | null) => void;
+  onSaveAsTemplate?: (projectId: string) => void;
 }
 
 export function ProjectCard({
@@ -52,6 +53,7 @@ export function ProjectCard({
   onRestore,
   spaces = [],
   onMoveToSpace,
+  onSaveAsTemplate,
 }: ProjectCardProps) {
   const isArchived = Boolean(project.archivedAt);
   return (
@@ -98,6 +100,14 @@ export function ProjectCard({
               >
                 <span>Duplicate</span>
               </DropdownMenuItem>
+              {onSaveAsTemplate && (
+                <DropdownMenuItem
+                  onClick={() => onSaveAsTemplate(project.id)}
+                  className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                >
+                  <span>Save as Template</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={() => onToggleStar(project.id)}
                 className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"

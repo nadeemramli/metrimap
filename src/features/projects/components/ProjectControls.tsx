@@ -17,6 +17,7 @@ import {
   Search,
   SortAsc,
   SortDesc,
+  Sparkles,
 } from 'lucide-react';
 
 type SortOption = 'name' | 'updated' | 'created' | 'nodes' | 'edges';
@@ -37,6 +38,7 @@ interface ProjectControlsProps {
   onClearTags: () => void;
   isCreatingCanvas: boolean;
   onCreateCanvas: () => void;
+  onNewFromTemplate?: () => void;
   filteredProjectsCount: number;
   totalProjectsCount: number;
 }
@@ -56,6 +58,7 @@ export function ProjectControls({
   onClearTags,
   isCreatingCanvas,
   onCreateCanvas,
+  onNewFromTemplate,
   filteredProjectsCount,
   totalProjectsCount,
 }: ProjectControlsProps) {
@@ -78,6 +81,17 @@ export function ProjectControls({
               </span>
             </span>
           </Button>
+          {onNewFromTemplate && (
+            <Button
+              onClick={onNewFromTemplate}
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-md whitespace-nowrap"
+            >
+              <Sparkles className="h-4 w-4" />
+              From template
+            </Button>
+          )}
           <div className="relative flex-1 max-w-md group">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground transition-all duration-300 group-focus-within:text-primary group-hover:text-primary" />
             <Input
