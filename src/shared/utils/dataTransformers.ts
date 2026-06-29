@@ -35,6 +35,7 @@ export function transformMetricCard(card: DBMetricCard): MetricCardType {
     parentId: undefined,
     data: card.data as any,
     sourceType: card.source_type as any,
+    trackedMetricId: (card as any).tracked_metric_id ?? null,
     formula: card.formula || undefined,
     owner: card.owner_id || '',
     assignees: card.assignees || [],

@@ -53,6 +53,8 @@ import React, { useEffect, useState } from 'react';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
+import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { promoteCardToTrackedMetric } from '@/shared/lib/supabase/services/trackedMetrics';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   DropdownMenu,
@@ -79,22 +81,54 @@ function CardSettingsSheetComponent({
   initialTab = 'data',
   // onSwitchToCard,
 }: CardSettingsSheetProps): React.ReactElement {
-  // Early return with a proper React element if not open
-  if (!isOpen) {
-    return <></>;
-  }
+  // NOTE: no early `if (!isOpen) return` here — that ran before the hooks below
+  // and violated the Rules of Hooks (hooks must run in the same order every
+  // render). The <Sheet open={isOpen}> at the bottom already gates rendering.
 
   const { getNodeById, persistNodeUpdate, persistNodeDelete } =
     useCanvasStore();
   const { getEvidenceForCard, addEvidence, updateEvidence, deleteEvidence } =
     useEvidenceStore();
   const confirm = useConfirm();
+  const catalogClient = useClerkSupabase();
   const card = cardId ? getNodeById(cardId) : null;
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isModified, setIsModified] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [catalogBusy, setCatalogBusy] = useState(false);
+
+  // Semantic layer: promote this (operationalized) card into the Metric Catalog.
+  const cardHasData = Array.isArray(card?.data) && card.data.length > 0;
+  const isCatalogued = Boolean(card?.trackedMetricId);
+  const handleCatalogMetric = async () => {
+    if (!card || !cardId || !catalogClient) return;
+    setCatalogBusy(true);
+    try {
+      const trackedId = await promoteCardToTrackedMetric(
+        {
+          cardId,
+          projectId: useCanvasStore.getState().canvas?.id ?? null,
+          name: card.title || 'Untitled metric',
+          formula: card.formula ?? null,
+          source_kind: card.sourceType ?? undefined,
+        },
+        catalogClient
+      );
+      // Optimistic local update so the Tracked badge appears immediately.
+      useCanvasStore.getState().updateNode(cardId, {
+        trackedMetricId: trackedId,
+      } as Partial<MetricCard>);
+      toast.success('Added to Metric Catalog');
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to catalog metric'
+      );
+    } finally {
+      setCatalogBusy(false);
+    }
+  };
 
   // Evidence dialog state
   const [isEvidenceDialogOpen, setIsEvidenceDialogOpen] = useState(false);
@@ -337,6 +371,29 @@ function CardSettingsSheetComponent({
                     placeholder="Enter card description"
                     className="text-sm text-muted-foreground font-medium"
                   />
+
+                  {/* Semantic layer: catalog status / promote */}
+                  <div className="pt-1">
+                    {isCatalogued ? (
+                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                        ✓ In Metric Catalog
+                      </Badge>
+                    ) : cardHasData ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        disabled={catalogBusy || !catalogClient}
+                        onClick={handleCatalogMetric}
+                      >
+                        {catalogBusy ? 'Cataloging…' : 'Catalog this metric'}
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/70">
+                        Add data (or wire a source) to catalog this metric
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

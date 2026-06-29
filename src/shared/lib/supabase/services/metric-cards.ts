@@ -33,6 +33,7 @@ function transformMetricCard(card: MetricCardRow): MetricCard {
     position: { x: card.position_x, y: card.position_y },
     data: card.data as any,
     sourceType: card.source_type as any,
+    trackedMetricId: (card as any).tracked_metric_id ?? null,
     formula: card.formula || undefined,
     owner: card.owner_id || undefined,
     assignees: card.assignees || [],

@@ -87,6 +87,10 @@ export interface MetricCard {
   sourceType?: SourceType;
   formula?: string;
 
+  // Semantic layer: set when this card is a placement of a catalogued Tracked
+  // Metric (see tracked_metrics). null/undefined = exploratory/uncatalogued.
+  trackedMetricId?: string | null;
+
   // Metadata
   owner?: string;
   assignees: string[];

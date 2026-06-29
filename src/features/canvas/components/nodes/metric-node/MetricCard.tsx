@@ -762,6 +762,14 @@ export default function MetricCard({ data, selected }: NodeProps) {
                         </span>
                       </>
                     )}
+                    {card.trackedMetricId && (
+                      <span
+                        className="nodrag ml-1 inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700"
+                        title="This card is a catalogued Tracked Metric"
+                      >
+                        Tracked
+                      </span>
+                    )}
                   </>
                 )}
               </div>
