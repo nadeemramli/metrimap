@@ -25,6 +25,7 @@ import EvidenceRepositoryPage from './features/evidence/pages/EvidenceRepository
 import CatalogPage from './features/catalog/pages/CatalogPage';
 import FeedPage from './features/notifications/pages/FeedPage';
 import WorkspaceSettingsPage from './features/settings/pages/WorkspaceSettingsPage';
+import EmbedCanvasPage from './features/canvas/pages/EmbedCanvasPage';
 import HomePage from './features/projects/pages/HomePage';
 import SourcePage from './features/sources/pages/SourcePage';
 
@@ -78,6 +79,9 @@ export default function App() {
                     </>
                   }
                 />
+
+                {/* Public read-only embed (no auth — RLS gates by is_public) */}
+                <Route path="/embed/:canvasId" element={<EmbedCanvasPage />} />
 
                 {/* Protected routes */}
                 <Route

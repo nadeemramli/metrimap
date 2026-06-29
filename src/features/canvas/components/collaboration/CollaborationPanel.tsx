@@ -52,6 +52,7 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
+  Code2,
   Link2,
   MessageSquare,
   Trash2,
@@ -230,6 +231,17 @@ function PeopleTab({
     }
   };
 
+  const handleCopyEmbedLink = async () => {
+    if (!projectId) return;
+    const url = `${window.location.origin}/embed/${projectId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Embed link copied — works only while public');
+    } catch {
+      toast.error('Could not copy link');
+    }
+  };
+
   return (
     <TabsContent value="people" className="flex-1 min-h-0 mt-3">
       <ScrollArea className="h-full">
@@ -367,15 +379,27 @@ function PeopleTab({
                 onCheckedChange={handleTogglePublic}
               />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full gap-1.5"
-              onClick={handleCopyLink}
-            >
-              <Link2 className="h-3.5 w-3.5" />
-              Copy link
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5"
+                onClick={handleCopyLink}
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                Copy link
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5"
+                onClick={handleCopyEmbedLink}
+                title="Read-only embed for Notion / Confluence / iframe"
+              >
+                <Code2 className="h-3.5 w-3.5" />
+                Embed
+              </Button>
+            </div>
           </div>
         </div>
       </ScrollArea>
