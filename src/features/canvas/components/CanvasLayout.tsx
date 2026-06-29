@@ -2,10 +2,14 @@ import AutoSaveIndicator from '@/features/canvas/components/header/AutoSaveIndic
 import CanvasModeToggle from '@/features/canvas/components/header/CanvasModeToggle';
 import CanvasTitleEditor from '@/features/canvas/components/header/CanvasTitleEditor';
 import { useProjectsStore } from '@/lib/stores';
+import { PresenceAvatars } from '@/shared/components/PresenceAvatars';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { Button } from '@/shared/components/ui/button';
 import { useCanvasHeader } from '@/shared/contexts/CanvasHeaderContext';
+import { usePresence } from '@/shared/hooks/usePresence';
 import { cn } from '@/shared/utils';
+import { useUser } from '@clerk/react-router';
+import { useMemo } from 'react';
 import {
   ArrowLeft,
   BarChart3,
@@ -72,6 +76,31 @@ export default function CanvasLayout() {
   const [isCollabOpen, setIsCollabOpen] = useState(false);
 
   const project = canvasId ? getProjectById(canvasId) : null;
+
+  // Live presence — which teammates are in this canvas and on which page.
+  const { user } = useUser();
+  const pageLabel = useMemo(() => {
+    const p = location.pathname;
+    if (p.includes('/dashboard')) return 'Dashboard';
+    if (p.includes('/assets')) return 'Assets';
+    if (p.includes('/evidence')) return 'Evidence';
+    if (p.includes('/data')) return 'Data';
+    if (p.includes('/settings')) return 'Settings';
+    return 'Canvas';
+  }, [location.pathname]);
+  const me = useMemo(
+    () =>
+      user
+        ? {
+            userId: user.id,
+            name: user.fullName || user.firstName || 'Someone',
+            avatar: user.imageUrl,
+            page: pageLabel,
+          }
+        : null,
+    [user, pageLabel]
+  );
+  const roster = usePresence(canvasId, me);
 
   const handleNavigation = (item: (typeof sidebarItems)[0]) => {
     if (item.isHome) {
@@ -223,6 +252,9 @@ export default function CanvasLayout() {
             {/* Per-page action buttons */}
             {headerInfo?.actions}
 
+            {/* Live presence — who else is in this canvas */}
+            <PresenceAvatars roster={roster} />
+
             {/* Unified collaboration entry point (comments, mentions, members,
                 share link). Replaces the old split Collaborate + Share buttons. */}
             <Button
@@ -255,6 +287,8 @@ export default function CanvasLayout() {
         projectId={canvasId}
         open={isCollabOpen}
         onOpenChange={setIsCollabOpen}
+        presence={roster}
+        currentPage={pageLabel}
       />
     </div>
   );

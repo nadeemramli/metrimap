@@ -16,6 +16,9 @@ import type {
   MetricCard as MetricCardType,
   Relationship,
 } from '@/shared/types';
+import { createLogger } from '@/shared/utils/logger';
+
+const log = createLogger('canvas');
 
 /**
  * Transform database MetricCard to application MetricCard type
@@ -63,7 +66,7 @@ export function transformMetricCardWithCompatibility(
  * Transform database Relationship to application Relationship type
  */
 export function transformRelationship(rel: DBRelationship): Relationship {
-  console.log('🔍 Transforming relationship:', rel);
+  log.debug('🔍 Transforming relationship:', rel);
 
   const transformed = {
     id: rel.id,
@@ -91,7 +94,7 @@ export function transformRelationship(rel: DBRelationship): Relationship {
     updatedAt: rel.updated_at || new Date().toISOString(),
   };
 
-  console.log('🔍 Transformed relationship:', transformed);
+  log.debug('🔍 Transformed relationship:', transformed);
   return transformed;
 }
 

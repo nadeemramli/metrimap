@@ -13,6 +13,9 @@ import {
 import AddNodeButton from './AddNodeButton';
 import FilterControls from './FilterControls';
 import LayoutDropdownButton from './LayoutDropdownButton';
+import { createLogger } from '@/shared/utils/logger';
+
+const log = createLogger('canvas');
 
 type CanvasMode = 'edit' | 'draw';
 
@@ -55,7 +58,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
     onSetWhiteboardTool,
   } = props;
 
-  console.log('🎯 TopCanvasToolbar render:', { mode, whiteboardTool });
+  log.debug('🎯 TopCanvasToolbar render:', { mode, whiteboardTool });
 
   // React Flow whiteboard tools (for draw mode)
   const whiteboardTools: { id: string; title: string; Icon: any }[] = [
@@ -113,7 +116,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
                 className={getToolButtonClasses(isActive)}
                 title={tool.title}
                 onClick={() => {
-                  console.log('🎯 Tool clicked:', tool.id);
+                  log.debug('🎯 Tool clicked:', tool.id);
                   onSetWhiteboardTool?.(tool.id);
                 }}
               >

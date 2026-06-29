@@ -68,6 +68,45 @@ export interface ResolveContext {
   file?: File;
 }
 
+/** Minimal node shape needed to reconcile warehouse bindings. */
+export interface SourceBindingNode {
+  id: string;
+  type?: string;
+  data?: SourceNodeData;
+}
+
+/**
+ * Detect warehouse-bound source nodes whose connection no longer exists.
+ *
+ * Source nodes render their last persisted series on load (they don't
+ * re-resolve), so deleting a connection never silently zeroes a node — but
+ * nothing tells the user the binding is broken until they manually re-run.
+ * This pure helper compares each warehouse node's `connectionId` against the
+ * live connection ids and returns the stale-flag updates to apply, preserving
+ * the last-known series. Skips nodes that are already stale, unconfigured, or
+ * have no series to preserve.
+ */
+export function findOrphanedSourceBindings(
+  nodes: SourceBindingNode[],
+  liveConnectionIds: Set<string>
+): Array<{ id: string; data: SourceNodeData }> {
+  const updates: Array<{ id: string; data: SourceNodeData }> = [];
+  for (const node of nodes) {
+    if (node.type !== 'sourceNode') continue;
+    const d = node.data;
+    if (!d?.config || d.config.origin !== 'warehouse') continue;
+    const connectionId = d.config.connectionId;
+    if (!connectionId || liveConnectionIds.has(connectionId)) continue;
+    if (d.stale) continue; // already flagged
+    if (!Array.isArray(d.series) || d.series.length === 0) continue;
+    updates.push({
+      id: node.id,
+      data: { ...d, stale: true, lastError: 'Source connection was removed' },
+    });
+  }
+  return updates;
+}
+
 /** Resolve a Source Node config to the metric-value contract. */
 export async function resolveSource(
   config: SourceConfig,

@@ -6,6 +6,9 @@ import type { MetricCard } from '@/shared/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../client';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
+import { createLogger } from '@/shared/utils/logger';
+
+const log = createLogger('metric-cards');
 
 export type MetricCardRow = Tables<'metric_cards'>;
 export type MetricCardInsert = TablesInsert<'metric_cards'>;
@@ -134,7 +137,7 @@ export async function createMetricCard(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log('🔍 createMetricCard called with:', {
+  log.debug('🔍 createMetricCard called with:', {
     projectId,
     userId,
     cardTitle: card.title,
@@ -149,7 +152,7 @@ export async function createMetricCard(
     console.error('Validation error creating metric card:', error);
     throw error;
   }
-  console.log('🔍 Insert data:', insertData);
+  log.debug('🔍 Insert data:', insertData);
 
   const client = authenticatedClient || supabase();
 
@@ -164,7 +167,7 @@ export async function createMetricCard(
     throw error;
   }
 
-  console.log('✅ Metric card created successfully:', data);
+  log.debug('✅ Metric card created successfully:', data);
   return transformMetricCard(data);
 }
 
@@ -219,7 +222,7 @@ export async function updateMetricCardPosition(
   position: { x: number; y: number },
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  console.log(`💾 Updating position for metric card ${id}:`, position);
+  log.debug(`💾 Updating position for metric card ${id}:`, position);
 
   const client = authenticatedClient || supabase();
   const { data, error } = await client
@@ -238,6 +241,6 @@ export async function updateMetricCardPosition(
     throw error;
   }
 
-  console.log(`✅ Successfully updated position for metric card ${id}`);
+  log.debug(`✅ Successfully updated position for metric card ${id}`);
   return transformMetricCard(data);
 }

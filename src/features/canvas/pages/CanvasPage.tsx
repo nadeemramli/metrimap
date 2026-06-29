@@ -34,6 +34,8 @@ import {
   mergeProjectSettings,
 } from '@/shared/lib/supabase/services/projects';
 import { getMetricValuesByMetricIds } from '@/shared/lib/supabase/services/trackedMetrics';
+import { listConnections } from '@/shared/lib/supabase/services/sourceConnections';
+import { findOrphanedSourceBindings } from '@/features/canvas/utils/sourceResolver';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
 import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
 import {
@@ -101,6 +103,9 @@ import { getViewportCenterPosition } from '@/features/canvas/utils/viewportCente
 // Auto-save and realtime hooks
 import { useAutoSave } from '@/shared/hooks/useAutoSave';
 import { useCanvasRealtime } from '@/shared/hooks/useCanvasRealtime';
+import { createLogger } from '@/shared/utils/logger';
+
+const log = createLogger('canvas');
 
 function CanvasPageInner() {
   const { canvasId } = useParams();
@@ -180,7 +185,7 @@ function CanvasPageInner() {
     const machineMode =
       canvasMachine.currentEnvironment === 'practical' ? 'edit' : 'draw';
     if (state.toolbarMode !== machineMode) {
-      console.log(
+      log.debug(
         `🔄 Syncing toolbar mode: ${state.toolbarMode} -> ${machineMode}`
       );
       state.setToolbarMode(machineMode);
@@ -207,7 +212,7 @@ function CanvasPageInner() {
       canvasMode: {
         mode: state.toolbarMode,
         onChangeMode: (mode: 'edit' | 'draw') => {
-          console.log('🔄 Header mode change:', mode);
+          log.debug('🔄 Header mode change:', mode);
           state.setToolbarMode(mode);
 
           if (mode === 'edit') {
@@ -217,13 +222,13 @@ function CanvasPageInner() {
           } else {
             canvasMachine.switchToDesign();
             // Don't auto-set drawing tool - let user choose
-            console.log('🎨 Switched to draw mode');
+            log.debug('🎨 Switched to draw mode');
           }
         },
       },
     };
 
-    console.log('🎯 Setting header info:', headerData);
+    log.debug('🎯 Setting header info:', headerData);
     setHeaderInfo(headerData);
   }, [
     canvas?.name,
@@ -262,7 +267,7 @@ function CanvasPageInner() {
       }));
 
       try {
-        console.log('🔄 Loading canvas data for:', canvasId);
+        log.debug('🔄 Loading canvas data for:', canvasId);
 
         // If canvasId is not a UUID (e.g., "new"), bootstrap local canvas and skip remote fetch
         const uuidRegex =
@@ -294,7 +299,7 @@ function CanvasPageInner() {
         const projectData = await getProjectById(canvasId, client);
 
         if (projectData) {
-          console.log('✅ Canvas data loaded:', {
+          log.debug('✅ Canvas data loaded:', {
             nodes: projectData.nodes?.length || 0,
             edges: projectData.edges?.length || 0,
             groups: projectData.groups?.length || 0,
@@ -347,7 +352,7 @@ function CanvasPageInner() {
           // Load canvas nodes for this project
           try {
             await loadCanvasNodes(canvasId);
-            console.log('✅ Canvas nodes loaded');
+            log.debug('✅ Canvas nodes loaded');
           } catch (error) {
             console.error('❌ Error loading canvas nodes:', error);
           }
@@ -422,7 +427,7 @@ function CanvasPageInner() {
   // Auto-layout handler
   const handleApplyLayout = useCallback(
     async (direction?: LayoutDirection) => {
-      console.log(
+      log.debug(
         '🔄 Applying auto-layout with direction:',
         direction || state.currentLayoutDirection
       );
@@ -431,7 +436,7 @@ function CanvasPageInner() {
       const currentEdges = getEdges();
 
       if (!currentNodes || currentNodes.length === 0) {
-        console.log('⚠️ No nodes to layout');
+        log.debug('⚠️ No nodes to layout');
         return;
       }
 
@@ -580,7 +585,7 @@ function CanvasPageInner() {
   // Create stable event handlers to prevent circular dependencies
   const stableHandleOpenSettingsSheet = useCallback(
     (nodeId: string) => {
-      console.log('🔧 Opening settings sheet for node:', nodeId);
+      log.debug('🔧 Opening settings sheet for node:', nodeId);
       state.setIsSettingsSheetOpen(true);
       state.setSettingsCardId?.(nodeId);
     },
@@ -589,7 +594,7 @@ function CanvasPageInner() {
 
   const stableHandleSwitchToCard = useCallback(
     (nodeId: string, tab?: string) => {
-      console.log('🔧 Switching to card:', nodeId, 'tab:', tab);
+      log.debug('🔧 Switching to card:', nodeId, 'tab:', tab);
       state.setIsSettingsSheetOpen(true);
       state.setSettingsCardId?.(nodeId);
       if (tab) {
@@ -600,7 +605,7 @@ function CanvasPageInner() {
   );
 
   const stableHandleToggleCollapse = useCallback((groupId: string) => {
-    console.log('📁 Toggle collapse for group:', groupId);
+    log.debug('📁 Toggle collapse for group:', groupId);
     // Update group collapse state in canvas
     const currentCanvas = useCanvasStore.getState().canvas;
     if (currentCanvas) {
@@ -625,7 +630,7 @@ function CanvasPageInner() {
 
   const stableHandleUpdateGroupSize = useCallback(
     (groupId: string, size: { width: number; height: number }) => {
-      console.log('📏 Update group size:', groupId, size);
+      log.debug('📏 Update group size:', groupId, size);
       // Update group size in canvas
       const currentCanvas = useCanvasStore.getState().canvas;
       if (currentCanvas) {
@@ -691,7 +696,7 @@ function CanvasPageInner() {
       convertToNode(
         card,
         stableEvents.handleOpenSettingsSheet,
-        () => console.log('Node clicked:', card.id),
+        () => log.debug('Node clicked:', card.id),
         stableEvents.handleSwitchToCard,
         state.isSettingsSheetOpen,
         selectedNodeIds
@@ -763,6 +768,55 @@ function CanvasPageInner() {
     state.isSettingsSheetOpen,
     stableEvents,
   ]);
+
+  // Keep the latest composed nodes reachable from the once-per-canvas reconcile
+  // effect below without making it re-run on every node change (e.g. drag).
+  const latestNodesRef = useRef(nodes);
+  latestNodesRef.current = nodes;
+
+  // One-time per canvas: flag warehouse source nodes whose connection has been
+  // removed as stale, so the canvas shows a "disconnected" badge proactively.
+  // The node keeps its last persisted series (see findOrphanedSourceBindings) —
+  // data is never silently zeroed; only the badge is added.
+  const reconciledCanvasRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!canvasId || !supabaseClient) return;
+    if (reconciledCanvasRef.current === canvasId) return;
+
+    const warehouseNodes = latestNodesRef.current.filter(
+      (n) =>
+        n.type === 'sourceNode' &&
+        (n.data as any)?.config?.origin === 'warehouse'
+    );
+    if (warehouseNodes.length === 0) return; // nodes not loaded yet, or none to check
+
+    reconciledCanvasRef.current = canvasId;
+    let cancelled = false;
+    (async () => {
+      try {
+        const conns = await listConnections(supabaseClient);
+        if (cancelled) return;
+        const liveIds = new Set(conns.map((c) => c.id));
+        const orphans = findOrphanedSourceBindings(
+          latestNodesRef.current as any,
+          liveIds
+        );
+        for (const orphan of orphans) {
+          await updateCanvasNode(orphan.id, { data: orphan.data } as any);
+        }
+        if (orphans.length > 0) {
+          log.debug(
+            `⚠️ Source reconcile: flagged ${orphans.length} node(s) with removed connections as stale`
+          );
+        }
+      } catch (error) {
+        console.error('❌ Failed to reconcile source bindings:', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [canvasId, supabaseClient, canvasNodes, updateCanvasNode]);
 
   const edges = useMemo(() => {
     const canvasEdges = canvas?.edges || [];
@@ -1287,7 +1341,7 @@ function CanvasPageInner() {
 
   const handleConnect = useCallback(
     (connection: Connection) => {
-      console.log('🔗 Enhanced connection handler triggered:', connection);
+      log.debug('🔗 Enhanced connection handler triggered:', connection);
 
       // Use enhanced connection handler
       const result = handleNodeConnection(connection, {
@@ -1320,7 +1374,7 @@ function CanvasPageInner() {
                 },
               });
             }
-            console.log('✅ Relationship edge created successfully');
+            log.debug('✅ Relationship edge created successfully');
           } catch (error) {
             console.error('❌ Failed to create relationship edge:', error);
           }
@@ -1334,13 +1388,13 @@ function CanvasPageInner() {
           bindOperatorInput(edgeData.target, edgeData.source, prevEdges);
           // If this edge feeds a chart, add the source as a plotted series.
           bindChartSeries(edgeData.target, edgeData.source);
-          console.log('✅ Data flow edge created + persisted');
+          log.debug('✅ Data flow edge created + persisted');
         },
         onCreateReference: (edgeData) => {
           const nextEdges = [...(state.extraEdges || []), edgeData];
           state.setExtraEdges(nextEdges);
           persistDataFlowEdges(nextEdges);
-          console.log('✅ Reference edge created + persisted');
+          log.debug('✅ Reference edge created + persisted');
         },
       });
 
@@ -1391,7 +1445,7 @@ function CanvasPageInner() {
             }
           }
         }
-        console.log('✅ Data-flow edge(s) deleted + persisted');
+        log.debug('✅ Data-flow edge(s) deleted + persisted');
       }
 
       // Relationship edges (canvas.edges): persist the delete and record an undo
@@ -1452,7 +1506,7 @@ function CanvasPageInner() {
   // Handle draw tool changes - update state and call the whiteboard API
   const handleSetDrawTool = useCallback(
     (tool: string) => {
-      console.log('🎨 Setting draw tool:', tool);
+      log.debug('🎨 Setting draw tool:', tool);
       state.setDrawActiveTool(tool);
       canvasMachine.setDesignTool(tool as any);
 
@@ -1460,7 +1514,7 @@ function CanvasPageInner() {
       if (state.whiteboardRef.current && state.isWhiteboardActive) {
         try {
           state.whiteboardRef.current.setTool(tool);
-          console.log('✅ Whiteboard tool set to:', tool);
+          log.debug('✅ Whiteboard tool set to:', tool);
         } catch (error) {
           console.warn('⚠️ Failed to set whiteboard tool:', error);
         }
@@ -1593,7 +1647,7 @@ function CanvasPageInner() {
           createdBy: useAppStore.getState().user?.id || 'anonymous',
         });
 
-        console.log(`✅ Created ${type} node successfully`);
+        log.debug(`✅ Created ${type} node successfully`);
         // Record undo (Ctrl+Z removes it) + redo (re-creates it).
         if (created?.id) {
           let currentId = created.id;
@@ -1680,11 +1734,11 @@ function CanvasPageInner() {
               if (node.type === 'operatorNode') setSelectedOperatorId(node.id);
             }}
             onNodeDoubleClick={(_, node) => {
-              console.log('🔧 Node double-clicked:', node.id);
+              log.debug('🔧 Node double-clicked:', node.id);
               events.handleOpenSettingsSheet(node.id);
             }}
             onEdgeDoubleClick={(_, edge) => {
-              console.log('🔗 Edge double-clicked:', edge.id);
+              log.debug('🔗 Edge double-clicked:', edge.id);
               events.handleOpenRelationshipSheet(edge.id);
             }}
             onConnect={handleConnect}
@@ -1772,7 +1826,7 @@ function CanvasPageInner() {
                 onSetDrawTool={handleSetDrawTool}
                 whiteboardTool={state.whiteboardTool}
                 onSetWhiteboardTool={(tool: string) => {
-                  console.log('🎨 Whiteboard tool changed to:', tool);
+                  log.debug('🎨 Whiteboard tool changed to:', tool);
                   // Ensure the tool is a valid WhiteboardTool
                   const validTools = [
                     'select',
@@ -1888,7 +1942,7 @@ function CanvasPageInner() {
                   <EraseToolComponent
                     isActive={true}
                     onErase={(nodeIds, edgeIds) => {
-                      console.log('Erased items:', { nodeIds, edgeIds });
+                      log.debug('Erased items:', { nodeIds, edgeIds });
                     }}
                   />
                 )}
@@ -1898,14 +1952,14 @@ function CanvasPageInner() {
                     isActive={true}
                     partial={state.whiteboardPartialSelection}
                     onSelection={(nodeIds, edgeIds) => {
-                      console.log('Lasso selected items:', {
+                      log.debug('Lasso selected items:', {
                         nodeIds,
                         edgeIds,
                       });
                       if (nodeIds.length > 0 || edgeIds.length > 0) {
-                        console.log('✅ Lasso selection successful!');
+                        log.debug('✅ Lasso selection successful!');
                       } else {
-                        console.log('ℹ️ No items selected by lasso');
+                        log.debug('ℹ️ No items selected by lasso');
                       }
                     }}
                   />
@@ -1915,7 +1969,7 @@ function CanvasPageInner() {
                   <RectangleToolComponent
                     isActive={true}
                     onRectangleCreate={(rectangle) => {
-                      console.log('✅ Rectangle created:', rectangle);
+                      log.debug('✅ Rectangle created:', rectangle);
                     }}
                   />
                 )}
@@ -1926,7 +1980,7 @@ function CanvasPageInner() {
                     brushSize={state.whiteboardBrushSize}
                     brushColor={state.whiteboardBrushColor}
                     onPathCreate={(path) => {
-                      console.log('Created freehand path:', path);
+                      log.debug('Created freehand path:', path);
                     }}
                   />
                 )}

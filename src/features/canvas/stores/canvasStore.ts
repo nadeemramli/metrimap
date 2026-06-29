@@ -28,6 +28,9 @@ import type {
 } from '../../../shared/types';
 import { getClientForEnvironment } from '../../../shared/utils/authenticatedClient';
 import { generateUUID } from '../../../shared/utils/validation';
+import { createLogger } from '@/shared/utils/logger';
+
+const log = createLogger('canvas');
 
 interface CanvasStoreState extends CanvasState {
   // Auto-save state
@@ -161,7 +164,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
     // Canvas management
     loadCanvas: (canvas: CanvasProject) => {
-      console.log('🎨 Canvas loaded with:', {
+      log.debug('🎨 Canvas loaded with:', {
         nodes: canvas.nodes.length,
         edges: canvas.edges.length,
         groups: canvas.groups?.length || 0,
@@ -195,7 +198,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         return;
       }
 
-      console.log('🔍 createNode called with:', {
+      log.debug('🔍 createNode called with:', {
         canvasId: state.canvas.id,
         nodeData: nodeData.title,
         user: useAppStore.getState().user?.id,
@@ -209,7 +212,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       const isValidProject = uuidRegex.test(state.canvas.id);
 
       if (!isValidProject) {
-        console.log('🔄 Canvas is temporary, promoting to real project...');
+        log.debug('🔄 Canvas is temporary, promoting to real project...');
 
         try {
           const { user } = useAppStore.getState();
@@ -234,7 +237,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             throw new Error('Failed to create project');
           }
 
-          console.log(
+          log.debug(
             '✅ Temporary canvas promoted to project:',
             newProject.id
           );
@@ -276,7 +279,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             isLoading: false,
           }));
 
-          console.log('✅ Node created in promoted project:', newNode.title);
+          log.debug('✅ Node created in promoted project:', newNode.title);
 
           // Update URL to reflect the new project ID
           if (typeof window !== 'undefined') {
@@ -333,7 +336,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             isLoading: false,
           }));
 
-          console.log('✅ Node added locally (fallback):', tempId);
+          log.debug('✅ Node added locally (fallback):', tempId);
         }
         return;
       }
@@ -343,7 +346,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         if (!user) throw new Error('User not authenticated');
 
         const client = getClientForEnvironment();
-        console.log('🔍 Using client:', client ? 'authenticated' : 'default');
+        log.debug('🔍 Using client:', client ? 'authenticated' : 'default');
 
         const newNode = await createMetricCard(
           { ...nodeData, owner: user.id, id: '', createdAt: '', updatedAt: '' },
@@ -363,7 +366,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
           isLoading: false,
         }));
 
-        console.log('✅ New metric card created and saved:', newNode.title);
+        log.debug('✅ New metric card created and saved:', newNode.title);
       } catch (error) {
         console.error('❌ Error creating node:', error);
         // Fallback: add a local-only node so the user sees the action immediately
@@ -483,7 +486,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
           isLoading: false,
         }));
 
-        console.log('✅ New relationship created and saved:', newEdge.type);
+        log.debug('✅ New relationship created and saved:', newEdge.type);
       } catch (error) {
         console.error('Error creating edge:', error);
         set({ error: 'Failed to create relationship', isLoading: false });
@@ -628,7 +631,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       try {
         const failedNodes: string[] = [];
 
-        console.log(
+        log.debug(
           `🔄 Starting bulletproof save for ${state.pendingChanges.size} changes...`
         );
 
@@ -651,7 +654,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             }
 
             try {
-              console.log(`💾 Saving node ${nodeId}:`, {
+              log.debug(`💾 Saving node ${nodeId}:`, {
                 position: node.position,
                 title: node.title?.substring(0, 20) + '...',
               });
@@ -675,7 +678,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
                 client
               );
 
-              console.log(`✅ Successfully saved node ${nodeId}`);
+              log.debug(`✅ Successfully saved node ${nodeId}`);
             } catch (nodeError) {
               console.error(`❌ Failed to save node ${nodeId}:`, nodeError);
               failedNodes.push(nodeId);
@@ -705,7 +708,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
               : undefined,
         });
 
-        console.log(
+        log.debug(
           `✅ Bulletproof save completed: ${successfulSaves.length} saved, ${failedNodes.length} failed`
         );
 
@@ -729,7 +732,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
         // Schedule retry for failed nodes
         if (failedNodes.length > 0) {
-          console.log(
+          log.debug(
             `🔄 Scheduling retry for ${failedNodes.length} failed saves in 5 seconds...`
           );
           setTimeout(() => {
@@ -1218,7 +1221,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
     // Selection-based grouping
     groupSelectedNodes: async (nodeIds: string[]) => {
-      console.log('🎯 groupSelectedNodes called with:', nodeIds);
+      log.debug('🎯 groupSelectedNodes called with:', nodeIds);
 
       if (nodeIds.length < 2) {
         throw new Error('At least 2 nodes must be selected to create a group');
@@ -1254,7 +1257,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
           height: maxY - minY + 150 + padding * 2,
         };
 
-        console.log('🎯 Group creation details:', {
+        log.debug('🎯 Group creation details:', {
           selectedNodes: selectedNodes.map((n) => ({
             id: n.id,
             position: n.position,
@@ -1318,7 +1321,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             : undefined,
         }));
 
-        console.log('✅ Group created successfully:', {
+        log.debug('✅ Group created successfully:', {
           groupId,
           nodeIds,
           totalGroups: get().canvas?.groups.length,

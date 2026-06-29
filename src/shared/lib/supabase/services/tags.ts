@@ -2,6 +2,9 @@ import { CreateTagSchema, UpdateTagSchema } from '@/shared/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../client';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
+import { createLogger } from '@/shared/utils/logger';
+
+const log = createLogger('tags');
 
 export type TagRow = Tables<'tags'>;
 export type TagInsert = TablesInsert<'tags'>;
@@ -12,7 +15,7 @@ export async function getProjectTags(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  // console.log("🔍 Fetching project tags for projectId:", projectId);
+  // log.debug("🔍 Fetching project tags for projectId:", projectId);
 
   const client = authenticatedClient || supabase();
   const { data, error } = await client
@@ -21,14 +24,14 @@ export async function getProjectTags(
     .eq('project_id', projectId)
     .order('name');
 
-  console.log('🔍 Supabase query result:', { data, error });
+  log.debug('🔍 Supabase query result:', { data, error });
 
   if (error) {
     console.error('Error fetching project tags:', error);
     throw error;
   }
 
-  console.log(
+  log.debug(
     '✅ Project tags fetched successfully:',
     data?.length || 0,
     'tags'
@@ -165,7 +168,7 @@ export async function getMetricCardTags(
   metricCardId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  // console.log("🔍 Getting database tags for metric card:", metricCardId);
+  // log.debug("🔍 Getting database tags for metric card:", metricCardId);
 
   try {
     const client = authenticatedClient || supabase();
@@ -185,7 +188,7 @@ export async function getMetricCardTags(
     }
 
     const tagNames = data?.map((item) => item.tags.name) || [];
-    // console.log("✅ Database tags found:", tagNames);
+    // log.debug("✅ Database tags found:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error in getMetricCardTags:', error);
@@ -199,7 +202,7 @@ export async function addTagsToMetricCard(
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  // console.log("🏷️ Adding database tags to metric card:", metricCardId, tagNames);
+  // log.debug("🏷️ Adding database tags to metric card:", metricCardId, tagNames);
 
   try {
     const client = authenticatedClient || supabase();
@@ -222,7 +225,7 @@ export async function addTagsToMetricCard(
     );
 
     if (tagIds.length === 0) {
-      console.log('⚠️ No database tags found for names:', tagNames);
+      log.debug('⚠️ No database tags found for names:', tagNames);
       return [];
     }
 
@@ -246,7 +249,7 @@ export async function addTagsToMetricCard(
       throw insertError;
     }
 
-    // console.log("✅ Database tags added to metric card:", tagNames);
+    // log.debug("✅ Database tags added to metric card:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error adding tags to metric card:', error);
@@ -260,7 +263,7 @@ export async function removeTagsFromMetricCard(
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  // console.log("🗑️ Removing database tags from metric card:", metricCardId, tagNames);
+  // log.debug("🗑️ Removing database tags from metric card:", metricCardId, tagNames);
 
   try {
     const client = authenticatedClient || supabase();
@@ -283,7 +286,7 @@ export async function removeTagsFromMetricCard(
     );
 
     if (tagIds.length === 0) {
-      console.log('⚠️ No database tags found for names:', tagNames);
+      log.debug('⚠️ No database tags found for names:', tagNames);
       return [];
     }
 
@@ -305,7 +308,7 @@ export async function removeTagsFromMetricCard(
       throw deleteError;
     }
 
-    // console.log("✅ Database tags removed from metric card:", tagNames);
+    // log.debug("✅ Database tags removed from metric card:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error removing tags from metric card:', error);
@@ -318,7 +321,7 @@ export async function getRelationshipTags(
   relationshipId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  // console.log("🔍 Getting database tags for relationship:", relationshipId);
+  // log.debug("🔍 Getting database tags for relationship:", relationshipId);
 
   try {
     const client = authenticatedClient || supabase();
@@ -338,7 +341,7 @@ export async function getRelationshipTags(
     }
 
     const tagNames = data?.map((item) => item.tags.name) || [];
-    // console.log("✅ Database tags found for relationship:", tagNames);
+    // log.debug("✅ Database tags found for relationship:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error in getRelationshipTags:', error);
@@ -352,7 +355,7 @@ export async function addTagsToRelationship(
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  // console.log("🏷️ Adding database tags to relationship:", relationshipId, tagNames);
+  // log.debug("🏷️ Adding database tags to relationship:", relationshipId, tagNames);
 
   try {
     const client = authenticatedClient || supabase();
@@ -375,7 +378,7 @@ export async function addTagsToRelationship(
     );
 
     if (tagIds.length === 0) {
-      console.log('⚠️ No database tags found for names:', tagNames);
+      log.debug('⚠️ No database tags found for names:', tagNames);
       return [];
     }
 
@@ -399,7 +402,7 @@ export async function addTagsToRelationship(
       throw insertError;
     }
 
-    // console.log("✅ Database tags added to relationship:", tagNames);
+    // log.debug("✅ Database tags added to relationship:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error adding tags to relationship:', error);
@@ -413,7 +416,7 @@ export async function removeTagsFromRelationship(
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  // console.log("🗑️ Removing database tags from relationship:", relationshipId, tagNames);
+  // log.debug("🗑️ Removing database tags from relationship:", relationshipId, tagNames);
 
   try {
     const client = authenticatedClient || supabase();
@@ -436,7 +439,7 @@ export async function removeTagsFromRelationship(
     );
 
     if (tagIds.length === 0) {
-      console.log('⚠️ No database tags found for names:', tagNames);
+      log.debug('⚠️ No database tags found for names:', tagNames);
       return [];
     }
 
@@ -458,7 +461,7 @@ export async function removeTagsFromRelationship(
       throw deleteError;
     }
 
-    // console.log("✅ Database tags removed from relationship:", tagNames);
+    // log.debug("✅ Database tags removed from relationship:", tagNames);
     return tagNames;
   } catch (error) {
     console.error('Error removing tags from relationship:', error);
@@ -472,7 +475,7 @@ export async function getTagIdsByNames(
   tagNames: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  // console.log("🔄 Converting tag names to IDs:", tagNames);
+  // log.debug("🔄 Converting tag names to IDs:", tagNames);
 
   try {
     const client = authenticatedClient || supabase();
@@ -489,7 +492,7 @@ export async function getTagIdsByNames(
     const tagMap = new Map(tags.map((tag) => [tag.name, tag.id]));
     const tagIds = tagNames.map((name) => tagMap.get(name)).filter(Boolean);
 
-    console.log('✅ Tag IDs found:', tagIds);
+    log.debug('✅ Tag IDs found:', tagIds);
     return tagIds;
   } catch (error) {
     console.error('Error converting tag names to IDs:', error);

@@ -4,6 +4,8 @@ import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
 import { postComment } from '@/features/canvas/utils/comments';
 import VersionHistoryButton from '@/features/canvas/components/version-history/VersionHistoryButton';
 import { useAppStore } from '@/lib/stores';
+import { PresenceAvatars } from '@/shared/components/PresenceAvatars';
+import type { PresenceUser } from '@/shared/hooks/usePresence';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -66,6 +68,10 @@ interface CollaborationPanelProps {
   projectId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Live presence roster (who's in the canvas right now). */
+  presence?: PresenceUser[];
+  /** Label of the sub-page the user is on — scopes new comments + filtering. */
+  currentPage?: string;
 }
 
 const INVITE_ROLES = ['admin', 'member', 'viewer'] as const;
@@ -84,6 +90,8 @@ export function CollaborationPanel({
   projectId,
   open,
   onOpenChange,
+  presence = [],
+  currentPage,
 }: CollaborationPanelProps) {
   const user = useAppStore((s) => s.user);
   const { members, byId, isLoading: membersLoading, reload: reloadMembers } =
@@ -120,6 +128,7 @@ export function CollaborationPanel({
             members={members}
             membersLoading={membersLoading}
             reloadMembers={reloadMembers}
+            presence={presence}
           />
 
           <CommentsTab
@@ -128,6 +137,7 @@ export function CollaborationPanel({
             members={members}
             userId={user?.id}
             authorName={authorName}
+            currentPage={currentPage}
           />
 
           <ActivityTab projectId={projectId} open={open} userId={user?.id} />
@@ -144,11 +154,13 @@ function PeopleTab({
   members,
   membersLoading,
   reloadMembers,
+  presence,
 }: {
   projectId?: string;
   members: ReturnType<typeof useProjectMembers>['members'];
   membersLoading: boolean;
   reloadMembers: () => void;
+  presence: PresenceUser[];
 }) {
   const [inviteEmail, setInviteEmail] = React.useState('');
   const [inviteRole, setInviteRole] =
@@ -246,6 +258,21 @@ function PeopleTab({
     <TabsContent value="people" className="flex-1 min-h-0 mt-3">
       <ScrollArea className="h-full">
         <div className="px-4 pb-6 space-y-5">
+          {/* Online now (ephemeral presence) */}
+          {presence.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Online now
+              </h3>
+              <div className="flex items-center gap-3">
+                <PresenceAvatars roster={presence} max={8} />
+                <span className="text-xs text-muted-foreground">
+                  {presence.length} active
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Members */}
           <div className="space-y-2">
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -415,18 +442,21 @@ function CommentsTab({
   members,
   userId,
   authorName,
+  currentPage,
 }: {
   projectId?: string;
   open: boolean;
   members: ReturnType<typeof useProjectMembers>['members'];
   userId?: string;
   authorName: (id: string | null) => string;
+  currentPage?: string;
 }) {
   const [threads, setThreads] = React.useState<CommentThreadRow[]>([]);
   const [counts, setCounts] = React.useState<Record<string, number>>({});
   const [selected, setSelected] = React.useState<string | null>(null);
   const [comments, setComments] = React.useState<CommentRow[]>([]);
   const [posting, setPosting] = React.useState(false);
+  const [pageOnly, setPageOnly] = React.useState(false);
 
   const loadThreads = React.useCallback(async () => {
     if (!projectId) return;
@@ -478,7 +508,9 @@ function CommentsTab({
         threadId: selected,
         projectId,
         source: 'canvas',
-        context: selected ? undefined : { general: true },
+        context: selected
+          ? undefined
+          : { general: true, page: currentPage ?? null },
         content,
         mentionedIds,
         userId,
@@ -514,6 +546,11 @@ function CommentsTab({
       toast.error('Could not resolve thread');
     }
   };
+
+  const visibleThreads =
+    pageOnly && currentPage
+      ? threads.filter((t) => (t.context as any)?.page === currentPage)
+      : threads;
 
   // Thread detail view
   if (selected) {
@@ -585,14 +622,31 @@ function CommentsTab({
   // Thread list view
   return (
     <TabsContent value="comments" className="flex-1 min-h-0 mt-3 flex flex-col">
+      {currentPage && (
+        <div className="px-4 pb-2 flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground">
+            {pageOnly ? `Threads on ${currentPage}` : 'All threads'}
+          </span>
+          <Button
+            variant={pageOnly ? 'secondary' : 'ghost'}
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => setPageOnly((v) => !v)}
+          >
+            This page
+          </Button>
+        </div>
+      )}
       <ScrollArea className="flex-1 min-h-0 px-4">
         <div className="space-y-2 pb-3">
-          {threads.length === 0 && (
+          {visibleThreads.length === 0 && (
             <p className="text-sm text-muted-foreground py-4">
-              No comment threads yet. Start one below.
+              {pageOnly
+                ? `No threads on ${currentPage} yet.`
+                : 'No comment threads yet. Start one below.'}
             </p>
           )}
-          {threads.map((t) => (
+          {visibleThreads.map((t) => (
             <button
               key={t.id}
               onClick={() => openThread(t.id)}

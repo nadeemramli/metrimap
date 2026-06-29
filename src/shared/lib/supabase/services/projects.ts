@@ -9,6 +9,9 @@ import { transformCanvasProject } from '@/shared/utils/dataTransformers';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../client';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
+import { createLogger } from '@/shared/utils/logger';
+
+const log = createLogger('projects');
 
 export type Project = Tables<'projects'>;
 export type ProjectInsert = TablesInsert<'projects'>;
@@ -283,8 +286,8 @@ export async function getProjectById(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<CanvasProject | null> {
-  console.log('🔍 getProjectById called with projectId:', projectId);
-  console.log('🔍 authenticatedClient provided:', !!authenticatedClient);
+  log.debug('🔍 getProjectById called with projectId:', projectId);
+  log.debug('🔍 authenticatedClient provided:', !!authenticatedClient);
 
   const client = authenticatedClient || supabase();
 
@@ -301,11 +304,11 @@ export async function getProjectById(
   }
 
   if (!project) {
-    console.log('❌ No project found for ID:', projectId);
+    log.debug('❌ No project found for ID:', projectId);
     return null;
   }
 
-  console.log('✅ Project found:', project.name);
+  log.debug('✅ Project found:', project.name);
 
   // Separately fetch project collaborators with user details
   const { data: collaborators, error: collaboratorsError } = await client
@@ -333,7 +336,7 @@ export async function getProjectById(
     .select('*')
     .eq('project_id', projectId);
 
-  console.log('🔍 Metric cards query result:', {
+  log.debug('🔍 Metric cards query result:', {
     data: metricCards?.length || 0,
     error: cardsError,
   });
@@ -343,7 +346,7 @@ export async function getProjectById(
     throw cardsError;
   }
 
-  console.log('✅ Metric cards fetched:', metricCards?.length || 0);
+  log.debug('✅ Metric cards fetched:', metricCards?.length || 0);
 
   // Fetch relationships with evidence
   let relationships: any[] = [];
@@ -380,13 +383,13 @@ export async function getProjectById(
       throw relationshipsError2;
     }
 
-    console.log(
+    log.debug(
       '⚠️ Relationships fetched without evidence_items:',
       relationshipsWithoutEvidence?.length || 0
     );
     relationships = relationshipsWithoutEvidence || [];
   } else {
-    console.log(
+    log.debug(
       '✅ Relationships fetched with evidence:',
       relationshipsWithEvidence?.length || 0
     );
@@ -395,7 +398,7 @@ export async function getProjectById(
 
   // If we still have no relationships, try a simpler query
   if (relationships.length === 0) {
-    console.log('🔍 No relationships found, trying simple query...');
+    log.debug('🔍 No relationships found, trying simple query...');
     const { data: simpleRelationships, error: simpleError } = await client
       .from('relationships')
       .select('id, source_id, target_id, type, confidence, weight, project_id')
@@ -404,7 +407,7 @@ export async function getProjectById(
     if (simpleError) {
       console.error('Error with simple relationships query:', simpleError);
     } else {
-      console.log(
+      log.debug(
         '✅ Simple relationships query successful:',
         simpleRelationships?.length || 0
       );
@@ -412,8 +415,8 @@ export async function getProjectById(
     }
   }
 
-  console.log('✅ Final relationships count:', relationships.length);
-  console.log('🔍 Sample relationship:', relationships?.[0]);
+  log.debug('✅ Final relationships count:', relationships.length);
+  log.debug('🔍 Sample relationship:', relationships?.[0]);
 
   // Fetch groups
   const { data: groups, error: groupsError } = await client
@@ -421,7 +424,7 @@ export async function getProjectById(
     .select('*')
     .eq('project_id', projectId);
 
-  console.log('🔍 Groups query result:', {
+  log.debug('🔍 Groups query result:', {
     data: groups?.length || 0,
     error: groupsError,
   });
@@ -431,7 +434,7 @@ export async function getProjectById(
     throw groupsError;
   }
 
-  console.log('✅ Groups fetched:', groups?.length || 0);
+  log.debug('✅ Groups fetched:', groups?.length || 0);
 
   // Transform database data to CanvasProject format using extracted transformer
   const canvasProject = transformCanvasProject(
@@ -441,12 +444,12 @@ export async function getProjectById(
     groups || []
   );
 
-  console.log('✅ CanvasProject created with:', {
+  log.debug('✅ CanvasProject created with:', {
     nodes: canvasProject.nodes.length,
     edges: canvasProject.edges.length,
     groups: canvasProject.groups.length,
   });
-  console.log('🔍 Sample transformed relationship:', canvasProject.edges?.[0]);
+  log.debug('🔍 Sample transformed relationship:', canvasProject.edges?.[0]);
 
   return canvasProject;
 }

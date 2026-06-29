@@ -22,6 +22,9 @@ import { useGroupStore } from './useGroupStore';
 import { useNodeStore } from './useNodeStore';
 import { getAuthenticatedClient } from '@/shared/utils/authenticatedClient';
 import { syncCardValuesToCatalog } from '@/shared/lib/supabase/services/trackedMetrics';
+import { createLogger } from '@/shared/utils/logger';
+
+const log = createLogger('canvas');
 
 interface CanvasStoreState extends CanvasState {
   // Canvas management
@@ -142,7 +145,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
       // Canvas management
       loadCanvas: (canvas: CanvasProject) => {
-        console.log('🎨 Canvas loaded with:', {
+        log.debug('🎨 Canvas loaded with:', {
           nodes: canvas.nodes.length,
           edges: canvas.edges.length,
           groups: canvas.groups?.length || 0,
@@ -172,7 +175,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         }
 
         console.groupCollapsed('➕ add-node');
-        console.log('payload', nodeData);
+        log.debug('payload', nodeData);
         console.time('createNode');
         set({ isLoading: true, error: undefined });
         try {
@@ -188,7 +191,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
               : undefined,
             isLoading: false,
           }));
-          console.log('result', { id: newNode.id, title: newNode.title });
+          log.debug('result', { id: newNode.id, title: newNode.title });
           console.timeEnd('createNode');
           console.groupEnd();
         } catch (error) {
