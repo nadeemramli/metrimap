@@ -132,10 +132,10 @@ export default function HomePage() {
               <h1 className="text-xl font-bold transition-all duration-300 hover:scale-105 cursor-pointer">
                 Metrimap
               </h1>
-              {/* Workspace switcher (Clerk org = workspace). Personal account +
-                  auto-created org both appear here. */}
+              {/* Workspace switcher (Clerk org = workspace). Orgs-only model:
+                  personal account hidden; ProtectedRoute keeps an org active. */}
               <OrganizationSwitcher
-                hidePersonal={false}
+                hidePersonal
                 afterCreateOrganizationUrl="/"
                 afterSelectOrganizationUrl="/"
                 afterLeaveOrganizationUrl="/"
