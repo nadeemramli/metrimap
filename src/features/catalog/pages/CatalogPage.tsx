@@ -13,20 +13,26 @@ import {
   TabsTrigger,
 } from '@/shared/components/ui/tabs';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { Input } from '@/shared/components/ui/input';
 import {
   deleteTrackedMetric,
   listCandidateCards,
   listTrackedMetrics,
   promoteCardToTrackedMetric,
+  updateTrackedMetric,
   type CandidateCard,
   type TrackedMetric,
 } from '@/shared/lib/supabase/services/trackedMetrics';
 import {
   ArrowLeft,
+  Check,
   Database,
   Loader2,
+  Pencil,
+  Search,
   Sparkles,
   Trash2,
+  X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -43,6 +49,14 @@ export default function CatalogPage() {
   const [candidates, setCandidates] = useState<CandidateCard[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState({
+    name: '',
+    unit: '',
+    owner_label: '',
+    formula: '',
+  });
 
   const load = async () => {
     if (!client) return;
@@ -98,6 +112,54 @@ export default function CatalogPage() {
     }
   };
 
+  const startEdit = (m: TrackedMetric) => {
+    setEditingId(m.id);
+    setDraft({
+      name: m.name ?? '',
+      unit: m.unit ?? '',
+      owner_label: m.owner_label ?? '',
+      formula: m.formula ?? '',
+    });
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!client || !draft.name.trim()) return;
+    try {
+      await updateTrackedMetric(
+        id,
+        {
+          name: draft.name.trim(),
+          unit: draft.unit.trim() || null,
+          owner_label: draft.owner_label.trim() || null,
+          formula: draft.formula.trim() || null,
+        },
+        client
+      );
+      setTracked((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                name: draft.name.trim(),
+                unit: draft.unit.trim() || null,
+                owner_label: draft.owner_label.trim() || null,
+                formula: draft.formula.trim() || null,
+              }
+            : m
+        )
+      );
+      setEditingId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save metric.');
+    }
+  };
+
+  const visibleTracked = search
+    ? tracked.filter((m) =>
+        m.name.toLowerCase().includes(search.toLowerCase())
+      )
+    : tracked;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -147,6 +209,17 @@ export default function CatalogPage() {
 
           {/* Tracked metrics */}
           <TabsContent value="tracked" className="space-y-3">
+            {tracked.length > 0 && (
+              <div className="relative mb-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search metrics…"
+                  className="pl-9"
+                />
+              </div>
+            )}
             {tracked.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <Database className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -155,42 +228,115 @@ export default function CatalogPage() {
                   catalog.
                 </p>
               </div>
+            ) : visibleTracked.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No metrics match “{search}”.
+              </p>
             ) : (
-              tracked.map((m) => (
+              visibleTracked.map((m) => (
                 <Card key={m.id}>
-                  <CardHeader className="py-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        {m.name}
-                        {m.unit && (
-                          <span className="text-xs font-normal text-muted-foreground">
-                            ({m.unit})
+                  {editingId === m.id ? (
+                    <CardContent className="py-3 space-y-2">
+                      <Input
+                        value={draft.name}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, name: e.target.value }))
+                        }
+                        placeholder="Metric name"
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          value={draft.unit}
+                          onChange={(e) =>
+                            setDraft((d) => ({ ...d, unit: e.target.value }))
+                          }
+                          placeholder="Unit (e.g. $, %)"
+                        />
+                        <Input
+                          value={draft.owner_label}
+                          onChange={(e) =>
+                            setDraft((d) => ({
+                              ...d,
+                              owner_label: e.target.value,
+                            }))
+                          }
+                          placeholder="Owner"
+                        />
+                      </div>
+                      <Input
+                        value={draft.formula}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, formula: e.target.value }))
+                        }
+                        placeholder="Formula"
+                        className="font-mono text-xs"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingId(null)}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => saveEdit(m.id)}
+                          disabled={!draft.name.trim()}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Save
+                        </Button>
+                      </div>
+                    </CardContent>
+                  ) : (
+                    <>
+                      <CardHeader className="py-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            {m.name}
+                            {m.unit && (
+                              <span className="text-xs font-normal text-muted-foreground">
+                                ({m.unit})
+                              </span>
+                            )}
+                          </CardTitle>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => startEdit(m)}
+                              title="Edit definition"
+                            >
+                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => remove(m.id)}
+                              title="Remove from catalog"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="py-0 pb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        {m.owner_label && (
+                          <Badge variant="outline">owner: {m.owner_label}</Badge>
+                        )}
+                        {m.source_kind && (
+                          <Badge variant="outline">source: {m.source_kind}</Badge>
+                        )}
+                        {m.formula && (
+                          <span className="font-mono truncate max-w-[280px]">
+                            {m.formula}
                           </span>
                         )}
-                      </CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => remove(m.id)}
-                        title="Remove from catalog"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="py-0 pb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    {m.owner_label && (
-                      <Badge variant="outline">owner: {m.owner_label}</Badge>
-                    )}
-                    {m.source_kind && (
-                      <Badge variant="outline">source: {m.source_kind}</Badge>
-                    )}
-                    {m.formula && (
-                      <span className="font-mono truncate max-w-[280px]">
-                        {m.formula}
-                      </span>
-                    )}
-                  </CardContent>
+                      </CardContent>
+                    </>
+                  )}
                 </Card>
               ))
             )}
