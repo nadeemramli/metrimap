@@ -51,6 +51,12 @@ export interface SourceNodeData {
   config?: SourceConfig;
   series?: MetricValue[]; // last resolved series — fed downstream + previewed
   refreshedAt?: string;
+  // Orphaned-binding state: set when a refresh fails (e.g. the connection was
+  // removed) but a last-known series exists. The node keeps showing that series
+  // and surfaces a "stale" badge — never silently zeroes/deletes. Cleared on a
+  // successful refresh.
+  stale?: boolean;
+  lastError?: string;
   // Legacy v0 fields kept for back-compat reads: { sourceType, sample }
   sourceType?: string;
   sample?: unknown[];

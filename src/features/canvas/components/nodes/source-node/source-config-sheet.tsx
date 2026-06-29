@@ -139,7 +139,19 @@ export function SourceConfigSheet({
       });
       setSeries(resolved);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to resolve source.');
+      const msg = e instanceof Error ? e.message : 'Failed to resolve source.';
+      setError(msg);
+      // Orphaned binding: keep the last-known series, flag the node stale so the
+      // canvas shows a "disconnected" badge instead of silently losing data.
+      if (Array.isArray(data.series) && data.series.length > 0) {
+        try {
+          await updateNode(nodeId, {
+            data: { ...data, stale: true, lastError: msg },
+          } as any);
+        } catch {
+          /* best-effort */
+        }
+      }
     } finally {
       setBusy(false);
     }
@@ -159,6 +171,8 @@ export function SourceConfigSheet({
         config: buildConfig(),
         series,
         refreshedAt: new Date().toISOString(),
+        stale: false,
+        lastError: undefined,
       };
       await updateNode(nodeId, { data: nextData } as any);
 

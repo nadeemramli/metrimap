@@ -13,6 +13,7 @@ import type { SourceNodeData } from '@/features/canvas/utils/sourceResolver';
 import { type NodeProps } from '@xyflow/react';
 import { FourSideHandles } from '../FourSideHandles';
 import {
+  AlertTriangle,
   Database,
   FileSpreadsheet,
   GripVertical,
@@ -58,6 +59,20 @@ export const SourceNode = memo(({ id, data, selected }: NodeProps) => {
             </Badge>
           </CardTitle>
         </CardHeader>
+        {d.stale && (
+          <div
+            className="mx-3 mb-2 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-700"
+            title={d.lastError || 'Source connection unavailable'}
+          >
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              Disconnected — showing last value
+              {d.refreshedAt
+                ? ` (${new Date(d.refreshedAt).toLocaleDateString()})`
+                : ''}
+            </span>
+          </div>
+        )}
         <CardContent>
           {series && series.length > 0 ? (
             <div className="space-y-2">
