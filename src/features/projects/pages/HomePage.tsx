@@ -8,7 +8,7 @@ import { OrganizationSwitcher, useOrganization } from '@clerk/react-router';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useProjectsRealtime } from '../hooks/useProjectsRealtime';
 import { NotificationInbox } from '@/features/notifications/components/NotificationInbox';
-import { Database, Folder } from 'lucide-react';
+import { Activity, Database, Folder } from 'lucide-react';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { cn } from '@/shared/utils';
 import {
@@ -163,6 +163,13 @@ export default function HomePage() {
               >
                 <Database className="h-4 w-4" />
                 Metric Catalog
+              </button>
+              <button
+                onClick={() => navigate('/feed')}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Activity className="h-4 w-4" />
+                Activity
               </button>
               <NotificationInbox />
               {isDevelopment && <FeedbackButton variant="outline" size="sm" />}

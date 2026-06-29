@@ -23,6 +23,7 @@ import DashboardPage from './features/dashboard/pages/DashboardPage';
 import EvidencePage from './features/evidence/pages/EvidencePage';
 import EvidenceRepositoryPage from './features/evidence/pages/EvidenceRepositoryPage';
 import CatalogPage from './features/catalog/pages/CatalogPage';
+import FeedPage from './features/notifications/pages/FeedPage';
 import HomePage from './features/projects/pages/HomePage';
 import SourcePage from './features/sources/pages/SourcePage';
 
@@ -128,6 +129,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <CatalogPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/feed"
+                  element={
+                    <ProtectedRoute>
+                      <FeedPage />
                     </ProtectedRoute>
                   }
                 />

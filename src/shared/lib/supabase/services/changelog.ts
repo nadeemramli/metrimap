@@ -127,6 +127,26 @@ export async function getProjectChangelog(
   return data?.map(transformChangelogEntry) || [];
 }
 
+// Workspace-wide activity (all projects the user can see — RLS scopes it to the
+// active workspace via can_view_project). Feeds the Monday-style activity board.
+export async function getWorkspaceChangelog(
+  limit: number = 100,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = authenticatedClient || supabase();
+  const { data, error } = await client
+    .from('changelog')
+    .select('*')
+    .not('project_id', 'is', null)
+    .order('timestamp', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('Error fetching workspace changelog:', error);
+    throw error;
+  }
+  return data?.map(transformChangelogEntry) || [];
+}
+
 // Helper functions for specific relationship events
 
 export async function logRelationshipCreated(
