@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      metric_values: {
+        Row: {
+          change_percent: number | null
+          created_by: string
+          id: string
+          period: string
+          source: string | null
+          tracked_metric_id: string
+          trend: string | null
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          change_percent?: number | null
+          created_by?: string
+          id?: string
+          period: string
+          source?: string | null
+          tracked_metric_id: string
+          trend?: string | null
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          change_percent?: number | null
+          created_by?: string
+          id?: string
+          period?: string
+          source?: string | null
+          tracked_metric_id?: string
+          trend?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metric_values_tracked_metric_id_fkey"
+            columns: ["tracked_metric_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_metrics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tracked_metrics: {
         Row: {
           created_at: string

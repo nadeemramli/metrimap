@@ -33,6 +33,7 @@ import {
   getProjectById,
   mergeProjectSettings,
 } from '@/shared/lib/supabase/services/projects';
+import { getMetricValuesByMetricIds } from '@/shared/lib/supabase/services/trackedMetrics';
 import {
   getAuthenticatedClient,
   whenAuthenticatedClientReady,
@@ -311,6 +312,31 @@ function CanvasPageInner() {
             evidence: Array.isArray(persistedEvidence) ? persistedEvidence : [],
           });
           evidenceHydratedFor.current = canvasId;
+
+          // B.2 read-share: cards that reference a catalogued Tracked Metric read
+          // their series from the shared value store, so the same metric shows the
+          // same numbers on every canvas. Overrides the card's inline data cache.
+          try {
+            const trackedCards = (projectData.nodes || []).filter(
+              (n: any) => n.trackedMetricId
+            );
+            if (trackedCards.length) {
+              const ids = [
+                ...new Set(
+                  trackedCards.map((c: any) => c.trackedMetricId as string)
+                ),
+              ];
+              const byMetric = await getMetricValuesByMetricIds(ids, client);
+              for (const card of trackedCards) {
+                const series = byMetric[(card as any).trackedMetricId];
+                if (series && series.length) {
+                  useCanvasStore.getState().updateNode(card.id, { data: series });
+                }
+              }
+            }
+          } catch (err) {
+            console.error('❌ Failed to hydrate tracked-metric values:', err);
+          }
 
           // Load canvas nodes for this project
           try {

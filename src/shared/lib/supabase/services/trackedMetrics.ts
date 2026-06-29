@@ -5,10 +5,99 @@
 // Owner-scoped for now (created_by); re-scoped to the Clerk-org workspace later.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { MetricValue } from '@/shared/types';
 import { supabase } from '../client';
 import type { Database } from '../types';
 
 type Client = SupabaseClient<Database>;
+
+// ── B.2 value store ─────────────────────────────────────────────────────────
+// The shared series for a Tracked Metric (one row per period). Cards that
+// reference the metric read this single history, so values are consistent
+// everywhere.
+
+/** Read a Tracked Metric's shared series (ordered by period). */
+export async function getMetricValues(
+  trackedMetricId: string,
+  client?: Client
+): Promise<MetricValue[]> {
+  const c = client || supabase();
+  const { data, error } = await c
+    .from('metric_values')
+    .select('period, value, change_percent, trend')
+    .eq('tracked_metric_id', trackedMetricId)
+    .order('period', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => ({
+    period: r.period,
+    value: r.value,
+    change_percent: r.change_percent ?? 0,
+    trend: (r.trend as MetricValue['trend']) ?? 'neutral',
+  }));
+}
+
+/** Batch-read shared series for many Tracked Metrics, grouped by metric id. */
+export async function getMetricValuesByMetricIds(
+  ids: string[],
+  client?: Client
+): Promise<Record<string, MetricValue[]>> {
+  if (!ids.length) return {};
+  const c = client || supabase();
+  const { data, error } = await c
+    .from('metric_values')
+    .select('tracked_metric_id, period, value, change_percent, trend')
+    .in('tracked_metric_id', ids)
+    .order('period', { ascending: true });
+  if (error) throw new Error(error.message);
+  const out: Record<string, MetricValue[]> = {};
+  for (const r of data ?? []) {
+    (out[r.tracked_metric_id] ??= []).push({
+      period: r.period,
+      value: r.value,
+      change_percent: r.change_percent ?? 0,
+      trend: (r.trend as MetricValue['trend']) ?? 'neutral',
+    });
+  }
+  return out;
+}
+
+/** Upsert a Tracked Metric's series (one row per period). */
+export async function writeMetricValues(
+  trackedMetricId: string,
+  series: MetricValue[],
+  source?: string,
+  client?: Client
+): Promise<void> {
+  if (!series.length) return;
+  const c = client || supabase();
+  const rows = series.map((p) => ({
+    tracked_metric_id: trackedMetricId,
+    period: p.period,
+    value: p.value,
+    change_percent: p.change_percent,
+    trend: p.trend,
+    source: source ?? null,
+    updated_at: new Date().toISOString(),
+  }));
+  const { error } = await c
+    .from('metric_values')
+    .upsert(rows, { onConflict: 'tracked_metric_id,period' });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Sync a card's series into the shared store IF the card is catalogued. No-op
+ * for uncatalogued cards. Call after any value change to a tracked card.
+ */
+export async function syncCardValuesToCatalog(
+  trackedMetricId: string | null | undefined,
+  series: MetricValue[] | undefined,
+  source?: string,
+  client?: Client
+): Promise<void> {
+  if (!trackedMetricId || !Array.isArray(series) || series.length === 0) return;
+  await writeMetricValues(trackedMetricId, series, source, client);
+}
 
 export interface TrackedMetric {
   id: string;
@@ -112,6 +201,20 @@ export async function promoteCardToTrackedMetric(
     .single();
   if (error) throw new Error(error.message);
   await linkCardToMetric(input.cardId, data.id, c);
+
+  // Seed the shared store from the card's current series so the catalogued
+  // metric carries its history immediately.
+  const { data: cardRow } = await c
+    .from('metric_cards')
+    .select('data')
+    .eq('id', input.cardId)
+    .single();
+  const series = Array.isArray(cardRow?.data)
+    ? (cardRow.data as unknown as MetricValue[])
+    : [];
+  if (series.length) {
+    await writeMetricValues(data.id, series, input.source_kind ?? undefined, c);
+  }
   return data.id;
 }
 

@@ -20,6 +20,8 @@ import {
 import { useEdgeStore } from './useEdgeStore';
 import { useGroupStore } from './useGroupStore';
 import { useNodeStore } from './useNodeStore';
+import { getAuthenticatedClient } from '@/shared/utils/authenticatedClient';
+import { syncCardValuesToCatalog } from '@/shared/lib/supabase/services/trackedMetrics';
 
 interface CanvasStoreState extends CanvasState {
   // Canvas management
@@ -243,6 +245,28 @@ export const useCanvasStore = create<CanvasStoreState>()(
               : undefined,
             isLoading: false,
           }));
+
+          // B.2 write-through: if this card is catalogued and its series changed,
+          // sync it into the shared value store so the metric reads the same
+          // everywhere. No-op for uncatalogued cards. (One hook covers manual /
+          // generate / import, source feeds, and operator runs — they all persist
+          // card.data through here.)
+          if (updates.data !== undefined) {
+            const card = (get().canvas?.nodes || []).find(
+              (n) => n.id === nodeId
+            );
+            const client = getAuthenticatedClient();
+            if (card?.trackedMetricId && client) {
+              void syncCardValuesToCatalog(
+                card.trackedMetricId,
+                updates.data as MetricValue[] | undefined,
+                card.sourceType ?? undefined,
+                client
+              ).catch((e) =>
+                console.error('Failed to sync tracked-metric values:', e)
+              );
+            }
+          }
         } catch (error) {
           console.error('Error updating node:', error);
           set({ error: 'Failed to update node', isLoading: false });
