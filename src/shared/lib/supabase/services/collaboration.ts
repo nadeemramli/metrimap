@@ -312,9 +312,17 @@ export async function createNotification(
   return data as NotificationRow;
 }
 
+export interface NotificationFilter {
+  unreadOnly?: boolean;
+  // Restrict to these notification types (e.g. ['mention'], ['assigned']).
+  types?: string[];
+  // Only notifications newer than N days (e.g. 3, 7).
+  sinceDays?: number;
+}
+
 export async function listNotifications(
   userId: string,
-  options?: { unreadOnly?: boolean },
+  options?: NotificationFilter,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = authenticatedClient || supabase();
@@ -327,6 +335,15 @@ export async function listNotifications(
   if (options?.unreadOnly) {
     query = query.eq('read', false);
   }
+  if (options?.types && options.types.length > 0) {
+    query = query.in('type', options.types);
+  }
+  if (options?.sinceDays && options.sinceDays > 0) {
+    const since = new Date(
+      Date.now() - options.sinceDays * 24 * 60 * 60 * 1000
+    ).toISOString();
+    query = query.gte('created_at', since);
+  }
 
   const { data, error } = await query;
 
@@ -335,6 +352,39 @@ export async function listNotifications(
     throw error;
   }
   return (data || []) as NotificationRow[];
+}
+
+export async function getUnreadNotificationCount(
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<number> {
+  const client = authenticatedClient || supabase();
+  const { count, error } = await client
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+  if (error) {
+    console.error('Error counting unread notifications:', error);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+export async function markAllNotificationsRead(
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<void> {
+  const client = authenticatedClient || supabase();
+  const { error } = await client
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+  if (error) {
+    console.error('Error marking all notifications read:', error);
+    throw error;
+  }
 }
 
 export async function markNotificationRead(

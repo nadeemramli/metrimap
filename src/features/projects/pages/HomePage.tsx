@@ -7,6 +7,7 @@ import FeedbackButton from '@/shared/components/common/feedback/FeedbackButton';
 import { OrganizationSwitcher, useOrganization } from '@clerk/react-router';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useProjectsRealtime } from '../hooks/useProjectsRealtime';
+import { NotificationInbox } from '@/features/notifications/components/NotificationInbox';
 import { Database, Folder } from 'lucide-react';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { cn } from '@/shared/utils';
@@ -163,6 +164,7 @@ export default function HomePage() {
                 <Database className="h-4 w-4" />
                 Metric Catalog
               </button>
+              <NotificationInbox />
               {isDevelopment && <FeedbackButton variant="outline" size="sm" />}
               <UserMenu />
             </div>
