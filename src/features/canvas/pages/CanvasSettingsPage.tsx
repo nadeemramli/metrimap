@@ -3,6 +3,7 @@ import { ChangelogTab } from '@/features/canvas/components/settings/tabs/Changel
 import { GeneralTab } from '@/features/canvas/components/settings/tabs/GeneralTab';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
+import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -221,6 +222,11 @@ export default function CanvasSettingsPage() {
     }
   };
 
+  usePageHeader({
+    title: 'Settings',
+    description: 'Manage your canvas configuration and activity',
+  });
+
   if (loading) {
     return (
       <div className="p-6">
@@ -247,16 +253,6 @@ export default function CanvasSettingsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Canvas Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your canvas configuration and activity
-          </p>
-        </div>
-      </div>
-
       {/* Tabs */}
       <Tabs
         value={activeTab}

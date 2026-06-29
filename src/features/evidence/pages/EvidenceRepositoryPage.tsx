@@ -1,5 +1,6 @@
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
+import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Badge } from '@/shared/components/ui/badge';
@@ -239,6 +240,25 @@ export default function EvidenceRepositoryPage() {
     return option ? option.variant : 'gray';
   };
 
+  // Feed the shared canvas top bar when canvas-scoped; the top-level /evidence
+  // mount has no provider so this no-ops and we keep the in-page title below.
+  usePageHeader({
+    title: 'Evidence',
+    description: 'Evidence used across this canvas and its relationships',
+    actions: (
+      <>
+        <Badge variant="outline" className="text-xs">
+          {allEvidence.length} Items
+        </Badge>
+        <Button onClick={handleCreateEvidence} size="sm" className="h-7 gap-1.5">
+          <Plus className="h-3.5 w-3.5" />
+          New Evidence
+        </Button>
+      </>
+    ),
+    deps: [allEvidence.length],
+  });
+
   return (
     <div className="p-6 space-y-6">
       {/* Breadcrumb */}
@@ -266,28 +286,29 @@ export default function EvidenceRepositoryPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Evidence Repository</h1>
-            <p className="text-muted-foreground mt-1">
-              {isCanvasScoped
-                ? 'Evidence used across this canvas and its relationships'
-                : 'Centralized management of all evidence across your canvases'}
-            </p>
+      {/* Header — only for the top-level /evidence route (no shared top bar).
+          Canvas-scoped mounts surface title/actions via usePageHeader above. */}
+      {!isCanvasScoped && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Evidence Repository</h1>
+              <p className="text-muted-foreground mt-1">
+                Centralized management of all evidence across your canvases
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="text-sm">
+              {allEvidence.length} Evidence Items
+            </Badge>
+            <Button onClick={handleCreateEvidence} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Evidence
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="text-sm">
-            {allEvidence.length} Evidence Items
-          </Badge>
-          <Button onClick={handleCreateEvidence} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Evidence
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Filters and Search */}
       <Card className="mb-6">

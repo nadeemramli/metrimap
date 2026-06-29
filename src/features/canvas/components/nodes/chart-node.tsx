@@ -1,6 +1,6 @@
 'use client';
 
-import { resolveChartSeries, formatCompact } from '@/features/canvas/utils/chartData';
+import { resolveChartSeries } from '@/features/canvas/utils/chartData';
 import { useCanvasStore } from '@/lib/stores';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -9,13 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/shared/components/ui/chart';
+import { MetricChart, type ChartType } from '@/shared/components/charts/MetricChart';
 import type { MetricCard } from '@/shared/types';
 import { cn } from '@/shared/utils';
 import { type NodeProps } from '@xyflow/react';
@@ -29,23 +23,9 @@ import {
   Settings2,
 } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { ChartNodeSettings } from './chart-node-settings';
 
-export type ChartType = 'line' | 'area' | 'bar' | 'pie';
+export type { ChartType };
 
 export interface ChartNodeData {
   chartType?: ChartType;
@@ -86,159 +66,15 @@ const ChartNodeInner = memo(({ id, data, selected }: NodeProps) => {
 
   const TypeIcon = TYPE_ICON[chartType];
 
-  const axisProps = {
-    tickLine: false,
-    axisLine: false,
-    tick: { fontSize: 11 },
-  } as const;
-
-  const renderChart = () => {
-    if (!hasData) {
-      return (
-        <div className="h-[200px] flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 text-center">
-          <TypeIcon className="h-6 w-6 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground px-6">
-            Connect a metric card to this node, or pick series in&nbsp;
-            <Settings2 className="inline h-3.5 w-3.5 -mt-0.5" /> settings.
-          </p>
-        </div>
-      );
-    }
-
-    if (chartType === 'pie') {
-      return (
-        <ChartContainer config={config} className="aspect-auto h-[200px] w-full">
-          <PieChart>
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-            <Pie
-              data={pie}
-              dataKey="value"
-              nameKey="label"
-              innerRadius={45}
-              outerRadius={78}
-              paddingAngle={2}
-              strokeWidth={2}
-            >
-              {pie.map((slice) => (
-                <Cell key={slice.key} fill={slice.fill} />
-              ))}
-            </Pie>
-            <ChartLegend
-              content={(props) => (
-                <ChartLegendContent {...(props as any)} nameKey="label" />
-              )}
-            />
-          </PieChart>
-        </ChartContainer>
-      );
-    }
-
-    const grid = (
-      <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.4} />
-    );
-    const x = <XAxis dataKey="period" {...axisProps} minTickGap={16} />;
-    const y = <YAxis {...axisProps} width={36} tickFormatter={formatCompact} />;
-    const tooltip = <ChartTooltip content={<ChartTooltipContent />} />;
-    const legend = showLegend ? (
-      <ChartLegend content={(props) => <ChartLegendContent {...(props as any)} />} />
-    ) : null;
-
-    if (chartType === 'line') {
-      return (
-        <ChartContainer config={config} className="aspect-auto h-[200px] w-full">
-          <LineChart data={rows} margin={{ left: 4, right: 8, top: 8 }}>
-            {grid}
-            {x}
-            {y}
-            {tooltip}
-            {legend}
-            {series.map((s) => (
-              <Line
-                key={s.key}
-                type="monotone"
-                dataKey={s.key}
-                stroke={`var(--color-${s.key})`}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-                connectNulls
-              />
-            ))}
-          </LineChart>
-        </ChartContainer>
-      );
-    }
-
-    if (chartType === 'bar') {
-      return (
-        <ChartContainer config={config} className="aspect-auto h-[200px] w-full">
-          <BarChart data={rows} margin={{ left: 4, right: 8, top: 8 }}>
-            {grid}
-            {x}
-            {y}
-            {tooltip}
-            {legend}
-            {series.map((s) => (
-              <Bar
-                key={s.key}
-                dataKey={s.key}
-                fill={`var(--color-${s.key})`}
-                radius={[4, 4, 0, 0]}
-              />
-            ))}
-          </BarChart>
-        </ChartContainer>
-      );
-    }
-
-    // area (default)
-    return (
-      <ChartContainer config={config} className="aspect-auto h-[200px] w-full">
-        <AreaChart data={rows} margin={{ left: 4, right: 8, top: 8 }}>
-          <defs>
-            {series.map((s) => (
-              <linearGradient
-                key={s.key}
-                id={`fill-${id}-${s.key}`}
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop
-                  offset="5%"
-                  stopColor={`var(--color-${s.key})`}
-                  stopOpacity={0.45}
-                />
-                <stop
-                  offset="95%"
-                  stopColor={`var(--color-${s.key})`}
-                  stopOpacity={0.05}
-                />
-              </linearGradient>
-            ))}
-          </defs>
-          {grid}
-          {x}
-          {y}
-          {tooltip}
-          {legend}
-          {series.map((s) => (
-            <Area
-              key={s.key}
-              type="monotone"
-              dataKey={s.key}
-              stroke={`var(--color-${s.key})`}
-              strokeWidth={2}
-              fill={`url(#fill-${id}-${s.key})`}
-              connectNulls
-              stackId={undefined}
-            />
-          ))}
-        </AreaChart>
-      </ChartContainer>
-    );
-  };
+  const emptySlot = (
+    <div className="h-[200px] flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 text-center">
+      <TypeIcon className="h-6 w-6 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground px-6">
+        Connect a metric card to this node, or pick series in&nbsp;
+        <Settings2 className="inline h-3.5 w-3.5 -mt-0.5" /> settings.
+      </p>
+    </div>
+  );
 
   return (
     <>

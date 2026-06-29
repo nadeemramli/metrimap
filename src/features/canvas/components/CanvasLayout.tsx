@@ -52,8 +52,8 @@ const sidebarItems = [
   },
   {
     icon: Server,
-    label: 'Source',
-    path: '/source',
+    label: 'Data',
+    path: '/data',
   },
   {
     icon: Settings,
@@ -70,9 +70,6 @@ export default function CanvasLayout() {
   const { getProjectById } = useProjectsStore();
   const { headerInfo } = useCanvasHeader();
   const [isCollabOpen, setIsCollabOpen] = useState(false);
-
-  // Debug: Log header info changes
-  console.log('🎯 CanvasLayout headerInfo:', headerInfo);
 
   const project = canvasId ? getProjectById(canvasId) : null;
 
@@ -94,16 +91,6 @@ export default function CanvasLayout() {
       return currentPath === `/canvas/${canvasId}`;
     }
     return currentPath === `/canvas/${canvasId}${item.path}`;
-  };
-
-  const getPageTitle = () => {
-    const currentPath = location.pathname;
-    if (currentPath.includes('/dashboard')) return 'Dashboard';
-    if (currentPath.includes('/assets')) return 'Assets';
-    if (currentPath.includes('/evidence')) return 'Evidence';
-    if (currentPath.includes('/source')) return 'Source';
-    if (currentPath.includes('/settings')) return 'Settings';
-    return 'Canvas';
   };
 
   return (
@@ -201,50 +188,41 @@ export default function CanvasLayout() {
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* Left header: title/description and collaboration */}
 
-            {headerInfo ? (
-              <>
-                {/* Canvas Title — double-click to rename */}
-                <CanvasTitleEditor
-                  title={headerInfo.title}
-                  canvasId={canvasId}
-                />
-
-                {/* Canvas Description */}
-                {headerInfo.description && (
-                  <>
-                    <span className="text-muted-foreground text-xs">•</span>
-                    <span className="text-xs text-muted-foreground truncate max-w-48">
-                      {headerInfo.description}
-                    </span>
-                  </>
-                )}
-                {/* Canvas Mode Toggle */}
-                {headerInfo.canvasMode && (
-                  <CanvasModeToggle
-                    mode={headerInfo.canvasMode.mode}
-                    onChangeMode={headerInfo.canvasMode.onChangeMode}
-                  />
-                )}
-              </>
+            {/* Title — editable on the canvas itself, static on sub-pages */}
+            {headerInfo?.editableTitle ? (
+              <CanvasTitleEditor
+                title={headerInfo.title}
+                canvasId={canvasId}
+              />
             ) : (
+              <span className="text-sm font-medium text-foreground truncate">
+                {headerInfo?.title ?? project?.name ?? 'Canvas'}
+              </span>
+            )}
+
+            {/* Description */}
+            {headerInfo?.description && (
               <>
-                {/* Fallback to generic page title */}
-                <span className="text-sm font-medium text-foreground">
-                  {getPageTitle()}
+                <span className="text-muted-foreground text-xs">•</span>
+                <span className="text-xs text-muted-foreground truncate max-w-48">
+                  {headerInfo.description}
                 </span>
-                {project && (
-                  <>
-                    <span className="text-muted-foreground text-xs">•</span>
-                    <span className="text-xs text-muted-foreground truncate max-w-32">
-                      {project.name}
-                    </span>
-                  </>
-                )}
               </>
+            )}
+
+            {/* Canvas Mode Toggle (canvas page only) */}
+            {headerInfo?.canvasMode && (
+              <CanvasModeToggle
+                mode={headerInfo.canvasMode.mode}
+                onChangeMode={headerInfo.canvasMode.onChangeMode}
+              />
             )}
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Per-page action buttons */}
+            {headerInfo?.actions}
+
             {/* Unified collaboration entry point (comments, mentions, members,
                 share link). Replaces the old split Collaborate + Share buttons. */}
             <Button
@@ -258,8 +236,8 @@ export default function CanvasLayout() {
               Collaborate
             </Button>
 
-            {/* Auto-save indicator in header */}
-            <AutoSaveIndicator />
+            {/* Auto-save indicator (canvas page only) */}
+            {headerInfo?.autoSaveStatus && <AutoSaveIndicator />}
 
             {/* User menu at the far right of the header */}
             <UserMenu />

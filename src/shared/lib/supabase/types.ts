@@ -47,6 +47,153 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_widgets: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string
+          id: string
+          layout: Json
+          project_id: string
+          sort_index: number
+          title: string | null
+          updated_at: string
+          widget_type: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          created_by?: string
+          id?: string
+          layout?: Json
+          project_id: string
+          sort_index?: number
+          title?: string | null
+          updated_at?: string
+          widget_type?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string
+          id?: string
+          layout?: Json
+          project_id?: string
+          sort_index?: number
+          title?: string | null
+          updated_at?: string
+          widget_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_widgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_definitions: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          key: string
+          lifecycle_state: string
+          name: string
+          owner_label: string | null
+          source_kind: string | null
+          tracked_metric_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          key: string
+          lifecycle_state?: string
+          name: string
+          owner_label?: string | null
+          source_kind?: string | null
+          tracked_metric_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          key?: string
+          lifecycle_state?: string
+          name?: string
+          owner_label?: string | null
+          source_kind?: string | null
+          tracked_metric_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_definitions_tracked_metric_id_fkey"
+            columns: ["tracked_metric_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_metrics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_properties: {
+        Row: {
+          allowed_values: Json | null
+          created_at: string
+          data_type: string
+          description: string | null
+          event_id: string
+          example_value: string | null
+          id: string
+          key: string
+          name: string
+          required: boolean
+        }
+        Insert: {
+          allowed_values?: Json | null
+          created_at?: string
+          data_type?: string
+          description?: string | null
+          event_id: string
+          example_value?: string | null
+          id?: string
+          key: string
+          name: string
+          required?: boolean
+        }
+        Update: {
+          allowed_values?: Json | null
+          created_at?: string
+          data_type?: string
+          description?: string | null
+          event_id?: string
+          example_value?: string | null
+          id?: string
+          key?: string
+          name?: string
+          required?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_properties_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "event_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spaces: {
         Row: {
           color: string | null

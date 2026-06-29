@@ -1,11 +1,7 @@
 import { OrganizationProfile } from '@clerk/react-router';
 import { Button } from '@/shared/components/ui/button';
+import { ConnectionsPanel } from '@/features/data/components/ConnectionsPanel';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
-import {
-  deleteConnection,
-  listConnections,
-  type SourceConnection,
-} from '@/shared/lib/supabase/services/sourceConnections';
 import {
   createApiKey,
   deleteApiKey,
@@ -19,7 +15,6 @@ import {
   Copy,
   Database,
   KeyRound,
-  Loader2,
   Monitor,
   Moon,
   Palette,
@@ -88,25 +83,15 @@ export default function WorkspaceSettingsPage() {
   const client = useClerkSupabase();
   const { theme, setTheme } = useTheme();
 
-  const [connections, setConnections] = useState<SourceConnection[]>([]);
-  const [busy, setBusy] = useState(false);
   const [prefs, setPrefs] = useState<Record<string, boolean>>(() => loadPrefs());
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [newKey, setNewKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!client) return;
-    setBusy(true);
-    Promise.all([listConnections(client), listApiKeys(client)])
-      .then(([conns, keys]) => {
-        setConnections(conns);
-        setApiKeys(keys);
-      })
-      .catch(() => {
-        setConnections([]);
-        setApiKeys([]);
-      })
-      .finally(() => setBusy(false));
+    listApiKeys(client)
+      .then(setApiKeys)
+      .catch(() => setApiKeys([]));
   }, [client]);
 
   const generateKey = async () => {
@@ -130,17 +115,6 @@ export default function WorkspaceSettingsPage() {
       toast.success('API key revoked');
     } catch {
       toast.error('Failed to revoke key');
-    }
-  };
-
-  const removeConnection = async (id: string) => {
-    if (!client) return;
-    try {
-      await deleteConnection(id, client);
-      setConnections((prev) => prev.filter((c) => c.id !== id));
-      toast.success('Connection removed');
-    } catch {
-      toast.error('Failed to remove connection');
     }
   };
 
@@ -204,39 +178,7 @@ export default function WorkspaceSettingsPage() {
           title="Data source connections"
           description="Warehouse connections available to Source Nodes across this workspace."
         >
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          ) : connections.length === 0 ? (
-            <p className="text-sm text-muted-foreground/70">
-              No connections yet — add one from a Source Node’s warehouse config.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {connections.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between rounded-md border border-border px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{c.name}</div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {c.warehouse_type}
-                      {c.host ? ` · ${c.host}` : ''}
-                      {c.database ? ` / ${c.database}` : ''}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeConnection(c.id)}
-                    title="Remove connection"
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
+          <ConnectionsPanel />
         </Section>
 
         {/* API keys */}

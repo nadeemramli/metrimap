@@ -27,7 +27,7 @@ import FeedPage from './features/notifications/pages/FeedPage';
 import WorkspaceSettingsPage from './features/settings/pages/WorkspaceSettingsPage';
 import EmbedCanvasPage from './features/canvas/pages/EmbedCanvasPage';
 import HomePage from './features/projects/pages/HomePage';
-import SourcePage from './features/sources/pages/SourcePage';
+import DataHubPage from './features/data/pages/DataHubPage';
 
 // Auth Pages
 import SignInPage from './features/auth/pages/SignInPage';
@@ -175,7 +175,7 @@ export default function App() {
                     path="evidence/:evidenceId"
                     element={<EvidencePage />}
                   />
-                  <Route path="source" element={<SourcePage />} />
+                  <Route path="data" element={<DataHubPage />} />
                   <Route path="settings" element={<CanvasSettingsPage />} />
 
                   {/* Development-only routes */}

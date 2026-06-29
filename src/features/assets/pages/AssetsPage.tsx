@@ -3,6 +3,7 @@ import CardSettingsSheet from '@/features/canvas/components/panels/metric-panel/
 import RelationshipSheet from '@/features/canvas/components/panels/relationship-panel/RelationshipSheet';
 import { useCanvasStore, useTagStore } from '@/lib/stores';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
+import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -693,32 +694,43 @@ export default function AssetsPage() {
     },
   ];
 
+  usePageHeader({
+    title: 'Assets',
+    description: 'Metrics, relationships, and templates',
+    actions: (
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7"
+          onClick={handleOpenTagManagement}
+        >
+          <Tag className="h-3.5 w-3.5 mr-1.5" />
+          Manage Tags
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7"
+          onClick={handleExport}
+        >
+          <Download className="h-3.5 w-3.5 mr-1.5" />
+          Export
+        </Button>
+        <Button
+          size="sm"
+          className="h-7"
+          onClick={() => setIsAddAssetOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
+          Add Asset
+        </Button>
+      </>
+    ),
+  });
+
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Assets</h1>
-          <p className="text-muted-foreground mt-1">
-            Comprehensive repository of metrics, relationships, and templates
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={handleOpenTagManagement}>
-            <Tag className="h-4 w-4 mr-2" />
-            Manage Tags
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={() => setIsAddAssetOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Asset
-          </Button>
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>

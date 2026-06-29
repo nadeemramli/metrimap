@@ -11,7 +11,6 @@ export { useTagStore } from '@/shared/stores/useTagStore';
 // Feature stores
 export { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 export { useProjectsStore } from '@/features/projects/stores/useProjectsStore';
-export { useSourcesStore } from '@/features/sources/stores/useSourcesStore';
 
 // Version history store
 export { useVersionHistoryStore } from './version-history/useVersionHistoryStore';

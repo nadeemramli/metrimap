@@ -1,5 +1,6 @@
 import { GroupHelpModal } from '@/features/canvas/components/grouping/GroupHelpModal';
 import { useCanvasStore } from '@/lib/stores';
+import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { Sparkline } from '@/shared/components/Sparkline';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -165,22 +166,23 @@ export default function DashboardPage() {
     return Array.from(cats);
   }, [dashboardMetrics]);
 
+  const headerDescription = defaultDashboard
+    ? `Analytics from "${defaultDashboard.name}" subflow`
+    : canGenerateDashboards(canvas)
+      ? 'Select a subflow to view its dashboard'
+      : 'Create groups on canvas to generate dashboards';
+
+  usePageHeader({
+    title: 'Dashboard',
+    description: headerDescription,
+    deps: [headerDescription],
+  });
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">
-              {defaultDashboard
-                ? `Analytics from "${defaultDashboard.name}" subflow`
-                : canGenerateDashboards(canvas)
-                  ? 'Select a subflow to view its dashboard'
-                  : 'Create groups on canvas to generate dashboards'}
-            </p>
-          </div>
-
           {/* Dashboard Selector - as specified in PRD */}
           {canGenerateDashboards(canvas) && (
             <div className="flex flex-col gap-1">

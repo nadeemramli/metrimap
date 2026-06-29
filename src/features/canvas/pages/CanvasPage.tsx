@@ -193,6 +193,7 @@ function CanvasPageInner() {
     const headerData = {
       title: canvas?.name || 'Untitled Canvas',
       description: canvas?.description,
+      editableTitle: true,
       autoSaveStatus: {
         text: 'Auto-save enabled',
         icon: () => null,
