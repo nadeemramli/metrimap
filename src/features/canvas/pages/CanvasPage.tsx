@@ -96,6 +96,7 @@ import {
   LassoSelectionComponent,
   RectangleToolComponent,
   type WhiteboardTool,
+  type FreehandDrawing,
 } from '@/features/canvas/components/whiteboard';
 import { generateUUID } from '@/shared/utils/validation';
 import { getViewportCenterPosition } from '@/features/canvas/utils/viewportCenter';
@@ -1406,6 +1407,43 @@ function CanvasPageInner() {
     [nodes, existingEdges, state, persistDataFlowEdges, bindOperatorInput]
   );
 
+  // Persist a finished freehand stroke as a whiteboardNode (replaces the old
+  // ephemeral addNodes path so drawings survive reload), with undo/redo.
+  const handleFreehandCommit = useCallback(
+    async (drawing: FreehandDrawing) => {
+      const currentCanvas = useCanvasStore.getState().canvas;
+      if (!currentCanvas?.id) return;
+      const payload = {
+        projectId: currentCanvas.id,
+        nodeType: 'whiteboardNode' as const,
+        title: 'Drawing',
+        position: drawing.position,
+        data: drawing.data,
+        createdBy: useAppStore.getState().user?.id || 'anonymous',
+      };
+      try {
+        const created = await createCanvasNode(payload as any);
+        if (created?.id) {
+          let currentId = created.id;
+          useCanvasHistoryStore.getState().push({
+            label: 'Add drawing',
+            undo: async () =>
+              useCanvasNodesStore.getState().deleteNode(currentId),
+            redo: async () => {
+              const re = await useCanvasNodesStore
+                .getState()
+                .createNode(payload as any);
+              if (re?.id) currentId = re.id;
+            },
+          });
+        }
+      } catch (error) {
+        console.error('❌ Failed to persist freehand drawing:', error);
+      }
+    },
+    [createCanvasNode]
+  );
+
   // Phase B: when data-flow / reference edges are deleted from the canvas, drop
   // them from state.extraEdges and re-persist. Relationship edges (not in
   // extraEdges) are untouched here — they're managed via the Relationship sheet.
@@ -1979,9 +2017,7 @@ function CanvasPageInner() {
                     isActive={true}
                     brushSize={state.whiteboardBrushSize}
                     brushColor={state.whiteboardBrushColor}
-                    onPathCreate={(path) => {
-                      log.debug('Created freehand path:', path);
-                    }}
+                    onCommit={handleFreehandCommit}
                   />
                 )}
               </>

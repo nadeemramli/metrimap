@@ -50,12 +50,6 @@ export function WhiteboardContainer({
     // by adding a new whiteboardNode to the canvas
   }, []);
 
-  const handlePathCreate = useCallback((path: string) => {
-    console.log('Created freehand path:', path);
-    // Path creation is handled by the FreehandDrawComponent
-    // by adding a new whiteboardNode to the canvas
-  }, []);
-
   if (!isDrawMode) {
     return (
       <WhiteboardToolsPanel
@@ -104,7 +98,6 @@ export function WhiteboardContainer({
         isActive={activeTool === 'freehand'}
         brushSize={brushSize}
         brushColor={brushColor}
-        onPathCreate={handlePathCreate}
       />
 
       {/* Instructions Panel */}

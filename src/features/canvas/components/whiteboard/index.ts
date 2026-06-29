@@ -8,3 +8,4 @@ export { default as WhiteboardContainer } from './WhiteboardContainer';
 
 // Types
 export type { WhiteboardTool } from './WhiteboardToolsPanel';
+export type { FreehandDrawing } from './FreehandDrawComponent';

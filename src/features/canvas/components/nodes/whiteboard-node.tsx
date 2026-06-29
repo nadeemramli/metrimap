@@ -46,6 +46,10 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
   // Apply eraser effect if marked for deletion
   const isToBeDeleted = d.toBeDeleted;
 
+  // Freehand strokes float on the canvas — no card box/background/border (only
+  // a subtle selection outline). Other shapes keep the framed-card look.
+  const isFreehand = d.shape === 'freehand';
+
   // Node size is controlled by style on create; render 100% in an SVG
   return (
     <div
@@ -53,11 +57,16 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
         width: '100%',
         height: '100%',
         background: 'transparent',
-        border: selected ? '2px solid #3b82f6' : '1px solid #d1d5db',
+        border: selected
+          ? '2px solid #3b82f6'
+          : isFreehand
+            ? 'none'
+            : '1px solid #d1d5db',
         borderRadius: 6,
         overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-        backgroundColor: d.shape === 'image' ? 'transparent' : 'white',
+        boxShadow: isFreehand ? 'none' : '0 2px 8px rgba(0,0,0,0.06)',
+        backgroundColor:
+          d.shape === 'image' || isFreehand ? 'transparent' : 'white',
         opacity: isToBeDeleted ? 0.3 : 1,
         filter: isToBeDeleted ? 'grayscale(100%)' : 'none',
         transition: 'opacity 0.2s ease, filter 0.2s ease',
@@ -141,16 +150,11 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
           )}
           {d.shape === 'freehand' && (
             <>
-              {/* Support both points array and SVG path */}
+              {/* perfect-freehand stores a closed, variable-width OUTLINE that we
+                  fill (the brush colour lives in `stroke`). Legacy points arrays
+                  fall back to a constant-width polyline. */}
               {d.path ? (
-                <path
-                  d={d.path}
-                  fill="none"
-                  stroke={stroke}
-                  strokeWidth={strokeWidth}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d={d.path} fill={stroke} stroke="none" />
               ) : (
                 d.points &&
                 d.points.length > 0 && (
