@@ -34,7 +34,7 @@ interface ProjectsStoreState {
   isInitialized: boolean;
 
   // Async Supabase Actions (Require Auth)
-  initializeProjects: () => Promise<void>;
+  initializeProjects: (force?: boolean) => Promise<void>;
   addProject: (
     project: Omit<CanvasProject, 'id' | 'createdAt' | 'updatedAt'>
   ) => Promise<string>;
@@ -81,9 +81,11 @@ export const useProjectsStore = create<ProjectsStoreState>()(
       isInitialized: false,
 
       // Async Supabase Actions
-      initializeProjects: async () => {
+      // force=true refetches even if already initialized — used on workspace
+      // (Clerk org) switch, where the project list must reload for the new org.
+      initializeProjects: async (force = false) => {
         const state = get();
-        if (state.isInitialized) return;
+        if (state.isInitialized && !force) return;
 
         console.log('🚀 initializeProjects called');
         set({ isLoading: true, error: undefined });

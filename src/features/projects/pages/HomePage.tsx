@@ -4,7 +4,7 @@ import QuickSearchCommand, {
 } from '@/features/canvas/components/search/QuickSearchCommand';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import FeedbackButton from '@/shared/components/common/feedback/FeedbackButton';
-import { OrganizationSwitcher } from '@clerk/react-router';
+import { OrganizationSwitcher, useOrganization } from '@clerk/react-router';
 import { Database, Folder } from 'lucide-react';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { cn } from '@/shared/utils';
@@ -99,13 +99,17 @@ export default function HomePage() {
 
   useKeyboardShortcuts(shortcuts);
 
-  // Initialize projects store on component mount, but only when user is available
+  // (Re)load the workspace's projects on mount AND whenever the active org
+  // changes — switching workspace must reload its canvases. force=true bypasses
+  // the isInitialized guard so an in-session org switch always refetches.
+  const { organization } = useOrganization();
+  const activeOrgId = organization?.id ?? null;
   useEffect(() => {
     if (user) {
-      console.log('User available, initializing projects');
-      initializeProjects();
+      console.log('Loading projects for workspace:', activeOrgId ?? 'personal');
+      initializeProjects(true);
     }
-  }, [initializeProjects, user]);
+  }, [initializeProjects, user, activeOrgId]);
 
   // Get all unique tags
   const allTags = useMemo(() => {
