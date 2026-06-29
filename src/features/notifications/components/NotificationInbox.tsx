@@ -15,7 +15,7 @@ import {
 } from '@/shared/lib/supabase/services/collaboration';
 import { cn } from '@/shared/utils';
 import { Bell, Check, Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 type TypeFilter = 'all' | 'mention' | 'assigned';
@@ -94,6 +94,34 @@ export function NotificationInbox() {
   useEffect(() => {
     if (open) load();
   }, [open, load]);
+
+  // Live badge: bump on new notifications for this user (refs avoid resubscribe).
+  const openRef = useRef(open);
+  openRef.current = open;
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  useEffect(() => {
+    if (!client || !userId) return;
+    const channel = client
+      .channel(`notif-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          setUnread((c) => c + 1);
+          if (openRef.current) loadRef.current();
+        }
+      )
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [client, userId]);
 
   const handleOpen = async (n: NotificationRow) => {
     if (!n.read && client) {
