@@ -3,11 +3,14 @@ import {
   LogOut,
   User,
   Settings,
+  SlidersHorizontal,
   MessageSquare,
   Monitor,
   Moon,
+  Sparkles,
   Sun,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Button } from "@/shared/components/ui/button";
 import { Separator } from "@/shared/components/ui/separator";
@@ -30,6 +33,7 @@ export function UserMenu() {
   const devUser = useAppStore((s) => s.user);
   const isDev = import.meta.env.DEV;
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
 
   // Prefer Clerk user when available; otherwise use development user from app store
   const user =
@@ -99,6 +103,10 @@ export function UserMenu() {
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/settings/workspace')}>
+          <SlidersHorizontal className="mr-2 h-4 w-4" />
+          <span>Workspace Settings</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleFeedbackClick}>
           <MessageSquare className="mr-2 h-4 w-4" />
           <span>Give Feedback</span>
@@ -115,6 +123,10 @@ export function UserMenu() {
           <DropdownMenuRadioItem value="dark">
             <Moon className="mr-2 h-4 w-4" />
             <span>Dark</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="night">
+            <Sparkles className="mr-2 h-4 w-4" />
+            <span>Night</span>
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="system">
             <Monitor className="mr-2 h-4 w-4" />

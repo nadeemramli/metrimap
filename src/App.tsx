@@ -24,6 +24,7 @@ import EvidencePage from './features/evidence/pages/EvidencePage';
 import EvidenceRepositoryPage from './features/evidence/pages/EvidenceRepositoryPage';
 import CatalogPage from './features/catalog/pages/CatalogPage';
 import FeedPage from './features/notifications/pages/FeedPage';
+import WorkspaceSettingsPage from './features/settings/pages/WorkspaceSettingsPage';
 import HomePage from './features/projects/pages/HomePage';
 import SourcePage from './features/sources/pages/SourcePage';
 
@@ -39,6 +40,7 @@ export default function App() {
       <ThemeProvider
         attribute="class"
         defaultTheme="light"
+        themes={['light', 'dark', 'night', 'system']}
         enableSystem
         disableTransitionOnChange
       >
@@ -137,6 +139,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <FeedPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/workspace"
+                  element={
+                    <ProtectedRoute>
+                      <WorkspaceSettingsPage />
                     </ProtectedRoute>
                   }
                 />
