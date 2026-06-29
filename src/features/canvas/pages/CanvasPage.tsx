@@ -35,6 +35,7 @@ import {
 } from '@/shared/lib/supabase/services/projects';
 import { getMetricValuesByMetricIds } from '@/shared/lib/supabase/services/trackedMetrics';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
+import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
 import {
   getAuthenticatedClient,
   whenAuthenticatedClientReady,
@@ -1809,6 +1810,7 @@ function CanvasPageInner() {
               <Panel position="top-right">
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex items-center gap-2">
+                    <CanvasExportMenu />
                     <Button
                       variant={showGroupsPanel ? 'default' : 'outline'}
                       size="sm"
