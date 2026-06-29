@@ -224,42 +224,35 @@ export function getValidSourcesForTarget(targetType: NodeType): NodeType[] {
 }
 
 /**
- * Check if a connection would create a cycle (for data flow edges)
+ * Check whether adding the edge `sourceId -> targetId` would create a cycle.
+ *
+ * The graph of `existingEdges` is assumed acyclic, so the only way a new edge
+ * closes a loop is if the TARGET can already reach the SOURCE. We therefore walk
+ * forward from `targetId` and report a cycle if we arrive back at `sourceId`
+ * (a self-loop, source === target, also counts). The previous implementation
+ * ignored `targetId` and only re-scanned existing edges, so on an already-acyclic
+ * graph it always returned false — the guard was a silent no-op.
  */
 export function wouldCreateCycle(
   sourceId: string,
-  _targetId: string,
+  targetId: string,
   existingEdges: Array<{ source: string; target: string; type?: string }>
 ): boolean {
-  // Only check cycles for data flow edges
+  if (sourceId === targetId) return true; // self-loop
+
   const visited = new Set<string>();
-  const recursionStack = new Set<string>();
+  const stack = [targetId];
 
-  function hasCycle(nodeId: string): boolean {
-    if (recursionStack.has(nodeId)) {
-      return true; // Back edge found, cycle detected
-    }
-    if (visited.has(nodeId)) {
-      return false; // Already processed
-    }
-
+  while (stack.length > 0) {
+    const nodeId = stack.pop()!;
+    if (nodeId === sourceId) return true; // target reaches source -> cycle
+    if (visited.has(nodeId)) continue;
     visited.add(nodeId);
-    recursionStack.add(nodeId);
 
-    // Check all outgoing edges from this node
-    const outgoingEdges = existingEdges.filter(
-      (edge) => edge.source === nodeId
-    );
-    for (const edge of outgoingEdges) {
-      if (hasCycle(edge.target)) {
-        return true;
-      }
+    for (const edge of existingEdges) {
+      if (edge.source === nodeId) stack.push(edge.target);
     }
-
-    recursionStack.delete(nodeId);
-    return false;
   }
 
-  // Check if adding this edge creates a cycle
-  return hasCycle(sourceId);
+  return false;
 }

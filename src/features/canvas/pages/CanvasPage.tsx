@@ -55,7 +55,10 @@ import { toast } from 'sonner';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { type LayoutDirection } from '@/shared/utils/autoLayout';
 import { elkLayout } from '@/shared/utils/elkLayout';
-import { handleNodeConnection } from '@/shared/utils/edgeConnectionHandler';
+import {
+  canConnect,
+  handleNodeConnection,
+} from '@/shared/utils/edgeConnectionHandler';
 import { getAvailableFilterOptions } from '@/shared/utils/filterUtils';
 import { useCanvasEvents } from '../hooks/useCanvasEvents';
 import { useCanvasKeyboard } from '../hooks/useCanvasKeyboard';
@@ -1258,23 +1261,33 @@ function CanvasPageInner() {
     []
   );
 
+  // Flattened edge list (relationship + data-flow/reference) used for cycle
+  // detection by both the connect handler and the live isValidConnection check.
+  const existingEdges = useMemo(
+    () => [
+      ...(canvas?.edges || []).map((e) => ({
+        source: e.sourceId,
+        target: e.targetId,
+        type: 'relationship',
+      })),
+      ...(state.extraEdges || []).map((e) => ({
+        source: e.source,
+        target: e.target,
+        type: e.type,
+      })),
+    ],
+    [canvas?.edges, state.extraEdges]
+  );
+
+  // Block invalid drags (wrong node types or cycle-forming) visually before drop.
+  const isValidConnection = useCallback(
+    (connection: Connection) => canConnect(connection, nodes, existingEdges),
+    [nodes, existingEdges]
+  );
+
   const handleConnect = useCallback(
     (connection: Connection) => {
       console.log('🔗 Enhanced connection handler triggered:', connection);
-
-      // Get all existing edges for cycle detection
-      const existingEdges = [
-        ...(canvas?.edges || []).map((e) => ({
-          source: e.sourceId,
-          target: e.targetId,
-          type: 'relationship',
-        })),
-        ...(state.extraEdges || []).map((e) => ({
-          source: e.source,
-          target: e.target,
-          type: e.type,
-        })),
-      ];
 
       // Use enhanced connection handler
       const result = handleNodeConnection(connection, {
@@ -1336,7 +1349,7 @@ function CanvasPageInner() {
         toast.error(`Connection failed: ${result.error}`);
       }
     },
-    [nodes, canvas?.edges, state, persistDataFlowEdges, bindOperatorInput]
+    [nodes, existingEdges, state, persistDataFlowEdges, bindOperatorInput]
   );
 
   // Phase B: when data-flow / reference edges are deleted from the canvas, drop
@@ -1675,6 +1688,7 @@ function CanvasPageInner() {
               events.handleOpenRelationshipSheet(edge.id);
             }}
             onConnect={handleConnect}
+            isValidConnection={isValidConnection}
             onNodesDelete={() => void canvasActions.deleteSelection()}
             onEdgesDelete={handleEdgesDelete}
             // Navigation: in edit mode, left-drag is a SELECTION box (marquee)

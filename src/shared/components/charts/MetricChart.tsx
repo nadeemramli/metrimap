@@ -30,8 +30,8 @@ export type ChartType = 'line' | 'area' | 'bar' | 'pie';
 interface MetricChartProps extends ResolvedChart {
   chartType: ChartType;
   showLegend?: boolean;
-  /** Chart height in px (default 200). */
-  height?: number;
+  /** Chart height — px number or a CSS string like '100%' (default 200). */
+  height?: number | string;
   /** Disambiguates gradient ids when several area charts share a page. */
   idPrefix?: string;
   /** Rendered when there is no data to plot. */

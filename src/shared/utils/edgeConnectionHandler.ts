@@ -15,6 +15,11 @@ import {
   wouldCreateCycle,
 } from './edgeConnectionRules';
 
+// Edge types whose graph must stay acyclic: relationship + data-flow edges both
+// feed metric math, so a cycle silently breaks computation. Reference edges
+// (evidence/metadata/comment) are metadata and may legitimately form loops.
+const CYCLE_CHECKED_EDGE_TYPES = new Set(['relationshipEdge', 'dataFlowEdge']);
+
 export interface ConnectionResult {
   success: boolean;
   edgeData?: any;
@@ -95,12 +100,10 @@ export function handleNodeConnection(
     return { success: false, error };
   }
 
-  // Check for cycles in data flow connections
-  if (edgeInfo.edgeType === 'dataFlowEdge') {
-    if (
-      wouldCreateCycle(conn.source!, conn.target!, existingEdges)
-    ) {
-      const error = 'Connection would create a cycle in data flow';
+  // Reject connections that would close a cycle in the metric graph.
+  if (CYCLE_CHECKED_EDGE_TYPES.has(edgeInfo.edgeType)) {
+    if (wouldCreateCycle(conn.source!, conn.target!, existingEdges)) {
+      const error = 'Connection would create a cycle';
       console.error('❌', error);
       return { success: false, error };
     }
@@ -134,10 +137,11 @@ export function handleNodeConnection(
           onCreateReference
         );
 
-      default:
+      default: {
         const error = `Unknown edge type: ${edgeInfo.edgeType}`;
         console.error('❌', error);
         return { success: false, error };
+      }
     }
   } catch (error) {
     console.error('❌ Error creating edge:', error);
@@ -330,12 +334,51 @@ export function isConnectionAllowed(
     return { allowed: false, reason: 'Could not determine edge type' };
   }
 
-  // Check for cycles in data flow
-  if (edgeInfo.edgeType === 'dataFlowEdge') {
+  // Check for cycles
+  if (CYCLE_CHECKED_EDGE_TYPES.has(edgeInfo.edgeType)) {
     if (wouldCreateCycle(sourceNode.id, targetNode.id, existingEdges)) {
-      return { allowed: false, reason: 'Would create cycle in data flow' };
+      return { allowed: false, reason: 'Would create a cycle' };
     }
   }
 
   return { allowed: true };
+}
+
+/**
+ * Lightweight pre-flight check for React Flow's `isValidConnection` prop, so an
+ * invalid drag (wrong node types, or one that would create a cycle) is blocked
+ * visually before drop instead of being rejected with a toast afterwards.
+ *
+ * Mirrors `handleNodeConnection`'s direction tolerance: if the dragged
+ * orientation is invalid but the reverse is valid, we evaluate the reverse —
+ * the handler will swap on drop, so the pre-check must agree.
+ */
+export function canConnect(
+  connection: Connection,
+  nodes: Node[],
+  existingEdges: Array<{ source: string; target: string; type?: string }>
+): boolean {
+  let sourceNode = nodes.find((n) => n.id === connection.source);
+  let targetNode = nodes.find((n) => n.id === connection.target);
+  if (!sourceNode || !targetNode) return false;
+
+  let conn = connection;
+  if (
+    !validateConnection(sourceNode, targetNode).isValid &&
+    validateConnection(targetNode, sourceNode).isValid
+  ) {
+    conn = { ...connection, source: connection.target, target: connection.source };
+    [sourceNode, targetNode] = [targetNode, sourceNode];
+  }
+
+  if (!validateConnection(sourceNode, targetNode).isValid) return false;
+
+  const edgeInfo = getEdgeTypeForConnection(sourceNode, targetNode);
+  if (!edgeInfo) return false;
+
+  if (CYCLE_CHECKED_EDGE_TYPES.has(edgeInfo.edgeType)) {
+    if (wouldCreateCycle(conn.source!, conn.target!, existingEdges)) return false;
+  }
+
+  return true;
 }

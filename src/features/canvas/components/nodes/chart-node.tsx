@@ -105,7 +105,19 @@ const ChartNodeInner = memo(({ id, data, selected }: NodeProps) => {
             </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent className="pb-2">{renderChart()}</CardContent>
+        <CardContent className="pb-2">
+          <MetricChart
+            chartType={chartType}
+            config={config}
+            series={series}
+            rows={rows}
+            pie={pie}
+            hasData={hasData}
+            showLegend={showLegend}
+            idPrefix={id}
+            emptySlot={emptySlot}
+          />
+        </CardContent>
 
         {/* Drag handle */}
         <div className="border-t border-border/30 bg-muted/20 p-2">
