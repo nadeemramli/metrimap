@@ -18,88 +18,14 @@ export type MetricCard = Tables<'metric_cards'>;
 export type Relationship = Tables<'relationships'>;
 export type Group = Tables<'groups'>;
 
-async function fetchOwnedProjects(
-  userId: string,
-  client: SupabaseClient<Database>
-) {
-  const { data, error } = await client
-    .from('projects')
-    .select(
-      `
-      *,
-      project_collaborators(
-        role,
-        permissions,
-        users(id, name, email, avatar_url)
-      ),
-      metric_cards(count),
-      relationships(count),
-      groups(count),
-      preview_cards:metric_cards(id, title, category),
-      preview_rels:relationships(id, source_id, target_id)
-    `
-    )
-    .eq('created_by', userId)
-    // Example/template projects live only in the homepage Showcase (read-only),
-    // never in the user's own (deletable) list.
-    .not('tags', 'cs', '{example}')
-    .order('updated_at', { ascending: false });
-  if (error) throw error;
-  return data || [];
-}
-
-async function fetchCollaboratedProjectIds(
-  userId: string,
-  client: SupabaseClient<Database>
-) {
-  const { data, error } = await client
-    .from('project_collaborators')
-    .select('project_id')
-    .eq('user_id', userId);
-  if (error) throw error;
-  return (data || []).map((c) => c.project_id).filter((id) => id !== null);
-}
-
-async function fetchCollaboratedProjects(
-  projectIds: string[],
-  userId: string,
-  client: SupabaseClient<Database>
-) {
-  if (projectIds.length === 0) return [] as any[];
-  const { data, error } = await client
-    .from('projects')
-    .select(
-      `
-      *,
-      project_collaborators(
-        role,
-        permissions,
-        users(id, name, email, avatar_url)
-      ),
-      metric_cards(count),
-      relationships(count),
-      groups(count),
-      preview_cards:metric_cards(id, title, category),
-      preview_rels:relationships(id, source_id, target_id)
-    `
-    )
-    .in('id', projectIds)
-    .neq('created_by', userId)
-    .order('updated_at', { ascending: false });
-  if (error) throw error;
-  return data || [];
-}
-
-function combineAndSortProjects(owned: any[], collaborated: any[]) {
-  return [...owned, ...collaborated].sort(
-    (a, b) =>
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
-}
-
-// Fetch all projects for a user (fixed to eliminate RLS circular dependencies)
+// Fetch all projects visible to the user. RLS does the scoping: in the orgs-only
+// model this returns the ACTIVE workspace's projects (workspace_id = active Clerk
+// org) — shared across all org members — plus any null-workspace projects the
+// user created. Previously this filtered by created_by, which hid teammates'
+// canvases even though RLS allowed them. Examples/templates live only in the
+// Showcase, so they're excluded here.
 export async function getUserProjects(
-  userId: string,
+  _userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
   if (!authenticatedClient) {
@@ -108,14 +34,28 @@ export async function getUserProjects(
     );
   }
   const client = authenticatedClient || supabase();
-  const owned = await fetchOwnedProjects(userId, client);
-  const collabIds = await fetchCollaboratedProjectIds(userId, client);
-  const collaborated = await fetchCollaboratedProjects(
-    collabIds,
-    userId,
-    client
-  );
-  return combineAndSortProjects(owned, collaborated);
+  const { data, error } = await client
+    .from('projects')
+    .select(
+      `
+      *,
+      project_collaborators(
+        role,
+        permissions,
+        users(id, name, email, avatar_url)
+      ),
+      metric_cards(count),
+      relationships(count),
+      groups(count),
+      preview_cards:metric_cards(id, title, category),
+      preview_rels:relationships(id, source_id, target_id)
+    `
+    )
+    // Example/template projects live only in the homepage Showcase (read-only).
+    .not('tags', 'cs', '{example}')
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
 }
 
 // Public example/template projects for the homepage Showcase (read-only).
