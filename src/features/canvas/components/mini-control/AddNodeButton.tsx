@@ -32,6 +32,7 @@ interface AddNodeButtonProps {
     type: 'valueNode' | 'actionNode' | 'hypothesisNode' | 'metricNode',
     position?: { x: number; y: number }
   ) => void;
+  onAddFromCatalog?: (position?: { x: number; y: number }) => void;
 }
 
 // New PRD-based node types
@@ -72,6 +73,7 @@ export default function AddNodeButton({
   asControlButton = false,
   onAddCustomNode,
   onAddNewNodeType,
+  onAddFromCatalog,
 }: AddNodeButtonProps) {
   const { createNewNode } = useNewNodeTypesStore();
   const canvas = useCanvasStore((state) => state.canvas);
@@ -244,6 +246,21 @@ export default function AddNodeButton({
               <div className="font-medium text-sm">Operative Node</div>
               <div className="text-xs text-muted-foreground leading-relaxed">
                 Apply formula/toggle/date logic
+              </div>
+            </div>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Catalog</DropdownMenuLabel>
+          <DropdownMenuItem
+            onClick={() => onAddFromCatalog?.(position)}
+            className="flex items-start gap-3 p-3"
+          >
+            <span className="text-lg mt-0.5">📚</span>
+            <div className="flex-1">
+              <div className="font-medium text-sm">From Metric Catalog</div>
+              <div className="text-xs text-muted-foreground leading-relaxed">
+                Place a tracked metric (shares values everywhere)
               </div>
             </div>
           </DropdownMenuItem>

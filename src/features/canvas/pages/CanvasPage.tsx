@@ -34,6 +34,7 @@ import {
   mergeProjectSettings,
 } from '@/shared/lib/supabase/services/projects';
 import { getMetricValuesByMetricIds } from '@/shared/lib/supabase/services/trackedMetrics';
+import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
 import {
   getAuthenticatedClient,
   whenAuthenticatedClientReady,
@@ -1500,6 +1501,28 @@ function CanvasPageInner() {
     }
   }, [isSimulating, state.extraEdges, globalPeriod]);
 
+  // Add-from-catalog picker (place a tracked metric on this canvas).
+  const [catalogPickerOpen, setCatalogPickerOpen] = useState(false);
+  const [catalogPickerPos, setCatalogPickerPos] = useState({ x: 200, y: 200 });
+  const handleAddFromCatalog = useCallback(
+    (position?: { x: number; y: number }) => {
+      let pos = position;
+      if (!pos) {
+        try {
+          pos = screenToFlowPosition({
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2,
+          });
+        } catch {
+          pos = { x: 200, y: 200 };
+        }
+      }
+      setCatalogPickerPos(pos);
+      setCatalogPickerOpen(true);
+    },
+    [screenToFlowPosition]
+  );
+
   const handleAddCustomNode = useCallback(
     async (
       type:
@@ -1754,6 +1777,7 @@ function CanvasPageInner() {
                 onApplyLayout={events.handleApplyLayout}
                 currentLayoutDirection={state.currentLayoutDirection}
                 onAddCustomNode={handleAddCustomNode}
+                onAddFromCatalog={handleAddFromCatalog}
               />
             </Panel>
 
@@ -1900,6 +1924,14 @@ function CanvasPageInner() {
               isDevelopment={isDevelopment}
             />
           </ReactFlow>
+
+          {/* Add a catalogued Tracked Metric to this canvas */}
+          <CatalogMetricPicker
+            open={catalogPickerOpen}
+            onOpenChange={setCatalogPickerOpen}
+            canvasId={currentCanvasId || canvasId || ''}
+            position={catalogPickerPos}
+          />
         </PortalContainerProvider>
       </div>
 

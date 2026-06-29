@@ -45,6 +45,7 @@ interface TopCanvasToolbarProps {
       | 'operatorNode'
       | 'whiteboardNode'
   ) => void;
+  onAddFromCatalog?: (position?: { x: number; y: number }) => void;
 }
 
 export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
@@ -142,7 +143,10 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
         <div className="flex items-center gap-1">
           <WithTooltip label="Add Card" hotkey="A">
             <div>
-              <AddNodeButton onAddCustomNode={props.onAddCustomNode} />
+              <AddNodeButton
+                onAddCustomNode={props.onAddCustomNode}
+                onAddFromCatalog={props.onAddFromCatalog}
+              />
             </div>
           </WithTooltip>
           {/* Add Evidence Node */}
