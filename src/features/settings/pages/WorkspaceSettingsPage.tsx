@@ -6,15 +6,24 @@ import {
   listConnections,
   type SourceConnection,
 } from '@/shared/lib/supabase/services/sourceConnections';
+import {
+  createApiKey,
+  deleteApiKey,
+  listApiKeys,
+  type ApiKey,
+} from '@/shared/lib/supabase/services/apiKeys';
 import { cn } from '@/shared/utils';
 import {
   ArrowLeft,
   Bell,
+  Copy,
   Database,
+  KeyRound,
   Loader2,
   Monitor,
   Moon,
   Palette,
+  Plus,
   Sparkles,
   Sun,
   Trash2,
@@ -82,15 +91,47 @@ export default function WorkspaceSettingsPage() {
   const [connections, setConnections] = useState<SourceConnection[]>([]);
   const [busy, setBusy] = useState(false);
   const [prefs, setPrefs] = useState<Record<string, boolean>>(() => loadPrefs());
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [newKey, setNewKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!client) return;
     setBusy(true);
-    listConnections(client)
-      .then(setConnections)
-      .catch(() => setConnections([]))
+    Promise.all([listConnections(client), listApiKeys(client)])
+      .then(([conns, keys]) => {
+        setConnections(conns);
+        setApiKeys(keys);
+      })
+      .catch(() => {
+        setConnections([]);
+        setApiKeys([]);
+      })
       .finally(() => setBusy(false));
   }, [client]);
+
+  const generateKey = async () => {
+    if (!client) return;
+    const name = window.prompt('Name this API key (e.g. "CI pipeline")')?.trim();
+    if (!name) return;
+    try {
+      const { key, row } = await createApiKey(name, client);
+      setApiKeys((prev) => [row, ...prev]);
+      setNewKey(key);
+    } catch {
+      toast.error('Failed to create API key');
+    }
+  };
+
+  const revokeKey = async (id: string) => {
+    if (!client) return;
+    try {
+      await deleteApiKey(id, client);
+      setApiKeys((prev) => prev.filter((k) => k.id !== id));
+      toast.success('API key revoked');
+    } catch {
+      toast.error('Failed to revoke key');
+    }
+  };
 
   const removeConnection = async (id: string) => {
     if (!client) return;
@@ -189,6 +230,77 @@ export default function WorkspaceSettingsPage() {
                     size="sm"
                     onClick={() => removeConnection(c.id)}
                     title="Remove connection"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* API keys */}
+        <Section
+          icon={KeyRound}
+          title="API keys"
+          description="Push & pull metric values programmatically (POST/GET the metrics-api endpoint with an x-api-key header). Scoped to this workspace."
+        >
+          {newKey && (
+            <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-3">
+              <p className="mb-1 text-xs font-medium text-amber-800">
+                Copy your key now — it won’t be shown again.
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 truncate rounded bg-white px-2 py-1 font-mono text-xs">
+                  {newKey}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(newKey).then(
+                      () => toast.success('Key copied'),
+                      () => toast.error('Copy failed')
+                    );
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setNewKey(null)}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          )}
+          <div className="mb-3">
+            <Button variant="outline" size="sm" onClick={generateKey}>
+              <Plus className="mr-1 h-4 w-4" />
+              Generate API key
+            </Button>
+          </div>
+          {apiKeys.length === 0 ? (
+            <p className="text-sm text-muted-foreground/70">No API keys yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {apiKeys.map((k) => (
+                <div
+                  key={k.id}
+                  className="flex items-center justify-between rounded-md border border-border px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{k.name}</div>
+                    <div className="truncate font-mono text-xs text-muted-foreground">
+                      {k.key_prefix}…{' '}
+                      {k.last_used_at
+                        ? `· last used ${new Date(k.last_used_at).toLocaleDateString()}`
+                        : '· never used'}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => revokeKey(k.id)}
+                    title="Revoke key"
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
