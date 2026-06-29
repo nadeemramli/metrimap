@@ -5,6 +5,8 @@ import QuickSearchCommand, {
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import FeedbackButton from '@/shared/components/common/feedback/FeedbackButton';
 import { OrganizationSwitcher, useOrganization } from '@clerk/react-router';
+import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { useProjectsRealtime } from '../hooks/useProjectsRealtime';
 import { Database, Folder } from 'lucide-react';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { cn } from '@/shared/utils';
@@ -110,6 +112,14 @@ export default function HomePage() {
       initializeProjects(true);
     }
   }, [initializeProjects, user, activeOrgId]);
+
+  // Real-time: a teammate's create/rename/delete in this workspace refetches.
+  const realtimeClient = useClerkSupabase();
+  useProjectsRealtime({
+    client: realtimeClient,
+    activeOrgId,
+    onChange: () => initializeProjects(true),
+  });
 
   // Get all unique tags
   const allTags = useMemo(() => {
