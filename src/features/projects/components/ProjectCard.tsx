@@ -12,6 +12,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
@@ -36,6 +37,8 @@ interface ProjectCardProps {
   onProjectSettings: (projectId: string) => void;
   onArchive: (projectId: string) => void;
   onRestore: (projectId: string) => void;
+  spaces?: Array<{ id: string; name: string }>;
+  onMoveToSpace?: (projectId: string, spaceId: string | null) => void;
 }
 
 export function ProjectCard({
@@ -47,6 +50,8 @@ export function ProjectCard({
   onProjectSettings,
   onArchive,
   onRestore,
+  spaces = [],
+  onMoveToSpace,
 }: ProjectCardProps) {
   const isArchived = Boolean(project.archivedAt);
   return (
@@ -120,6 +125,34 @@ export function ProjectCard({
                 >
                   <span>Archive</span>
                 </DropdownMenuItem>
+              )}
+              {onMoveToSpace && (
+                <>
+                  <DropdownMenuSeparator className="my-1 bg-gray-200" />
+                  <DropdownMenuLabel className="px-3 text-xs text-muted-foreground">
+                    Move to Space
+                  </DropdownMenuLabel>
+                  {project.spaceId && (
+                    <DropdownMenuItem
+                      onClick={() => onMoveToSpace(project.id, null)}
+                      className="flex items-center px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer text-sm"
+                    >
+                      <span>Uncategorized</span>
+                    </DropdownMenuItem>
+                  )}
+                  {spaces
+                    .filter((s) => s.id !== project.spaceId)
+                    .map((s) => (
+                      <DropdownMenuItem
+                        key={s.id}
+                        onClick={() => onMoveToSpace(project.id, s.id)}
+                        className="flex items-center px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer text-sm"
+                      >
+                        <span>{s.name}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  <DropdownMenuSeparator className="my-1 bg-gray-200" />
+                </>
               )}
               <DropdownMenuItem
                 onClick={() => onDeleteProject(project.id)}

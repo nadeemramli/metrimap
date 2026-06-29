@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      spaces: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       metric_values: {
         Row: {
           change_percent: number | null
@@ -730,6 +760,7 @@ export type Database = {
           last_modified_by: string | null
           name: string
           settings: Json | null
+          space_id: string | null
           tags: string[] | null
           updated_at: string | null
         }
@@ -744,6 +775,7 @@ export type Database = {
           last_modified_by?: string | null
           name: string
           settings?: Json | null
+          space_id?: string | null
           tags?: string[] | null
           updated_at?: string | null
         }
@@ -758,6 +790,7 @@ export type Database = {
           last_modified_by?: string | null
           name?: string
           settings?: Json | null
+          space_id?: string | null
           tags?: string[] | null
           updated_at?: string | null
         }

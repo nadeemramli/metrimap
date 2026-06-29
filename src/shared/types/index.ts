@@ -242,6 +242,8 @@ export interface CanvasProject {
   // Real flags (replace the legacy 'starred' tag hack / enable soft-delete).
   isStarred?: boolean;
   archivedAt?: string | null;
+  // Hierarchy: the Space/Folder this canvas lives in (null = Uncategorized).
+  spaceId?: string | null;
 
   // Canvas content
   nodes: MetricCard[];

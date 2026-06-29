@@ -4,7 +4,7 @@ import QuickSearchCommand, {
 } from '@/features/canvas/components/search/QuickSearchCommand';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
 import FeedbackButton from '@/shared/components/common/feedback/FeedbackButton';
-import { Database } from 'lucide-react';
+import { Database, Folder } from 'lucide-react';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { cn } from '@/shared/utils';
 import {
@@ -32,7 +32,8 @@ type ViewMode = 'grid' | 'list';
 export default function HomePage() {
   const navigate = useNavigate();
   const isDevelopment = import.meta.env.DEV;
-  const { projects, initializeProjects } = useProjectsStore();
+  const { projects, initializeProjects, spaces, createSpace, moveProjectToSpace } =
+    useProjectsStore();
   const safeProjects = Array.isArray(projects) ? projects : [];
   const { user } = useAppStore();
 
@@ -42,7 +43,19 @@ export default function HomePage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
+  const [spaceFilter, setSpaceFilter] = useState<string>('all');
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+
+  const handleNewSpace = async () => {
+    const name = window.prompt('New Space name')?.trim();
+    if (name) {
+      try {
+        await createSpace(name);
+      } catch {
+        /* surfaced via store error */
+      }
+    }
+  };
 
   // Custom hooks
   const quickSearch = useQuickSearch();
@@ -65,6 +78,7 @@ export default function HomePage() {
     sortBy,
     sortOrder,
     viewFilter,
+    spaceFilter,
   });
 
   // Global keyboard shortcuts
@@ -136,6 +150,37 @@ export default function HomePage() {
         {/* Read-only examples showcase (can't be deleted from the UI) */}
         <ShowcaseSection onOpenCanvas={handleOpenCanvas} />
 
+        {/* Spaces / Folders — filter canvases by Space (null = Uncategorized) */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {(
+            [
+              { id: 'all', label: 'All Canvases' },
+              { id: 'uncategorized', label: 'Uncategorized' },
+              ...spaces.map((s) => ({ id: s.id, label: s.name })),
+            ] as { id: string; label: string }[]
+          ).map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSpaceFilter(s.id)}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-sm transition-colors',
+                spaceFilter === s.id
+                  ? 'bg-secondary text-secondary-foreground border-secondary'
+                  : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
+              )}
+            >
+              <Folder className="h-3.5 w-3.5" />
+              {s.label}
+            </button>
+          ))}
+          <button
+            onClick={handleNewSpace}
+            className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-3 py-1 text-sm text-muted-foreground hover:bg-muted transition-colors"
+          >
+            + New Space
+          </button>
+        </div>
+
         {/* View filter chips — Recent & Starred are filters over one list, not tabs */}
         <div className="flex items-center gap-2 mb-4">
           {(
@@ -201,6 +246,8 @@ export default function HomePage() {
                     onProjectSettings={handleProjectSettings}
                     onArchive={archiveProject}
                     onRestore={restoreProject}
+                    spaces={spaces}
+                    onMoveToSpace={moveProjectToSpace}
                   />
                 ))}
               </div>
@@ -214,6 +261,8 @@ export default function HomePage() {
                 onProjectSettings={handleProjectSettings}
                 onArchive={archiveProject}
                 onRestore={restoreProject}
+                spaces={spaces}
+                onMoveToSpace={moveProjectToSpace}
               />
             )
           ) : (

@@ -7,6 +7,14 @@ import {
   setProjectStarred as setProjectStarredInSupabase,
   updateProject as updateProjectInSupabase,
 } from '@/shared/lib/supabase/services/projects';
+import {
+  createSpace as createSpaceSvc,
+  deleteSpace as deleteSpaceSvc,
+  listSpaces,
+  renameSpace as renameSpaceSvc,
+  setProjectSpace,
+  type Space,
+} from '@/shared/lib/supabase/services/spaces';
 import { useAppStore } from '@/shared/stores/useAppStore';
 import type { CanvasProject } from '@/shared/types';
 import {
@@ -20,6 +28,7 @@ import { persist } from 'zustand/middleware';
 interface ProjectsStoreState {
   // State
   projects: CanvasProject[];
+  spaces: Space[];
   isLoading: boolean;
   error: string | undefined;
   isInitialized: boolean;
@@ -37,6 +46,13 @@ interface ProjectsStoreState {
   duplicateProject: (projectId: string) => Promise<string>;
   setStarred: (projectId: string, starred: boolean) => Promise<void>;
   setArchived: (projectId: string, archived: boolean) => Promise<void>;
+  createSpace: (name: string) => Promise<void>;
+  renameSpace: (spaceId: string, name: string) => Promise<void>;
+  deleteSpace: (spaceId: string) => Promise<void>;
+  moveProjectToSpace: (
+    projectId: string,
+    spaceId: string | null
+  ) => Promise<void>;
 
   // Local Read-Only Actions (No Auth Required)
   getProjectById: (id: string) => CanvasProject | undefined;
@@ -59,6 +75,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
     (set, get) => ({
       // Initial state (will load from Supabase)
       projects: [],
+      spaces: [],
       isLoading: false,
       error: undefined,
       isInitialized: false,
@@ -110,6 +127,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
                 collaborators,
                 isStarred: project.is_starred ?? false,
                 archivedAt: project.archived_at ?? null,
+                spaceId: project.space_id ?? null,
                 // Lightweight nodes/edges JUST for the homepage CanvasPreview
                 // (id/title/category + edge endpoints). Full canvas data is still
                 // lazy-loaded on open. Capped so a huge canvas can't bloat the list.
@@ -141,8 +159,17 @@ export const useProjectsStore = create<ProjectsStoreState>()(
             `📋 Loaded ${canvasProjects.length} projects (counts via aggregate query)`
           );
 
+          // Load the user's Spaces (best-effort — don't fail the whole list).
+          let spaces: Space[] = [];
+          try {
+            spaces = await listSpaces(client);
+          } catch (e) {
+            console.error('Failed to load spaces:', e);
+          }
+
           set({
             projects: canvasProjects,
+            spaces,
             isLoading: false,
             isInitialized: true,
           });
@@ -380,6 +407,60 @@ export const useProjectsStore = create<ProjectsStoreState>()(
         } catch (error) {
           console.error('Failed to set archived:', error);
           set({ projects: prev }); // rollback
+          throw error;
+        }
+      },
+
+      createSpace: async (name) => {
+        const client = getClientForEnvironment();
+        const space = await createSpaceSvc(name, null, client);
+        set((state) => ({ spaces: [...state.spaces, space] }));
+      },
+
+      renameSpace: async (spaceId, name) => {
+        const prev = get().spaces;
+        set((state) => ({
+          spaces: state.spaces.map((s) =>
+            s.id === spaceId ? { ...s, name } : s
+          ),
+        }));
+        try {
+          await renameSpaceSvc(spaceId, name, getClientForEnvironment());
+        } catch (error) {
+          set({ spaces: prev });
+          throw error;
+        }
+      },
+
+      deleteSpace: async (spaceId) => {
+        const prevSpaces = get().spaces;
+        const prevProjects = get().projects;
+        // Optimistic: drop the space + unlink its canvases to Uncategorized.
+        set((state) => ({
+          spaces: state.spaces.filter((s) => s.id !== spaceId),
+          projects: state.projects.map((p) =>
+            p.spaceId === spaceId ? { ...p, spaceId: null } : p
+          ),
+        }));
+        try {
+          await deleteSpaceSvc(spaceId, getClientForEnvironment());
+        } catch (error) {
+          set({ spaces: prevSpaces, projects: prevProjects });
+          throw error;
+        }
+      },
+
+      moveProjectToSpace: async (projectId, spaceId) => {
+        const prev = get().projects;
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId ? { ...p, spaceId } : p
+          ),
+        }));
+        try {
+          await setProjectSpace(projectId, spaceId, getClientForEnvironment());
+        } catch (error) {
+          set({ projects: prev });
           throw error;
         }
       },

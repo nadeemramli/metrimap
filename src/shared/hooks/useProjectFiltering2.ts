@@ -9,6 +9,8 @@ interface UseProjectFilteringArgs {
   sortBy: string;
   sortOrder: 'asc' | 'desc';
   viewFilter: ViewFilter;
+  // 'all' | 'uncategorized' | <spaceId>
+  spaceFilter?: string;
 }
 
 // is_starred is the source of truth (the legacy 'starred' tag was backfilled
@@ -62,10 +64,16 @@ export function useProjectFiltering({
   sortBy,
   sortOrder,
   viewFilter,
+  spaceFilter = 'all',
 }: UseProjectFilteringArgs) {
-  // Search + tags applied to ALL projects, then split into active / archived.
+  // Space + search + tags applied to ALL projects, then split active / archived.
   const searched = useMemo(() => {
     let filtered = Array.isArray(projects) ? [...projects] : [];
+    if (spaceFilter === 'uncategorized') {
+      filtered = filtered.filter((p) => !p.spaceId);
+    } else if (spaceFilter && spaceFilter !== 'all') {
+      filtered = filtered.filter((p) => p.spaceId === spaceFilter);
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -83,7 +91,7 @@ export function useProjectFiltering({
       );
     }
     return filtered;
-  }, [projects, searchQuery, selectedTags]);
+  }, [projects, searchQuery, selectedTags, spaceFilter]);
 
   const active = useMemo(
     () => searched.filter((p) => !isArchived(p)),
