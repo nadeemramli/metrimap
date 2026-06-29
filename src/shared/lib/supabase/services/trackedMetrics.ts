@@ -248,6 +248,33 @@ export async function updateTrackedMetric(
   if (error) throw new Error(error.message);
 }
 
+export interface MetricUsage {
+  projectId: string;
+  projectName: string;
+  cardId: string;
+  cardTitle: string;
+}
+
+/** Lineage: every card (across the workspace, RLS-scoped) that references this
+ *  Tracked Metric — i.e. where the metric is used. */
+export async function getMetricUsage(
+  trackedMetricId: string,
+  client?: Client
+): Promise<MetricUsage[]> {
+  const c = client || supabase();
+  const { data, error } = await c
+    .from('metric_cards')
+    .select('id, title, project_id, projects(name)')
+    .eq('tracked_metric_id', trackedMetricId);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r: any) => ({
+    projectId: r.project_id,
+    projectName: r.projects?.name ?? 'Untitled',
+    cardId: r.id,
+    cardTitle: r.title,
+  }));
+}
+
 /** Delete a catalog metric (cards referencing it unlink via FK ON DELETE SET NULL). */
 export async function deleteTrackedMetric(
   id: string,

@@ -16,18 +16,24 @@ import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { Input } from '@/shared/components/ui/input';
 import {
   deleteTrackedMetric,
+  getMetricUsage,
   listCandidateCards,
   listTrackedMetrics,
   promoteCardToTrackedMetric,
   updateTrackedMetric,
   type CandidateCard,
+  type MetricUsage,
   type TrackedMetric,
 } from '@/shared/lib/supabase/services/trackedMetrics';
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  ChevronRight,
   Database,
+  ExternalLink,
   Loader2,
+  Network,
   Pencil,
   Search,
   Sparkles,
@@ -50,6 +56,8 @@ export default function CatalogPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [usage, setUsage] = useState<Record<string, MetricUsage[]>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState({
     name: '',
@@ -151,6 +159,22 @@ export default function CatalogPage() {
       setEditingId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save metric.');
+    }
+  };
+
+  const toggleUsage = async (id: string) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    if (!usage[id] && client) {
+      try {
+        const u = await getMetricUsage(id, client);
+        setUsage((prev) => ({ ...prev, [id]: u }));
+      } catch {
+        setUsage((prev) => ({ ...prev, [id]: [] }));
+      }
     }
   };
 
@@ -333,6 +357,50 @@ export default function CatalogPage() {
                           <span className="font-mono truncate max-w-[280px]">
                             {m.formula}
                           </span>
+                        )}
+                      </CardContent>
+                      <CardContent className="py-0 pb-3">
+                        <button
+                          onClick={() => toggleUsage(m.id)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {expandedId === m.id ? (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          )}
+                          <Network className="h-3.5 w-3.5" />
+                          {usage[m.id]
+                            ? `Used in ${usage[m.id].length} ${usage[m.id].length === 1 ? 'place' : 'places'}`
+                            : 'Where is this used?'}
+                        </button>
+                        {expandedId === m.id && (
+                          <div className="mt-2 space-y-1 pl-5">
+                            {!usage[m.id] ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                            ) : usage[m.id].length === 0 ? (
+                              <p className="text-xs text-muted-foreground/70">
+                                Not placed on any canvas yet.
+                              </p>
+                            ) : (
+                              usage[m.id].map((u) => (
+                                <button
+                                  key={u.cardId}
+                                  onClick={() => navigate(`/canvas/${u.projectId}`)}
+                                  className="flex w-full items-center gap-1.5 text-left text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                  <ExternalLink className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">
+                                    {u.cardTitle}
+                                    <span className="text-muted-foreground/60">
+                                      {' '}
+                                      · {u.projectName}
+                                    </span>
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
                         )}
                       </CardContent>
                     </>
