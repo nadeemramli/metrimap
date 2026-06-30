@@ -108,6 +108,8 @@ import { getViewportCenterPosition } from '@/features/canvas/utils/viewportCente
 // Auto-save and realtime hooks
 import { useAutoSave } from '@/shared/hooks/useAutoSave';
 import { useCanvasRealtime } from '@/shared/hooks/useCanvasRealtime';
+import { CanvasCursorsLayer } from '@/features/canvas/realtime/CanvasCursorsLayer';
+import { useUser } from '@clerk/react-router';
 import { createLogger } from '@/shared/utils/logger';
 
 const log = createLogger('canvas');
@@ -250,7 +252,23 @@ function CanvasPageInner() {
   // Initialize auto-save and realtime
   const currentCanvasId = useCanvasStore((s) => s.canvas?.id);
   useAutoSave({ enabled: Boolean(currentCanvasId) });
-  useCanvasRealtime({ canvasId: currentCanvasId || '', supabaseClient });
+  const { user: clerkUser } = useUser();
+  const me = useMemo(
+    () =>
+      clerkUser
+        ? {
+            userId: clerkUser.id,
+            name: clerkUser.fullName || clerkUser.firstName || 'Someone',
+            avatar: clerkUser.imageUrl,
+          }
+        : null,
+    [clerkUser]
+  );
+  const { cursors, sendCursor } = useCanvasRealtime({
+    canvasId: currentCanvasId || '',
+    supabaseClient,
+    me,
+  });
 
   // Load canvas data from database when component mounts
   useEffect(() => {
@@ -1891,6 +1909,7 @@ function CanvasPageInner() {
           >
             <Background />
             <Controls />
+            <CanvasCursorsLayer cursors={cursors} sendCursor={sendCursor} />
 
             {/* Top toolbar */}
             <Panel

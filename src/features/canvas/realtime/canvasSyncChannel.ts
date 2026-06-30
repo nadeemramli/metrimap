@@ -76,7 +76,11 @@ export function getExtraEdgesApply() {
  * sender never receives its own message — no echo guard needed.
  */
 export function broadcastCanvasChange(change: CanvasChange) {
-  if (!activeChannel) return;
+  if (!activeChannel) {
+    console.warn('📡 canvas change NOT sent (no active channel):', change.t);
+    return;
+  }
+  console.log('📡 canvas send:', change.t);
   void activeChannel.send({
     type: 'broadcast',
     event: CANVAS_BROADCAST_EVENT,
