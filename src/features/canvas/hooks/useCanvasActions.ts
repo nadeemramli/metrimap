@@ -13,6 +13,8 @@ import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStor
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasHistoryStore } from '@/features/canvas/stores/useCanvasHistoryStore';
 import { generateUUID } from '@/shared/utils/validation';
+import { linkCardToMetric } from '@/shared/lib/supabase/services/trackedMetrics';
+import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
 
 type Family = 'card' | 'canvasNode' | 'evidence';
 type ClipItem =
@@ -71,6 +73,22 @@ export function useCanvasActions(
         const created = (useCanvasStore.getState().canvas?.nodes || []).find(
           (n) => !before.has(n.id)
         );
+        // Paste-as-reference: a copy of a catalogued card stays linked to the
+        // SAME tracked metric (single source of truth) instead of forking a
+        // drifting copy. createNode (zod) drops tracked_metric_id, so link after.
+        const trackedMetricId = (item.node as MetricCard).trackedMetricId;
+        if (created && trackedMetricId) {
+          try {
+            await linkCardToMetric(
+              created.id,
+              trackedMetricId,
+              getClientForEnvironment()
+            );
+            useCanvasStore.getState().updateNode(created.id, { trackedMetricId });
+          } catch (e) {
+            console.error('Failed to preserve catalog link on copy:', e);
+          }
+        }
         return created ? { family: 'card', id: created.id } : null;
       }
       if (item.family === 'evidence') {

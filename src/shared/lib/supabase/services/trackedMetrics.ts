@@ -139,6 +139,29 @@ export async function listTrackedMetrics(
 }
 
 /**
+ * Batch-read tracked-metric DEFINITIONS by id, keyed by id. Used to hydrate
+ * referenced cards' name/formula from the catalog (single source of truth for
+ * the definition, not just the values).
+ */
+export async function getTrackedMetricsByIds(
+  ids: string[],
+  client?: Client
+): Promise<Record<string, TrackedMetric>> {
+  if (!ids.length) return {};
+  const c = client || supabase();
+  const { data, error } = await c
+    .from('tracked_metrics')
+    .select(
+      'id, name, unit, formula, owner_label, state, origin_card_id, origin_project_id, source_kind, created_at'
+    )
+    .in('id', ids);
+  if (error) throw new Error(error.message);
+  const map: Record<string, TrackedMetric> = {};
+  for (const row of (data ?? []) as TrackedMetric[]) map[row.id] = row;
+  return map;
+}
+
+/**
  * Candidate cards: operationalized (have a real MetricValue[] series) but not yet
  * catalogued (tracked_metric_id is null). The data-length check is client-side
  * because there's no cheap jsonb-array-length filter via PostgREST.

@@ -33,7 +33,11 @@ import {
   getProjectById,
   mergeProjectSettings,
 } from '@/shared/lib/supabase/services/projects';
-import { getMetricValuesByMetricIds } from '@/shared/lib/supabase/services/trackedMetrics';
+import {
+  getMetricValuesByMetricIds,
+  getTrackedMetricsByIds,
+} from '@/shared/lib/supabase/services/trackedMetrics';
+import type { MetricCard } from '@/shared/types';
 import { listConnections } from '@/shared/lib/supabase/services/sourceConnections';
 import { findOrphanedSourceBindings } from '@/features/canvas/utils/sourceResolver';
 import {
@@ -347,9 +351,11 @@ function CanvasPageInner() {
           });
           evidenceHydratedFor.current = canvasId;
 
-          // B.2 read-share: cards that reference a catalogued Tracked Metric read
-          // their series from the shared value store, so the same metric shows the
-          // same numbers on every canvas. Overrides the card's inline data cache.
+          // Read-share: cards that reference a catalogued Tracked Metric read
+          // BOTH their series (from metric_values) AND their definition
+          // (name/formula from tracked_metrics) from the shared catalog, so the
+          // same metric shows the same numbers and definition on every canvas.
+          // The catalog is the single source of truth for referenced cards.
           try {
             const trackedCards = (projectData.nodes || []).filter(
               (n: any) => n.trackedMetricId
@@ -360,16 +366,29 @@ function CanvasPageInner() {
                   trackedCards.map((c: any) => c.trackedMetricId as string)
                 ),
               ];
-              const byMetric = await getMetricValuesByMetricIds(ids, client);
+              const [byMetric, defs] = await Promise.all([
+                getMetricValuesByMetricIds(ids, client),
+                getTrackedMetricsByIds(ids, client),
+              ]);
               for (const card of trackedCards) {
-                const series = byMetric[(card as any).trackedMetricId];
-                if (series && series.length) {
-                  useCanvasStore.getState().updateNode(card.id, { data: series });
+                const metricId = (card as any).trackedMetricId as string;
+                const series = byMetric[metricId];
+                const def = defs[metricId];
+                const updates: Partial<MetricCard> = {};
+                if (series && series.length) updates.data = series;
+                if (def) {
+                  if (def.name && def.name !== card.title)
+                    updates.title = def.name;
+                  if ((def.formula ?? undefined) !== card.formula)
+                    updates.formula = def.formula ?? undefined;
+                }
+                if (Object.keys(updates).length) {
+                  useCanvasStore.getState().updateNode(card.id, updates);
                 }
               }
             }
           } catch (err) {
-            console.error('❌ Failed to hydrate tracked-metric values:', err);
+            console.error('❌ Failed to hydrate tracked-metric cards:', err);
           }
 
           // Load canvas nodes for this project
