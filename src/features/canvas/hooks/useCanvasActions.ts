@@ -30,8 +30,9 @@ export function useCanvasActions(
   const clipboard = useRef<ClipItem[]>([]);
   const pasteGen = useRef(0);
 
-  const getSelection = useCallback((): ClipItem[] => {
-    const ids = new Set(useCanvasStore.getState().selectedNodeIds || []);
+  // Resolve a set of node ids to full ClipItems across the three node families.
+  const itemsFromIds = useCallback((idList: string[]): ClipItem[] => {
+    const ids = new Set(idList);
     if (ids.size === 0) return [];
     const cards = useCanvasStore.getState().canvas?.nodes || [];
     const cnodes = useCanvasNodesStore.getState().canvasNodes || [];
@@ -45,6 +46,12 @@ export function useCanvasActions(
         items.push({ family: 'evidence', node: e });
     return items;
   }, []);
+
+  const getSelection = useCallback(
+    (): ClipItem[] =>
+      itemsFromIds(useCanvasStore.getState().selectedNodeIds || []),
+    [itemsFromIds]
+  );
 
   // Create one copy at a position offset; returns the new node ref (or null).
   const createCopy = useCallback(
@@ -147,32 +154,50 @@ export function useCanvasActions(
     void pasteItems(items, 1);
   }, [getSelection, pasteItems]);
 
-  const deleteSelection = useCallback(async () => {
-    const items = getSelection();
-    if (!items.length) return;
-    for (const item of items) await deleteOne(item.family, item.node.id);
-    let current: Ref[] = []; // alive copies (none after delete)
-    const recreate = async (): Promise<Ref[]> => {
-      const made: Ref[] = [];
-      for (const item of items) {
-        const c = await createCopy(item, 0);
-        if (c) made.push(c);
-      }
-      return made;
-    };
-    useCanvasHistoryStore.getState().push({
-      label: `Delete ${items.length}`,
-      undo: async () => {
-        current = await recreate();
-      },
-      redo: async () => {
-        for (const r of current) await deleteOne(r.family, r.id);
-        current = [];
-      },
-    });
-    useCanvasStore.setState({ selectedNodeIds: [] });
-    toast.success(`Deleted ${items.length} item${items.length === 1 ? '' : 's'}`);
-  }, [getSelection, deleteOne, createCopy]);
+  // Delete a specific set of items, with undo (recreate) / redo.
+  const deleteItems = useCallback(
+    async (items: ClipItem[]) => {
+      if (!items.length) return;
+      for (const item of items) await deleteOne(item.family, item.node.id);
+      let current: Ref[] = []; // alive copies (none after delete)
+      const recreate = async (): Promise<Ref[]> => {
+        const made: Ref[] = [];
+        for (const item of items) {
+          const c = await createCopy(item, 0);
+          if (c) made.push(c);
+        }
+        return made;
+      };
+      useCanvasHistoryStore.getState().push({
+        label: `Delete ${items.length}`,
+        undo: async () => {
+          current = await recreate();
+        },
+        redo: async () => {
+          for (const r of current) await deleteOne(r.family, r.id);
+          current = [];
+        },
+      });
+      useCanvasStore.setState({ selectedNodeIds: [] });
+      toast.success(
+        `Deleted ${items.length} item${items.length === 1 ? '' : 's'}`
+      );
+    },
+    [deleteOne, createCopy]
+  );
+
+  const deleteSelection = useCallback(
+    () => deleteItems(getSelection()),
+    [deleteItems, getSelection]
+  );
+
+  // Delete exactly the nodes React Flow reports (e.g. the Delete key), robust
+  // even when the store's selectedNodeIds hasn't kept up with RF's selection —
+  // which left nodes "undeletable" and snapping back in controlled mode.
+  const deleteByIds = useCallback(
+    (ids: string[]) => deleteItems(itemsFromIds(ids)),
+    [deleteItems, itemsFromIds]
+  );
 
   const undo = useCallback(() => {
     void useCanvasHistoryStore.getState().undo();
@@ -187,9 +212,18 @@ export function useCanvasActions(
       paste,
       duplicateSelection,
       deleteSelection,
+      deleteByIds,
       undo,
       redo,
     }),
-    [copySelection, paste, duplicateSelection, deleteSelection, undo, redo]
+    [
+      copySelection,
+      paste,
+      duplicateSelection,
+      deleteSelection,
+      deleteByIds,
+      undo,
+      redo,
+    ]
   );
 }

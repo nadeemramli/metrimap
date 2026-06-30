@@ -1,10 +1,9 @@
 import { useReactFlow, useViewport } from '@xyflow/react';
 import { MousePointer2 } from 'lucide-react';
 import { useEffect } from 'react';
-import type { RemoteCursor } from '@/shared/hooks/useCanvasRealtime';
+import { useCursorStore } from '@/features/canvas/realtime/useCursorStore';
 
 interface Props {
-  cursors: RemoteCursor[];
   sendCursor: (x: number, y: number) => void;
 }
 
@@ -15,9 +14,11 @@ interface Props {
  * flow space but drawn at constant screen size (we apply the viewport transform
  * manually rather than using ViewportPortal, which would scale them with zoom).
  */
-export function CanvasCursorsLayer({ cursors, sendCursor }: Props) {
+export function CanvasCursorsLayer({ sendCursor }: Props) {
   const { x: vx, y: vy, zoom } = useViewport();
   const { screenToFlowPosition } = useReactFlow();
+  const cursorMap = useCursorStore((s) => s.cursors);
+  const cursors = Object.values(cursorMap);
 
   useEffect(() => {
     const handler = (e: PointerEvent) => {

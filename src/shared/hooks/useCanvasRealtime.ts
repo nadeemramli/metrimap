@@ -6,20 +6,15 @@ import {
   type CanvasChange,
 } from '@/features/canvas/realtime/canvasSyncChannel';
 import { applyRemoteCanvasChange } from '@/features/canvas/realtime/applyRemoteChange';
+import {
+  useCursorStore,
+  type RemoteCursor,
+} from '@/features/canvas/realtime/useCursorStore';
 
 export interface RealtimeUser {
   userId: string;
   name: string;
   avatar?: string;
-}
-
-export interface RemoteCursor {
-  userId: string;
-  name: string;
-  color: string;
-  x: number; // flow coordinates
-  y: number;
-  at: number; // last update (ms epoch)
 }
 
 const CURSOR_EVENT = 'canvas:cursor';
@@ -58,7 +53,6 @@ export function useCanvasRealtime({
   me,
 }: UseCanvasRealtimeOptions) {
   const [isConnected, setIsConnected] = useState(false);
-  const [cursors, setCursors] = useState<Record<string, RemoteCursor>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
   const meRef = useRef(me);
   meRef.current = me;
@@ -87,7 +81,9 @@ export function useCanvasRealtime({
       .on('broadcast', { event: CURSOR_EVENT }, ({ payload }) => {
         const c = payload as RemoteCursor;
         if (!c?.userId || c.userId === meRef.current?.userId) return;
-        setCursors((prev) => ({ ...prev, [c.userId]: { ...c, at: Date.now() } }));
+        // Into a dedicated store, NOT React state here — otherwise every cursor
+        // tick would re-render CanvasPage and flicker the whole canvas.
+        useCursorStore.getState().setCursor({ ...c, at: Date.now() });
       })
       .subscribe((status) => {
         // Ignore a superseded channel's late callback (StrictMode double-mount /
@@ -110,24 +106,17 @@ export function useCanvasRealtime({
       setCanvasSyncChannel(null);
       channelRef.current = null;
       setIsConnected(false);
+      useCursorStore.getState().clear();
       void supabaseClient.removeChannel(channel);
     };
   }, [canvasId, supabaseClient]);
 
   // Prune cursors that have gone quiet (left / closed tab).
   useEffect(() => {
-    const id = setInterval(() => {
-      setCursors((prev) => {
-        const now = Date.now();
-        let changed = false;
-        const next: Record<string, RemoteCursor> = {};
-        for (const [k, c] of Object.entries(prev)) {
-          if (now - c.at < CURSOR_TTL_MS) next[k] = c;
-          else changed = true;
-        }
-        return changed ? next : prev;
-      });
-    }, 2000);
+    const id = setInterval(
+      () => useCursorStore.getState().pruneStale(CURSOR_TTL_MS),
+      2000
+    );
     return () => clearInterval(id);
   }, []);
 
@@ -145,5 +134,5 @@ export function useCanvasRealtime({
     });
   }, []);
 
-  return { isConnected, cursors: Object.values(cursors), sendCursor };
+  return { isConnected, sendCursor };
 }

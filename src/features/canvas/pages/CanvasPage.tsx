@@ -264,7 +264,7 @@ function CanvasPageInner() {
         : null,
     [clerkUser]
   );
-  const { cursors, sendCursor } = useCanvasRealtime({
+  const { sendCursor } = useCanvasRealtime({
     canvasId: currentCanvasId || '',
     supabaseClient,
     me,
@@ -1847,7 +1847,9 @@ function CanvasPageInner() {
             }}
             onConnect={handleConnect}
             isValidConnection={isValidConnection}
-            onNodesDelete={() => void canvasActions.deleteSelection()}
+            onNodesDelete={(deleted) =>
+              void canvasActions.deleteByIds(deleted.map((n) => n.id))
+            }
             onEdgesDelete={handleEdgesDelete}
             // Navigation: in edit mode, left-drag is a SELECTION box (marquee)
             // and pan is on middle/right mouse or by holding Space — unless the
@@ -1909,7 +1911,7 @@ function CanvasPageInner() {
           >
             <Background />
             <Controls />
-            <CanvasCursorsLayer cursors={cursors} sendCursor={sendCursor} />
+            <CanvasCursorsLayer sendCursor={sendCursor} />
 
             {/* Top toolbar */}
             <Panel
