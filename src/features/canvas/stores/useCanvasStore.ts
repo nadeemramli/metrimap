@@ -251,6 +251,13 @@ export const useCanvasStore = create<CanvasStoreState>()(
             isLoading: false,
           }));
 
+          broadcastCanvasChange({
+            t: 'node:update',
+            family: 'card',
+            id: nodeId,
+            updates,
+          });
+
           // B.2 write-through: if this card is catalogued and its series changed,
           // sync it into the shared value store so the metric reads the same
           // everywhere. No-op for uncatalogued cards. (One hook covers manual /

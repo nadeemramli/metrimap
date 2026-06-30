@@ -22,6 +22,14 @@ export type CanvasChange =
       position: { x: number; y: number };
     }
   | { t: 'node:delete'; family: NodeFamily; id: string }
+  | {
+      t: 'node:update';
+      family: NodeFamily;
+      id: string;
+      // A partial of the family's node (MetricCard or CanvasNode); applied
+      // verbatim by applyRemoteCanvasChange, which casts to the right type.
+      updates: Record<string, unknown>;
+    }
   | { t: 'edge:create'; edge: Relationship }
   | { t: 'edge:delete'; id: string };
 

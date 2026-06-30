@@ -109,7 +109,13 @@ export const useCanvasNodesStore = create<CanvasNodesState>()(
               node.id === nodeId ? updatedNode : node
             )
           }));
-          
+
+          broadcastCanvasChange({
+            t: 'node:update',
+            family: 'canvasNode',
+            id: nodeId,
+            updates,
+          });
           console.log(`✅ Updated canvas node: ${nodeId}`);
         } catch (error) {
           console.error('❌ Error updating canvas node:', error);

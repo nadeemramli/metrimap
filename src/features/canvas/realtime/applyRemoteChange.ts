@@ -25,6 +25,16 @@ export function applyRemoteCanvasChange(change: CanvasChange) {
       else canvasNodes.updateNodeLocal(change.id, { position: change.position });
       break;
 
+    case 'node:update':
+      if (change.family === 'card')
+        cards.updateNode(change.id, change.updates as Partial<MetricCard>);
+      else
+        canvasNodes.updateNodeLocal(
+          change.id,
+          change.updates as Partial<CanvasNode>
+        );
+      break;
+
     case 'node:delete':
       if (change.family === 'card') cards.deleteNode(change.id);
       else canvasNodes.removeNodeLocal(change.id);

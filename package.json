@@ -22,7 +22,6 @@
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
-    "@automerge/automerge": "^2.0.0",
     "@calumk/editorjs-nested-checklist": "^1.1.0",
     "@clerk/clerk-react": "^5.38.1",
     "@clerk/react-router": "^1.8.9",

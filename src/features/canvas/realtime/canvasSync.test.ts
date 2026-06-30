@@ -47,6 +47,23 @@ describe('canvas realtime sync', () => {
     expect(store().getNodeById('n1')).toBeUndefined();
   });
 
+  it('applies a remote canvasNode data/title update locally', () => {
+    applyRemoteCanvasChange({
+      t: 'node:create',
+      family: 'canvasNode',
+      node: canvasNode('n2'),
+    });
+    applyRemoteCanvasChange({
+      t: 'node:update',
+      family: 'canvasNode',
+      id: 'n2',
+      updates: { title: 'Renamed', data: { k: 1 } } as any,
+    });
+    const n = useCanvasNodesStore.getState().getNodeById('n2');
+    expect(n?.title).toBe('Renamed');
+    expect((n?.data as any)?.k).toBe(1);
+  });
+
   it('ignores card-family changes when no canvas is loaded (no throw)', () => {
     expect(() =>
       applyRemoteCanvasChange({
