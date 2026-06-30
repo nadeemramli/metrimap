@@ -31,6 +31,7 @@ export type CanvasChange =
       updates: Record<string, unknown>;
     }
   | { t: 'edge:create'; edge: Relationship }
+  | { t: 'edge:update'; id: string; updates: Record<string, unknown> }
   | { t: 'edge:delete'; id: string }
   // Data-flow / reference (operator-pipeline) edges. These live in CanvasPage
   // React state, not a store, so applying them goes through a registered setter.

@@ -44,6 +44,10 @@ export function applyRemoteCanvasChange(change: CanvasChange) {
       cards.addEdge(change.edge);
       break;
 
+    case 'edge:update':
+      cards.updateEdge(change.id, change.updates as Record<string, never>);
+      break;
+
     case 'edge:delete':
       cards.deleteEdge(change.id);
       break;

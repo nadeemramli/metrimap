@@ -36,76 +36,68 @@ export function FreehandDrawComponent({
 }: FreehandDrawProps) {
   const { screenToFlowPosition } = useReactFlow();
   const isDrawing = useRef(false);
-  // State (not a ref) so the live preview actually re-renders while drawing.
+  // Points are kept in CLIENT (page) coordinates so the preview maps 1:1 to a
+  // fixed full-viewport overlay and screenToFlowPosition (which expects client
+  // coords) converts correctly. State (not a ref) so the preview re-renders.
   const [points, setPoints] = useState<InputPoint[]>([]);
 
   if (!isActive) return null;
 
-  // Pointer position relative to the React Flow container (screen space).
-  function toLocal(e: PointerEvent): InputPoint | null {
-    const container = document.querySelector('.react-flow');
-    if (!container) return null;
-    const rect = container.getBoundingClientRect();
-    return [e.clientX - rect.left, e.clientY - rect.top];
-  }
-
   function handlePointerDown(e: PointerEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const p = toLocal(e);
-    if (!p) return;
     isDrawing.current = true;
-    setPoints([p]);
+    setPoints([[e.clientX, e.clientY]]);
   }
 
   function handlePointerMove(e: PointerEvent) {
     if (!isDrawing.current) return;
-    const p = toLocal(e);
-    if (!p) return;
-    setPoints((prev) => [...prev, p]);
+    setPoints((prev) => [...prev, [e.clientX, e.clientY]]);
   }
 
   function handlePointerUp() {
-    if (!isDrawing.current) {
-      return;
-    }
+    if (!isDrawing.current) return;
     isDrawing.current = false;
 
     const captured = points;
     setPoints([]);
     if (captured.length < 2) return;
 
-    // Outline in screen space; its bounds include the stroke's variable width.
+    // Outline (incl. variable width) in client coords; its bounds frame the node.
     const outline = getStrokeOutline(captured, brushSize);
     if (outline.length < 2) return;
-    const bounds = boundsOf(outline);
+    const b = boundsOf(outline);
 
-    // Normalize the outline into a 0..100 viewBox so it renders crisply at any
-    // node size (whiteboard-node draws freehand in a 100x100 viewBox, stretched
-    // back to the node's width/height — so proportions are preserved).
-    const normalized = outline.map(([x, y]) => [
-      ((x - bounds.minX) / bounds.width) * 100,
-      ((y - bounds.minY) / bounds.height) * 100,
-    ]);
-    const path = outlineToPath(normalized);
+    // Convert both corners to flow space so position AND size are in flow units
+    // (correct at any zoom — the old code sized the node in raw screen pixels).
+    const topLeft = screenToFlowPosition({ x: b.minX, y: b.minY });
+    const bottomRight = screenToFlowPosition({
+      x: b.minX + b.width,
+      y: b.minY + b.height,
+    });
+    const width = Math.max(bottomRight.x - topLeft.x, 1);
+    const height = Math.max(bottomRight.y - topLeft.y, 1);
 
-    const position = screenToFlowPosition({ x: bounds.minX, y: bounds.minY });
+    // Normalize the outline into a 0..100 viewBox (whiteboard-node renders
+    // freehand in a 100x100 viewBox stretched to width/height — proportions
+    // are preserved because the node's aspect equals the client bounds' aspect).
+    const path = outlineToPath(
+      outline.map(([x, y]) => [
+        ((x - b.minX) / b.width) * 100,
+        ((y - b.minY) / b.height) * 100,
+      ])
+    );
 
     onCommit?.({
-      position,
-      width: bounds.width,
-      height: bounds.height,
-      data: {
-        shape: 'freehand',
-        path,
-        stroke: brushColor,
-        width: bounds.width,
-        height: bounds.height,
-      },
+      position: topLeft,
+      width,
+      height,
+      data: { shape: 'freehand', path, stroke: brushColor, width, height },
     });
   }
 
-  const previewPath = points.length > 1 ? outlineToPath(getStrokeOutline(points, brushSize)) : '';
+  const previewPath =
+    points.length > 1 ? outlineToPath(getStrokeOutline(points, brushSize)) : '';
 
   return (
     <div
@@ -129,11 +121,10 @@ export function FreehandDrawComponent({
       {previewPath && (
         <svg
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
+            position: 'fixed',
+            inset: 0,
+            width: '100vw',
+            height: '100vh',
             pointerEvents: 'none',
           }}
         >

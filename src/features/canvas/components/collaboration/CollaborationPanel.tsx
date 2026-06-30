@@ -234,10 +234,19 @@ function PeopleTab({
 
   const handleCopyLink = async () => {
     if (!projectId) return;
-    const url = `${window.location.origin}/canvas/${projectId}`;
+    // The /canvas route is gated by ProtectedRoute (login required), so a
+    // shareable "public" link must point at the no-auth read-only embed view.
+    // When the canvas is private, the canvas link is the right one (for members).
+    const url = isPublic
+      ? `${window.location.origin}/embed/${projectId}`
+      : `${window.location.origin}/canvas/${projectId}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success('Link copied to clipboard');
+      toast.success(
+        isPublic
+          ? 'Public link copied (read-only view)'
+          : 'Link copied — recipients must sign in (make the canvas public to share read-only)'
+      );
     } catch {
       toast.error('Could not copy link');
     }

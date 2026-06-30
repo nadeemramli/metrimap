@@ -441,6 +441,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
               : undefined,
             isLoading: false,
           }));
+          broadcastCanvasChange({ t: 'edge:update', id: edgeId, updates });
         } catch (error) {
           console.error('Error updating edge:', error);
           set({ error: 'Failed to update relationship', isLoading: false });
