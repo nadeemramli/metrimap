@@ -9,6 +9,7 @@ import {
   updateCanvasNodePosition 
 } from '@/shared/lib/supabase/services/canvasNodes';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import { broadcastCanvasChange } from '@/features/canvas/realtime/canvasSyncChannel';
 
 interface CanvasNodesState {
   // State
@@ -79,6 +80,11 @@ export const useCanvasNodesStore = create<CanvasNodesState>()(
             isLoading: false
           }));
           
+          broadcastCanvasChange({
+            t: 'node:create',
+            family: 'canvasNode',
+            node: newNode,
+          });
           console.log(`✅ Created canvas node: ${newNode.id} (${newNode.nodeType})`);
           return newNode;
         } catch (error) {
@@ -151,7 +157,12 @@ export const useCanvasNodesStore = create<CanvasNodesState>()(
           set(state => ({
             canvasNodes: state.canvasNodes.filter(node => node.id !== nodeId)
           }));
-          
+
+          broadcastCanvasChange({
+            t: 'node:delete',
+            family: 'canvasNode',
+            id: nodeId,
+          });
           console.log(`✅ Deleted canvas node: ${nodeId}`);
         } catch (error) {
           console.error('❌ Error deleting canvas node:', error);

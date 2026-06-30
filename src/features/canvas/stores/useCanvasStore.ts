@@ -3,6 +3,7 @@
 // was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
 // this directive — do not add new code here assuming it is type-checked.
 import { useAutoSaveStore } from '@/lib/stores/autosave/useAutoSaveStore';
+import { broadcastCanvasChange } from '@/features/canvas/realtime/canvasSyncChannel';
 import type {
   CanvasProject,
   CanvasSettings,
@@ -191,6 +192,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
               : undefined,
             isLoading: false,
           }));
+          broadcastCanvasChange({ t: 'node:create', family: 'card', node: newNode });
           log.debug('result', { id: newNode.id, title: newNode.title });
           console.timeEnd('createNode');
           console.groupEnd();
@@ -296,6 +298,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
               : undefined,
             isLoading: false,
           }));
+          broadcastCanvasChange({ t: 'node:delete', family: 'card', id: nodeId });
         } catch (error) {
           console.error('Error deleting node:', error);
           set({ error: 'Failed to delete node', isLoading: false });
@@ -402,6 +405,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
               : undefined,
             isLoading: false,
           }));
+          broadcastCanvasChange({ t: 'edge:create', edge: newEdge });
         } catch (error) {
           console.error('Error creating edge:', error);
           set({ error: 'Failed to create relationship', isLoading: false });
@@ -451,6 +455,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
               : undefined,
             isLoading: false,
           }));
+          broadcastCanvasChange({ t: 'edge:delete', id: edgeId });
         } catch (error) {
           console.error('Error deleting edge:', error);
           set({ error: 'Failed to delete relationship', isLoading: false });

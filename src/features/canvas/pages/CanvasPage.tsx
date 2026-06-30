@@ -36,6 +36,7 @@ import {
 import { getMetricValuesByMetricIds } from '@/shared/lib/supabase/services/trackedMetrics';
 import { listConnections } from '@/shared/lib/supabase/services/sourceConnections';
 import { findOrphanedSourceBindings } from '@/features/canvas/utils/sourceResolver';
+import { broadcastCanvasChange } from '@/features/canvas/realtime/canvasSyncChannel';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
 import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
 import {
@@ -1202,6 +1203,30 @@ function CanvasPageInner() {
             n.id === node.id ? { ...n, position: node.position } : n
           );
           state.setExtraNodes(next);
+        }
+
+        // Mirror the finished move to other sessions. Cards + persisted canvas
+        // nodes have local-apply paths in applyRemoteCanvasChange; evidence/PRD
+        // node families aren't synced yet.
+        const moveFamily: 'card' | 'canvasNode' | null =
+          node.type === 'metricCard'
+            ? 'card'
+            : [
+                  'sourceNode',
+                  'chartNode',
+                  'operatorNode',
+                  'commentNode',
+                  'whiteboardNode',
+                ].includes(node.type)
+              ? 'canvasNode'
+              : null;
+        if (moveFamily) {
+          broadcastCanvasChange({
+            t: 'node:move',
+            family: moveFamily,
+            id: node.id,
+            position: node.position,
+          });
         }
       }
 
