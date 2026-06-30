@@ -31,7 +31,19 @@ export type CanvasChange =
       updates: Record<string, unknown>;
     }
   | { t: 'edge:create'; edge: Relationship }
-  | { t: 'edge:delete'; id: string };
+  | { t: 'edge:delete'; id: string }
+  // Data-flow / reference (operator-pipeline) edges. These live in CanvasPage
+  // React state, not a store, so applying them goes through a registered setter.
+  | { t: 'extraEdge:create'; edge: ExtraEdge }
+  | { t: 'extraEdge:delete'; id: string };
+
+export interface ExtraEdge {
+  id: string;
+  source: string;
+  target: string;
+  type?: string;
+  data?: Record<string, unknown>;
+}
 
 export const CANVAS_BROADCAST_EVENT = 'canvas:change';
 
@@ -40,6 +52,22 @@ let activeChannel: RealtimeChannel | null = null;
 /** Register (or clear) the channel that broadcastCanvasChange emits on. */
 export function setCanvasSyncChannel(channel: RealtimeChannel | null) {
   activeChannel = channel;
+}
+
+/** Apply hooks for extra (data-flow/reference) edges, owned by CanvasPage state. */
+export interface ExtraEdgesApply {
+  get: () => ExtraEdge[];
+  set: (edges: ExtraEdge[]) => void;
+}
+
+let extraEdgesApply: ExtraEdgesApply | null = null;
+
+export function registerExtraEdgesApply(api: ExtraEdgesApply | null) {
+  extraEdgesApply = api;
+}
+
+export function getExtraEdgesApply() {
+  return extraEdgesApply;
 }
 
 /**

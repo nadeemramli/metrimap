@@ -7,7 +7,7 @@
 import { useCanvasStore } from '@/features/canvas/stores/useCanvasStore';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import type { CanvasNode, MetricCard } from '@/shared/types';
-import type { CanvasChange } from './canvasSyncChannel';
+import { getExtraEdgesApply, type CanvasChange } from './canvasSyncChannel';
 
 export function applyRemoteCanvasChange(change: CanvasChange) {
   const cards = useCanvasStore.getState();
@@ -47,5 +47,19 @@ export function applyRemoteCanvasChange(change: CanvasChange) {
     case 'edge:delete':
       cards.deleteEdge(change.id);
       break;
+
+    case 'extraEdge:create': {
+      const api = getExtraEdgesApply();
+      if (api && !api.get().some((e) => e.id === change.edge.id)) {
+        api.set([...api.get(), change.edge]);
+      }
+      break;
+    }
+
+    case 'extraEdge:delete': {
+      const api = getExtraEdgesApply();
+      if (api) api.set(api.get().filter((e) => e.id !== change.id));
+      break;
+    }
   }
 }

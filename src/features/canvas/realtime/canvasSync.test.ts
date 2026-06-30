@@ -1,7 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { applyRemoteCanvasChange } from './applyRemoteChange';
-import { broadcastCanvasChange } from './canvasSyncChannel';
+import {
+  broadcastCanvasChange,
+  registerExtraEdgesApply,
+  type ExtraEdge,
+} from './canvasSyncChannel';
 
 const canvasNode = (id: string, position = { x: 0, y: 0 }) =>
   ({
@@ -18,6 +22,7 @@ const canvasNode = (id: string, position = { x: 0, y: 0 }) =>
 
 describe('canvas realtime sync', () => {
   beforeEach(() => useCanvasNodesStore.getState().clearNodes());
+  afterEach(() => registerExtraEdgesApply(null));
 
   it('broadcastCanvasChange is a no-op when no channel is registered', () => {
     expect(() =>
@@ -62,6 +67,27 @@ describe('canvas realtime sync', () => {
     const n = useCanvasNodesStore.getState().getNodeById('n2');
     expect(n?.title).toBe('Renamed');
     expect((n?.data as any)?.k).toBe(1);
+  });
+
+  it('applies remote extra-edge create/delete through the registered setter', () => {
+    let edges: ExtraEdge[] = [];
+    registerExtraEdgesApply({
+      get: () => edges,
+      set: (next) => {
+        edges = next;
+      },
+    });
+
+    const edge: ExtraEdge = { id: 'e1', source: 'a', target: 'b', type: 'operativeEdge' };
+    applyRemoteCanvasChange({ t: 'extraEdge:create', edge });
+    expect(edges.map((e) => e.id)).toEqual(['e1']);
+
+    // Idempotent: a duplicate create doesn't double-add.
+    applyRemoteCanvasChange({ t: 'extraEdge:create', edge });
+    expect(edges).toHaveLength(1);
+
+    applyRemoteCanvasChange({ t: 'extraEdge:delete', id: 'e1' });
+    expect(edges).toHaveLength(0);
   });
 
   it('ignores card-family changes when no canvas is loaded (no throw)', () => {

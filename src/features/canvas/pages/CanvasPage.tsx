@@ -36,7 +36,10 @@ import {
 import { getMetricValuesByMetricIds } from '@/shared/lib/supabase/services/trackedMetrics';
 import { listConnections } from '@/shared/lib/supabase/services/sourceConnections';
 import { findOrphanedSourceBindings } from '@/features/canvas/utils/sourceResolver';
-import { broadcastCanvasChange } from '@/features/canvas/realtime/canvasSyncChannel';
+import {
+  broadcastCanvasChange,
+  registerExtraEdgesApply,
+} from '@/features/canvas/realtime/canvasSyncChannel';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
 import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
 import {
@@ -1365,6 +1368,21 @@ function CanvasPageInner() {
     [nodes, existingEdges]
   );
 
+  // Let the realtime layer apply remote data-flow/reference edge changes into
+  // CanvasPage React state (these edges aren't in a store). A ref keeps the
+  // getter current without re-registering on every extraEdges change.
+  const latestExtraEdgesRef = useRef(state.extraEdges);
+  latestExtraEdgesRef.current = state.extraEdges;
+  useEffect(() => {
+    registerExtraEdgesApply({
+      get: () => (latestExtraEdgesRef.current || []) as any,
+      set: (edges) => state.setExtraEdges(edges as any),
+    });
+    return () => registerExtraEdgesApply(null);
+    // setExtraEdges is a stable useState setter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleConnect = useCallback(
     (connection: Connection) => {
       log.debug('🔗 Enhanced connection handler triggered:', connection);
@@ -1414,12 +1432,14 @@ function CanvasPageInner() {
           bindOperatorInput(edgeData.target, edgeData.source, prevEdges);
           // If this edge feeds a chart, add the source as a plotted series.
           bindChartSeries(edgeData.target, edgeData.source);
+          broadcastCanvasChange({ t: 'extraEdge:create', edge: edgeData });
           log.debug('✅ Data flow edge created + persisted');
         },
         onCreateReference: (edgeData) => {
           const nextEdges = [...(state.extraEdges || []), edgeData];
           state.setExtraEdges(nextEdges);
           persistDataFlowEdges(nextEdges);
+          broadcastCanvasChange({ t: 'extraEdge:create', edge: edgeData });
           log.debug('✅ Reference edge created + persisted');
         },
       });
@@ -1481,6 +1501,9 @@ function CanvasPageInner() {
       if (next.length !== current.length) {
         state.setExtraEdges(next);
         persistDataFlowEdges(next);
+        for (const e of removed) {
+          broadcastCanvasChange({ t: 'extraEdge:delete', id: e.id });
+        }
         // Drop the operator input bindings for any removed inbound-to-operator
         // edges (don't re-key the rest — that would break formulas).
         for (const e of removed) {
