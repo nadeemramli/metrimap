@@ -45,6 +45,14 @@ npx supabase <cmd>   # Always use npx for the Supabase CLI
 
 A Husky `pre-commit` hook runs on commit (`.husky/pre-commit`). Don't bypass it without reason.
 
+## Branching
+
+**For now, commit (and push) directly to `main`.** The product is still being
+brought to a complete end-to-end state, so we optimize for fast iteration over a
+gated release flow. Once the core value pipeline works end to end, we'll switch
+to a `preview` branch (PR-based, deploy-preview gated) and stop pushing straight
+to `main`. Until that note is removed here, direct-to-`main` is the expected flow.
+
 ## Project layout
 
 Feature-based architecture (recently refactored — some older paths in `.cursor/rules/*` may be stale; trust this file):
