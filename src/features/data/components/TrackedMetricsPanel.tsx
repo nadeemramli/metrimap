@@ -13,6 +13,7 @@ import {
   TabsTrigger,
 } from '@/shared/components/ui/tabs';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { useCanvasStore } from '@/features/canvas/stores/useCanvasStore';
 import { Input } from '@/shared/components/ui/input';
 import {
   deleteTrackedMetric,
@@ -159,6 +160,20 @@ export function TrackedMetricsPanel({ intro }: { intro?: string }) {
         )
       );
       setEditingId(null);
+
+      // Push the new definition down to any referencing cards on the currently
+      // open canvas so the edit shows live (local-only — referenced cards
+      // re-derive name/formula from the catalog on load, so no DB write needed;
+      // other/closed canvases pick it up on their next load).
+      const openCards = useCanvasStore.getState().canvas?.nodes || [];
+      for (const card of openCards) {
+        if ((card as { trackedMetricId?: string }).trackedMetricId === id) {
+          useCanvasStore.getState().updateNode(card.id, {
+            title: draft.name.trim(),
+            formula: draft.formula.trim() || undefined,
+          });
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save metric.');
     }
