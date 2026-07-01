@@ -8,7 +8,11 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import type { CanvasNode, EvidenceItem, MetricCard } from '@/shared/types';
-import { useCanvasStore } from '@/features/canvas/stores/useCanvasStore';
+// IMPORTANT: use the SAME store instance the canvas renders from (@/lib/stores
+// → canvasStore). A second useCanvasStore.ts exists but is a different instance;
+// reading it here made getSelection/itemsFromIds see an empty store, so
+// copy/duplicate/delete silently found "no selection".
+import { useCanvasStore } from '@/lib/stores';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasHistoryStore } from '@/features/canvas/stores/useCanvasHistoryStore';

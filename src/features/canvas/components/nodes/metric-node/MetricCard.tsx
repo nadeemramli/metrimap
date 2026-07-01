@@ -278,7 +278,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
   const handleStyles = getHandleStyles();
 
   // Canvas store for updates
-  const { persistNodeUpdate, deleteNode, sliceMetricByDimensions } =
+  const { persistNodeUpdate, persistNodeDelete, sliceMetricByDimensions } =
     useCanvasStore();
 
   // Accessibility hooks
@@ -342,7 +342,9 @@ export default function MetricCard({ data, selected }: NodeProps) {
 
   const handleDelete = async () => {
     try {
-      await deleteNode(card.id);
+      // persistNodeDelete removes the DB row (deleteNode was local-only, so the
+      // card reappeared on refresh).
+      await persistNodeDelete(card.id);
       console.log('✅ Node deleted:', card.id);
     } catch (error) {
       console.error('❌ Failed to delete node:', error);
