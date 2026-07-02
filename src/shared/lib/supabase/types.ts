@@ -94,6 +94,51 @@ export type Database = {
           },
         ]
       }
+      error_reports: {
+        Row: {
+          client_time: string | null
+          clerk_user_id: string | null
+          component_stack: string | null
+          created_at: string
+          error_stack: string | null
+          id: string
+          message: string | null
+          note: string | null
+          reporter_email: string | null
+          reporter_user_id: string | null
+          url: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          client_time?: string | null
+          clerk_user_id?: string | null
+          component_stack?: string | null
+          created_at?: string
+          error_stack?: string | null
+          id?: string
+          message?: string | null
+          note?: string | null
+          reporter_email?: string | null
+          reporter_user_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          client_time?: string | null
+          clerk_user_id?: string | null
+          component_stack?: string | null
+          created_at?: string
+          error_stack?: string | null
+          id?: string
+          message?: string | null
+          note?: string | null
+          reporter_email?: string | null
+          reporter_user_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       event_definitions: {
         Row: {
           category: string | null
