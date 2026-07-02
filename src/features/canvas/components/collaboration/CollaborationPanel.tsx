@@ -95,7 +95,7 @@ export function CollaborationPanel({
 }: CollaborationPanelProps) {
   const user = useAppStore((s) => s.user);
   const { members, byId, isLoading: membersLoading, reload: reloadMembers } =
-    useProjectMembers(projectId, open);
+    useProjectMembers(projectId, open, presence);
 
   const authorName = (id: string | null) =>
     (id && byId[id]?.name) || id || 'Unknown';

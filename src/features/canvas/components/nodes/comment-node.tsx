@@ -20,6 +20,7 @@ import {
   getClientForEnvironment,
   isDevelopmentMode,
 } from '@/shared/utils/authenticatedClient';
+import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { type NodeProps } from '@xyflow/react';
 import { MapPin, MessageSquare } from 'lucide-react';
 import * as React from 'react';
@@ -82,6 +83,16 @@ export default function CommentNode({ id, data }: NodeProps) {
         );
         currentThreadId = thread.id;
         setThreadId(thread.id);
+        // Persist the threadId onto the node so its comments survive reload.
+        // Previously it lived only in React state, so on refresh the node forgot
+        // its thread and showed "Be the first to comment…" again.
+        try {
+          await useCanvasNodesStore.getState().updateNode(id, {
+            data: { ...nodeData, threadId: thread.id },
+          });
+        } catch (persistErr) {
+          console.error('Failed to persist comment threadId on node', persistErr);
+        }
       }
       const created = await createComment(
         {

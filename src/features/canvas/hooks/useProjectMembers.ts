@@ -24,16 +24,25 @@ export interface UseProjectMembers {
   reload: () => void;
 }
 
+/** Minimal shape of a live-presence teammate (from usePresence). */
+export interface PresenceLike {
+  userId: string;
+  name: string;
+  avatar?: string;
+}
+
 /**
  * Resolves who can be mentioned / shown as a comment author on a project.
  *
- * NOTE: an owner `project_collaborators` row is not seeded yet (backlog P1-12),
- * so `getProjectCollaborators` is frequently empty. We always merge the current
- * signed-in user so the mention picker and author resolution are never blank.
+ * Sources, merged and deduped by user id: invited `project_collaborators`, the
+ * live `presence` roster (anyone currently on the canvas — key, since an owner
+ * collaborator row is not seeded yet, backlog P1-12), and always the signed-in
+ * user. Without the presence merge the picker frequently offered only yourself.
  */
 export function useProjectMembers(
   projectId?: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  presence: PresenceLike[] = []
 ): UseProjectMembers {
   const user = useAppStore((s) => s.user);
   const [collaborators, setCollaborators] = React.useState<Collaborator[]>([]);
@@ -76,6 +85,19 @@ export function useProjectMembers(
       };
     }
 
+    // Merge live-presence teammates who aren't already invited collaborators.
+    // They're mentionable by name and their id targets a real notification.
+    for (const p of presence) {
+      if (!p.userId || map[p.userId]) continue;
+      map[p.userId] = {
+        id: p.userId,
+        name: p.name || 'Someone',
+        email: '',
+        avatarUrl: p.avatar ?? null,
+        isSelf: p.userId === user?.id,
+      };
+    }
+
     // Always include the signed-in user so the picker is never empty.
     if (user?.id && !map[user.id]) {
       map[user.id] = {
@@ -93,7 +115,7 @@ export function useProjectMembers(
     });
 
     return { members: list, byId: map };
-  }, [collaborators, user?.id, user?.name, user?.email]);
+  }, [collaborators, presence, user?.id, user?.name, user?.email]);
 
   const reload = React.useCallback(() => setReloadKey((k) => k + 1), []);
 
