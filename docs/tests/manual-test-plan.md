@@ -127,6 +127,26 @@ or Data hub → Candidates → promote).
 - [ ] ⚠️ Panel comment still doesn't appear on the canvas comment node — they're
       independent threads (a general panel comment isn't node-scoped). Known.
 
+## 8. Templates *(solo)*
+
+- [ ] New project → template picker → "Starter examples" lists **8 trees**: SaaS,
+      E-commerce, Retail, **Web Analytics, Company KPIs, Marketing KPIs, Feature
+      Launch, Lifecycle Cohort Analysis**.
+- [ ] Pick one of the new trees → it deep-copies into your workspace and opens;
+      nodes, groups, relationships, and the source→operator→chart showcase render.
+- [ ] "Run Simulation" on the copied tree recomputes the projection (operators work).
+
+## 9. Update feed *(mostly solo; one two-session check)*
+
+- [ ] `/feed` (Activity) lists people-events (mentions/comments) + system-events
+      (created/updated) merged, newest first.
+- [ ] Tabs filter: All activity / Mentioned me / Bookmarked.
+- [ ] **Bookmark** an item → switch to Bookmarked tab shows it → **reload** → still
+      there (now DB-backed, not localStorage). Un-bookmark removes it.
+- [ ] **Live** *(two sessions / two devices)*: get @mentioned in A → the feed in B
+      gains the item **without reload** (subscribes to notification inserts).
+- [ ] Bookmarks persist across devices (same account, different browser).
+
 ---
 
 ## If something fails

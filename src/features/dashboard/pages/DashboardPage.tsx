@@ -67,13 +67,17 @@ export default function DashboardPage() {
   // Prefer the live in-canvas store when it matches this canvas (fresher, holds
   // unsaved edits); otherwise fall back to what we persisted from the DB.
   const storeMatches = storeCanvas?.id === canvasId;
-  const cards: MetricCard[] = storeMatches
-    ? (storeCanvas?.nodes ?? [])
-    : loadedCards;
-  const groups: GroupNode[] =
-    storeMatches && (storeCanvas?.groups?.length ?? 0) > 0
-      ? (storeCanvas?.groups ?? [])
-      : loadedGroups;
+  const cards: MetricCard[] = useMemo(
+    () => (storeMatches ? (storeCanvas?.nodes ?? []) : loadedCards),
+    [storeMatches, storeCanvas?.nodes, loadedCards]
+  );
+  const groups: GroupNode[] = useMemo(
+    () =>
+      storeMatches && (storeCanvas?.groups?.length ?? 0) > 0
+        ? (storeCanvas?.groups ?? [])
+        : loadedGroups,
+    [storeMatches, storeCanvas?.groups, loadedGroups]
+  );
 
   // Load widgets + the catalog (names) + the project (nodes/groups) for this canvas.
   useEffect(() => {
