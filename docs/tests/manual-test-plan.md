@@ -121,9 +121,11 @@ or Data hub → Candidates → promote).
       `@` in the panel composer now offers **them** (not just yourself) — sourced
       from the live presence roster + invited collaborators. Mention creates a
       **notification** (inbox + `/feed`) in real time.
+- [ ] **Last edited by X** *(new)*: edit a metric card → its footer shows
+      "Edited <time> by <name>" ("by you" for your own edits; a teammate's name
+      for theirs). Server-stamped, so it reflects who actually made the change.
 - [ ] ⚠️ Panel comment still doesn't appear on the canvas comment node — they're
       independent threads (a general panel comment isn't node-scoped). Known.
-- [ ] ⚠️ "Last edited by X" per-node attribution — not built yet.
 
 ---
 
