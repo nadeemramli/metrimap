@@ -75,6 +75,11 @@ or Data hub → Candidates → promote).
 - [ ] **Catalog-edit push-down**: edit the metric's name/formula in the Data hub →
       referencing cards on the **currently open** canvas update immediately; other
       canvases update on their next load.
+- [ ] **Linked badge**: a referenced card shows a green "Tracked" badge (hover
+      tooltip explains the link).
+- [ ] **Detach**: card settings → "Detach" (next to "In Metric Catalog") → card
+      keeps its current values but the badge clears; after reload it no longer
+      follows catalog edits (it's an independent fork), and lineage no longer lists it.
 
 ## 5. Members / sharing
 
