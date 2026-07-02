@@ -14,7 +14,8 @@ import {
   updateLayouts,
   updateWidget,
 } from '@/shared/lib/supabase/services/dashboards';
-import type { MetricCard, MetricValue } from '@/shared/types';
+import { getProjectById } from '@/shared/lib/supabase/services/projects';
+import type { GroupNode, MetricCard, MetricValue } from '@/shared/types';
 import {
   DEFAULT_WIDGET_LAYOUT,
   type DashboardWidget,
@@ -22,6 +23,7 @@ import {
   type WidgetType,
 } from '@/features/dashboard/types';
 import { WidgetCard } from '@/features/dashboard/components/WidgetCard';
+import { GroupDashboard } from '@/features/dashboard/components/GroupDashboard';
 import {
   WidgetConfigSheet,
   type MetricOption,
@@ -39,40 +41,79 @@ const ReactGridLayout = WidthProvider(GridLayout);
 const COLS = 12;
 const ROW_HEIGHT = 40;
 
+const CUSTOM_VIEW = '__custom__';
+
 export default function DashboardPage() {
   const { canvasId } = useParams();
   const client = useClerkSupabase();
-  const cards = (useCanvasStore((s) => s.canvas?.nodes) ?? []) as MetricCard[];
+  const storeCanvas = useCanvasStore((s) => s.canvas);
 
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [trackedNames, setTrackedNames] = useState<Record<string, string>>({});
   const [trackedValues, setTrackedValues] = useState<
     Record<string, MetricValue[]>
   >({});
+  // Persisted nodes + groups for this canvas (drives the group dashboards).
+  const [loadedCards, setLoadedCards] = useState<MetricCard[]>([]);
+  const [loadedGroups, setLoadedGroups] = useState<GroupNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardWidget | null>(null);
+  const [view, setView] = useState<string>(CUSTOM_VIEW);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load widgets + the catalog (names) for this canvas.
+  // Prefer the live in-canvas store when it matches this canvas (fresher, holds
+  // unsaved edits); otherwise fall back to what we persisted from the DB.
+  const storeMatches = storeCanvas?.id === canvasId;
+  const cards: MetricCard[] = storeMatches
+    ? (storeCanvas?.nodes ?? [])
+    : loadedCards;
+  const groups: GroupNode[] =
+    storeMatches && (storeCanvas?.groups?.length ?? 0) > 0
+      ? (storeCanvas?.groups ?? [])
+      : loadedGroups;
+
+  // Load widgets + the catalog (names) + the project (nodes/groups) for this canvas.
   useEffect(() => {
     if (!client || !canvasId) return;
     setLoading(true);
-    Promise.all([listWidgets(canvasId, client), listTrackedMetrics(client)])
-      .then(([w, metrics]) => {
+    Promise.all([
+      listWidgets(canvasId, client),
+      listTrackedMetrics(client),
+      getProjectById(canvasId, client).catch(() => null),
+    ])
+      .then(([w, metrics, project]) => {
         setWidgets(w);
         setTrackedNames(
           Object.fromEntries(metrics.map((m) => [m.id, m.name]))
         );
+        setLoadedCards(project?.nodes ?? []);
+        setLoadedGroups(project?.groups ?? []);
       })
       .catch(() => {
         setWidgets([]);
         setTrackedNames({});
+        setLoadedCards([]);
+        setLoadedGroups([]);
       })
       .finally(() => setLoading(false));
   }, [client, canvasId]);
+
+  // Default to the first group's dashboard when groups exist, else Custom.
+  useEffect(() => {
+    if (groups.length > 0) {
+      setView((prev) =>
+        prev === CUSTOM_VIEW && groups[0] ? groups[0].id : prev
+      );
+    }
+  }, [groups]);
+
+  const activeGroup = useMemo(
+    () => groups.find((g) => g.id === view) ?? null,
+    [groups, view]
+  );
 
   // Fetch the shared series for every tracked metric referenced by a widget.
   const referencedTrackedIds = useMemo(() => {
@@ -224,10 +265,12 @@ export default function DashboardPage() {
     }
   };
 
+  const isCustom = view === CUSTOM_VIEW;
+
   usePageHeader({
     title: 'Dashboard',
     description: 'Operational metrics for this canvas',
-    actions: (
+    actions: isCustom ? (
       <>
         {editMode && (
           <Button size="sm" className="h-7 gap-1.5" onClick={openAdd}>
@@ -254,8 +297,8 @@ export default function DashboardPage() {
           )}
         </Button>
       </>
-    ),
-    deps: [editMode],
+    ) : null,
+    deps: [editMode, isCustom],
   });
 
   if (loading) {
@@ -266,7 +309,8 @@ export default function DashboardPage() {
     );
   }
 
-  if (widgets.length === 0) {
+  // Nothing to show at all: no groups on the canvas and no custom widgets.
+  if (groups.length === 0 && widgets.length === 0) {
     return (
       <div className="p-6">
         <Card className="p-12">
@@ -277,8 +321,9 @@ export default function DashboardPage() {
             <div>
               <h3 className="text-lg font-semibold">Build your dashboard</h3>
               <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-                Add chart, KPI, and table widgets bound to your tracked metrics
-                or in-canvas cards. Drag and resize to arrange.
+                Group nodes together on the canvas to auto-generate a dashboard
+                for that subflow — or add chart, KPI, and table widgets bound to
+                your tracked metrics or in-canvas cards.
               </p>
             </div>
             <Button
@@ -307,30 +352,88 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4">
-      <ReactGridLayout
-        className="layout"
-        layout={gridLayout}
-        cols={COLS}
-        rowHeight={ROW_HEIGHT}
-        margin={[16, 16]}
-        isDraggable={editMode}
-        isResizable={editMode}
-        draggableHandle=".widget-drag-handle"
-        onLayoutChange={handleLayoutChange}
-        compactType="vertical"
-      >
-        {widgets.map((w) => (
-          <div key={w.id}>
-            <WidgetCard
-              widget={w}
-              sources={sources}
-              editMode={editMode}
-              onConfigure={openConfigure}
-              onRemove={handleRemove}
+      {/* View selector: one dashboard per canvas group, plus custom widgets. */}
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+        {groups.map((g) => (
+          <button
+            key={g.id}
+            onClick={() => setView(g.id)}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors ${
+              view === g.id
+                ? 'border-transparent bg-primary text-primary-foreground'
+                : 'border-border bg-background hover:bg-muted'
+            }`}
+          >
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: g.color || '#6366f1' }}
             />
-          </div>
+            {g.name}
+          </button>
         ))}
-      </ReactGridLayout>
+        <button
+          onClick={() => setView(CUSTOM_VIEW)}
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors ${
+            isCustom
+              ? 'border-transparent bg-primary text-primary-foreground'
+              : 'border-border bg-background hover:bg-muted'
+          }`}
+        >
+          <LayoutGrid className="h-3.5 w-3.5" />
+          Custom
+        </button>
+      </div>
+
+      {activeGroup ? (
+        <GroupDashboard group={activeGroup} cards={cards} />
+      ) : widgets.length === 0 ? (
+        <Card className="p-10">
+          <div className="space-y-3 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+              <LayoutGrid className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <p className="mx-auto max-w-md text-sm text-muted-foreground">
+              No custom widgets yet. Add chart, KPI, and table widgets bound to
+              your tracked metrics or in-canvas cards.
+            </p>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditMode(true);
+                openAdd();
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add widget
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <ReactGridLayout
+          className="layout"
+          layout={gridLayout}
+          cols={COLS}
+          rowHeight={ROW_HEIGHT}
+          margin={[16, 16]}
+          isDraggable={editMode}
+          isResizable={editMode}
+          draggableHandle=".widget-drag-handle"
+          onLayoutChange={handleLayoutChange}
+          compactType="vertical"
+        >
+          {widgets.map((w) => (
+            <div key={w.id}>
+              <WidgetCard
+                widget={w}
+                sources={sources}
+                editMode={editMode}
+                onConfigure={openConfigure}
+                onRemove={handleRemove}
+              />
+            </div>
+          ))}
+        </ReactGridLayout>
+      )}
 
       <WidgetConfigSheet
         open={configOpen}

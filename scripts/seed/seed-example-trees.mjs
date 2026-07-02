@@ -418,18 +418,314 @@ const retail = {
   ],
 };
 
-const TREES = [saas, ecom, retail];
+// ===================== Web Analytics (GA4-style) =====================
+const web = {
+  name: 'Web Analytics — Example Metric Tree',
+  description:
+    'GA4-style acquisition → engagement → conversion tree: sessions by channel drive engaged sessions, conversions, and revenue.',
+  root: 'convvalue',
+  nodes: [
+    N('convvalue', 'Conversion Value', VAL, 'Conversions × Value per Conversion'),
+    N('conversions', 'Conversions', MET, 'Key events (purchase/signup)'),
+    N('cvr', 'Conversion Rate', MET, 'Conversions ÷ Sessions'),
+    N('vpc', 'Value per Conversion', MET, 'Avg revenue per conversion'),
+    N('sessions', 'Sessions', MET, 'Total sessions'),
+    N('users', 'Users', MET, 'Unique users'),
+    N('spu', 'Sessions per User', MET, 'Sessions ÷ Users'),
+    N('organic', 'Organic Search', MET, 'SEO sessions'),
+    N('paid', 'Paid Search', MET, 'SEM sessions'),
+    N('social', 'Social', MET, 'Social sessions'),
+    N('direct', 'Direct', MET, 'Direct sessions'),
+    N('referral', 'Referral', MET, 'Referral sessions'),
+    N('engaged', 'Engaged Sessions', MET, 'Sessions > 10s / 2 pageviews'),
+    N('engrate', 'Engagement Rate', MET, 'Engaged ÷ Sessions'),
+    N('avgdur', 'Avg Engagement Time', MET, 'Seconds per session'),
+    N('bounce', 'Bounce Rate', MET, 'Non-engaged share'),
+    N('ppp', 'Pages per Session', MET, 'Pageviews ÷ Sessions'),
+    N('newret', 'New vs Returning', MET, 'Returning user share'),
+    N('lever_seo', 'SEO Content Program', ACT, 'Publish + optimize landing pages'),
+    N('lever_cro', 'CRO Experiments', ACT, 'A/B test funnel steps'),
+    N('lever_speed', 'Page Speed Fixes', ACT, 'Core Web Vitals improvements'),
+    N('hyp_intent', 'High-intent paid keywords convert 2× better', HYP),
+  ],
+  edges: [
+    E('conversions', 'convvalue', 'Deterministic', 90),
+    E('vpc', 'convvalue', 'Deterministic', 85),
+    E('cvr', 'conversions', 'Deterministic', 85),
+    E('sessions', 'conversions', 'Deterministic', 80),
+    E('users', 'sessions', 'Causal', 80),
+    E('spu', 'sessions', 'Deterministic', 75),
+    E('organic', 'sessions', 'Compositional', 80),
+    E('paid', 'sessions', 'Compositional', 75),
+    E('social', 'sessions', 'Compositional', 60),
+    E('direct', 'sessions', 'Compositional', 60),
+    E('referral', 'sessions', 'Compositional', 55),
+    E('engaged', 'cvr', 'Causal', 75),
+    E('engrate', 'engaged', 'Deterministic', 80),
+    E('avgdur', 'engrate', 'Causal', 65),
+    E('ppp', 'engrate', 'Causal', 60),
+    E('bounce', 'engrate', 'Causal', 60),
+    E('newret', 'cvr', 'Causal', 55),
+    E('lever_seo', 'organic', 'Causal', 75),
+    E('lever_cro', 'cvr', 'Causal', 70),
+    E('lever_speed', 'bounce', 'Causal', 65),
+    E('hyp_intent', 'paid', 'Probabilistic', 50),
+  ],
+  groups: [
+    { name: 'Acquisition', keys: ['sessions','users','spu','organic','paid','social','direct','referral'] },
+    { name: 'Engagement', keys: ['engaged','engrate','avgdur','bounce','ppp','newret'] },
+    { name: 'Conversion', keys: ['conversions','cvr','vpc'] },
+  ],
+};
+
+// ===================== Company KPIs =====================
+const company = {
+  name: 'Company KPIs — Example Metric Tree',
+  description:
+    'Executive scorecard: enterprise value decomposed into growth, profitability, efficiency, and people health.',
+  root: 'entval',
+  nodes: [
+    N('entval', 'Enterprise Value', VAL, 'Revenue × Multiple'),
+    N('revenue', 'Revenue', MET, 'Total revenue'),
+    N('growth', 'YoY Growth', MET, 'Revenue growth rate'),
+    N('grossmargin', 'Gross Margin', MET, '(Revenue − COGS) ÷ Revenue'),
+    N('ebitda', 'EBITDA', MET, 'Operating profitability'),
+    N('newrev', 'New Business', MET, 'New logo revenue'),
+    N('exprev', 'Expansion', MET, 'Upsell revenue'),
+    N('churnrev', 'Churn', MET, 'Lost revenue'),
+    N('nrr', 'Net Revenue Retention', MET, '(Start + Exp − Churn) ÷ Start'),
+    N('cogs', 'COGS', MET, 'Cost of goods sold'),
+    N('opex', 'OpEx', MET, 'Operating expenses'),
+    N('salesmkt', 'Sales & Marketing', MET, 'GTM spend'),
+    N('rnd', 'R&D', MET, 'Product investment'),
+    N('ga', 'G&A', MET, 'Overhead'),
+    N('headcount', 'Headcount', MET, 'Total employees'),
+    N('revperhead', 'Revenue per Employee', MET, 'Revenue ÷ Headcount'),
+    N('attrition', 'Attrition', MET, 'Voluntary churn of staff'),
+    N('enps', 'Employee NPS', MET, 'Team health'),
+    N('cashruntway', 'Runway (months)', MET, 'Cash ÷ Burn'),
+    N('lever_pricing', 'Pricing & Packaging', ACT, 'Optimize price to expand NRR'),
+    N('lever_hiring', 'Hiring Plan', ACT, 'Scale GTM + R&D'),
+    N('hyp_efficiency', 'Automation lifts rev/head 15%', HYP),
+  ],
+  edges: [
+    E('revenue', 'entval', 'Causal', 85),
+    E('growth', 'entval', 'Causal', 75),
+    E('grossmargin', 'entval', 'Causal', 70),
+    E('newrev', 'revenue', 'Compositional', 80),
+    E('exprev', 'revenue', 'Compositional', 75),
+    E('churnrev', 'revenue', 'Causal', 70),
+    E('nrr', 'growth', 'Causal', 75),
+    E('exprev', 'nrr', 'Deterministic', 70),
+    E('churnrev', 'nrr', 'Deterministic', 70),
+    E('cogs', 'grossmargin', 'Deterministic', 80),
+    E('grossmargin', 'ebitda', 'Causal', 75),
+    E('opex', 'ebitda', 'Causal', 75),
+    E('salesmkt', 'opex', 'Compositional', 75),
+    E('rnd', 'opex', 'Compositional', 70),
+    E('ga', 'opex', 'Compositional', 60),
+    E('headcount', 'opex', 'Causal', 65),
+    E('revperhead', 'ebitda', 'Causal', 55),
+    E('headcount', 'revperhead', 'Deterministic', 70),
+    E('attrition', 'headcount', 'Causal', 60),
+    E('enps', 'attrition', 'Causal', 60),
+    E('ebitda', 'cashruntway', 'Causal', 60),
+    E('lever_pricing', 'exprev', 'Causal', 70),
+    E('lever_hiring', 'headcount', 'Causal', 70),
+    E('hyp_efficiency', 'revperhead', 'Probabilistic', 50),
+  ],
+  groups: [
+    { name: 'Growth', keys: ['revenue','growth','newrev','exprev','churnrev','nrr'] },
+    { name: 'Profitability', keys: ['grossmargin','ebitda','cogs','opex','salesmkt','rnd','ga'] },
+    { name: 'People', keys: ['headcount','revperhead','attrition','enps'] },
+  ],
+};
+
+// ===================== Marketing KPIs =====================
+const marketing = {
+  name: 'Marketing KPIs — Example Metric Tree',
+  description:
+    'Demand-gen tree: marketing-sourced pipeline from channels → MQL → SQL → won, with CAC and payback.',
+  root: 'mktrev',
+  nodes: [
+    N('mktrev', 'Marketing-Sourced Revenue', VAL, 'Won Deals × ACV'),
+    N('won', 'Won Deals', MET, 'Closed-won opportunities'),
+    N('acv', 'Average Contract Value', MET, 'Revenue per deal'),
+    N('sql', 'SQLs', MET, 'Sales-qualified leads'),
+    N('sqlwin', 'SQL→Won Rate', MET, 'Win rate'),
+    N('mql', 'MQLs', MET, 'Marketing-qualified leads'),
+    N('mqlsql', 'MQL→SQL Rate', MET, 'Qualification rate'),
+    N('leads', 'Leads', MET, 'Raw inbound leads'),
+    N('leadmql', 'Lead→MQL Rate', MET, 'Scoring pass rate'),
+    N('paidleads', 'Paid Leads', MET, 'From ads'),
+    N('organicleads', 'Organic Leads', MET, 'From SEO/content'),
+    N('eventleads', 'Event Leads', MET, 'From webinars/events'),
+    N('referralleads', 'Referral Leads', MET, 'From partners'),
+    N('spend', 'Marketing Spend', MET, 'Total budget'),
+    N('cac', 'CAC', MET, 'Spend ÷ New Customers'),
+    N('payback', 'CAC Payback (months)', MET, 'CAC ÷ (ACV × margin / 12)'),
+    N('cpl', 'Cost per Lead', MET, 'Spend ÷ Leads'),
+    N('roas', 'ROAS', MET, 'Revenue ÷ Ad Spend'),
+    N('lever_abm', 'ABM Program', ACT, 'Target high-ACV accounts'),
+    N('lever_nurture', 'Lead Nurture', ACT, 'Lift MQL→SQL with sequences'),
+    N('lever_content', 'Content Engine', ACT, 'Grow organic leads'),
+    N('hyp_events', 'Events produce highest SQL→Won', HYP),
+  ],
+  edges: [
+    E('won', 'mktrev', 'Deterministic', 90),
+    E('acv', 'mktrev', 'Deterministic', 80),
+    E('sql', 'won', 'Deterministic', 80),
+    E('sqlwin', 'won', 'Deterministic', 75),
+    E('mql', 'sql', 'Deterministic', 80),
+    E('mqlsql', 'sql', 'Deterministic', 75),
+    E('leads', 'mql', 'Deterministic', 80),
+    E('leadmql', 'mql', 'Deterministic', 70),
+    E('paidleads', 'leads', 'Compositional', 75),
+    E('organicleads', 'leads', 'Compositional', 70),
+    E('eventleads', 'leads', 'Compositional', 55),
+    E('referralleads', 'leads', 'Compositional', 50),
+    E('spend', 'cac', 'Deterministic', 80),
+    E('spend', 'cpl', 'Deterministic', 70),
+    E('spend', 'paidleads', 'Causal', 70),
+    E('cac', 'payback', 'Deterministic', 75),
+    E('acv', 'payback', 'Causal', 60),
+    E('mktrev', 'roas', 'Deterministic', 70),
+    E('spend', 'roas', 'Deterministic', 70),
+    E('lever_abm', 'acv', 'Causal', 65),
+    E('lever_nurture', 'mqlsql', 'Causal', 70),
+    E('lever_content', 'organicleads', 'Causal', 70),
+    E('hyp_events', 'eventleads', 'Probabilistic', 50),
+  ],
+  groups: [
+    { name: 'Channels', keys: ['paidleads','organicleads','eventleads','referralleads','leads'] },
+    { name: 'Funnel', keys: ['mql','mqlsql','leadmql','sql','mqlsql','sqlwin','won','acv'] },
+    { name: 'Efficiency', keys: ['spend','cac','payback','cpl','roas'] },
+  ],
+};
+
+// ===================== Feature Launch =====================
+const launch = {
+  name: 'Feature Launch — Example Metric Tree',
+  description:
+    'Adoption tree for a new feature: awareness → activation → engagement → retention lift and its revenue impact.',
+  root: 'impact',
+  nodes: [
+    N('impact', 'Feature Revenue Impact', VAL, 'Retained/expanded revenue from feature'),
+    N('adopters', 'Active Adopters', MET, 'Users using the feature'),
+    N('adoptrate', 'Adoption Rate', MET, 'Adopters ÷ Eligible Users'),
+    N('eligible', 'Eligible Users', MET, 'Users who can access it'),
+    N('aware', 'Aware Users', MET, 'Saw announcement/entry point'),
+    N('awarerate', 'Awareness Rate', MET, 'Aware ÷ Eligible'),
+    N('tried', 'Tried Once', MET, 'First-use users'),
+    N('activation', 'Activation Rate', MET, 'Reached aha-moment'),
+    N('wau', 'Weekly Active (feature)', MET, 'Repeat weekly usage'),
+    N('depth', 'Usage Depth', MET, 'Actions per active user'),
+    N('stickiness', 'Stickiness', MET, 'WAU ÷ MAU (feature)'),
+    N('retlift', 'Retention Lift', MET, 'Retention of adopters − non-adopters'),
+    N('exprate', 'Expansion Rate', MET, 'Upsell tied to feature'),
+    N('csat', 'Feature CSAT', MET, 'Satisfaction score'),
+    N('ttv', 'Time to Value', MET, 'Minutes to first value'),
+    N('lever_onboard', 'In-product Onboarding', ACT, 'Tooltips + checklist'),
+    N('lever_announce', 'Launch Campaign', ACT, 'Email + in-app announce'),
+    N('lever_ttv', 'Reduce Time-to-Value', ACT, 'Templates + defaults'),
+    N('hyp_activation', 'Onboarding checklist lifts activation 20%', HYP),
+  ],
+  edges: [
+    E('adopters', 'impact', 'Causal', 80),
+    E('retlift', 'impact', 'Causal', 75),
+    E('exprate', 'impact', 'Causal', 65),
+    E('adoptrate', 'adopters', 'Deterministic', 80),
+    E('eligible', 'adopters', 'Causal', 70),
+    E('aware', 'tried', 'Causal', 75),
+    E('awarerate', 'aware', 'Deterministic', 70),
+    E('tried', 'adoptrate', 'Causal', 70),
+    E('activation', 'adoptrate', 'Causal', 75),
+    E('ttv', 'activation', 'Causal', 70),
+    E('wau', 'retlift', 'Causal', 70),
+    E('depth', 'wau', 'Causal', 65),
+    E('stickiness', 'retlift', 'Causal', 65),
+    E('csat', 'retlift', 'Causal', 55),
+    E('lever_onboard', 'activation', 'Causal', 75),
+    E('lever_announce', 'awarerate', 'Causal', 70),
+    E('lever_ttv', 'ttv', 'Causal', 70),
+    E('hyp_activation', 'activation', 'Probabilistic', 50),
+  ],
+  groups: [
+    { name: 'Awareness', keys: ['eligible','aware','awarerate','tried'] },
+    { name: 'Activation', keys: ['adopters','adoptrate','activation','ttv'] },
+    { name: 'Engagement & Retention', keys: ['wau','depth','stickiness','retlift','exprate','csat'] },
+  ],
+};
+
+// ===================== Lifecycle / Cohort Analysis =====================
+const cohort = {
+  name: 'Lifecycle Cohort Analysis — Example Metric Tree',
+  description:
+    'Cohort LTV decomposition: acquisition → activation → retention curve → monetization, with resurrection and churn.',
+  root: 'cohortltv',
+  nodes: [
+    N('cohortltv', 'Cohort LTV', VAL, 'Lifetime value per acquired user'),
+    N('arpu', 'ARPU', MET, 'Avg revenue per user'),
+    N('lifetime', 'Avg Lifetime (months)', MET, '1 ÷ churn'),
+    N('newusers', 'New Users (cohort)', MET, 'Cohort size'),
+    N('activated', 'Activated Users', MET, 'Reached first value'),
+    N('actrate', 'Activation Rate', MET, 'Activated ÷ New'),
+    N('d1', 'D1 Retention', MET, 'Active day 1'),
+    N('d7', 'D7 Retention', MET, 'Active day 7'),
+    N('d30', 'D30 Retention', MET, 'Active day 30'),
+    N('m3', 'M3 Retention', MET, 'Active month 3'),
+    N('churn', 'Monthly Churn', MET, 'Lost users per month'),
+    N('resurrection', 'Resurrection Rate', MET, 'Reactivated dormant users'),
+    N('payer', 'Payer Conversion', MET, 'Free → paid rate'),
+    N('paidarpu', 'Paid ARPU', MET, 'Revenue per payer'),
+    N('freq', 'Purchase Frequency', MET, 'Orders per active month'),
+    N('engagement', 'Core Action / Week', MET, 'Habit metric'),
+    N('lever_onboarding', 'Onboarding Redesign', ACT, 'Lift activation + D1'),
+    N('lever_lifecycle', 'Lifecycle Messaging', ACT, 'Win-back + nudges'),
+    N('lever_monetize', 'Monetization Experiments', ACT, 'Paywall + pricing'),
+    N('hyp_habit', '3 core actions in week 1 → 2× M3 retention', HYP),
+  ],
+  edges: [
+    E('arpu', 'cohortltv', 'Deterministic', 85),
+    E('lifetime', 'cohortltv', 'Deterministic', 85),
+    E('churn', 'lifetime', 'Deterministic', 80),
+    E('newusers', 'activated', 'Causal', 70),
+    E('actrate', 'activated', 'Deterministic', 75),
+    E('activated', 'd1', 'Causal', 70),
+    E('d1', 'd7', 'Causal', 75),
+    E('d7', 'd30', 'Causal', 75),
+    E('d30', 'm3', 'Causal', 75),
+    E('m3', 'churn', 'Causal', 70),
+    E('resurrection', 'churn', 'Causal', 55),
+    E('engagement', 'd30', 'Causal', 65),
+    E('payer', 'arpu', 'Causal', 75),
+    E('paidarpu', 'arpu', 'Causal', 70),
+    E('freq', 'paidarpu', 'Causal', 60),
+    E('lever_onboarding', 'actrate', 'Causal', 75),
+    E('lever_lifecycle', 'resurrection', 'Causal', 70),
+    E('lever_monetize', 'payer', 'Causal', 70),
+    E('hyp_habit', 'engagement', 'Probabilistic', 50),
+  ],
+  groups: [
+    { name: 'Acquisition & Activation', keys: ['newusers','activated','actrate'] },
+    { name: 'Retention Curve', keys: ['d1','d7','d30','m3','churn','resurrection','engagement'] },
+    { name: 'Monetization', keys: ['arpu','payer','paidarpu','freq','lifetime'] },
+  ],
+};
+
+const TREES = [saas, ecom, retail, web, company, marketing, launch, cohort];
 
 // --- layered tree layout (root = 'profit' at top, drivers below) ---
 function layout(tree) {
+  const root = tree.root || 'profit';
   const children = new Map(); // parent -> [child]
   tree.nodes.forEach((n) => children.set(n.key, []));
   tree.edges.forEach((e) => {
     if (children.has(e.to)) children.get(e.to).push(e.from);
   });
   const level = new Map();
-  const queue = [['profit', 0]];
-  level.set('profit', 0);
+  const queue = [[root, 0]];
+  level.set(root, 0);
   while (queue.length) {
     const [k, lv] = queue.shift();
     for (const c of children.get(k) || []) {
@@ -540,12 +836,13 @@ function derive(rows) {
 // Pick a meaningful quantitative card to anchor the showcase pipeline on
 // (revenue-like preferred), falling back to any non-root quantitative card.
 function pickAnchor(tree) {
-  const pref = /(mrr|revenue|orders|transactions|sales|gmv|bookings)/i;
+  const pref = /(mrr|revenue|orders|transactions|sales|gmv|bookings|sessions|signups|activation|arr)/i;
+  const root = tree.root || 'profit';
   const q = tree.nodes.filter((n) => isQuantitative(n.cat));
   return (
     q.find((n) => pref.test(n.key)) ||
     q.find((n) => pref.test(n.title)) ||
-    q.find((n) => n.key !== 'profit') ||
+    q.find((n) => n.key !== root) ||
     q[0]
   );
 }
