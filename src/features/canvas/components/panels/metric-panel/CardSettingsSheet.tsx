@@ -54,7 +54,10 @@ import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
-import { promoteCardToTrackedMetric } from '@/shared/lib/supabase/services/trackedMetrics';
+import {
+  linkCardToMetric,
+  promoteCardToTrackedMetric,
+} from '@/shared/lib/supabase/services/trackedMetrics';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   DropdownMenu,
@@ -124,6 +127,36 @@ function CardSettingsSheetComponent({
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Failed to catalog metric'
+      );
+    } finally {
+      setCatalogBusy(false);
+    }
+  };
+
+  // Detach: fork this card into an independent copy. It keeps its current
+  // title/formula/values (already hydrated from the catalog) but stops
+  // referencing the Tracked Metric — future catalog edits no longer flow to it.
+  const handleDetachMetric = async () => {
+    if (!card || !cardId || !catalogClient) return;
+    setCatalogBusy(true);
+    try {
+      await linkCardToMetric(cardId, null, catalogClient);
+      useCanvasStore.getState().updateNode(cardId, {
+        trackedMetricId: null,
+      } as Partial<MetricCard>);
+      // Persist the currently-displayed series onto the card. Referenced cards
+      // hydrate values from the catalog on load; once detached they won't, so
+      // freeze what's on screen as the fork's own data (else it could reload to
+      // whatever was last in the card's own DB row).
+      if (Array.isArray(card.data) && card.data.length) {
+        await useCanvasStore
+          .getState()
+          .persistNodeUpdate(cardId, { data: card.data } as Partial<MetricCard>);
+      }
+      toast.success('Detached from catalog — this card is now independent');
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to detach metric'
       );
     } finally {
       setCatalogBusy(false);
@@ -375,9 +408,21 @@ function CardSettingsSheetComponent({
                   {/* Semantic layer: catalog status / promote */}
                   <div className="pt-1">
                     {isCatalogued ? (
-                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                        ✓ In Metric Catalog
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                          ✓ In Metric Catalog
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                          disabled={catalogBusy || !catalogClient}
+                          onClick={handleDetachMetric}
+                          title="Fork an independent copy that no longer follows the catalogued metric"
+                        >
+                          {catalogBusy ? 'Detaching…' : 'Detach'}
+                        </Button>
+                      </div>
                     ) : cardHasData ? (
                       <Button
                         variant="outline"
