@@ -12,6 +12,7 @@ import { TemplatePicker } from '../components/TemplatePicker';
 import { toast } from 'sonner';
 import { Activity, Database, Folder } from 'lucide-react';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
+import { Logo } from '@/shared/components/layout/Logo';
 import { cn } from '@/shared/utils';
 import {
   createShortcut,
@@ -162,9 +163,10 @@ export default function HomePage() {
         <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold transition-all duration-300 hover:scale-105 cursor-pointer">
-                Metrimap
-              </h1>
+              <div className="flex items-center gap-2 transition-all duration-300 hover:scale-105 cursor-pointer">
+                <Logo className="h-7 w-7 shrink-0 rounded-md overflow-hidden" />
+                <span className="text-xl font-bold">Metrimap</span>
+              </div>
               {/* Workspace switcher (Clerk org = workspace). Orgs-only model:
                   personal account hidden; ProtectedRoute keeps an org active. */}
               <OrganizationSwitcher
