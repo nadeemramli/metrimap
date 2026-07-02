@@ -24,11 +24,17 @@ import type {
   CanvasState,
   GroupNode,
   MetricCard,
+  MetricValue,
   Relationship,
 } from '../../../shared/types';
-import { getClientForEnvironment } from '../../../shared/utils/authenticatedClient';
+import {
+  getAuthenticatedClient,
+  getClientForEnvironment,
+} from '../../../shared/utils/authenticatedClient';
 import { generateUUID } from '../../../shared/utils/validation';
 import { createLogger } from '@/shared/utils/logger';
+import { broadcastCanvasChange } from '@/features/canvas/realtime/canvasSyncChannel';
+import { syncCardValuesToCatalog } from '@/shared/lib/supabase/services/trackedMetrics';
 
 const log = createLogger('canvas');
 
@@ -280,6 +286,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
           }));
 
           log.debug('✅ Node created in promoted project:', newNode.title);
+          broadcastCanvasChange({
+            t: 'node:create',
+            family: 'card',
+            node: newNode as MetricCard,
+          });
 
           // Update URL to reflect the new project ID
           if (typeof window !== 'undefined') {
@@ -367,6 +378,11 @@ export const useCanvasStore = create<CanvasStoreState>()(
         }));
 
         log.debug('✅ New metric card created and saved:', newNode.title);
+        broadcastCanvasChange({
+          t: 'node:create',
+          family: 'card',
+          node: newNode as MetricCard,
+        });
       } catch (error) {
         console.error('❌ Error creating node:', error);
         // Fallback: add a local-only node so the user sees the action immediately
@@ -422,6 +438,31 @@ export const useCanvasStore = create<CanvasStoreState>()(
             : undefined,
           isLoading: false,
         }));
+
+        broadcastCanvasChange({
+          t: 'node:update',
+          family: 'card',
+          id: nodeId,
+          updates,
+        });
+
+        // Catalog write-through: if this card references a Tracked Metric and
+        // its series changed, sync it into the shared value store so the metric
+        // reads the same everywhere. No-op for uncatalogued cards.
+        if (updates.data !== undefined) {
+          const card = (get().canvas?.nodes || []).find((n) => n.id === nodeId);
+          const catalogClient = getAuthenticatedClient();
+          if (card?.trackedMetricId && catalogClient) {
+            void syncCardValuesToCatalog(
+              card.trackedMetricId,
+              updates.data as MetricValue[] | undefined,
+              card.sourceType ?? undefined,
+              catalogClient
+            ).catch((e) =>
+              console.error('Failed to sync tracked-metric values:', e)
+            );
+          }
+        }
       } catch (error) {
         console.error('Error updating node:', error);
         set({ error: 'Failed to update node', isLoading: false });
@@ -449,6 +490,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
           selectedNodeIds: state.selectedNodeIds.filter((id) => id !== nodeId),
           isLoading: false,
         }));
+        broadcastCanvasChange({ t: 'node:delete', family: 'card', id: nodeId });
       } catch (error) {
         console.error('Error deleting node:', error);
         set({ error: 'Failed to delete node', isLoading: false });
@@ -487,6 +529,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         }));
 
         log.debug('✅ New relationship created and saved:', newEdge.type);
+        broadcastCanvasChange({ t: 'edge:create', edge: newEdge });
       } catch (error) {
         console.error('Error creating edge:', error);
         set({ error: 'Failed to create relationship', isLoading: false });
@@ -521,6 +564,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
             : undefined,
           isLoading: false,
         }));
+        broadcastCanvasChange({ t: 'edge:update', id: edgeId, updates });
       } catch (error) {
         console.error('Error updating edge:', error);
         set({ error: 'Failed to update relationship', isLoading: false });
@@ -545,6 +589,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
           selectedEdgeIds: state.selectedEdgeIds.filter((id) => id !== edgeId),
           isLoading: false,
         }));
+        broadcastCanvasChange({ t: 'edge:delete', id: edgeId });
       } catch (error) {
         console.error('Error deleting edge:', error);
         set({ error: 'Failed to delete relationship', isLoading: false });
