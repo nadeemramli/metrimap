@@ -61,6 +61,35 @@ export default function CommentNode({ id, data }: NodeProps) {
     };
   }, [threadId]);
 
+  // Live sync: append comments inserted by other sessions on this thread so the
+  // node updates without a reload (dedup by id — our own optimistic append may
+  // arrive here too).
+  React.useEffect(() => {
+    if (!threadId) return;
+    const client = getClientForEnvironment();
+    const channel = client
+      .channel(`comments-${threadId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comments',
+          filter: `thread_id=eq.${threadId}`,
+        },
+        (payload) => {
+          const row = payload.new as CommentRow;
+          setComments((prev) =>
+            prev.some((c) => c.id === row.id) ? prev : [...prev, row]
+          );
+        }
+      )
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [threadId]);
+
   const handleSend = async () => {
     if (!content.trim()) return;
     if (!nodeData.projectId) {

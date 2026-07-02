@@ -499,6 +499,33 @@ function CommentsTab({
     }
   }, []);
 
+  // Live sync: append comments inserted by other sessions on the open thread.
+  React.useEffect(() => {
+    if (!selected) return;
+    const client = getClientForEnvironment();
+    const channel = client
+      .channel(`panel-comments-${selected}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comments',
+          filter: `thread_id=eq.${selected}`,
+        },
+        (payload) => {
+          const row = payload.new as CommentRow;
+          setComments((prev) =>
+            prev.some((c) => c.id === row.id) ? prev : [...prev, row]
+          );
+        }
+      )
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [selected]);
+
   // Auto-open a thread when a canvas comment-node broadcasts navigation.
   React.useEffect(() => {
     const handler = (e: Event) => {
