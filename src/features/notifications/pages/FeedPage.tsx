@@ -9,6 +9,11 @@ import {
   getWorkspaceChangelog,
   type ChangelogEntry,
 } from '@/shared/lib/supabase/services/changelog';
+import {
+  addFeedBookmark,
+  listFeedBookmarks,
+  removeFeedBookmark,
+} from '@/shared/lib/supabase/services/feedBookmarks';
 import { cn } from '@/shared/utils';
 import {
   ArrowLeft,
@@ -35,23 +40,6 @@ interface FeedItem {
   projectId?: string;
 }
 
-const BOOKMARK_KEY = 'metrimap-feed-bookmarks';
-
-function loadBookmarks(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '[]'));
-  } catch {
-    return new Set();
-  }
-}
-function saveBookmarks(s: Set<string>) {
-  try {
-    localStorage.setItem(BOOKMARK_KEY, JSON.stringify([...s]));
-  } catch {
-    /* ignore */
-  }
-}
-
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -70,7 +58,7 @@ export default function FeedPage() {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<FeedFilter>('all');
-  const [bookmarks, setBookmarks] = useState<Set<string>>(() => loadBookmarks());
+  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     if (!client || !user?.id) return;
@@ -115,13 +103,59 @@ export default function FeedPage() {
     load();
   }, [load]);
 
+  // Load persistent bookmarks (DB-backed, follow the user across devices).
+  useEffect(() => {
+    if (!client) return;
+    let active = true;
+    listFeedBookmarks(client)
+      .then((keys) => active && setBookmarks(new Set(keys)))
+      .catch((e) => console.error('Failed to load feed bookmarks', e));
+    return () => {
+      active = false;
+    };
+  }, [client]);
+
+  // Live feed: reload when a new notification arrives for me (mentions etc.).
+  useEffect(() => {
+    if (!client || !user?.id) return;
+    const channel = client
+      .channel(`feed-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => void load()
+      )
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [client, user?.id, load]);
+
   const toggleBookmark = (id: string) => {
+    const isBookmarked = bookmarks.has(id);
+    // Optimistic; revert on failure.
     setBookmarks((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
+      if (isBookmarked) next.delete(id);
       else next.add(id);
-      saveBookmarks(next);
       return next;
+    });
+    const op = isBookmarked
+      ? removeFeedBookmark(id, client ?? undefined)
+      : addFeedBookmark(id, client ?? undefined);
+    void op.catch((e) => {
+      console.error('Failed to toggle bookmark', e);
+      setBookmarks((prev) => {
+        const next = new Set(prev);
+        if (isBookmarked) next.add(id);
+        else next.delete(id);
+        return next;
+      });
     });
   };
 

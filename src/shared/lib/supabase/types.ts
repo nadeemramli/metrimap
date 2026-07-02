@@ -139,6 +139,24 @@ export type Database = {
         }
         Relationships: []
       }
+      feed_bookmarks: {
+        Row: {
+          created_at: string
+          item_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          item_key: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          item_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       event_definitions: {
         Row: {
           category: string | null
