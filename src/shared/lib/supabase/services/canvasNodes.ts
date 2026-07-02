@@ -13,6 +13,7 @@ interface CanvasNodeRow {
   created_at: string;
   updated_at: string;
   created_by: string;
+  updated_by?: string | null;
 }
 
 // Convert database row to application type
@@ -27,6 +28,7 @@ function rowToCanvasNode(row: CanvasNodeRow): CanvasNode {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: row.created_by,
+    updatedBy: row.updated_by ?? null,
   };
 }
 

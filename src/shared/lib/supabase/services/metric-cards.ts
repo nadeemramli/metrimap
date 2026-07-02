@@ -42,6 +42,7 @@ function transformMetricCard(card: MetricCardRow): MetricCard {
     assignees: card.assignees || [],
     createdAt: card.created_at || new Date().toISOString(),
     updatedAt: card.updated_at || new Date().toISOString(),
+    updatedBy: (card as { updated_by?: string | null }).updated_by ?? null,
   };
 }
 
@@ -145,7 +146,7 @@ export async function createMetricCard(
   });
 
   // Validate using Prisma-generated Zod schema
-  let insertData = transformToInsert(card, projectId, userId);
+  const insertData = transformToInsert(card, projectId, userId);
   try {
     CreateMetricCardSchema.parse(insertData as unknown);
   } catch (error) {

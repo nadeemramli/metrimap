@@ -18,6 +18,8 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
+import { useUserName } from '@/shared/hooks/useUserName';
+import { formatRelativeTime } from '@/shared/utils/relativeTime';
 import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
 import { Input } from '@/shared/components/ui/input';
 import {
@@ -255,6 +257,9 @@ export default function MetricCard({ data, selected }: NodeProps) {
   const { card, onOpenSettings, onNodeClick, isPreview } =
     data as unknown as MetricCardNodeData;
   const [isExpanded] = useState(true);
+
+  // Last-edited-by attribution (server-stamped updated_by).
+  const editedByName = useUserName(card.updatedBy);
 
   // Inline editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -1023,6 +1028,13 @@ export default function MetricCard({ data, selected }: NodeProps) {
             <span className="nodrag text-xs text-muted-foreground">
               {card.assignees[0]}
             </span>
+          </div>
+        )}
+
+        {!isPreview && card.updatedBy && (
+          <div className="nodrag pt-1 text-[10px] text-muted-foreground/70">
+            Edited {formatRelativeTime(card.updatedAt)}
+            {editedByName ? ` by ${editedByName}` : ''}
           </div>
         )}
       </div>

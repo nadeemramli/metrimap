@@ -96,6 +96,8 @@ export interface MetricCard {
   assignees: string[];
   createdAt: string;
   updatedAt: string;
+  /** Clerk user id of whoever last edited this card (server-stamped). */
+  updatedBy?: string | null;
 }
 
 export interface Segment {
@@ -296,6 +298,8 @@ export interface CanvasNode {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  /** Clerk user id of whoever last edited this node (server-stamped). */
+  updatedBy?: string | null;
 }
 
 // Events for changelog
