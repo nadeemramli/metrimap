@@ -163,10 +163,7 @@ export default function HomePage() {
         <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 transition-all duration-300 hover:scale-105 cursor-pointer">
-                <Logo className="h-7 w-7 shrink-0 rounded-md overflow-hidden" />
-                <span className="text-xl font-bold">Metrimap</span>
-              </div>
+              <Logo className="h-8 w-8 shrink-0 rounded-md overflow-hidden transition-all duration-300 hover:scale-105 cursor-pointer" />
               {/* Workspace switcher (Clerk org = workspace). Orgs-only model:
                   personal account hidden; ProtectedRoute keeps an org active. */}
               <OrganizationSwitcher

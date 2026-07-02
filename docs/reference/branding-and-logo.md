@@ -31,42 +31,48 @@ icon-only mark or a horizontal wordmark later, follow the same `-light` /
 ## How theming works here (so the swap is correct)
 
 Dark mode is **class-based**. `App.tsx` configures `next-themes` with
-`attribute="class"` and themes `['light', 'dark', 'night', 'system']`. That means
-the `<html>` element gets a class of `dark` or `night` (light adds none).
+`attribute="class"` and themes `['light', 'dark', 'night', 'system']`, so the
+`<html>` element gets a class of `dark` or `night` (light adds none). The app's
+colors come from CSS-variable overrides under `.dark` / `.night` in
+`src/styles/index.css` — **not** from Tailwind's `dark:` utility variant.
 
-Tailwind's `dark:` variant only reacts to the `.dark` class, **not** `.night`.
-So when you swap logos, target both. The `Logo` component below does this.
+> ⚠️ **Gotcha — do not use Tailwind's `dark:` variant for the logo swap.**
+> `tailwind.config.ts` sets `darkMode: "class"`, but that JS config is **not
+> loaded** into Tailwind v4 (there's no `@config` directive in the CSS). So
+> `dark:` falls back to v4's default, `@media (prefers-color-scheme: dark)` — the
+> **OS** scheme, which ignores the in-app theme toggle. A `dark:`-based swap
+> shows the dark logo whenever the *operating system* is dark, even in the app's
+> light theme. Match the real toggle classes explicitly instead.
 
 ## The `<Logo/>` component
 
 `src/shared/components/layout/Logo.tsx` renders both logos and lets CSS pick the
-visible one:
+visible one, keying off the `.dark` / `.night` classes directly:
 
 ```tsx
 <span className={className}>
   <img src="/brand/logo-light.svg" alt="Metrimap"
-       className="block h-full w-full object-contain dark:hidden [.night_&]:hidden" />
+       className="block h-full w-full object-contain [.dark_&]:hidden [.night_&]:hidden" />
   <img src="/brand/logo-dark.svg" alt="Metrimap" aria-hidden
-       className="hidden h-full w-full object-contain dark:block [.night_&]:block" />
+       className="hidden h-full w-full object-contain [.dark_&]:block [.night_&]:block" />
 </span>
 ```
 
-`[.night_&]:hidden` / `[.night_&]:block` are Tailwind arbitrary variants that
-match "an ancestor has class `night`" — this covers the third theme that plain
-`dark:` misses. Both `<img>`s stay mounted, so there's no flash on theme change
-and no dependency on a client-side theme hook.
+`[.dark_&]:` / `[.night_&]:` are Tailwind arbitrary variants meaning "an ancestor
+has class `dark`/`night`" — they follow the in-app toggle regardless of OS scheme
+or whether the JS Tailwind config is loaded. Both `<img>`s stay mounted, so
+there's no flash on theme change and no dependency on a client-side theme hook.
 
 **Usage** — size it with height/width classes (the logos are square):
 
 ```tsx
 import { Logo } from '@/shared/components/layout/Logo';
 
-<Logo className="h-7 w-7 rounded-md overflow-hidden" />
+<Logo className="h-8 w-8 rounded-md overflow-hidden" />
 ```
 
-It's currently used in the home header (`HomePage.tsx`) as a lockup next to the
-`Metrimap` wordmark. Reuse the same component in the canvas header, sidebar, or
-auth screens.
+It's currently used icon-only in the home header (`HomePage.tsx`). Reuse the same
+component in the canvas header, sidebar, or auth screens.
 
 ## Favicon
 
