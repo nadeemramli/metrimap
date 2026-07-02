@@ -112,12 +112,18 @@ or Data hub → Candidates → promote).
 
 - [ ] Post a comment in the right-side panel → shows in the panel; resolve a thread.
 - [ ] Card **Discussion** tab comments post and list.
-- [ ] Once a teammate is an invited collaborator: `@` in the panel composer offers
-      them → mention creates a **notification** (inbox + `/feed`) in real time.
-- [ ] ⚠️ Panel comment does **not** appear on the canvas comment node (independent threads — known).
-- [ ] ⚠️ A comment typed on a comment **node** disappears on reload (threadId not persisted — known).
-- [ ] ⚠️ Comments don't sync live between sessions (only notifications do — known).
-- [ ] ⚠️ @mention usually only offers yourself (collaborators not seeded — known).
+- [ ] **Comment node persistence** *(fixed)*: type a comment on a canvas comment
+      node → **reload** → the comment is still there (threadId now persisted).
+- [ ] **Live comment sync** *(new)*: two sessions — a comment posted in A on a
+      thread/node appears in B **without reload** (comment node + panel's open
+      thread both subscribe live).
+- [ ] **Mentionable teammates** *(fixed)*: with a teammate present on the canvas,
+      `@` in the panel composer now offers **them** (not just yourself) — sourced
+      from the live presence roster + invited collaborators. Mention creates a
+      **notification** (inbox + `/feed`) in real time.
+- [ ] ⚠️ Panel comment still doesn't appear on the canvas comment node — they're
+      independent threads (a general panel comment isn't node-scoped). Known.
+- [ ] ⚠️ "Last edited by X" per-node attribution — not built yet.
 
 ---
 
@@ -129,4 +135,4 @@ Capture the two consoles' `📡/📋/🗑️` lines and any red error toast. For
 ## Deferred items tracked in backlog (not expected to pass)
 - `docs/backlog/realtime-sync-one-step-behind.md` — update propagation lag.
 - `docs/backlog/public-embed-rendering.md` — embed rendering fidelity.
-- Comment-node persistence, @mention member sourcing, live comment sync — collab polish (unstarted).
+- "Last edited by X" per-node attribution — collab polish, not built yet.
