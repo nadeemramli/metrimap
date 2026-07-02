@@ -68,6 +68,9 @@ interface AdvancedSearchModalProps {
   onResultSelect?: (result: SearchResult) => void;
 }
 
+// Radix Select forbids empty-string item values; use a sentinel for "all levels".
+const ALL_LEVELS = '__all_levels__';
+
 export default function AdvancedSearchModal({
   isOpen,
   onClose,
@@ -444,11 +447,13 @@ export default function AdvancedSearchModal({
                     </AccordionTrigger>
                     <AccordionContent>
                       <Select
-                        value={filters.confidence || ''}
+                        value={filters.confidence || ALL_LEVELS}
                         onValueChange={(value) =>
                           updateFilter(
                             'confidence',
-                            (value as ConfidenceLevel) || undefined
+                            value === ALL_LEVELS
+                              ? undefined
+                              : (value as ConfidenceLevel)
                           )
                         }
                       >
@@ -456,7 +461,7 @@ export default function AdvancedSearchModal({
                           <SelectValue placeholder="All confidence levels" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All levels</SelectItem>
+                          <SelectItem value={ALL_LEVELS}>All levels</SelectItem>
                           <SelectItem value="High">High</SelectItem>
                           <SelectItem value="Medium">Medium</SelectItem>
                           <SelectItem value="Low">Low</SelectItem>

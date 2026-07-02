@@ -47,6 +47,9 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+// Radix Select forbids empty-string item values; use a sentinel for "no change".
+const NO_CHANGE = '__no_change__';
+
 interface BulkOperationsToolbarProps {
   className?: string;
 }
@@ -345,11 +348,11 @@ export default function BulkOperationsToolbar({
                 <div>
                   <Label htmlFor="category">Category</Label>
                   <Select
-                    value={(updateData as any).category || ''}
+                    value={(updateData as any).category || NO_CHANGE}
                     onValueChange={(value) =>
                       setUpdateData((prev) => ({
                         ...prev,
-                        category: (value || undefined) as any,
+                        category: (value === NO_CHANGE ? undefined : value) as any,
                       }))
                     }
                   >
@@ -357,7 +360,7 @@ export default function BulkOperationsToolbar({
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No change</SelectItem>
+                      <SelectItem value={NO_CHANGE}>No change</SelectItem>
                       <SelectItem value="Core/Value">Core/Value</SelectItem>
                       <SelectItem value="Data/Metric">Data/Metric</SelectItem>
                       <SelectItem value="Work/Action">Work/Action</SelectItem>
@@ -413,11 +416,11 @@ export default function BulkOperationsToolbar({
                 <div>
                   <Label htmlFor="rel-type">Relationship Type</Label>
                   <Select
-                    value={(updateData as any).type || ''}
+                    value={(updateData as any).type || NO_CHANGE}
                     onValueChange={(value) =>
                       setUpdateData((prev) => ({
                         ...prev,
-                        type: (value || undefined) as any,
+                        type: (value === NO_CHANGE ? undefined : value) as any,
                       }))
                     }
                   >
@@ -425,7 +428,7 @@ export default function BulkOperationsToolbar({
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No change</SelectItem>
+                      <SelectItem value={NO_CHANGE}>No change</SelectItem>
                       <SelectItem value="Causal">Causal</SelectItem>
                       <SelectItem value="Probabilistic">
                         Probabilistic
@@ -443,11 +446,11 @@ export default function BulkOperationsToolbar({
                 <div>
                   <Label htmlFor="confidence">Confidence Level</Label>
                   <Select
-                    value={(updateData as any).confidence || ''}
+                    value={(updateData as any).confidence || NO_CHANGE}
                     onValueChange={(value) =>
                       setUpdateData((prev) => ({
                         ...prev,
-                        confidence: (value || undefined) as any,
+                        confidence: (value === NO_CHANGE ? undefined : value) as any,
                       }))
                     }
                   >
@@ -455,7 +458,7 @@ export default function BulkOperationsToolbar({
                       <SelectValue placeholder="Select confidence" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No change</SelectItem>
+                      <SelectItem value={NO_CHANGE}>No change</SelectItem>
                       <SelectItem value="High">High</SelectItem>
                       <SelectItem value="Medium">Medium</SelectItem>
                       <SelectItem value="Low">Low</SelectItem>
