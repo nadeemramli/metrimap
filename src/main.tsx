@@ -1,5 +1,6 @@
 import { ClerkProvider } from '@clerk/react-router';
-import { StrictMode } from 'react';
+import { dark } from '@clerk/themes';
+import { StrictMode, useSyncExternalStore, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import App from './App.tsx';
@@ -10,6 +11,43 @@ import './styles/index.css';
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 console.log('Clerk Publishable Key:', PUBLISHABLE_KEY ? 'Set' : 'Not set');
+
+/**
+ * Tracks whether the app is in a dark theme by observing the class next-themes
+ * writes on <html>. ClerkProvider lives ABOVE the next-themes ThemeProvider, so
+ * we can't use `useTheme()` here — we read the applied class directly instead.
+ * Both `dark` and the warm-black `night` theme count as dark.
+ */
+function useIsDarkTheme() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const observer = new MutationObserver(onChange);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class'],
+      });
+      return () => observer.disconnect();
+    },
+    () => {
+      const cls = document.documentElement.classList;
+      return cls.contains('dark') || cls.contains('night');
+    },
+    () => false
+  );
+}
+
+/** ClerkProvider whose appearance follows the in-app theme (light / dark / night). */
+function ThemedClerkProvider({ children }: { children: ReactNode }) {
+  const isDark = useIsDarkTheme();
+  return (
+    <ClerkProvider
+      publishableKey={PUBLISHABLE_KEY}
+      appearance={isDark ? { baseTheme: dark } : undefined}
+    >
+      {children}
+    </ClerkProvider>
+  );
+}
 
 if (!PUBLISHABLE_KEY) {
   console.error(
@@ -55,12 +93,12 @@ if (!PUBLISHABLE_KEY) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <ThemedClerkProvider>
         <UserbackInitializer />
         <Routes>
           <Route path="/*" element={<App />} />
         </Routes>
-      </ClerkProvider>
+      </ThemedClerkProvider>
     </BrowserRouter>
   </StrictMode>
 );

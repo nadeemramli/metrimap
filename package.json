@@ -25,6 +25,7 @@
     "@calumk/editorjs-nested-checklist": "^1.1.0",
     "@clerk/clerk-react": "^5.38.1",
     "@clerk/react-router": "^1.8.9",
+    "@clerk/themes": "^2.4.57",
     "@cychann/editorjs-quote": "^1.0.4",
     "@dagrejs/dagre": "^1.1.5",
     "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
