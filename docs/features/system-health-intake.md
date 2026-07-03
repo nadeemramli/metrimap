@@ -74,6 +74,9 @@ match** — it's the shared secret the cron sends as `x-sync-secret`.
 
 ## Linear issue behavior
 
+Each run does two passes:
+
+**Sync pass** (pending groups):
 - One issue per fingerprint, created in **Intake/Triage** with priority Medium
   (High if it repeats ≥10×). Labels: existing ones matching `LINEAR_LABEL_NAMES`.
 - Repeats **comment** on the same issue ("N new occurrences since last sync"),
@@ -81,6 +84,19 @@ match** — it's the shared secret the cron sends as `x-sync-secret`.
 - Localhost crashes are **skipped** unless `ERROR_SYNC_INCLUDE_DEV=true`.
 - Failures set `sync_status='failed'` + `sync_error`; retry with
   `npm run sync:errors -- --retry-failed`.
+
+**Resolve pass — "Loop A" auto-resolve** (synced groups gone quiet):
+- A fingerprint with **no recurrence for `ERROR_RESOLVE_AFTER_DAYS`** (default 7)
+  whose issue is still untouched (Triage/Backlog) gets an "auto-resolved" comment
+  and is moved to **Done**; the group becomes `resolved`. Issues a human already
+  moved to In Progress/In Review are left alone.
+- **Regression:** if the crash recurs later, the rollup trigger flips the group
+  back to `pending`; the next sync pass **reopens** the Done issue to Triage with a
+  "Regression" comment. (The cron dispatch wakes on quiet-but-open groups too, not
+  only fresh crashes.)
+
+Verified end-to-end in prod (2026-07-03): create → auto-resolve → regression reopen,
+plus a real production crash that auto-filed CVS-19.
 
 ## Verify
 

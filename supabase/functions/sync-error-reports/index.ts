@@ -2,31 +2,33 @@
 //
 // The browser only ever writes raw crash reports to Supabase (see ErrorBoundary).
 // A DB trigger rolls each report into a per-fingerprint group. THIS function is
-// the only place a Linear credential exists — it processes 'pending' groups and
-// creates one Linear issue per fingerprint (in Intake/Triage), commenting on
-// repeats. Invoked every ~5 min by pg_cron (migration 20260703140000) or manually
-// via scripts/sync-error-reports.mjs. Auth is a shared secret (x-sync-secret).
+// the only place a Linear credential exists. Each run does two passes:
+//   1. SYNC   — 'pending' groups -> create one Linear issue per fingerprint
+//               (Intake/Triage), comment on repeats (rate-limited), reopen on
+//               regression.
+//   2. RESOLVE (Loop A) — 'synced' groups whose fingerprint has gone quiet for
+//               N days -> comment + move the still-open issue to Done, mark the
+//               group 'resolved'. A recurrence flips it back to 'pending' via the
+//               rollup trigger, so it auto-reopens.
 //
-// Deploy: npx supabase functions deploy sync-error-reports
-// (Set verify_jwt off — it authenticates via x-sync-secret, not a user JWT.)
+// Invoked every ~5 min by pg_cron (migration 20260703140000) or manually via
+// scripts/sync-error-reports.mjs. Auth is a shared secret (x-sync-secret).
 //
-// Required config (from Supabase Vault via public.error_sync_config(), or set as
-// function-secret env vars — env wins if present):
-//   ERROR_SYNC_SECRET        shared secret; must match the x-sync-secret header
-//   LINEAR_API_KEY           Linear personal API key (server-side only)
-//   LINEAR_TEAM_ID           target Linear team id
-// Optional env:
-//   LINEAR_STATE_ID          Intake/Triage state id (else auto-resolved by type/name)
-//   LINEAR_PROJECT_ID        attach issues to a project
-//   LINEAR_LABEL_NAMES       comma list; default below. Only EXISTING labels are attached.
-//   ERROR_SYNC_INCLUDE_DEV   'true' to also sync localhost crashes (default: skip)
-//   ERROR_SYNC_BATCH         max groups per run (default 25)
-//   ERROR_SYNC_COMMENT_WINDOW_MIN  min minutes between occurrence comments (default 45)
+// Config comes from Supabase Vault via public.error_sync_config(), or function-
+// secret env (env wins): ERROR_SYNC_SECRET, LINEAR_API_KEY, LINEAR_TEAM_ID.
+// Optional env: LINEAR_STATE_ID, LINEAR_PROJECT_ID, LINEAR_LABEL_NAMES,
+// ERROR_SYNC_INCLUDE_DEV, ERROR_SYNC_BATCH, ERROR_SYNC_COMMENT_WINDOW_MIN,
+// ERROR_RESOLVE_AFTER_DAYS (default 7), ERROR_RESOLVE_BATCH (default 25).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const LINEAR_URL = 'https://api.linear.app/graphql';
 const DEFAULT_LABELS = 'source:system-health,type:bug,runtime-error,from:error-boundary';
+
+const Q_ISSUE_STATE = `query($id:String!){ issue(id:$id){ state{ type } } }`;
+const M_COMMENT = `mutation($input: CommentCreateInput!){ commentCreate(input:$input){ success } }`;
+const M_SET_STATE = `mutation($id:String!,$s:String!){ issueUpdate(id:$id, input:{stateId:$s}){ success } }`;
+const M_CREATE = `mutation($input: IssueCreateInput!){ issueCreate(input:$input){ success issue{ id identifier url } } }`;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -74,26 +76,35 @@ async function linear(apiKey: string, query: string, variables: Record<string, u
   return body.data;
 }
 
-// --- Linear metadata resolution (cached per invocation) ---
+type State = { id: string; name: string; type: string; position: number };
 
-async function resolveStateId(apiKey: string, teamId: string): Promise<string | undefined> {
-  const envState = Deno.env.get('LINEAR_STATE_ID');
-  if (envState) return envState;
+async function teamStates(apiKey: string, teamId: string): Promise<State[]> {
   const data = await linear(
     apiKey,
     `query($teamId:String!){ team(id:$teamId){ states{ nodes{ id name type position } } } }`,
     { teamId }
   );
-  const nodes: Array<{ id: string; name: string; type: string; position: number }> =
-    data?.team?.states?.nodes ?? [];
-  const byType = nodes.find((s) => s.type === 'triage');
-  if (byType) return byType.id;
-  const byName = nodes.find((s) => /intake|triage/i.test(s.name));
-  if (byName) return byName.id;
-  const backlog = nodes
-    .filter((s) => s.type === 'backlog' || s.type === 'unstarted')
-    .sort((a, b) => a.position - b.position)[0];
-  return backlog?.id;
+  return data?.team?.states?.nodes ?? [];
+}
+
+/** Intake/Triage target for new + reopened issues. */
+function pickTriageState(states: State[]): string | undefined {
+  const envState = Deno.env.get('LINEAR_STATE_ID');
+  if (envState) return envState;
+  return (
+    states.find((s) => s.type === 'triage')?.id ??
+    states.find((s) => /intake|triage/i.test(s.name))?.id ??
+    states
+      .filter((s) => s.type === 'backlog' || s.type === 'unstarted')
+      .sort((a, b) => a.position - b.position)[0]?.id
+  );
+}
+
+/** "Done" target for auto-resolved issues. */
+function pickDoneState(states: State[]): string | undefined {
+  return states
+    .filter((s) => s.type === 'completed')
+    .sort((a, b) => a.position - b.position)[0]?.id;
 }
 
 async function resolveLabelIds(apiKey: string, teamId: string): Promise<string[]> {
@@ -108,7 +119,6 @@ async function resolveLabelIds(apiKey: string, teamId: string): Promise<string[]
     { teamId }
   );
   const nodes: Array<{ id: string; name: string }> = data?.team?.labels?.nodes ?? [];
-  // Only attach labels that already exist (don't clutter the workspace).
   return nodes.filter((l) => wanted.includes(l.name.toLowerCase())).map((l) => l.id);
 }
 
@@ -233,8 +243,29 @@ Deno.serve(async (req) => {
   const batch = Number(Deno.env.get('ERROR_SYNC_BATCH') ?? '25');
   const windowMin = Number(Deno.env.get('ERROR_SYNC_COMMENT_WINDOW_MIN') ?? '45');
   const projectId = Deno.env.get('LINEAR_PROJECT_ID') || undefined;
+  const resolveDays = Number(Deno.env.get('ERROR_RESOLVE_AFTER_DAYS') ?? '7');
+  const resolveBatch = Number(Deno.env.get('ERROR_RESOLVE_BATCH') ?? '25');
 
-  const { data: groups, error: gErr } = await admin
+  const summary = {
+    processed: 0, created: 0, commented: 0, reopened: 0,
+    skipped: 0, deferred: 0, resolved: 0, failed: 0,
+  };
+
+  // Resolve Linear metadata once (states + labels).
+  let triageStateId: string | undefined;
+  let doneStateId: string | undefined;
+  let labelIds: string[] = [];
+  try {
+    const states = await teamStates(apiKey, teamId);
+    triageStateId = pickTriageState(states);
+    doneStateId = pickDoneState(states);
+    labelIds = await resolveLabelIds(apiKey, teamId);
+  } catch (e) {
+    return json({ error: `Linear metadata: ${e instanceof Error ? e.message : e}` }, 502);
+  }
+
+  // ---- PASS 1: SYNC pending groups ----
+  const { data: pending, error: gErr } = await admin
     .from('error_report_groups')
     .select(
       'fingerprint, occurrence_count, last_synced_count, first_seen_at, last_seen_at, severity, sample_report_id, linear_issue_id, linear_synced_at'
@@ -244,20 +275,7 @@ Deno.serve(async (req) => {
     .limit(batch);
   if (gErr) return json({ error: gErr.message }, 500);
 
-  const summary = { processed: 0, created: 0, commented: 0, skipped: 0, deferred: 0, failed: 0 };
-  if (!groups || groups.length === 0) return json({ ok: true, ...summary });
-
-  // Resolve Linear metadata once per run (cheap, avoids per-issue lookups).
-  let stateId: string | undefined;
-  let labelIds: string[] = [];
-  try {
-    stateId = await resolveStateId(apiKey, teamId);
-    labelIds = await resolveLabelIds(apiKey, teamId);
-  } catch (e) {
-    return json({ error: `Linear metadata: ${e instanceof Error ? e.message : e}` }, 502);
-  }
-
-  for (const g of groups as Group[]) {
+  for (const g of (pending ?? []) as Group[]) {
     summary.processed++;
     try {
       const { data: r } = await admin
@@ -268,7 +286,6 @@ Deno.serve(async (req) => {
       const report = (r ?? {}) as Report;
       const route = routeOf(report.url);
 
-      // Skip local-dev crashes unless explicitly enabled.
       if (isDevUrl(report.url) && !includeDev) {
         await admin
           .from('error_report_groups')
@@ -278,27 +295,22 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const priority = g.occurrence_count >= 10 ? 2 : 3; // high if it repeats a lot, else medium
+      const priority = g.occurrence_count >= 10 ? 2 : 3;
       const priorityLabel = priority === 2 ? 'High' : 'Medium';
       const nowIso = new Date().toISOString();
 
       if (!g.linear_issue_id) {
-        // First time we see this fingerprint -> create an Intake/Triage issue.
-        const data = await linear(
-          apiKey,
-          `mutation($input: IssueCreateInput!){ issueCreate(input:$input){ success issue{ id identifier url } } }`,
-          {
-            input: {
-              teamId,
-              title: buildTitle(route, report.message),
-              description: buildBody(g, report, route, priorityLabel),
-              priority,
-              ...(stateId ? { stateId } : {}),
-              ...(labelIds.length ? { labelIds } : {}),
-              ...(projectId ? { projectId } : {}),
-            },
-          }
-        );
+        const data = await linear(apiKey, M_CREATE, {
+          input: {
+            teamId,
+            title: buildTitle(route, report.message),
+            description: buildBody(g, report, route, priorityLabel),
+            priority,
+            ...(triageStateId ? { stateId: triageStateId } : {}),
+            ...(labelIds.length ? { labelIds } : {}),
+            ...(projectId ? { projectId } : {}),
+          },
+        });
         const issue = data?.issueCreate?.issue;
         await admin
           .from('error_report_groups')
@@ -318,7 +330,6 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Existing issue: comment on new occurrences, rate-limited.
       const newOccurrences = g.occurrence_count - g.last_synced_count;
       const withinWindow =
         g.linear_synced_at != null &&
@@ -332,21 +343,24 @@ Deno.serve(async (req) => {
         continue;
       }
       if (withinWindow) {
-        // Defer: leave 'pending' so a later run posts the update once the window passes.
         summary.deferred++;
         continue;
       }
 
-      await linear(
-        apiKey,
-        `mutation($input: CommentCreateInput!){ commentCreate(input:$input){ success } }`,
-        {
-          input: {
-            issueId: g.linear_issue_id,
-            body: `🔁 **${newOccurrences}** new occurrence(s) since last sync — now **${g.occurrence_count}** total. Last seen ${g.last_seen_at} on \`${route}\`.`,
-          },
-        }
-      );
+      // Reopen if it recurred after being closed (regression), else just comment.
+      const st = await linear(apiKey, Q_ISSUE_STATE, { id: g.linear_issue_id });
+      const closed = ['completed', 'canceled'].includes(st?.issue?.state?.type);
+      if (closed && triageStateId) {
+        await linear(apiKey, M_SET_STATE, { id: g.linear_issue_id, s: triageStateId });
+      }
+      await linear(apiKey, M_COMMENT, {
+        input: {
+          issueId: g.linear_issue_id,
+          body: closed
+            ? `🔁 **Regression** — recurred after being resolved, reopened. **${newOccurrences}** new occurrence(s), now **${g.occurrence_count}** total. Last seen ${g.last_seen_at} on \`${route}\`.`
+            : `🔁 **${newOccurrences}** new occurrence(s) since last sync — now **${g.occurrence_count}** total. Last seen ${g.last_seen_at} on \`${route}\`.`,
+        },
+      });
       await admin
         .from('error_report_groups')
         .update({
@@ -357,7 +371,8 @@ Deno.serve(async (req) => {
           updated_at: nowIso,
         })
         .eq('fingerprint', g.fingerprint);
-      summary.commented++;
+      if (closed) summary.reopened++;
+      else summary.commented++;
     } catch (e) {
       summary.failed++;
       await admin
@@ -368,6 +383,54 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         })
         .eq('fingerprint', g.fingerprint);
+    }
+  }
+
+  // ---- PASS 2: RESOLVE quiet groups (Loop A) ----
+  const cutoff = new Date(Date.now() - resolveDays * 86_400_000).toISOString();
+  const { data: stale } = await admin
+    .from('error_report_groups')
+    .select('fingerprint, last_seen_at, occurrence_count, linear_issue_id')
+    .eq('sync_status', 'synced')
+    .not('linear_issue_id', 'is', null)
+    .lt('last_seen_at', cutoff)
+    .limit(resolveBatch);
+
+  for (const g of (stale ?? []) as Array<
+    Pick<Group, 'fingerprint' | 'last_seen_at' | 'occurrence_count' | 'linear_issue_id'>
+  >) {
+    try {
+      const d = await linear(apiKey, Q_ISSUE_STATE, { id: g.linear_issue_id });
+      const t = d?.issue?.state?.type as string | undefined;
+      const nowIso = new Date().toISOString();
+
+      if (t === 'triage' || t === 'backlog' || t === 'unstarted') {
+        // Still-open, untouched issue that's gone quiet → auto-resolve.
+        await linear(apiKey, M_COMMENT, {
+          input: {
+            issueId: g.linear_issue_id,
+            body: `✅ **Auto-resolved** — no recurrence in ${resolveDays} days (last seen ${g.last_seen_at}, ${g.occurrence_count} total occurrence(s)). Reopens automatically if the crash recurs.`,
+          },
+        });
+        if (doneStateId) {
+          await linear(apiKey, M_SET_STATE, { id: g.linear_issue_id, s: doneStateId });
+        }
+        await admin
+          .from('error_report_groups')
+          .update({ sync_status: 'resolved', updated_at: nowIso })
+          .eq('fingerprint', g.fingerprint);
+        summary.resolved++;
+      } else if (t === 'completed' || t === 'canceled') {
+        // Someone already closed it — stop tracking (recurrence still reopens via trigger).
+        await admin
+          .from('error_report_groups')
+          .update({ sync_status: 'resolved', updated_at: nowIso })
+          .eq('fingerprint', g.fingerprint);
+        summary.resolved++;
+      }
+      // 'started' (In Progress/In Review): a human/agent owns it — leave as synced.
+    } catch {
+      /* leave as synced; retry next run */
     }
   }
 
