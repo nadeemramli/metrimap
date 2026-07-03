@@ -2018,9 +2018,9 @@ function CanvasPageInner() {
               </Panel>
             )}
 
-            {/* Top toolbar */}
+            {/* Top toolbar — anchored top-right (CVS-32) */}
             <Panel
-              position="top-center"
+              position="top-right"
               className="pointer-events-auto"
               style={{ zIndex: 1010 }}
             >
@@ -2091,9 +2091,10 @@ function CanvasPageInner() {
               </Panel>
             )}
 
-            {/* Groups fly-out — toggled from the consolidated toolbar (CVS-31) */}
+            {/* Groups fly-out — toggled from the consolidated toolbar; offset
+                below the now top-right toolbar so they don't overlap (CVS-32) */}
             {state.toolbarMode === 'edit' && showGroupsPanel && (
-              <Panel position="top-right">
+              <Panel position="top-right" style={{ marginTop: 72 }}>
                 <div className="flex flex-col items-end gap-2">
                   {showGroupsPanel && (
                     <GroupsPanel
