@@ -64,6 +64,7 @@ import {
 import * as React from 'react';
 import { toast } from 'sonner';
 import { CommentComposer } from './CommentComposer';
+import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
 
 interface CollaborationPanelProps {
   projectId?: string;
@@ -472,6 +473,7 @@ function CommentsTab({
   authorName: (id: string | null) => string;
   currentPage?: string;
 }) {
+  const { canComment, loading: permLoading } = useCanvasPermission(projectId);
   const [threads, setThreads] = React.useState<CommentThreadRow[]>([]);
   const [counts, setCounts] = React.useState<Record<string, number>>({});
   const [selected, setSelected] = React.useState<string | null>(null);
@@ -656,12 +658,18 @@ function CommentsTab({
           </div>
         </ScrollArea>
         <div className="border-t p-4">
-          <CommentComposer
-            members={members}
-            onPost={handlePost}
-            isPosting={posting}
-            placeholder="Reply…  (type @ to mention)"
-          />
+          {canComment || permLoading ? (
+            <CommentComposer
+              members={members}
+              onPost={handlePost}
+              isPosting={posting}
+              placeholder="Reply…  (type @ to mention)"
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              You have view-only access — you can’t comment on this canvas.
+            </p>
+          )}
         </div>
       </TabsContent>
     );
@@ -729,14 +737,22 @@ function CommentsTab({
         </div>
       </ScrollArea>
       <div className="border-t p-4">
-        <div className="text-xs font-medium text-muted-foreground mb-2">
-          New comment
-        </div>
-        <CommentComposer
-          members={members}
-          onPost={handlePost}
-          isPosting={posting}
-        />
+        {canComment || permLoading ? (
+          <>
+            <div className="text-xs font-medium text-muted-foreground mb-2">
+              New comment
+            </div>
+            <CommentComposer
+              members={members}
+              onPost={handlePost}
+              isPosting={posting}
+            />
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            You have view-only access — you can’t comment on this canvas.
+          </p>
+        )}
       </div>
     </TabsContent>
   );
