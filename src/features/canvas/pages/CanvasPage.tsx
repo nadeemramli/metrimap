@@ -47,6 +47,7 @@ import {
 import { useAlertRulesStore } from '@/features/canvas/stores/useAlertRulesStore';
 import { useCatalogRealtime } from '@/features/canvas/realtime/useCatalogRealtime';
 import { TimeTravelControl } from '@/features/canvas/components/TimeTravelControl';
+import { useTimeTravelStore } from '@/features/canvas/stores/useTimeTravelStore';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
 import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
 import {
@@ -145,6 +146,10 @@ function CanvasPageInner() {
   const [globalPeriod, setGlobalPeriod] = useState(() =>
     new Date().toISOString().slice(0, 7)
   );
+  // Each canvas starts in "live" view — reset any time-travel from a prior canvas.
+  useEffect(() => {
+    useTimeTravelStore.getState().reset();
+  }, [canvasId]);
   // Groups side list + focus mode (grouping redesign).
   const [showGroupsPanel, setShowGroupsPanel] = useState(false);
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
