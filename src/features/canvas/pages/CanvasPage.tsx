@@ -97,7 +97,6 @@ import CanvasDebugPanels from '@/features/canvas/components/layout/CanvasDebugPa
 import CanvasModals from '@/features/canvas/components/layout/CanvasModals';
 
 // Core components
-import BulkOperationsToolbar from '@/features/canvas/components/bulk/BulkOperationsToolbar';
 import SelectionPanel from '@/features/canvas/components/grouping/SelectionPanel';
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
 import GroupsPanel from '@/features/canvas/components/left-sidepanel/GroupsPanel';
@@ -2212,9 +2211,6 @@ function CanvasPageInner() {
         onCloseSettingsSheet={events.handleCloseSettingsSheet}
         onCloseRelationshipSheet={events.handleCloseRelationshipSheet}
       />
-
-      {/* Bulk operations toolbar (appears when items are selected) */}
-      <BulkOperationsToolbar />
 
       {/* Quick Search */}
       <QuickSearchCommand
