@@ -28,7 +28,6 @@ import FeedPage from './features/notifications/pages/FeedPage';
 import WorkspaceSettingsPage from './features/settings/pages/WorkspaceSettingsPage';
 import EmbedCanvasPage from './features/canvas/pages/EmbedCanvasPage';
 import HomePage from './features/projects/pages/HomePage';
-import DataHubPage from './features/data/pages/DataHubPage';
 
 // Auth Pages
 import SignInPage from './features/auth/pages/SignInPage';
@@ -177,7 +176,11 @@ export default function App() {
                     path="evidence/:evidenceId"
                     element={<EvidencePage />}
                   />
-                  <Route path="data" element={<DataHubPage />} />
+                  {/* Data hub folded into Assets (Data tab). */}
+                  <Route
+                    path="data"
+                    element={<Navigate to="../assets?tab=data" replace />}
+                  />
                   <Route path="settings" element={<CanvasSettingsPage />} />
 
                   {/* Development-only routes */}

@@ -18,7 +18,6 @@ import {
   Grid3X3,
   Home,
   Keyboard,
-  Server,
   Settings,
   SquareKanban,
   Users,
@@ -61,11 +60,6 @@ const sidebarItems = [
     path: '/evidence',
   },
   {
-    icon: Server,
-    label: 'Data',
-    path: '/data',
-  },
-  {
     icon: Settings,
     label: 'Settings',
     path: '/settings',
@@ -88,9 +82,9 @@ export default function CanvasLayout() {
   const pageLabel = useMemo(() => {
     const p = location.pathname;
     if (p.includes('/dashboard')) return 'Dashboard';
+    if (p.includes('/strategy')) return 'Strategy';
     if (p.includes('/assets')) return 'Assets';
     if (p.includes('/evidence')) return 'Evidence';
-    if (p.includes('/data')) return 'Data';
     if (p.includes('/settings')) return 'Settings';
     return 'Canvas';
   }, [location.pathname]);

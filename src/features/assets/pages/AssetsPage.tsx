@@ -1,9 +1,14 @@
+import { AssetsChartsTab } from '@/features/assets/components/AssetsChartsTab';
+import { AssetsDataTab } from '@/features/assets/components/AssetsDataTab';
 import { AssetsEmptyState } from '@/features/assets/components/emptystate/AssetsEmptyState';
 import CardSettingsSheet from '@/features/canvas/components/panels/metric-panel/CardSettingsSheet';
 import RelationshipSheet from '@/features/canvas/components/panels/relationship-panel/RelationshipSheet';
 import { useCanvasStore, useTagStore } from '@/lib/stores';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
+import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { promoteCardToTrackedMetric } from '@/shared/lib/supabase/services/trackedMetrics';
+import { useSearchParams } from 'react-router-dom';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -57,6 +62,7 @@ import {
   CheckSquare,
   Clock,
   Download,
+  BookMarked,
   Edit,
   FileText,
   MoreVertical,
@@ -74,7 +80,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAssetsData } from '@/shared/hooks/useAssetsData';
 import { useAssetsFiltering } from '@/shared/hooks/useAssetsFiltering';
 
-type TabType = 'metrics' | 'relationships';
+type TabType = 'metrics' | 'relationships' | 'data' | 'charts';
+const TAB_TYPES: TabType[] = ['metrics', 'relationships', 'data', 'charts'];
 type SortField =
   | 'name'
   | 'category'
@@ -87,8 +94,17 @@ type SortOrder = 'asc' | 'desc';
 export default function AssetsPage() {
   const { persistNodeDelete, persistEdgeDelete } = useCanvasStore();
   const confirm = useConfirm();
+  const supabaseClient = useClerkSupabase();
 
-  const [activeTab, setActiveTab] = useState<TabType>('metrics');
+  // Tab synced with ?tab= so /data can redirect straight to the Data hub tab.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as TabType | null;
+  const activeTab: TabType =
+    tabParam && TAB_TYPES.includes(tabParam) ? tabParam : 'metrics';
+  const setActiveTab = (tab: TabType) => {
+    setSearchParams(tab === 'metrics' ? {} : { tab }, { replace: true });
+  };
+  const isTableTab = activeTab === 'metrics' || activeTab === 'relationships';
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('updated');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -685,6 +701,30 @@ export default function AssetsPage() {
     return order.filter((col) => visible.has(col));
   };
 
+  // Operative action: catalog a card as a workspace Tracked Metric.
+  const handlePromoteToTracked = async (metric: MetricCard) => {
+    if (!supabaseClient || !canvasId) return;
+    if (metric.trackedMetricId) {
+      toast.info('Already catalogued as a tracked metric');
+      return;
+    }
+    try {
+      await promoteCardToTrackedMetric(
+        {
+          cardId: metric.id,
+          projectId: canvasId,
+          name: metric.title,
+          formula: metric.formula ?? null,
+          source_kind: metric.sourceType ?? null,
+        },
+        supabaseClient
+      );
+      toast.success(`"${metric.title}" catalogued as a tracked metric`);
+    } catch {
+      toast.error('Failed to promote metric');
+    }
+  };
+
   const tabs = [
     { id: 'metrics' as const, label: 'Metrics', count: filteredMetrics.length },
     {
@@ -692,6 +732,8 @@ export default function AssetsPage() {
       label: 'Relationships',
       count: filteredRelationships.length,
     },
+    { id: 'data' as const, label: 'Data', count: null },
+    { id: 'charts' as const, label: 'Charts', count: null },
   ];
 
   usePageHeader({
@@ -779,13 +821,23 @@ export default function AssetsPage() {
                 value={tab.id}
                 className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
               >
-                {tab.label} ({tab.count})
+                {tab.count === null ? tab.label : `${tab.label} (${tab.count})`}
               </TabsTrigger>
             ))}
           </TabsList>
         </div>
       </Tabs>
 
+      {/* Data hub tab (Connections / Tracked Metrics / Events) */}
+      {activeTab === 'data' && <AssetsDataTab />}
+
+      {/* Chart nodes tab */}
+      {activeTab === 'charts' && canvasId && (
+        <AssetsChartsTab canvasId={canvasId} />
+      )}
+
+      {isTableTab && (
+      <>
       {/* Search and Filter Bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -1314,6 +1366,19 @@ export default function AssetsPage() {
                                             <Edit className="mr-2 h-4 w-4" />
                                             Edit
                                           </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            disabled={!!metric.trackedMetricId}
+                                            onClick={() =>
+                                              void handlePromoteToTracked(
+                                                metric
+                                              )
+                                            }
+                                          >
+                                            <BookMarked className="mr-2 h-4 w-4" />
+                                            {metric.trackedMetricId
+                                              ? 'Tracked metric'
+                                              : 'Promote to tracked'}
+                                          </DropdownMenuItem>
                                           <DropdownMenuSeparator />
                                           <DropdownMenuItem
                                             className="text-destructive"
@@ -1550,6 +1615,8 @@ export default function AssetsPage() {
           </CardContent>
         </Card>
       </div>
+      </>
+      )}
 
       {/* Sheet Components */}
       <CardSettingsSheet
