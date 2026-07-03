@@ -35,6 +35,7 @@ import { generateUUID } from '../../../shared/utils/validation';
 import { createLogger } from '@/shared/utils/logger';
 import { broadcastCanvasChange } from '@/features/canvas/realtime/canvasSyncChannel';
 import { syncCardValuesToCatalog } from '@/shared/lib/supabase/services/trackedMetrics';
+import { evaluateAlertRules } from '@/features/canvas/utils/evaluateAlerts';
 
 const log = createLogger('canvas');
 
@@ -461,6 +462,16 @@ export const useCanvasStore = create<CanvasStoreState>()(
             ).catch((e) =>
               console.error('Failed to sync tracked-metric values:', e)
             );
+          }
+          // Alerting: evaluate this card's threshold rules against the new value
+          // and emit notifications for any that trip. Works on any card
+          // (catalogued or not), unlike the write-through above.
+          if (card && catalogClient) {
+            void evaluateAlertRules(
+              card,
+              updates.data as MetricValue[] | undefined,
+              catalogClient
+            ).catch((e) => console.error('Alert evaluation failed:', e));
           }
         }
       } catch (error) {

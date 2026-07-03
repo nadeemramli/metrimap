@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_rules: {
+        Row: {
+          card_id: string
+          config: Json
+          created_at: string
+          created_by: string
+          enabled: boolean
+          id: string
+          last_triggered_at: string | null
+          last_triggered_value: number | null
+          name: string | null
+          project_id: string
+          rule_type: string
+          updated_at: string
+        }
+        Insert: {
+          card_id: string
+          config?: Json
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          id?: string
+          last_triggered_at?: string | null
+          last_triggered_value?: number | null
+          name?: string | null
+          project_id: string
+          rule_type: string
+          updated_at?: string
+        }
+        Update: {
+          card_id?: string
+          config?: Json
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          id?: string
+          last_triggered_at?: string | null
+          last_triggered_value?: number | null
+          name?: string | null
+          project_id?: string
+          rule_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string
