@@ -44,4 +44,4 @@ src/
 - `vite.config.ts`, `tsconfig.json`
 - `src/App.tsx`, `src/main.tsx`
 - `src/features/`, `src/shared/components/ui/`
-- Related: [ADR-002](./ADR-002:%20Using%20Clerk%20for%20User%20Management.md), [ADR-008](./ADR-008:%20Storybook.js.md)
+- Related: [ADR-002](./ADR-002:%20Using%20Clerk%20for%20User%20Management.md)

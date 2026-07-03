@@ -1,16 +1,35 @@
 # AGENTS.md
 
-Guidance for AI coding agents (Claude Code, Cursor, Codex, Devin, Copilot, etc.) working in this repo. Humans: see `docs/` (VitePress) for full documentation. This file is the cross-tool source of truth; tool-specific files (`CLAUDE.md`, `.cursor/rules/*`) point here.
+Guidance for AI coding agents (Claude Code, Cursor, Codex, Devin, Copilot, etc.) working in this repo. This file is the cross-tool source of truth; tool-specific files (`CLAUDE.md`, `.cursor/rules/*`) point here.
 
-> Note: the root `README.md` currently contains the upstream Supabase CLI readme by mistake — it does **not** describe this project. The real project overview is `docs/index.md` and the PRD under `docs/prd/`.
+> **Work is tracked in Linear (team CVS), not in this repo.** Product knowledge lives in the owner's Obsidian product vault; the repo `docs/` holds infrastructure/structural technical docs only (see **Docs policy**). Don't invent work — start from Linear.
 
-> Known issues & roadmap live in **`BACKLOG.md`** (prioritized P0–P3). Check it before starting work — several core flows (autosave, duplicate, version history, evidence persistence) have open P0s.
+## Agent operating protocol (read first)
+
+Work is driven by Linear (team **CVS**), organized as **Initiatives → Projects → Issues**. Do not invent work.
+
+1. **Start from Linear.** Pick the next issue from the active Initiative → Project by priority and unblocked status (respect `blockedBy`). Read the issue in full incl. comments — many carry a **"## Deep analysis"** (current code, `file:line`) and a **"## Decision (locked)"** comment. Honor locked decisions.
+2. **Branch per issue** using the Linear `gitBranchName`. During the multi-agent build do **NOT** commit to `main` directly (this supersedes the direct-to-`main` note in Branching).
+3. **Implement** to the acceptance criteria + locked decisions. Reuse `src/shared/components/ui` (shadcn) before adding deps. Schema changes → migration + `npm run prisma:types` + update `types.ts`.
+4. **Verify:** `npm run type-check`, `npm run lint`, `npm run test` (+ `npm run test:rls` if RLS). Never bypass Husky.
+5. **Open a PR** referencing the issue (keep `CVS-XX` in the branch/PR).
+6. **Move the feature issue to In Review** (never straight to Done).
+7. **Create a manual-test SUB-ISSUE** — child of the feature issue, title `Manual test: <feature>`, assigned to `checkpoint.xyz@gmail.com`, labelled `manual-test`. Body: link to parent + PR, preconditions, and numbered test cases derived from each acceptance criterion (steps → expected → pass/fail). A feature is **Done** only after Checkpoint passes it and the change is merged/released.
+8. **Capture durable learning** in the product Obsidian vault (see **Docs policy**), not repo docs.
+
+Roles: **Builder** (agents / Nadeem) implement; **Checkpoint** (`checkpoint.xyz@gmail.com`) manually tests. Full loop: vault note *"3.a Workflow Architecture"*.
+
+## Docs policy
+
+- **Product knowledge → Obsidian product vault:** PRD, feature explanations, product decisions, methodology, durable learning. Not the repo.
+- **Repo `docs/` → infrastructure/structural technical docs ONLY:** ADRs, environment, auth, database/RLS, migrations, architecture, state-management, and infra feature docs (e.g. `system-health-intake`, `linear-setup`, `metrics-api`).
+- **Not in the repo:** feature narratives, changelogs, point-in-time write-ups, or a compiled manual-test plan — manual tests are Linear sub-issues.
 
 ## What this project is
 
 **Metrimap** (`metric-mapping`) is a visual-first web app for building, managing, and analyzing metric trees and business-architecture maps. Users place **cards** (metrics, business processes, work/actions) on an infinite **canvas** and connect them with typed **relationships** (deterministic, probabilistic, causal, compositional). It includes an evidence repository, dashboards, source management, formula/correlation computation, and rich text/whiteboard editing.
 
-> **Product north star & methodology (read before proposing product features).** The app exists to help users **build metric trees and govern their business value chain**. The methodology we draw inspiration from (Levers Labs / Abe Gong "metric trees") is captured in **[`docs/reference/metric-tree-methodology.md`](docs/reference/metric-tree-methodology.md)**. Important: that doc is the *principle*, **not our spec** — Metrimap has its own deliberate approach and diverges where noted in the doc's "Our approach" section. Do **not** auto-generate tasks/features from the methodology; align with the product owner first. Prioritize end-to-end **value pipelines** (build the tree → diagnose drivers → govern/act) over isolated infrastructure items.
+> **Product north star & methodology (read before proposing product features).** The app exists to help users **build metric trees and govern their business value chain**. The methodology we draw inspiration from (Levers Labs / Abe Gong "metric trees") is captured in the **Obsidian product vault** (migrated out of the repo). Important: that doc is the *principle*, **not our spec** — Metrimap has its own deliberate approach and diverges where noted in the doc's "Our approach" section. Do **not** auto-generate tasks/features from the methodology; align with the product owner first. Prioritize end-to-end **value pipelines** (build the tree → diagnose drivers → govern/act) over isolated infrastructure items.
 
 ## Tech stack
 
@@ -24,8 +43,8 @@ Guidance for AI coding agents (Claude Code, Cursor, Codex, Devin, Copilot, etc.)
 - **Types/ORM:** Prisma schema *mirrors* Supabase for type-safety only (no relations/ORM use) + Zod generated via `prisma-zod-generator`
 - **Rich text:** EditorJS (many plugins)
 - **Compute:** Web Workers + Comlink; `mathjs` + `simple-statistics` (formulas, correlations)
-- **Testing:** Vitest (jsdom) + Storybook + Playwright (browser/story tests); RLS tests run via `tsx`
-- **Docs:** VitePress in `docs/`
+- **Testing:** Vitest (jsdom, unit/component tests via Testing Library); RLS tests run via `tsx`
+- **Docs:** plain Markdown in `docs/` (infra/structural only; VitePress retired). Product docs live in Obsidian.
 - **Deploy:** Vercel
 
 ## Commands
@@ -35,23 +54,30 @@ npm run dev          # Vite dev server on http://localhost:3000
 npm run build        # type-check (tsc --noEmit) then vite build
 npm run type-check   # TypeScript check only
 npm run lint         # ESLint (flat config: eslint.config.js)
-npm run test         # Vitest
+npm run test         # Vitest (jsdom unit/component tests)
 npm run test:rls     # RLS policy tests (tsx src/tests/run-rls-tests.ts)
-npm run storybook    # Storybook on :6006
-npm run docs:dev     # VitePress docs
 npm run prisma:types # prisma db pull + generate (regenerate types/Zod from DB)
 npx supabase <cmd>   # Always use npx for the Supabase CLI
 ```
 
-A Husky `pre-commit` hook runs on commit (`.husky/pre-commit`). Don't bypass it without reason.
+### Git hooks (Husky)
+
+A single Husky **`pre-commit`** hook gates quality on every commit (there is no CI yet — this is the safety net). Don't bypass it without reason. It runs, in order:
+
+1. `lint-staged` — ESLint on just the files the commit touches. Because it's staged-scoped, the repo's pre-existing lint debt in untouched files won't block you (tracked in **CVS-64**) — but new/edited files must be lint-clean.
+2. `npm run type-check` — whole-repo `tsc` (fast, currently clean).
+3. `vitest run` — the full Vitest suite (jsdom, no browser — Storybook/Chromium was removed, so tests are fast).
 
 ## Branching
 
-**For now, commit (and push) directly to `main`.** The product is still being
-brought to a complete end-to-end state, so we optimize for fast iteration over a
-gated release flow. Once the core value pipeline works end to end, we'll switch
-to a `preview` branch (PR-based, deploy-preview gated) and stop pushing straight
-to `main`. Until that note is removed here, direct-to-`main` is the expected flow.
+**During the multi-agent build: branch per issue + PR, merge one at a time.** Use
+the Linear `gitBranchName`, keep `CVS-XX` in the branch/PR name, and never commit
+to `main` directly (see **Agent operating protocol**). Review + merge PRs one at a
+time; other lanes rebase on `main` after each merge.
+
+We revert to direct-to-`main` only once the core value pipeline is complete end to
+end (and later still may adopt a `preview` branch with deploy-preview gating). Until
+then, PR-based is the expected flow.
 
 ## Project layout
 
@@ -71,7 +97,7 @@ src/
     prisma/             # schema.prisma + generated Zod schemas
     editorjs-config.ts
   tests/                # RLS + XState integration tests
-docs/                   # VitePress: prd, adr, features, database, auth, state-management, editor, environment, refactoring, tests
+docs/                   # infra/structural Markdown: adr, database, auth, environment, state-management, architecture, features (infra)
 supabase/migrations/    # SQL migrations (source of truth for DB schema)
 scripts/                # RLS tests, policy analysis, service-role key helper
 ```
@@ -83,7 +109,7 @@ Path alias: `@` → `src` (configured in `vite.config.ts` and `tsconfig`).
 - **Reuse `src/shared/components/ui/*` (shadcn)** before adding any new UI dependency.
 - **Zustand stores are the single source of UI state**; persist through Supabase services in `src/shared/lib/supabase/services/`, not directly from components.
 - **Minimal inline comments.** Prefer descriptive, feature-scoped `console` messages for debugging; keep logs high-signal.
-- **Documentation lives in `docs/`.** Link to PRD sections rather than duplicating content. Update relevant docs when changing behavior.
+- **Docs split by type (see Docs policy):** infra/structural technical docs in repo `docs/`; product knowledge + durable learning in the Obsidian product vault. Don't add feature narratives or changelogs to the repo.
 - **Prisma is for types only** — the schema mirrors Supabase with no relations. After DB schema changes, run `npm run prisma:types` to regenerate.
 - Match the style, naming, and structure of surrounding code.
 

@@ -23,8 +23,8 @@ interface InfoHintProps {
  * TooltipProvider) so it can be dropped anywhere — labels, settings rows,
  * relationship-type pickers, drift-factor explanations, etc.
  *
- * Source the `content` from docs/reference/metric-tree-methodology.md (via the
- * canonical metadata maps) so in-app help stays in sync with the methodology.
+ * Source the `content` from the metric-tree methodology note (Obsidian product
+ * vault) via the canonical metadata maps so in-app help stays in sync.
  */
 export function InfoHint({
   content,
