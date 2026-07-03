@@ -2,7 +2,7 @@
 // MetricValue point to each downstream card's history and write it via the
 // authenticated client. Pure compute lives in computePipeline.ts; this is the
 // thin persist + before→after summary wrapper.
-// See docs/backlog/operator-revamp-feature.md (Phase A/F).
+// See the product vault (Phase A/F).
 
 import type { MetricCard, MetricValue } from '@/shared/types';
 import { useCanvasStore } from '@/features/canvas/stores/useCanvasStore';

@@ -1,4 +1,4 @@
-// Operative-node data model (revamp). See docs/backlog/operator-revamp-feature.md.
+// Operative-node data model (revamp). See the product vault.
 //
 // An operative node binds each incoming data-flow edge to a named input (a, b,
 // c…) by connection order. Its operation combines those inputs into one output

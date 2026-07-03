@@ -1,6 +1,6 @@
 // Collaboration handoff + remaining work (owned by the collaboration pipeline,
 // incl. the required uuid→text comment-columns migration):
-// docs/backlog/collaboration-consolidation.md  — read before changing this path.
+// the product vault  — read before changing this path.
 import {
   addMention,
   createComment,

@@ -37,7 +37,7 @@ const THEMES = [
 ] as const;
 
 // Notification preferences are local-only for now (no backend prefs table yet —
-// see docs/backlog/ui-ux-audit-2026-06-29.md).
+// see the product vault).
 const PREF_KEY = 'metrimap-notif-prefs';
 const PREFS = [
   { id: 'mention', label: 'Email me when I’m mentioned' },

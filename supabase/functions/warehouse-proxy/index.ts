@@ -1,7 +1,7 @@
 // Warehouse query proxy — Data Source Phase 3.
 //
 // Why this exists: warehouse credentials must NEVER live in the browser bundle
-// (see docs/backlog/data-source-architecture.md, Principle 3). This edge function
+// (see the product vault, Principle 3). This edge function
 // is the only thing that holds/uses a connection's password. The browser calls
 // it with the user's Clerk-issued Supabase JWT; the function verifies ownership
 // via RLS, reads the secret with the service-role key, runs the query against the

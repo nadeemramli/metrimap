@@ -3,7 +3,7 @@
 //    inputs + live output).
 //  - Pipeline: Run + last-run results (cards changed, before→after) + warnings.
 //  - Global: simulation period, run-all, and bulk "apply to all" actions (in
-//    tooltips). See docs/backlog/operator-revamp-feature.md (Phase D/F).
+//    tooltips). See the product vault (Phase D/F).
 
 import { useEffect, useState } from 'react';
 import { Badge } from '@/shared/components/ui/badge';

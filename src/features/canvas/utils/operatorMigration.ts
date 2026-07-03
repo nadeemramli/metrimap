@@ -1,7 +1,7 @@
 // Lazy, read-time migration of operator node data to the revamped shape.
 // Pure + side-effect free (used by both convertToCanvasNode and computePipeline);
 // it never writes to the DB — persistence happens the next time the user edits or
-// runs. See docs/backlog/operator-revamp-feature.md (Phase 0).
+// runs. See the product vault (Phase 0).
 
 import type {
   OperatorInput,

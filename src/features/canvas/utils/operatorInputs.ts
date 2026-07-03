@@ -1,6 +1,6 @@
 // Named-input helpers for operative nodes. Pure + typed (shared by the compute
 // pipeline's derive-fallback and by CanvasPage's edge lifecycle wiring).
-// See docs/backlog/operator-revamp-feature.md (Phase B).
+// See the product vault (Phase B).
 
 import type { OperatorInput } from '@/features/canvas/types/operator';
 

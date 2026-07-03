@@ -1,5 +1,5 @@
 // Unified collaboration surface (People / Comments+@mentions / Activity).
-// Handoff + remaining backend work: docs/backlog/collaboration-consolidation.md
+// Handoff + remaining backend work: the product vault
 import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
 import { postComment } from '@/features/canvas/utils/comments';
 import VersionHistoryButton from '@/features/canvas/components/version-history/VersionHistoryButton';

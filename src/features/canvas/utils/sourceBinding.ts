@@ -1,7 +1,7 @@
 // The data contract for metric values. Every path that populates a card's
 // `data: MetricValue[]` (manual entry, generated sample, file, warehouse)
 // resolves to the SAME shape via this module — see
-// docs/backlog/data-source-architecture.md (Principle 1: define the contract first).
+// the product vault (Principle 1: define the contract first).
 //
 // Phase 1 ships the zero-backend paths only: `manual` and `generated`.
 // `file` / `warehouse` reuse `deriveSeries` once their fetch layers exist.

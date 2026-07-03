@@ -5,7 +5,7 @@
 // point and parallel edges overlap. ELK assigns ports along node borders AND
 // computes routed edge sections (bend-points) in dedicated channels, so we can
 // render edges along its computed path and avoid the overlaps. See
-// docs/backlog/operator-control-feature.md siblings for the grouping/layout work.
+// the product vault siblings for the grouping/layout work.
 
 import type {
   ElkExtendedEdge,
