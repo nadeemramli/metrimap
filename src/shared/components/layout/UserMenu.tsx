@@ -1,7 +1,6 @@
-import { useUser, SignOutButton, useClerk } from "@clerk/react-router";
+import { useUser, SignOutButton } from "@clerk/react-router";
 import {
   LogOut,
-  User,
   Settings,
   SlidersHorizontal,
   MessageSquare,
@@ -29,7 +28,6 @@ import { useAppStore } from "@/lib/stores";
 
 export function UserMenu() {
   const { user: clerkUser } = useUser();
-  const clerk = useClerk();
   const devUser = useAppStore((s) => s.user);
   const isDev = import.meta.env.DEV;
   const { theme, setTheme } = useTheme();
@@ -51,14 +49,6 @@ export function UserMenu() {
   if (!user) return null;
 
   const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`;
-
-  const handleOpenProfile = () => {
-    if (typeof clerk?.openUserProfile === "function") {
-      clerk.openUserProfile();
-    } else {
-      console.warn("Clerk user profile is not available in this environment");
-    }
-  };
 
   const handleFeedbackClick = () => {
     // Trigger Userback widget manually
@@ -95,11 +85,7 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <Separator />
-        <DropdownMenuItem onClick={handleOpenProfile}>
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleOpenProfile}>
+        <DropdownMenuItem onClick={() => navigate('/settings')}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
         </DropdownMenuItem>
