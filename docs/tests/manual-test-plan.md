@@ -170,6 +170,21 @@ or Data hub → Candidates → promote).
       the pg_cron `metrimap-alert-sweep` fires the notification. (Same debounce, so
       no double-fire with the client path.)
 
+## 11. Spaces / hierarchy (Home page) *(solo)*
+
+- [ ] Workspace = Clerk org: the org switcher in the Home header changes which
+      canvases show (workspace-scoped).
+- [ ] Space filter chips: All Canvases / Uncategorized / one per space; clicking
+      filters the canvas list.
+- [ ] **New Space** *(new dialog)*: name + color swatch → chip appears with its
+      color dot.
+- [ ] Space chip **⋯ menu → Rename / recolor** *(new)*: opens a dialog prefilled;
+      saving updates the chip name + dot color.
+- [ ] Space chip **⋯ menu → Delete** *(new)*: themed confirm; the space is removed
+      and its canvases fall back to **Uncategorized** (not deleted).
+- [ ] Move a canvas into a space (card/table "move to space") → it appears under
+      that space's filter.
+
 ---
 
 ## If something fails
