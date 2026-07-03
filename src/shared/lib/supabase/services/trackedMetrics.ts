@@ -122,20 +122,41 @@ export interface CandidateCard {
   points: number; // length of its MetricValue[] series
 }
 
-/** List the workspace's catalogued (tracked) metrics. */
+/**
+ * Public example/showcase projects — their cards and seeded metrics are demo
+ * content and must never surface in the workspace catalog (tracked list or
+ * candidates). Filtering happens client-side: a SQL NOT IN would also drop
+ * rows whose project id is NULL.
+ */
+async function getExampleProjectIds(c: Client): Promise<Set<string>> {
+  const { data, error } = await c
+    .from('projects')
+    .select('id')
+    .contains('tags', ['example'])
+    .eq('is_public', true);
+  if (error) throw new Error(error.message);
+  return new Set((data ?? []).map((r) => r.id));
+}
+
+/** List the workspace's catalogued (tracked) metrics (example data excluded). */
 export async function listTrackedMetrics(
   client?: Client
 ): Promise<TrackedMetric[]> {
   const c = client || supabase();
-  const { data, error } = await c
-    .from('tracked_metrics')
-    .select(
-      'id, name, unit, formula, owner_label, state, origin_card_id, origin_project_id, source_kind, created_at'
-    )
-    .eq('state', 'tracked')
-    .order('created_at', { ascending: false });
+  const [exampleIds, { data, error }] = await Promise.all([
+    getExampleProjectIds(c),
+    c
+      .from('tracked_metrics')
+      .select(
+        'id, name, unit, formula, owner_label, state, origin_card_id, origin_project_id, source_kind, created_at'
+      )
+      .eq('state', 'tracked')
+      .order('created_at', { ascending: false }),
+  ]);
   if (error) throw new Error(error.message);
-  return (data ?? []) as TrackedMetric[];
+  return ((data ?? []) as TrackedMetric[]).filter(
+    (m) => !m.origin_project_id || !exampleIds.has(m.origin_project_id)
+  );
 }
 
 /**
@@ -170,14 +191,22 @@ export async function listCandidateCards(
   client?: Client
 ): Promise<CandidateCard[]> {
   const c = client || supabase();
-  const { data, error } = await c
-    .from('metric_cards')
-    .select('id, title, project_id, source_type, formula, data, tracked_metric_id')
-    .is('tracked_metric_id', null);
+  const [exampleIds, { data, error }] = await Promise.all([
+    getExampleProjectIds(c),
+    c
+      .from('metric_cards')
+      .select(
+        'id, title, project_id, source_type, formula, data, tracked_metric_id'
+      )
+      .is('tracked_metric_id', null),
+  ]);
   if (error) throw new Error(error.message);
   return (data ?? [])
     .filter(
-      (card: any) => Array.isArray(card.data) && card.data.length > 0
+      (card: any) =>
+        Array.isArray(card.data) &&
+        card.data.length > 0 &&
+        !(card.project_id && exampleIds.has(card.project_id))
     )
     .map((card: any) => ({
       id: card.id,
