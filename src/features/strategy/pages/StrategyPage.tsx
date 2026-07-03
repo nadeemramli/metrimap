@@ -4,13 +4,20 @@ import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { updateMetricCard } from '@/shared/lib/supabase/services/metric-cards';
 import { getProjectById } from '@/shared/lib/supabase/services/projects';
-import type { GroupNode, MetricCard, WorkflowStatus } from '@/shared/types';
+import type {
+  GroupNode,
+  MetricCard,
+  Relationship,
+  WorkflowStatus,
+} from '@/shared/types';
 import { resolveGroupMembers } from '@/features/dashboard/utils/groupDashboard';
 import { StrategyBoard } from '@/features/strategy/components/StrategyBoard';
+import { ValueJourneyStrip } from '@/features/strategy/components/ValueJourneyStrip';
 import {
   buildGroupStrategy,
   isWorkCard,
 } from '@/features/strategy/utils/groupStrategy';
+import { buildValueJourney } from '@/features/strategy/utils/valueJourney';
 import { Loader2, SquareKanban } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -29,6 +36,7 @@ export default function StrategyPage() {
 
   const [loadedCards, setLoadedCards] = useState<MetricCard[]>([]);
   const [loadedGroups, setLoadedGroups] = useState<GroupNode[]>([]);
+  const [loadedEdges, setLoadedEdges] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<string>(ALL_VIEW);
   // Optimistic status overrides while a drop is persisting (kept on success —
@@ -67,10 +75,12 @@ export default function StrategyPage() {
       .then((project) => {
         setLoadedCards(project?.nodes ?? []);
         setLoadedGroups(project?.groups ?? []);
+        setLoadedEdges(project?.edges ?? []);
       })
       .catch(() => {
         setLoadedCards([]);
         setLoadedGroups([]);
+        setLoadedEdges([]);
       })
       .finally(() => setLoading(false));
   }, [client, canvasId]);
@@ -93,6 +103,17 @@ export default function StrategyPage() {
   );
 
   const board = useMemo(() => buildGroupStrategy(members), [members]);
+
+  // The value chain is the canvas-level backbone — always built from all
+  // cards/edges, independent of the selected group pill.
+  const edges: Relationship[] = useMemo(
+    () => (storeMatches ? (storeCanvas?.edges ?? []) : loadedEdges),
+    [storeMatches, storeCanvas?.edges, loadedEdges]
+  );
+  const journey = useMemo(
+    () => buildValueJourney(cards, edges),
+    [cards, edges]
+  );
 
   const handleStatusChange = (cardId: string, status: WorkflowStatus) => {
     const card = cards.find((c) => c.id === cardId);
@@ -157,6 +178,14 @@ export default function StrategyPage() {
 
   return (
     <div className="p-4">
+      {journey.length > 0 ? (
+        <ValueJourneyStrip steps={journey} />
+      ) : (
+        <p className="mb-4 text-xs text-muted-foreground">
+          Add Core/Value nodes on the canvas to map your journey here.
+        </p>
+      )}
+
       {/* View selector: one strategy per group with work cards, plus All. */}
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
         <button
