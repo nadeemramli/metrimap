@@ -5,9 +5,15 @@
 //  - evidence (useEvidenceStore).
 // Each create/delete pushes an undo+redo pair onto useCanvasHistoryStore.
 
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import type { CanvasNode, EvidenceItem, MetricCard } from '@/shared/types';
+import type {
+  CanvasNode,
+  EvidenceItem,
+  MetricCard,
+  Relationship,
+} from '@/shared/types';
+import { internalEdges, remapEdges } from '@/features/canvas/utils/clipboard';
 // IMPORTANT: use the SAME store instance the canvas renders from (@/lib/stores
 // → canvasStore). A second useCanvasStore.ts exists but is a different instance;
 // reading it here made getSelection/itemsFromIds see an empty store, so
@@ -25,16 +31,23 @@ type ClipItem =
   | { family: 'card'; node: MetricCard }
   | { family: 'canvasNode'; node: CanvasNode }
   | { family: 'evidence'; node: EvidenceItem };
-type Ref = { family: Family; id: string };
+type Ref = { family: Family; id: string; srcId?: string };
 
 const OFFSET = 48;
+
+// Module-level clipboard so a copy survives navigating between canvases
+// (cross-canvas paste, CVS-41). Holds the copied nodes, the relationships
+// internal to the selection, and the paste-offset generation.
+const clip: { items: ClipItem[]; edges: Relationship[]; gen: number } = {
+  items: [],
+  edges: [],
+  gen: 0,
+};
 
 export function useCanvasActions(
   projectId: string | undefined,
   createdBy: string
 ) {
-  const clipboard = useRef<ClipItem[]>([]);
-  const pasteGen = useRef(0);
 
   // Resolve a set of node ids to full ClipItems across the three node families.
   const itemsFromIds = useCallback((idList: string[]): ClipItem[] => {
@@ -100,7 +113,9 @@ export function useCanvasActions(
               console.error('Failed to preserve catalog link on copy:', e);
             }
           }
-          return created ? { family: 'card', id: created.id } : null;
+          return created
+            ? { family: 'card', id: created.id, srcId: id }
+            : null;
         }
         if (item.family === 'evidence') {
           const newId = generateUUID();
@@ -110,7 +125,7 @@ export function useCanvasActions(
             id: newId,
             position: { x: pos.x + d, y: pos.y + d },
           } as EvidenceItem);
-          return { family: 'evidence', id: newId };
+          return { family: 'evidence', id: newId, srcId: item.node.id };
         }
         const created = await useCanvasNodesStore.getState().createNode({
           projectId: projectId || (item.node as any).projectId,
@@ -127,7 +142,9 @@ export function useCanvasActions(
           src: item.node.id,
           created: created?.id ?? null,
         });
-        return created ? { family: 'canvasNode', id: created.id } : null;
+        return created
+          ? { family: 'canvasNode', id: created.id, srcId: item.node.id }
+          : null;
       } catch (e) {
         console.error('📋 createCopy failed:', item.family, e);
         toast.error(
@@ -156,74 +173,112 @@ export function useCanvasActions(
     }
   }, []);
 
-  // Create copies of `items` and record an undo (delete) + redo (recreate).
+  // Create copies of `items` + the relationships internal to the selection,
+  // and record a single undo (delete both) + redo (recreate both).
   const pasteItems = useCallback(
-    async (items: ClipItem[], gen: number) => {
+    async (items: ClipItem[], edges: Relationship[], gen: number) => {
       if (!items.length) return;
-      const recreate = async (): Promise<Ref[]> => {
-        const made: Ref[] = [];
+
+      const recreate = async (): Promise<{ nodes: Ref[]; edgeIds: string[] }> => {
+        const nodes: Ref[] = [];
         for (const item of items) {
           const c = await createCopy(item, OFFSET * gen);
-          if (c) made.push(c);
+          if (c) nodes.push(c);
         }
-        return made;
+        // old id → new id, then rebuild the internal edges between the copies.
+        const idMap = new Map<string, string>();
+        for (const r of nodes) if (r.srcId) idMap.set(r.srcId, r.id);
+        const edgeIds: string[] = [];
+        for (const data of remapEdges(edges, idMap)) {
+          try {
+            const before = new Set(
+              (useCanvasStore.getState().canvas?.edges || []).map((e) => e.id)
+            );
+            await useCanvasStore.getState().createEdge(data);
+            const created = (
+              useCanvasStore.getState().canvas?.edges || []
+            ).find((e) => !before.has(e.id));
+            if (created) edgeIds.push(created.id);
+          } catch (e) {
+            console.error('📋 paste edge failed:', e);
+          }
+        }
+        return { nodes, edgeIds };
       };
+
       let current = await recreate();
-      if (!current.length) {
+      if (!current.nodes.length) {
         console.warn('📋 pasteItems produced 0 nodes from', items.length);
         return; // createCopy already toasts on failure
       }
+      // Select the pasted nodes so the user can immediately move/act on them.
+      useCanvasStore.setState({
+        selectedNodeIds: current.nodes.map((r) => r.id),
+      });
+
       useCanvasHistoryStore.getState().push({
-        label: `Add ${current.length}`,
+        label: `Add ${current.nodes.length}`,
         undo: async () => {
-          for (const r of current) await deleteOne(r.family, r.id);
+          for (const id of current.edgeIds)
+            await useCanvasStore.getState().persistEdgeDelete(id);
+          for (const r of current.nodes) await deleteOne(r.family, r.id);
         },
         redo: async () => {
           current = await recreate();
         },
       });
-      toast.success(`Pasted ${current.length} item${current.length === 1 ? '' : 's'}`);
+      const n = current.nodes.length;
+      const e = current.edgeIds.length;
+      toast.success(
+        `Pasted ${n} item${n === 1 ? '' : 's'}` +
+          (e ? ` + ${e} edge${e === 1 ? '' : 's'}` : '')
+      );
     },
     [createCopy, deleteOne]
   );
 
+  // Relationships internal to the given items (both endpoints selected).
+  const edgesFor = useCallback((items: ClipItem[]): Relationship[] => {
+    const selectedIds = new Set(items.map((i) => i.node.id));
+    return internalEdges(
+      useCanvasStore.getState().canvas?.edges || [],
+      selectedIds
+    );
+  }, []);
+
   const copySelection = useCallback(() => {
     const items = getSelection();
-    console.log('📋 copySelection:', {
-      selectedNodeIds: useCanvasStore.getState().selectedNodeIds,
-      resolved: items.length,
-    });
     if (!items.length) {
       toast.info('Select a node first, then copy');
       return;
     }
-    clipboard.current = items;
-    pasteGen.current = 0;
-    toast.success(`Copied ${items.length} item${items.length === 1 ? '' : 's'}`);
-  }, [getSelection]);
+    const edges = edgesFor(items);
+    clip.items = items;
+    clip.edges = edges;
+    clip.gen = 0;
+    toast.success(
+      `Copied ${items.length} item${items.length === 1 ? '' : 's'}` +
+        (edges.length ? ` + ${edges.length} edge${edges.length === 1 ? '' : 's'}` : '')
+    );
+  }, [getSelection, edgesFor]);
 
   const paste = useCallback(() => {
-    console.log('📋 paste: clipboard size', clipboard.current.length);
-    if (!clipboard.current.length) {
+    if (!clip.items.length) {
       toast.info('Nothing to paste — copy a node first');
       return;
     }
-    pasteGen.current += 1;
-    void pasteItems(clipboard.current, pasteGen.current);
+    clip.gen += 1;
+    void pasteItems(clip.items, clip.edges, clip.gen);
   }, [pasteItems]);
 
   const duplicateSelection = useCallback(() => {
     const items = getSelection();
-    console.log('📋 duplicateSelection:', {
-      selectedNodeIds: useCanvasStore.getState().selectedNodeIds,
-      resolved: items.length,
-    });
     if (!items.length) {
       toast.info('Select a node first, then duplicate');
       return;
     }
-    void pasteItems(items, 1);
-  }, [getSelection, pasteItems]);
+    void pasteItems(items, edgesFor(items), 1);
+  }, [getSelection, pasteItems, edgesFor]);
 
   // Delete a specific set of items, with undo (recreate) / redo.
   const deleteItems = useCallback(
