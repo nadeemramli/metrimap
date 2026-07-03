@@ -51,6 +51,7 @@ import {
 } from '@/shared/lib/supabase/services/collaboration';
 import { setProjectPublic } from '@/shared/lib/supabase/services/projects';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import { userCodename } from '@/shared/utils/codename';
 import {
   ArrowLeft,
   Check,
@@ -98,11 +99,12 @@ export function CollaborationPanel({
   currentPage,
 }: CollaborationPanelProps) {
   const user = useAppStore((s) => s.user);
-  const { members, byId, isLoading: membersLoading, reload: reloadMembers } =
+  const { members, isLoading: membersLoading, reload: reloadMembers } =
     useProjectMembers(projectId, open, presence);
 
-  const authorName = (id: string | null) =>
-    (id && byId[id]?.name) || id || 'Unknown';
+  // Comment authors show a stable pseudonymous codename — never the raw Clerk id
+  // or real name (CVS-33). The People list keeps real names (intentional).
+  const authorName = (id: string | null) => userCodename(id);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
