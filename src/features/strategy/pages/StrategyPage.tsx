@@ -13,7 +13,10 @@ import {
 } from '@/shared/lib/supabase/services/metric-cards';
 import { getProjectById } from '@/shared/lib/supabase/services/projects';
 import { getUsersByIds, type UserLite } from '@/shared/lib/supabase/services/users';
-import { getCommentCountsByCard } from '@/shared/lib/supabase/services/collaboration';
+import {
+  getCommentCountsByCard,
+  notifyCardAssigned,
+} from '@/shared/lib/supabase/services/collaboration';
 import type {
   CardWorkflow,
   GroupNode,
@@ -234,7 +237,14 @@ export default function StrategyPage() {
     applyPatch(cardId, { workflow });
   };
   const handleAssigneesChange = (cardId: string, assignees: string[]) => {
+    const prev = cards.find((c) => c.id === cardId)?.assignees ?? [];
     applyPatch(cardId, { assignees });
+    const added = assignees.filter((id) => !prev.includes(id));
+    if (added.length > 0 && client) {
+      void notifyCardAssigned(cardId, added, client).catch((e) =>
+        console.error('assigned notification failed', e)
+      );
+    }
   };
 
   const handleCreateItem = async (

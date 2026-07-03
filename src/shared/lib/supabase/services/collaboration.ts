@@ -312,6 +312,29 @@ export async function createNotification(
   return data as NotificationRow;
 }
 
+/**
+ * Emit an 'assigned' notification to each newly-added card assignee (CVS-73).
+ * Cross-user notifications are RLS-blocked for clients, so this goes through the
+ * `notify_card_assigned` SECURITY DEFINER RPC, which verifies project access and
+ * skips the caller. Pass only the NEWLY added ids so re-saves don't re-notify.
+ */
+export async function notifyCardAssigned(
+  cardId: string,
+  userIds: string[],
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<void> {
+  if (!userIds || userIds.length === 0) return;
+  const client = authenticatedClient || supabase();
+  const { error } = await client.rpc('notify_card_assigned' as never, {
+    p_card_id: cardId,
+    p_user_ids: userIds,
+  } as never);
+  if (error) {
+    console.error('Error emitting assigned notification:', error);
+    throw error;
+  }
+}
+
 export interface NotificationFilter {
   unreadOnly?: boolean;
   // Restrict to these notification types (e.g. ['mention'], ['assigned']).
