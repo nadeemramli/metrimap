@@ -14,16 +14,17 @@ import {
   type NotificationRow,
 } from '@/shared/lib/supabase/services/collaboration';
 import { cn } from '@/shared/utils';
-import { Bell, Check, Loader2 } from 'lucide-react';
+import { Bell, Check, Loader2, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type TypeFilter = 'all' | 'mention' | 'assigned';
+type TypeFilter = 'all' | 'mention' | 'alert' | 'assigned';
 type RecencyFilter = 0 | 3 | 7;
 
 const TYPE_TABS: { id: TypeFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'mention', label: 'Mentioned' },
+  { id: 'alert', label: 'Alerts' },
   { id: 'assigned', label: 'Assigned to me' },
 ];
 const RECENCY_TABS: { id: RecencyFilter; label: string }[] = [
@@ -239,8 +240,11 @@ export function NotificationInbox() {
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
                 )}
                 <span className={cn('min-w-0 flex-1', n.read && 'pl-4')}>
-                  <span className="block truncate text-sm font-medium">
-                    {n.title || n.type}
+                  <span className="flex items-center gap-1.5 truncate text-sm font-medium">
+                    {n.type === 'alert' && (
+                      <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                    )}
+                    <span className="truncate">{n.title || n.type}</span>
                   </span>
                   {n.description && (
                     <span className="block truncate text-xs text-muted-foreground">

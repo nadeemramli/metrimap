@@ -21,6 +21,7 @@ import {
   Bookmark,
   Loader2,
   Settings2,
+  TriangleAlert,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -28,12 +29,13 @@ import { useNavigate } from 'react-router-dom';
 // The Monday-style update feed: people-events (mentions/comments — from
 // notifications) and system/data-events (created/updated/analysis — from
 // changelog) merged into one time-ordered board. See PRD #7.
-type FeedFilter = 'all' | 'mentioned' | 'bookmarked';
+type FeedFilter = 'all' | 'mentioned' | 'alerts' | 'bookmarked';
 
 interface FeedItem {
   id: string;
   kind: 'people' | 'system';
   isMention: boolean;
+  isAlert: boolean;
   title: string;
   description?: string;
   timestamp: string;
@@ -72,6 +74,7 @@ export default function FeedPage() {
         id: `c:${c.id}`,
         kind: 'system',
         isMention: false,
+        isAlert: false,
         title: `${c.action} · ${c.targetName}`,
         description: c.description,
         timestamp: c.timestamp,
@@ -81,10 +84,11 @@ export default function FeedPage() {
         id: `n:${n.id}`,
         kind: 'people',
         isMention: n.type === 'mention',
+        isAlert: n.type === 'alert',
         title: n.title || n.type,
         description: n.description ?? undefined,
         timestamp: n.created_at,
-        projectId: (n.metadata as any)?.projectId,
+        projectId: (n.metadata as any)?.projectId ?? (n.metadata as any)?.cardId,
       }));
       setItems(
         [...sys, ...ppl].sort(
@@ -161,6 +165,7 @@ export default function FeedPage() {
 
   const filtered = items.filter((i) => {
     if (filter === 'mentioned') return i.isMention;
+    if (filter === 'alerts') return i.isAlert;
     if (filter === 'bookmarked') return bookmarks.has(i.id);
     return true;
   });
@@ -168,6 +173,7 @@ export default function FeedPage() {
   const TABS: { id: FeedFilter; label: string }[] = [
     { id: 'all', label: 'All activity' },
     { id: 'mentioned', label: 'Mentioned me' },
+    { id: 'alerts', label: 'Alerts' },
     { id: 'bookmarked', label: 'Bookmarked' },
   ];
 
@@ -220,13 +226,23 @@ export default function FeedPage() {
                 <span
                   className={cn(
                     'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-                    i.kind === 'people'
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'bg-muted text-muted-foreground'
+                    i.isAlert
+                      ? 'bg-amber-100 text-amber-600'
+                      : i.kind === 'people'
+                        ? 'bg-blue-100 text-blue-600'
+                        : 'bg-muted text-muted-foreground'
                   )}
-                  title={i.kind === 'people' ? 'People event' : 'System event'}
+                  title={
+                    i.isAlert
+                      ? 'Alert'
+                      : i.kind === 'people'
+                        ? 'People event'
+                        : 'System event'
+                  }
                 >
-                  {i.isMention ? (
+                  {i.isAlert ? (
+                    <TriangleAlert className="h-4 w-4" />
+                  ) : i.isMention ? (
                     <AtSign className="h-4 w-4" />
                   ) : (
                     <Settings2 className="h-4 w-4" />
