@@ -20,6 +20,7 @@ import {
   Keyboard,
   Server,
   Settings,
+  SquareKanban,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -43,6 +44,11 @@ const sidebarItems = [
     icon: BarChart3,
     label: 'Dashboard',
     path: '/dashboard',
+  },
+  {
+    icon: SquareKanban,
+    label: 'Strategy',
+    path: '/strategy',
   },
   {
     icon: Database,

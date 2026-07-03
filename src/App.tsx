@@ -20,6 +20,7 @@ import CanvasSettingsPage from './features/canvas/pages/CanvasSettingsPage';
 import EnhancedCanvasPage from './features/canvas/pages/EnhancedCanvasPage';
 
 import DashboardPage from './features/dashboard/pages/DashboardPage';
+import StrategyPage from './features/strategy/pages/StrategyPage';
 import EvidencePage from './features/evidence/pages/EvidencePage';
 import EvidenceRepositoryPage from './features/evidence/pages/EvidenceRepositoryPage';
 import CatalogPage from './features/catalog/pages/CatalogPage';
@@ -169,6 +170,7 @@ export default function App() {
                   <Route index element={<CanvasPage />} />
                   <Route path="enhanced" element={<EnhancedCanvasPage />} />
                   <Route path="dashboard" element={<DashboardPage />} />
+                  <Route path="strategy" element={<StrategyPage />} />
                   <Route path="assets" element={<AssetsPage />} />
                   <Route path="evidence" element={<EvidenceRepositoryPage />} />
                   <Route
