@@ -98,6 +98,7 @@ import CanvasModals from '@/features/canvas/components/layout/CanvasModals';
 
 // Core components
 import SelectionPanel from '@/features/canvas/components/grouping/SelectionPanel';
+import OffscreenNodeIndicator from '@/features/canvas/components/wayfinding/OffscreenNodeIndicator';
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
 import GroupsPanel from '@/features/canvas/components/left-sidepanel/GroupsPanel';
 import TopCanvasToolbar from '@/features/canvas/components/mini-control/TopCanvasToolbar';
@@ -1048,6 +1049,12 @@ function CanvasPageInner() {
         }
         return;
       }
+      // Shift+1 → fit view to content / recenter (CVS-30 wayfinding).
+      if (e.shiftKey && e.code === 'Digit1') {
+        e.preventDefault();
+        fitView({ padding: 0.2, duration: 800 });
+        return;
+      }
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
       if (k === 'c') canvasActions.copySelection();
@@ -1066,7 +1073,7 @@ function CanvasPageInner() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [canvasActions]);
+  }, [canvasActions, fitView]);
 
   // Memoized filter options
   const availableFilterOptions = useMemo(() => {
@@ -1997,6 +2004,7 @@ function CanvasPageInner() {
           >
             <Background />
             <Controls />
+            <OffscreenNodeIndicator />
             <CanvasCursorsLayer sendCursor={sendCursor} />
 
             {/* Read-only / comment-only banner for restricted collaborators. */}
