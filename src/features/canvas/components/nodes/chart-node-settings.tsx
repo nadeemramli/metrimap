@@ -4,6 +4,13 @@ import type { ChartNodeData, ChartType } from './chart-node';
 import { PALETTE } from '@/features/canvas/utils/chartData';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useCanvasStore } from '@/lib/stores';
+import { chartNodeToWidgetInput } from '@/features/dashboard/utils/chartImport';
+import {
+  createWidget,
+  listWidgets,
+} from '@/shared/lib/supabase/services/dashboards';
+import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -27,10 +34,12 @@ import type { MetricCard } from '@/shared/types';
 import {
   AreaChartIcon,
   BarChart3,
+  LayoutGrid,
   LineChartIcon,
   PieChartIcon,
 } from 'lucide-react';
 import * as React from 'react';
+import { toast } from 'sonner';
 
 interface ChartNodeSettingsProps {
   nodeId: string;
@@ -70,6 +79,34 @@ export function ChartNodeSettings({
     [rawCards]
   );
   const seriesCardIds = data.seriesCardIds ?? [];
+  const projectId = useCanvasStore((s) => s.canvas?.id);
+  const client = useClerkSupabase();
+  const [adding, setAdding] = React.useState(false);
+
+  const addToDashboard = async () => {
+    if (!client || !projectId) return;
+    setAdding(true);
+    try {
+      // Drop below the current widgets so nothing overlaps.
+      const widgets = await listWidgets(projectId, client);
+      const maxY = widgets.reduce(
+        (m, w) => Math.max(m, w.layout.y + w.layout.h),
+        0
+      );
+      await createWidget(
+        chartNodeToWidgetInput(
+          { id: nodeId, projectId, data },
+          { sortIndex: widgets.length, y: maxY }
+        ),
+        client
+      );
+      toast.success('Chart added to dashboard');
+    } catch {
+      toast.error('Failed to add chart to dashboard');
+    } finally {
+      setAdding(false);
+    }
+  };
 
   const persist = (patch: Partial<ChartNodeData>) => {
     void useCanvasNodesStore
@@ -203,6 +240,23 @@ export function ChartNodeSettings({
               checked={data.showLegend ?? true}
               onCheckedChange={(c) => persist({ showLegend: c })}
             />
+          </div>
+
+          {/* Dashboard */}
+          <div className="space-y-2 border-t pt-4">
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              disabled={adding || !client || !projectId}
+              onClick={() => void addToDashboard()}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              {adding ? 'Adding…' : 'Add to dashboard'}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Copies this chart to the Dashboard page as a widget. The series
+              stay bound to the same cards.
+            </p>
           </div>
         </div>
       </SheetContent>

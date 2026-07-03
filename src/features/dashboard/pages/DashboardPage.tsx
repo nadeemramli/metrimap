@@ -15,7 +15,13 @@ import {
   updateWidget,
 } from '@/shared/lib/supabase/services/dashboards';
 import { getProjectById } from '@/shared/lib/supabase/services/projects';
-import type { GroupNode, MetricCard, MetricValue } from '@/shared/types';
+import { getCanvasNodesByProject } from '@/shared/lib/supabase/services/canvasNodes';
+import type {
+  CanvasNode,
+  GroupNode,
+  MetricCard,
+  MetricValue,
+} from '@/shared/types';
 import {
   DEFAULT_WIDGET_LAYOUT,
   type DashboardWidget,
@@ -29,7 +35,21 @@ import {
   type MetricOption,
 } from '@/features/dashboard/components/WidgetConfigSheet';
 import type { WidgetDataSources } from '@/features/dashboard/utils/widgetData';
-import { Eye, LayoutGrid, Loader2, Pencil, Plus } from 'lucide-react';
+import { chartNodeToWidgetInput } from '@/features/dashboard/utils/chartImport';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import {
+  ChartSpline,
+  Eye,
+  LayoutGrid,
+  Loader2,
+  Pencil,
+  Plus,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout';
 import { useParams } from 'react-router-dom';
@@ -56,6 +76,7 @@ export default function DashboardPage() {
   // Persisted nodes + groups for this canvas (drives the group dashboards).
   const [loadedCards, setLoadedCards] = useState<MetricCard[]>([]);
   const [loadedGroups, setLoadedGroups] = useState<GroupNode[]>([]);
+  const [chartNodes, setChartNodes] = useState<CanvasNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
@@ -87,20 +108,25 @@ export default function DashboardPage() {
       listWidgets(canvasId, client),
       listTrackedMetrics(client),
       getProjectById(canvasId, client).catch(() => null),
+      getCanvasNodesByProject(canvasId, client).catch(
+        () => [] as CanvasNode[]
+      ),
     ])
-      .then(([w, metrics, project]) => {
+      .then(([w, metrics, project, nodes]) => {
         setWidgets(w);
         setTrackedNames(
           Object.fromEntries(metrics.map((m) => [m.id, m.name]))
         );
         setLoadedCards(project?.nodes ?? []);
         setLoadedGroups(project?.groups ?? []);
+        setChartNodes(nodes.filter((n) => n.nodeType === 'chartNode'));
       })
       .catch(() => {
         setWidgets([]);
         setTrackedNames({});
         setLoadedCards([]);
         setLoadedGroups([]);
+        setChartNodes([]);
       })
       .finally(() => setLoading(false));
   }, [client, canvasId]);
@@ -269,6 +295,26 @@ export default function DashboardPage() {
     }
   };
 
+  // Copy a canvas chart node's config into a new widget; the series binding
+  // stays live because widgets resolve `card`-sourced series the same way.
+  const handleImportChart = async (node: CanvasNode) => {
+    if (!client || !canvasId) return;
+    const maxY = widgets.reduce(
+      (m, w) => Math.max(m, w.layout.y + w.layout.h),
+      0
+    );
+    try {
+      const created = await createWidget(
+        chartNodeToWidgetInput(node, { sortIndex: widgets.length, y: maxY }),
+        client
+      );
+      setWidgets((prev) => [...prev, created]);
+      toast.success('Chart added to dashboard');
+    } catch {
+      toast.error('Failed to import chart');
+    }
+  };
+
   const isCustom = view === CUSTOM_VIEW;
 
   usePageHeader({
@@ -276,6 +322,29 @@ export default function DashboardPage() {
     description: 'Operational metrics for this canvas',
     actions: isCustom ? (
       <>
+        {editMode && chartNodes.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5">
+                <ChartSpline className="h-3.5 w-3.5" />
+                Import chart
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {chartNodes.map((node) => {
+                const data = (node.data ?? {}) as { title?: string };
+                return (
+                  <DropdownMenuItem
+                    key={node.id}
+                    onSelect={() => void handleImportChart(node)}
+                  >
+                    {data.title || node.title || 'Chart'}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {editMode && (
           <Button size="sm" className="h-7 gap-1.5" onClick={openAdd}>
             <Plus className="h-3.5 w-3.5" />
@@ -302,7 +371,7 @@ export default function DashboardPage() {
         </Button>
       </>
     ) : null,
-    deps: [editMode, isCustom],
+    deps: [editMode, isCustom, chartNodes, widgets],
   });
 
   if (loading) {

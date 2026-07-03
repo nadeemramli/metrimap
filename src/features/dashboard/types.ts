@@ -21,6 +21,8 @@ export interface WidgetConfig {
   /** in-canvas card ids (source === 'card'). */
   cardIds?: string[];
   display?: WidgetDisplay;
+  /** Provenance when the widget was imported from a canvas chart node. */
+  importedFromNodeId?: string;
 }
 
 /** react-grid-layout position for the single (lg) breakpoint. */
