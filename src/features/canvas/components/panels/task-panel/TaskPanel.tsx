@@ -1,6 +1,7 @@
 import { CommentsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/comments-tab';
 import { NodePanelShell } from '@/features/canvas/components/panels/shared/NodePanelShell';
 import { WorkflowSection } from '@/features/canvas/components/panels/metric-panel/WorkflowSection';
+import { TaskEvidenceSection } from '@/features/canvas/components/panels/task-panel/TaskEvidenceSection';
 import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
 import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
 import { AssigneeCell } from '@/features/strategy/components/AssigneeCell';
@@ -164,6 +165,15 @@ export function TaskPanel({
 
         {/* Status / priority / due / effort / confidence / testable */}
         <WorkflowSection card={card} onPersist={persist} />
+
+        {/* Evidence */}
+        {cardId && (
+          <TaskEvidenceSection
+            cardId={cardId}
+            projectId={projectId}
+            canEdit={canEdit}
+          />
+        )}
 
         {/* Discussion */}
         {cardId && <CommentsTab cardId={cardId} />}

@@ -796,6 +796,7 @@ export type Database = {
       }
       evidence_items: {
         Row: {
+          card_id: string | null
           created_at: string | null
           created_by: string
           date: string
@@ -804,6 +805,7 @@ export type Database = {
           impact_on_confidence: string | null
           link: string | null
           owner_id: string | null
+          project_id: string | null
           relationship_id: string | null
           summary: string
           title: string
@@ -811,6 +813,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          card_id?: string | null
           created_at?: string | null
           created_by: string
           date: string
@@ -819,6 +822,7 @@ export type Database = {
           impact_on_confidence?: string | null
           link?: string | null
           owner_id?: string | null
+          project_id?: string | null
           relationship_id?: string | null
           summary: string
           title: string
@@ -826,6 +830,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          card_id?: string | null
           created_at?: string | null
           created_by?: string
           date?: string
@@ -834,6 +839,7 @@ export type Database = {
           impact_on_confidence?: string | null
           link?: string | null
           owner_id?: string | null
+          project_id?: string | null
           relationship_id?: string | null
           summary?: string
           title?: string
