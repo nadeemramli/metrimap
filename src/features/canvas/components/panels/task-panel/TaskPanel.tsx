@@ -10,6 +10,7 @@ import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { Button } from '@/shared/components/ui/button';
 import { Label } from '@/shared/components/ui/label';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { notifyCardAssigned } from '@/shared/lib/supabase/services/collaboration';
 import {
   getUsersByIds,
   type UserLite,
@@ -159,7 +160,16 @@ export function TaskPanel({
             userMap={userMap}
             members={members}
             disabled={!canEdit}
-            onChange={(ids) => void persist({ assignees: ids })}
+            onChange={(ids) => {
+              // Notify only the NEWLY-added assignees (the RPC skips the caller).
+              const added = ids.filter((id) => !assignees.includes(id));
+              void persist({ assignees: ids });
+              if (added.length > 0 && card && client) {
+                void notifyCardAssigned(card.id, added, client).catch((e) =>
+                  console.error('assigned notification failed', e)
+                );
+              }
+            }}
           />
         </div>
 
