@@ -17,7 +17,8 @@ CVS). See the **Docs policy** in [`../AGENTS.md`](../AGENTS.md).
 - **[environment/](environment/)** — environment setup + secrets guide
 - **[state-management/](state-management/)** — XState patterns
 - **features/ (infra only)** — [system-health-intake](features/system-health-intake.md),
-  [linear-setup](features/linear-setup.md), [metrics-api](features/metrics-api.md)
+  [linear-setup](features/linear-setup.md), [linear-initiatives](features/linear-initiatives.md),
+  [metrics-api](features/metrics-api.md)
 
 Anything product-facing (feature narratives, changelogs, methodology, PRD) belongs
 in the Obsidian vault, not here.
