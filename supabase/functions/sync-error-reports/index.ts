@@ -10,7 +10,8 @@
 // Deploy: npx supabase functions deploy sync-error-reports
 // (Set verify_jwt off — it authenticates via x-sync-secret, not a user JWT.)
 //
-// Required env (function secrets):
+// Required config (from Supabase Vault via public.error_sync_config(), or set as
+// function-secret env vars — env wins if present):
 //   ERROR_SYNC_SECRET        shared secret; must match the x-sync-secret header
 //   LINEAR_API_KEY           Linear personal API key (server-side only)
 //   LINEAR_TEAM_ID           target Linear team id
@@ -191,24 +192,42 @@ function buildBody(g: Group, r: Report, route: string, priorityLabel: string): s
   ].join('\n');
 }
 
+/** Config from function-secret env, falling back to Vault (public.error_sync_config). */
+async function loadConfig(admin: ReturnType<typeof createClient>) {
+  let apiKey = Deno.env.get('LINEAR_API_KEY') || undefined;
+  let teamId = Deno.env.get('LINEAR_TEAM_ID') || undefined;
+  let secret = Deno.env.get('ERROR_SYNC_SECRET') || undefined;
+  if (!apiKey || !teamId || !secret) {
+    try {
+      const { data } = await admin.rpc('error_sync_config');
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row) {
+        apiKey = apiKey || row.linear_api_key || undefined;
+        teamId = teamId || row.linear_team_id || undefined;
+        secret = secret || row.error_sync_secret || undefined;
+      }
+    } catch {
+      /* Vault RPC unavailable; rely on env */
+    }
+  }
+  return { apiKey, teamId, secret };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
-
-  const secret = Deno.env.get('ERROR_SYNC_SECRET');
-  if (!secret || req.headers.get('x-sync-secret') !== secret) {
-    return json({ error: 'Unauthorized' }, 401);
-  }
-
-  const apiKey = Deno.env.get('LINEAR_API_KEY');
-  const teamId = Deno.env.get('LINEAR_TEAM_ID');
-  if (!apiKey || !teamId) {
-    return json({ error: 'LINEAR_API_KEY and LINEAR_TEAM_ID must be set' }, 500);
-  }
 
   const admin = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
+
+  const { apiKey, teamId, secret } = await loadConfig(admin);
+  if (!secret || req.headers.get('x-sync-secret') !== secret) {
+    return json({ error: 'Unauthorized' }, 401);
+  }
+  if (!apiKey || !teamId) {
+    return json({ error: 'LINEAR_API_KEY and LINEAR_TEAM_ID must be configured' }, 500);
+  }
 
   const includeDev = Deno.env.get('ERROR_SYNC_INCLUDE_DEV') === 'true';
   const batch = Number(Deno.env.get('ERROR_SYNC_BATCH') ?? '25');

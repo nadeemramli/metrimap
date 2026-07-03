@@ -5,8 +5,17 @@ done, runtime crashes reported in-app become deduplicated Linear issues in
 Intake/Triage. Pairs with **[system-health-intake.md](./system-health-intake.md)**
 (architecture) — this doc is the operator checklist.
 
-> Nothing here is live until you finish all of Section 6 and 7. Until then the
-> browser → Supabase crash capture keeps working; only the Linear sync is off.
+> **Status: LIVE (2026-07-03).** For team **Canvasm** this is fully wired and
+> verified end-to-end (a test issue was created in Triage and removed). Config is
+> stored in **Supabase Vault** (not function-secret env), read by the edge function
+> via the `public.error_sync_config()` RPC. The section below documents both paths;
+> the Vault path is what's deployed. To change/rotate a value, update the Vault
+> secret:
+> ```sql
+> select vault.update_secret(
+>   (select id from vault.secrets where name = 'linear_api_key'), '<new-value>');
+> -- names: linear_api_key, linear_team_id, error_sync_secret, error_sync_url
+> ```
 
 ## 0. Where each credential lives
 
