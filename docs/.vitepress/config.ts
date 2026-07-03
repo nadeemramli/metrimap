@@ -108,23 +108,6 @@ export default defineConfig({
             { text: 'XState Complete Guide', link: '/state-management/XSTATE_COMPLETE_GUIDE' }
           ]
         }
-      ],
-      '/refactoring/': [
-        {
-          text: 'Refactoring',
-          items: [
-            { text: 'Assets Page Refactoring', link: '/refactoring/ASSETS_PAGE_REFACTORING' },
-            { text: 'Canvas Store Migration', link: '/refactoring/CANVAS_STORE_MIGRATION' }
-          ]
-        }
-      ],
-      '/tests/': [
-        {
-          text: 'Testing',
-          items: [
-            { text: 'Incremental Improvement', link: '/tests/incremental_improvement' }
-          ]
-        }
       ]
     },
 
