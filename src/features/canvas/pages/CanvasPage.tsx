@@ -45,6 +45,7 @@ import {
   registerExtraEdgesApply,
 } from '@/features/canvas/realtime/canvasSyncChannel';
 import { useAlertRulesStore } from '@/features/canvas/stores/useAlertRulesStore';
+import { useCatalogRealtime } from '@/features/canvas/realtime/useCatalogRealtime';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
 import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
 import {
@@ -274,6 +275,8 @@ function CanvasPageInner() {
     supabaseClient,
     me,
   });
+  // Live cross-canvas catalog propagation (metric_values / tracked_metrics).
+  useCatalogRealtime(currentCanvasId, supabaseClient);
 
   // Load canvas data from database when component mounts
   useEffect(() => {
