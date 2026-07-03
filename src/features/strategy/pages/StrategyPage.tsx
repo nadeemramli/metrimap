@@ -1,49 +1,81 @@
-import { useCanvasStore } from '@/lib/stores';
+import { useCanvasStore, useAppStore } from '@/lib/stores';
+import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
-import { updateMetricCard } from '@/shared/lib/supabase/services/metric-cards';
+import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
+import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
+import {
+  createMetricCard,
+  deleteMetricCard,
+  updateMetricCard,
+} from '@/shared/lib/supabase/services/metric-cards';
 import { getProjectById } from '@/shared/lib/supabase/services/projects';
+import { getUsersByIds, type UserLite } from '@/shared/lib/supabase/services/users';
+import { getCommentCountsByCard } from '@/shared/lib/supabase/services/collaboration';
 import type {
+  CardWorkflow,
   GroupNode,
   MetricCard,
   Relationship,
   WorkflowStatus,
 } from '@/shared/types';
+import type { PriorityLevel } from '@/features/canvas/utils/workflow';
 import { resolveGroupMembers } from '@/features/dashboard/utils/groupDashboard';
 import { StrategyBoard } from '@/features/strategy/components/StrategyBoard';
+import { StrategyTable } from '@/features/strategy/components/StrategyTable';
+import { CardCommentSheet } from '@/features/strategy/components/CardCommentSheet';
 import { ValueJourneyStrip } from '@/features/strategy/components/ValueJourneyStrip';
+import CardSettingsSheet from '@/features/canvas/components/panels/metric-panel/CardSettingsSheet';
 import {
   buildGroupStrategy,
   isWorkCard,
 } from '@/features/strategy/utils/groupStrategy';
 import { buildValueJourney } from '@/features/strategy/utils/valueJourney';
-import { Loader2, SquareKanban } from 'lucide-react';
+import { cn } from '@/shared/utils';
+import { Loader2, Plus, SquareKanban, Table as TableIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 // Strategy page: grouping Metric nodes gives a Dashboard; grouping
-// Action/Hypothesis nodes gives a Strategy. One pill per group with work
-// cards, plus an "All" board over the whole canvas.
+// Action/Hypothesis nodes gives a Strategy. Board (kanban) and Table
+// (Monday.com-style) views over the same work cards.
 
 const ALL_VIEW = '__all__';
+type ViewMode = 'board' | 'table';
 
 export default function StrategyPage() {
   const { canvasId } = useParams();
   const client = useClerkSupabase();
   const storeCanvas = useCanvasStore((s) => s.canvas);
+  const userId = useAppStore((s) => s.user?.id);
+  const confirm = useConfirm();
+
+  const { members } = useProjectMembers(canvasId, Boolean(canvasId));
+  const { canEdit } = useCanvasPermission(canvasId);
 
   const [loadedCards, setLoadedCards] = useState<MetricCard[]>([]);
   const [loadedGroups, setLoadedGroups] = useState<GroupNode[]>([]);
   const [loadedEdges, setLoadedEdges] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<string>(ALL_VIEW);
-  // Optimistic status overrides while a drop is persisting (kept on success —
-  // they match the DB; reverted on failure).
-  const [statusOverrides, setStatusOverrides] = useState<
-    Record<string, WorkflowStatus>
+  const [viewMode, setViewMode] = useState<ViewMode>('board');
+
+  // Optimistic patches (status/priority/assignees/dueDate) kept on success —
+  // they mirror the DB; reverted on failure. Session-created cards + deletes.
+  const [cardOverrides, setCardOverrides] = useState<
+    Record<string, Partial<MetricCard>>
   >({});
+  const [extraCards, setExtraCards] = useState<MetricCard[]>([]);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+
+  const [fetchedUsers, setFetchedUsers] = useState<Record<string, UserLite>>({});
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
+  const [settingsCardId, setSettingsCardId] = useState<string | null>(null);
+  const [commentCardId, setCommentCardId] = useState<string | null>(null);
 
   // Prefer the live in-canvas store when it matches this canvas (fresher,
   // holds unsaved edits); otherwise fall back to what we loaded from the DB.
@@ -60,13 +92,18 @@ export default function StrategyPage() {
     [storeMatches, storeCanvas?.groups, loadedGroups]
   );
 
-  const cards: MetricCard[] = useMemo(
-    () =>
-      baseCards.map((c) =>
-        statusOverrides[c.id] ? { ...c, status: statusOverrides[c.id] } : c
-      ),
-    [baseCards, statusOverrides]
-  );
+  const cards: MetricCard[] = useMemo(() => {
+    const applyOverride = (c: MetricCard) => {
+      const o = cardOverrides[c.id];
+      return o ? { ...c, ...o } : c;
+    };
+    const merged = baseCards.map(applyOverride);
+    const seen = new Set(merged.map((c) => c.id));
+    const extras = extraCards
+      .filter((c) => !seen.has(c.id))
+      .map(applyOverride);
+    return [...merged, ...extras].filter((c) => !deletedIds.has(c.id));
+  }, [baseCards, extraCards, cardOverrides, deletedIds]);
 
   useEffect(() => {
     if (!client || !canvasId) return;
@@ -85,27 +122,68 @@ export default function StrategyPage() {
       .finally(() => setLoading(false));
   }, [client, canvasId]);
 
+  // Resolve assignee/owner ids → display info (batched, keyed by id set).
+  const peopleIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of cards) {
+      (c.assignees ?? []).forEach((id) => id && set.add(id));
+      if (c.owner) set.add(c.owner);
+    }
+    return Array.from(set).sort();
+  }, [cards]);
+  const peopleKey = peopleIds.join(',');
+  useEffect(() => {
+    if (!client || peopleIds.length === 0) return;
+    getUsersByIds(peopleIds, client)
+      .then(setFetchedUsers)
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, peopleKey]);
+
+  const refreshCommentCounts = useMemo(
+    () => () => {
+      if (!client || !canvasId) return;
+      getCommentCountsByCard(canvasId, client)
+        .then(setCommentCounts)
+        .catch(() => {});
+    },
+    [client, canvasId]
+  );
+  useEffect(() => {
+    refreshCommentCounts();
+  }, [refreshCommentCounts]);
+
+  // Members carry avatars too — merge so a just-assigned person resolves before
+  // the batched user fetch returns.
+  const userMap = useMemo(() => {
+    const m: Record<string, UserLite> = {};
+    for (const mm of members) {
+      m[mm.id] = {
+        id: mm.id,
+        name: mm.name,
+        email: mm.email,
+        avatar_url: mm.avatarUrl ?? null,
+      };
+    }
+    return { ...m, ...fetchedUsers };
+  }, [members, fetchedUsers]);
+
   // A group earns a Strategy pill when it contains at least one work card.
   const strategyGroups = useMemo(
-    () =>
-      groups.filter((g) => resolveGroupMembers(g, cards).some(isWorkCard)),
+    () => groups.filter((g) => resolveGroupMembers(g, cards).some(isWorkCard)),
     [groups, cards]
   );
-
   const activeGroup = useMemo(
     () => strategyGroups.find((g) => g.id === view) ?? null,
     [strategyGroups, view]
   );
-
-  const members = useMemo(
+  const scopedCards = useMemo(
     () => (activeGroup ? resolveGroupMembers(activeGroup, cards) : cards),
     [activeGroup, cards]
   );
+  const board = useMemo(() => buildGroupStrategy(scopedCards), [scopedCards]);
 
-  const board = useMemo(() => buildGroupStrategy(members), [members]);
-
-  // The value chain is the canvas-level backbone — always built from all
-  // cards/edges, independent of the selected group pill.
+  // The value chain is the canvas-level backbone — always all cards/edges.
   const edges: Relationship[] = useMemo(
     () => (storeMatches ? (storeCanvas?.edges ?? []) : loadedEdges),
     [storeMatches, storeCanvas?.edges, loadedEdges]
@@ -115,29 +193,107 @@ export default function StrategyPage() {
     [cards, edges]
   );
 
-  const handleStatusChange = (cardId: string, status: WorkflowStatus) => {
+  // Optimistic patch → persist → conditional store sync → revert on failure.
+  const applyPatch = (cardId: string, patch: Partial<MetricCard>) => {
+    if (!client) return;
     const card = cards.find((c) => c.id === cardId);
-    if (!card || !client) return;
-    if ((card.status ?? 'backlog') === status) return;
-
-    const previous = card.status ?? null;
-    setStatusOverrides((prev) => ({ ...prev, [cardId]: status }));
-
-    updateMetricCard(cardId, { status }, client)
+    if (!card) return;
+    const restore: Partial<MetricCard> = {};
+    for (const k of Object.keys(patch) as (keyof MetricCard)[]) {
+      (restore as Record<string, unknown>)[k] = card[k];
+    }
+    setCardOverrides((p) => ({ ...p, [cardId]: { ...(p[cardId] ?? {}), ...patch } }));
+    updateMetricCard(cardId, patch, client)
       .then(() => {
-        if (storeMatches) {
-          useCanvasStore.getState().updateNode(cardId, { status });
-        }
+        if (storeMatches) useCanvasStore.getState().updateNode(cardId, patch);
       })
       .catch(() => {
-        setStatusOverrides((prev) => {
-          const next = { ...prev };
-          if (previous) next[cardId] = previous;
-          else delete next[cardId];
-          return next;
-        });
-        toast.error('Failed to move card');
+        setCardOverrides((p) => ({
+          ...p,
+          [cardId]: { ...(p[cardId] ?? {}), ...restore },
+        }));
+        toast.error('Update failed');
       });
+  };
+
+  const handleStatusChange = (cardId: string, status: WorkflowStatus) => {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card || (card.status ?? 'backlog') === status) return;
+    applyPatch(cardId, { status });
+  };
+  const handlePriorityChange = (cardId: string, priority: PriorityLevel) => {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const workflow: CardWorkflow = { ...(card.workflow ?? {}), priority };
+    applyPatch(cardId, { workflow });
+  };
+  const handleDueDateChange = (cardId: string, dueDate: string | undefined) => {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const workflow: CardWorkflow = { ...(card.workflow ?? {}), dueDate };
+    applyPatch(cardId, { workflow });
+  };
+  const handleAssigneesChange = (cardId: string, assignees: string[]) => {
+    applyPatch(cardId, { assignees });
+  };
+
+  const handleCreateItem = async (
+    category: MetricCard['category'],
+    status: WorkflowStatus
+  ) => {
+    if (!client || !canvasId || !userId) return;
+    try {
+      const created = await createMetricCard(
+        {
+          id: '',
+          title:
+            category === 'Ideas/Hypothesis' ? 'New hypothesis' : 'New action',
+          description: '',
+          category,
+          tags: [],
+          causalFactors: [],
+          dimensions: [],
+          position: { x: 0, y: 0 },
+          assignees: [],
+          owner: userId,
+          status,
+          workflow: {},
+          createdAt: '',
+          updatedAt: '',
+        } as MetricCard,
+        canvasId,
+        userId,
+        client
+      );
+      setExtraCards((p) => [...p, created]);
+      if (storeMatches) useCanvasStore.getState().addNode(created);
+      // Open settings so the user can rename immediately.
+      setSettingsCardId(created.id);
+    } catch {
+      toast.error('Failed to create item');
+    }
+  };
+
+  const handleDeleteCard = async (cardId: string) => {
+    const ok = await confirm({
+      title: 'Delete this item?',
+      description: 'It is removed from the canvas too. This cannot be undone.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok || !client) return;
+    setDeletedIds((p) => new Set(p).add(cardId));
+    try {
+      await deleteMetricCard(cardId, client);
+      if (storeMatches) useCanvasStore.getState().deleteNode(cardId);
+    } catch {
+      setDeletedIds((p) => {
+        const n = new Set(p);
+        n.delete(cardId);
+        return n;
+      });
+      toast.error('Failed to delete item');
+    }
   };
 
   usePageHeader({
@@ -153,7 +309,8 @@ export default function StrategyPage() {
     );
   }
 
-  if (board.counts.total === 0 && strategyGroups.length === 0) {
+  const isEmpty = board.counts.total === 0 && strategyGroups.length === 0;
+  if (isEmpty) {
     return (
       <div className="p-6">
         <Card className="p-12">
@@ -164,14 +321,25 @@ export default function StrategyPage() {
             <div>
               <h3 className="text-lg font-semibold">Build your strategy</h3>
               <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-                Add Action and Hypothesis nodes on the canvas and they show up
-                here as a task board. Group them together to get a dedicated
-                strategy per initiative — the same way grouping metrics builds
-                a dashboard.
+                Add Action and Hypothesis nodes on the canvas — or start one
+                here. Group them together to get a dedicated strategy per
+                initiative, the same way grouping metrics builds a dashboard.
               </p>
             </div>
+            <Button
+              disabled={!canEdit || !canvasId}
+              onClick={() => void handleCreateItem('Work/Action', 'backlog')}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New action
+            </Button>
           </div>
         </Card>
+        <CardSettingsSheet
+          isOpen={Boolean(settingsCardId)}
+          onClose={() => setSettingsCardId(null)}
+          cardId={settingsCardId ?? undefined}
+        />
       </div>
     );
   }
@@ -186,15 +354,16 @@ export default function StrategyPage() {
         </p>
       )}
 
-      {/* View selector: one strategy per group with work cards, plus All. */}
+      {/* Group pills + Board/Table toggle */}
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
         <button
           onClick={() => setView(ALL_VIEW)}
-          className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors ${
+          className={cn(
+            'flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors',
             !activeGroup
               ? 'border-transparent bg-primary text-primary-foreground'
               : 'border-border bg-background hover:bg-muted'
-          }`}
+          )}
         >
           <SquareKanban className="h-3.5 w-3.5" />
           All
@@ -203,11 +372,12 @@ export default function StrategyPage() {
           <button
             key={g.id}
             onClick={() => setView(g.id)}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors ${
+            className={cn(
+              'flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors',
               view === g.id
                 ? 'border-transparent bg-primary text-primary-foreground'
                 : 'border-border bg-background hover:bg-muted'
-            }`}
+            )}
           >
             <span
               className="h-2 w-2 rounded-full"
@@ -216,6 +386,27 @@ export default function StrategyPage() {
             {g.name}
           </button>
         ))}
+
+        <div className="ml-auto flex items-center rounded-md border shadow-sm">
+          <Button
+            variant={viewMode === 'board' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 gap-1.5 rounded-r-none"
+            onClick={() => setViewMode('board')}
+          >
+            <SquareKanban className="h-3.5 w-3.5" />
+            Board
+          </Button>
+          <Button
+            variant={viewMode === 'table' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 gap-1.5 rounded-l-none"
+            onClick={() => setViewMode('table')}
+          >
+            <TableIcon className="h-3.5 w-3.5" />
+            Table
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 text-sm text-muted-foreground">
@@ -225,7 +416,39 @@ export default function StrategyPage() {
         done
       </div>
 
-      <StrategyBoard board={board} onStatusChange={handleStatusChange} />
+      {viewMode === 'board' ? (
+        <StrategyBoard board={board} onStatusChange={handleStatusChange} />
+      ) : (
+        <StrategyTable
+          board={board}
+          groups={groups}
+          userMap={userMap}
+          members={members}
+          commentCounts={commentCounts}
+          canEdit={canEdit}
+          onStatusChange={handleStatusChange}
+          onPriorityChange={handlePriorityChange}
+          onAssigneesChange={handleAssigneesChange}
+          onDueDateChange={handleDueDateChange}
+          onOpenCard={setSettingsCardId}
+          onOpenComments={setCommentCardId}
+          onCreateItem={handleCreateItem}
+          onDeleteCard={handleDeleteCard}
+        />
+      )}
+
+      <CardSettingsSheet
+        isOpen={Boolean(settingsCardId)}
+        onClose={() => setSettingsCardId(null)}
+        cardId={settingsCardId ?? undefined}
+      />
+      <CardCommentSheet
+        cardId={commentCardId}
+        cardTitle={cards.find((c) => c.id === commentCardId)?.title}
+        open={Boolean(commentCardId)}
+        onOpenChange={(open) => !open && setCommentCardId(null)}
+        onClosed={refreshCommentCounts}
+      />
     </div>
   );
 }

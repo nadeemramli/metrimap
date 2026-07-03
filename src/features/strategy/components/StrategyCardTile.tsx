@@ -1,3 +1,4 @@
+import { PRIORITY_STYLES } from '@/features/canvas/utils/workflow';
 import { Badge } from '@/shared/components/ui/badge';
 import type { MetricCard } from '@/shared/types';
 import { cn } from '@/shared/utils';
@@ -10,12 +11,6 @@ interface StrategyCardTileProps {
   card: MetricCard;
   onClick?: (cardId: string) => void;
 }
-
-const PRIORITY_STYLES: Record<string, string> = {
-  High: 'bg-red-500/10 text-red-600 dark:text-red-400',
-  Medium: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  Low: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-};
 
 export function StrategyCardTile({ card, onClick }: StrategyCardTileProps) {
   const isHypothesis = card.category === 'Ideas/Hypothesis';

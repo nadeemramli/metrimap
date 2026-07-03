@@ -413,3 +413,44 @@ export async function markNotificationRead(
   }
   return data as NotificationRow;
 }
+
+/**
+ * Batched per-card comment counts for a project. One threads query (to map
+ * each node thread → its cardId) + one comments query (counting rows across
+ * all those threads), tallied client-side. Cheap enough for a table of cards;
+ * avoids the per-thread N+1 loop used elsewhere.
+ */
+export async function getCommentCountsByCard(
+  projectId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<Record<string, number>> {
+  const client = authenticatedClient || supabase();
+
+  const threads = await listCommentThreads(projectId, client);
+  const threadToCard: Record<string, string> = {};
+  for (const t of threads) {
+    const cardId = (t.context as any)?.cardId;
+    if (t.source === 'node' && typeof cardId === 'string') {
+      threadToCard[t.id] = cardId;
+    }
+  }
+
+  const threadIds = Object.keys(threadToCard);
+  if (threadIds.length === 0) return {};
+
+  const { data, error } = await client
+    .from('comments')
+    .select('thread_id')
+    .in('thread_id', threadIds);
+  if (error) {
+    console.error('Error counting card comments:', error);
+    throw error;
+  }
+
+  const counts: Record<string, number> = {};
+  for (const row of data || []) {
+    const cardId = threadToCard[(row as { thread_id: string }).thread_id];
+    if (cardId) counts[cardId] = (counts[cardId] ?? 0) + 1;
+  }
+  return counts;
+}
