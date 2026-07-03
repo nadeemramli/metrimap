@@ -53,6 +53,20 @@ export async function renameSpace(
   if (error) throw new Error(error.message);
 }
 
+/** Update a space's name and/or color. */
+export async function updateSpace(
+  id: string,
+  patch: { name?: string; color?: string | null },
+  client?: Client
+): Promise<void> {
+  const c = client || supabase();
+  const { error } = await c
+    .from('spaces')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
 /** Delete a space; its canvases unlink to Uncategorized via FK ON DELETE SET NULL. */
 export async function deleteSpace(id: string, client?: Client): Promise<void> {
   const c = client || supabase();

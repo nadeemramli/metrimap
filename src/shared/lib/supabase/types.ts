@@ -311,6 +311,7 @@ export type Database = {
           name: string
           sort_order: number
           updated_at: string
+          workspace_id: string | null
         }
         Insert: {
           color?: string | null
@@ -320,6 +321,7 @@ export type Database = {
           name: string
           sort_order?: number
           updated_at?: string
+          workspace_id?: string | null
         }
         Update: {
           color?: string | null
@@ -329,6 +331,7 @@ export type Database = {
           name?: string
           sort_order?: number
           updated_at?: string
+          workspace_id?: string | null
         }
         Relationships: []
       }
@@ -1050,6 +1053,7 @@ export type Database = {
           settings: Json | null
           space_id: string | null
           tags: string[] | null
+          workspace_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1065,6 +1069,7 @@ export type Database = {
           settings?: Json | null
           space_id?: string | null
           tags?: string[] | null
+          workspace_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1080,6 +1085,7 @@ export type Database = {
           settings?: Json | null
           space_id?: string | null
           tags?: string[] | null
+          workspace_id?: string | null
           updated_at?: string | null
         }
         Relationships: [

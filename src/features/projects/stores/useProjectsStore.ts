@@ -13,6 +13,7 @@ import {
   deleteSpace as deleteSpaceSvc,
   listSpaces,
   renameSpace as renameSpaceSvc,
+  updateSpace as updateSpaceSvc,
   setProjectSpace,
   type Space,
 } from '@/shared/lib/supabase/services/spaces';
@@ -48,8 +49,12 @@ interface ProjectsStoreState {
   saveAsTemplate: (projectId: string) => Promise<void>;
   setStarred: (projectId: string, starred: boolean) => Promise<void>;
   setArchived: (projectId: string, archived: boolean) => Promise<void>;
-  createSpace: (name: string) => Promise<void>;
+  createSpace: (name: string, color?: string | null) => Promise<void>;
   renameSpace: (spaceId: string, name: string) => Promise<void>;
+  updateSpace: (
+    spaceId: string,
+    patch: { name?: string; color?: string | null }
+  ) => Promise<void>;
   deleteSpace: (spaceId: string) => Promise<void>;
   moveProjectToSpace: (
     projectId: string,
@@ -423,9 +428,9 @@ export const useProjectsStore = create<ProjectsStoreState>()(
         }
       },
 
-      createSpace: async (name) => {
+      createSpace: async (name, color = null) => {
         const client = getClientForEnvironment();
-        const space = await createSpaceSvc(name, null, client);
+        const space = await createSpaceSvc(name, color, client);
         set((state) => ({ spaces: [...state.spaces, space] }));
       },
 
@@ -438,6 +443,21 @@ export const useProjectsStore = create<ProjectsStoreState>()(
         }));
         try {
           await renameSpaceSvc(spaceId, name, getClientForEnvironment());
+        } catch (error) {
+          set({ spaces: prev });
+          throw error;
+        }
+      },
+
+      updateSpace: async (spaceId, patch) => {
+        const prev = get().spaces;
+        set((state) => ({
+          spaces: state.spaces.map((s) =>
+            s.id === spaceId ? { ...s, ...patch } : s
+          ),
+        }));
+        try {
+          await updateSpaceSvc(spaceId, patch, getClientForEnvironment());
         } catch (error) {
           set({ spaces: prev });
           throw error;

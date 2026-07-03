@@ -10,7 +10,8 @@ import { useProjectsRealtime } from '../hooks/useProjectsRealtime';
 import { NotificationInbox } from '@/features/notifications/components/NotificationInbox';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { toast } from 'sonner';
-import { Activity, Database, Folder } from 'lucide-react';
+import { Activity, Database } from 'lucide-react';
+import { SpacesBar } from '@/features/projects/components/SpacesBar';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { Logo } from '@/shared/components/layout/Logo';
 import { cn } from '@/shared/utils';
@@ -44,6 +45,8 @@ export default function HomePage() {
     initializeProjects,
     spaces,
     createSpace,
+    updateSpace,
+    deleteSpace,
     moveProjectToSpace,
     saveAsTemplate,
   } = useProjectsStore();
@@ -66,17 +69,6 @@ export default function HomePage() {
       toast.success('Saved as template — find it under “From template”.');
     } catch {
       toast.error('Failed to save template');
-    }
-  };
-
-  const handleNewSpace = async () => {
-    const name = window.prompt('New Space name')?.trim();
-    if (name) {
-      try {
-        await createSpace(name);
-      } catch {
-        /* surfaced via store error */
-      }
     }
   };
 
@@ -202,35 +194,14 @@ export default function HomePage() {
         <ShowcaseSection onOpenCanvas={handleOpenCanvas} />
 
         {/* Spaces / Folders — filter canvases by Space (null = Uncategorized) */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {(
-            [
-              { id: 'all', label: 'All Canvases' },
-              { id: 'uncategorized', label: 'Uncategorized' },
-              ...spaces.map((s) => ({ id: s.id, label: s.name })),
-            ] as { id: string; label: string }[]
-          ).map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setSpaceFilter(s.id)}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-sm transition-colors',
-                spaceFilter === s.id
-                  ? 'bg-secondary text-secondary-foreground border-secondary'
-                  : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
-              )}
-            >
-              <Folder className="h-3.5 w-3.5" />
-              {s.label}
-            </button>
-          ))}
-          <button
-            onClick={handleNewSpace}
-            className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-3 py-1 text-sm text-muted-foreground hover:bg-muted transition-colors"
-          >
-            + New Space
-          </button>
-        </div>
+        <SpacesBar
+          spaces={spaces}
+          spaceFilter={spaceFilter}
+          onFilter={setSpaceFilter}
+          onCreate={createSpace}
+          onUpdate={updateSpace}
+          onDelete={deleteSpace}
+        />
 
         {/* View filter chips — Recent & Starred are filters over one list, not tabs */}
         <div className="flex items-center gap-2 mb-4">
