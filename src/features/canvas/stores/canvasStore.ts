@@ -857,7 +857,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         selectedNodeIds: state.selectedNodeIds.filter((id) => id !== nodeId),
       })),
     deselectNodes: () => set({ selectedNodeIds: [] }),
-    clearSelection: () => set({ selectedNodeIds: [] }),
+    clearSelection: () => set({ selectedNodeIds: [], selectedEdgeIds: [] }),
 
     // Edge management
     addEdge: (edge: Relationship) =>

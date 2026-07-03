@@ -1026,7 +1026,8 @@ function CanvasPageInner() {
     return () => clearTimeout(t);
   }, [evidenceList, canvasId, supabaseClient]);
 
-  // Keyboard: Ctrl/Cmd + C / V / D / Z (ignored while typing in a field).
+  // Keyboard: Esc clears selection; Ctrl/Cmd + C / V / D / Z (ignored while
+  // typing in a field).
   useEffect(() => {
     const isEditable = (el: EventTarget | null) => {
       const n = el as HTMLElement | null;
@@ -1039,8 +1040,16 @@ function CanvasPageInner() {
       );
     };
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
       if (isEditable(e.target)) return;
+      // Esc → back to "nothing selected" (CVS-68).
+      if (e.key === 'Escape') {
+        const s = useCanvasStore.getState();
+        if (s.selectedNodeIds.length || s.selectedEdgeIds.length) {
+          s.clearSelection();
+        }
+        return;
+      }
+      if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
       if (k === 'c') canvasActions.copySelection();
       else if (k === 'v') canvasActions.paste();
