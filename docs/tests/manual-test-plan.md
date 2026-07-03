@@ -98,6 +98,11 @@ or Data hub → Candidates → promote).
 - [ ] **Detach**: card settings → "Detach" (next to "In Metric Catalog") → card keeps
       its current values, badge clears; after reload it no longer follows catalog edits
       (independent fork) and lineage no longer lists it.
+- [ ] **Live cross-canvas propagation** *(new)*: open the SAME catalogued metric on
+      two canvases (two tabs). Edit its value on canvas A → canvas B's card updates
+      **without reload**. Edit its name/formula in the Data hub → both canvases'
+      cards update live. (Works for one user with multiple canvases; cross-user
+      catalog sharing is limited by owner-scoped RLS until the workspace epic.)
 
 ## 6. Members / sharing
 
@@ -114,9 +119,9 @@ or Data hub → Candidates → promote).
 - [ ] Card **Discussion** tab comments post and list.
 - [ ] **Comment node persistence** *(fixed)*: type a comment on a canvas comment
       node → **reload** → the comment is still there (threadId now persisted).
-- [ ] **Live comment sync** *(new)*: two sessions — a comment posted in A on a
-      thread/node appears in B **without reload** (comment node + panel's open
-      thread both subscribe live).
+- [ ] **Live comment sync** *(fixed — now actually fires)*: two sessions — a comment
+      posted in A on a thread/node appears in B **without reload** (the comments table
+      is now in the realtime publication, which it wasn't before).
 - [ ] **Mentionable teammates** *(fixed)*: with a teammate present on the canvas,
       `@` in the panel composer now offers **them** (not just yourself) — sourced
       from the live presence roster + invited collaborators. Mention creates a
