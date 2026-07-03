@@ -11,10 +11,8 @@ import { NotificationInbox } from '@/features/notifications/components/Notificat
 import { TemplatePicker } from '../components/TemplatePicker';
 import { toast } from 'sonner';
 import { Activity, Database } from 'lucide-react';
-import { SpacesBar } from '@/features/projects/components/SpacesBar';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
 import { Logo } from '@/shared/components/layout/Logo';
-import { cn } from '@/shared/utils';
 import {
   createShortcut,
   useKeyboardShortcuts,
@@ -31,7 +29,7 @@ import {
 import { EmptyState } from '../components/EmptyState';
 import { ProjectCard } from '../components/ProjectCard';
 import { ShowcaseSection } from '../components/ShowcaseSection';
-import { ProjectControls } from '../components/ProjectControls';
+import { HomeControlBar } from '../components/HomeControlBar';
 import { ProjectTable } from '../components/ProjectTable';
 
 type SortOption = 'name' | 'updated' | 'created' | 'nodes' | 'edges';
@@ -190,50 +188,24 @@ export default function HomePage() {
 
       {/* Main Content */}
       <div className="px-8 py-8 max-w-19/20 mx-auto">
-        {/* Read-only examples showcase (can't be deleted from the UI) */}
-        <ShowcaseSection onOpenCanvas={handleOpenCanvas} />
-
-        {/* Spaces / Folders — filter canvases by Space (null = Uncategorized) */}
-        <SpacesBar
-          spaces={spaces}
-          spaceFilter={spaceFilter}
-          onFilter={setSpaceFilter}
-          onCreate={createSpace}
-          onUpdate={updateSpace}
-          onDelete={deleteSpace}
+        {/* Examples — demoted to a slim entry; collapsed by default once the
+            user has their own canvases so their work stays above the fold. */}
+        <ShowcaseSection
+          onOpenCanvas={handleOpenCanvas}
+          defaultCollapsed={safeProjects.length > 0}
         />
 
-        {/* View filter chips — Recent & Starred are filters over one list, not tabs */}
-        <div className="flex items-center gap-2 mb-4">
-          {(
-            [
-              { key: 'all', label: 'All' },
-              { key: 'recent', label: 'Recent' },
-              { key: 'starred', label: 'Starred' },
-              // Archived chip only appears once something is archived.
-              ...(counts.archived > 0 || viewFilter === 'archived'
-                ? [{ key: 'archived' as const, label: 'Archived' }]
-                : []),
-            ] as { key: ViewFilter; label: string }[]
-          ).map((chip) => (
-            <button
-              key={chip.key}
-              onClick={() => setViewFilter(chip.key)}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors',
-                viewFilter === chip.key
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
-              )}
-            >
-              {chip.label}
-              <span className="text-xs opacity-80">{counts[chip.key]}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Controls */}
-        <ProjectControls
+        {/* One consolidated control bar: space · filter · search · sort · view · New */}
+        <HomeControlBar
+          spaces={spaces}
+          spaceFilter={spaceFilter}
+          onSpaceFilter={setSpaceFilter}
+          onSpaceCreate={createSpace}
+          onSpaceUpdate={updateSpace}
+          onSpaceDelete={deleteSpace}
+          viewFilter={viewFilter}
+          onViewFilter={setViewFilter}
+          counts={counts}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
           sortBy={sortBy}
@@ -249,11 +221,9 @@ export default function HomePage() {
           isCreatingCanvas={isCreatingCanvas}
           onCreateCanvas={handleCreateCanvas}
           onNewFromTemplate={() => setTemplatePickerOpen(true)}
-          filteredProjectsCount={filteredProjects.length}
-          totalProjectsCount={safeProjects.length}
         />
 
-        {/* Single project list (driven by chips + controls) */}
+        {/* Single project list (driven by the control bar) */}
         <div className="mt-0">
           {filteredProjects.length > 0 ? (
             viewMode === 'grid' ? (
