@@ -160,8 +160,10 @@ or Data hub → Candidates → promote).
 - [ ] Disable a rule → no longer evaluated; badge clears if it was the only one.
 - [ ] The alert notifies the **rule creator + card owner** (test with two users:
       user A owns the card, user B edits it and trips the rule → A gets notified).
-- [ ] ⚠️ Only evaluated **in-app on value change** — a scheduled server-side sweep
-      (for warehouse-source refreshes etc.) is a planned follow-up, not built yet.
+- [ ] **Server-side sweep** *(new)*: add a rule to a metric whose current value
+      **already** breaches (client only fires on the next change) → within ~15 min
+      the pg_cron `metrimap-alert-sweep` fires the notification. (Same debounce, so
+      no double-fire with the client path.)
 
 ---
 
