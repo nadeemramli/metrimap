@@ -76,6 +76,7 @@ import {
 import { getAvailableFilterOptions } from '@/shared/utils/filterUtils';
 import { useCanvasEvents } from '../hooks/useCanvasEvents';
 import { useCanvasKeyboard } from '../hooks/useCanvasKeyboard';
+import { useNodeIntersection } from '../hooks/useNodeIntersection';
 import { useCanvasPageState } from '../hooks/useCanvasPageState';
 import { useCanvasStateMachine } from '../hooks/useCanvasStateMachine';
 import { useCanvasViewportSync } from '../hooks/useCanvasViewportSync';
@@ -490,6 +491,12 @@ function CanvasPageInner() {
     fitView,
     screenToFlowPosition,
   } = useReactFlow() as any;
+
+  // CVS-38 — drop-target highlight while dragging a node over others.
+  const {
+    handleDrag: highlightIntersections,
+    clear: clearIntersections,
+  } = useNodeIntersection();
 
   // Auto-layout handler
   const handleApplyLayout = useCallback(
@@ -1204,6 +1211,8 @@ function CanvasPageInner() {
 
   const handleNodeDrag = useCallback(
     (_: any, node: any) => {
+      // Surface nodes the dragged node overlaps as drop-target highlights.
+      highlightIntersections(node);
       if (node?.id && node?.position) {
         if (node.type === 'metricCard') {
           useCanvasStore.getState().updateNodePosition(node.id, node.position);
@@ -1236,11 +1245,19 @@ function CanvasPageInner() {
         }
       }
     },
-    [state, updateEvidencePosition, updateCanvasNodePosition, updateNewNode]
+    [
+      state,
+      updateEvidencePosition,
+      updateCanvasNodePosition,
+      updateNewNode,
+      highlightIntersections,
+    ]
   );
 
   const handleNodeDragStop = useCallback(
     (_: any, node: any) => {
+      // Clear any drop-target highlights from the drag.
+      clearIntersections();
       // A moved node invalidates the ELK-routed channels of its incident edges —
       // drop those so they fall back to smoothstep until the next auto-layout.
       if (node?.id) {
@@ -1333,6 +1350,7 @@ function CanvasPageInner() {
       updateEvidencePosition,
       updateCanvasNodePosition,
       updateNewNode,
+      clearIntersections,
     ]
   );
 
