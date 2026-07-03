@@ -29,7 +29,7 @@ Roles: **Builder** (agents / Nadeem) implement; **Checkpoint** (`checkpoint.xyz@
 
 **Metrimap** (`metric-mapping`) is a visual-first web app for building, managing, and analyzing metric trees and business-architecture maps. Users place **cards** (metrics, business processes, work/actions) on an infinite **canvas** and connect them with typed **relationships** (deterministic, probabilistic, causal, compositional). It includes an evidence repository, dashboards, source management, formula/correlation computation, and rich text/whiteboard editing.
 
-> **Product north star & methodology (read before proposing product features).** The app exists to help users **build metric trees and govern their business value chain**. The methodology we draw inspiration from (Levers Labs / Abe Gong "metric trees") is captured in **[`docs/reference/metric-tree-methodology.md`](docs/reference/metric-tree-methodology.md)**. Important: that doc is the *principle*, **not our spec** — Metrimap has its own deliberate approach and diverges where noted in the doc's "Our approach" section. Do **not** auto-generate tasks/features from the methodology; align with the product owner first. Prioritize end-to-end **value pipelines** (build the tree → diagnose drivers → govern/act) over isolated infrastructure items.
+> **Product north star & methodology (read before proposing product features).** The app exists to help users **build metric trees and govern their business value chain**. The methodology we draw inspiration from (Levers Labs / Abe Gong "metric trees") is captured in the **Obsidian product vault** (migrated out of the repo). Important: that doc is the *principle*, **not our spec** — Metrimap has its own deliberate approach and diverges where noted in the doc's "Our approach" section. Do **not** auto-generate tasks/features from the methodology; align with the product owner first. Prioritize end-to-end **value pipelines** (build the tree → diagnose drivers → govern/act) over isolated infrastructure items.
 
 ## Tech stack
 
@@ -43,8 +43,8 @@ Roles: **Builder** (agents / Nadeem) implement; **Checkpoint** (`checkpoint.xyz@
 - **Types/ORM:** Prisma schema *mirrors* Supabase for type-safety only (no relations/ORM use) + Zod generated via `prisma-zod-generator`
 - **Rich text:** EditorJS (many plugins)
 - **Compute:** Web Workers + Comlink; `mathjs` + `simple-statistics` (formulas, correlations)
-- **Testing:** Vitest (jsdom) + Storybook + Playwright (browser/story tests); RLS tests run via `tsx`
-- **Docs:** VitePress in `docs/`
+- **Testing:** Vitest (jsdom, unit/component tests via Testing Library); RLS tests run via `tsx`
+- **Docs:** plain Markdown in `docs/` (infra/structural only; VitePress retired). Product docs live in Obsidian.
 - **Deploy:** Vercel
 
 ## Commands
@@ -54,15 +54,19 @@ npm run dev          # Vite dev server on http://localhost:3000
 npm run build        # type-check (tsc --noEmit) then vite build
 npm run type-check   # TypeScript check only
 npm run lint         # ESLint (flat config: eslint.config.js)
-npm run test         # Vitest
+npm run test         # Vitest (jsdom unit/component tests)
 npm run test:rls     # RLS policy tests (tsx src/tests/run-rls-tests.ts)
-npm run storybook    # Storybook on :6006
-npm run docs:dev     # VitePress docs
 npm run prisma:types # prisma db pull + generate (regenerate types/Zod from DB)
 npx supabase <cmd>   # Always use npx for the Supabase CLI
 ```
 
-A Husky `pre-commit` hook runs on commit (`.husky/pre-commit`). Don't bypass it without reason.
+### Git hooks (Husky)
+
+A single Husky **`pre-commit`** hook gates quality on every commit (there is no CI yet — this is the safety net). Don't bypass it without reason. It runs, in order:
+
+1. `lint-staged` — ESLint on just the files the commit touches. Because it's staged-scoped, the repo's pre-existing lint debt in untouched files won't block you (tracked in **CVS-64**) — but new/edited files must be lint-clean.
+2. `npm run type-check` — whole-repo `tsc` (fast, currently clean).
+3. `vitest run` — the full Vitest suite (jsdom, no browser — Storybook/Chromium was removed, so tests are fast).
 
 ## Branching
 
@@ -93,7 +97,7 @@ src/
     prisma/             # schema.prisma + generated Zod schemas
     editorjs-config.ts
   tests/                # RLS + XState integration tests
-docs/                   # VitePress: prd, adr, features, database, auth, state-management, editor, environment, refactoring, tests
+docs/                   # infra/structural Markdown: adr, database, auth, environment, state-management, architecture, features (infra)
 supabase/migrations/    # SQL migrations (source of truth for DB schema)
 scripts/                # RLS tests, policy analysis, service-role key helper
 ```

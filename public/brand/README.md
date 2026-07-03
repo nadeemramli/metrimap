@@ -4,8 +4,8 @@ Drop the Metrimap logo files here. These are served as static files from the
 site root — a file at `public/brand/logo-light.svg` is reachable at
 `/brand/logo-light.svg` in the app.
 
-See **[docs/reference/branding-and-logo.md](../../docs/reference/branding-and-logo.md)**
-for the naming convention, expected files, and how to wire them into the UI.
+See the **branding-and-logo** note in the Obsidian product vault (migrated out of
+the repo) for the naming convention, expected files, and how to wire them into the UI.
 
 ## Files in use
 

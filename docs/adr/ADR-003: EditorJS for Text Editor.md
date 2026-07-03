@@ -25,7 +25,7 @@ Use **EditorJS** (`@editorjs/editorjs` 2.30.8), a block-based editor that output
 ## Consequences
 
 - Clean block JSON that is easy to validate, migrate, and render — but the block schema must be version-managed (`validateAndMigrateEditorData`) whenever the tool set changes.
-- EditorJS plugin configuration is **fragile**: misconfigured tools/tunes/inline toolbars can silently skip blocks. The hard-won stable configuration and the failure modes are documented in `docs/editor/EDITORJS_TROUBLESHOOTING_GUIDE.md`.
+- EditorJS plugin configuration is **fragile**: misconfigured tools/tunes/inline toolbars can silently skip blocks. The hard-won stable configuration and the failure modes are documented in the EditorJS troubleshooting note (Obsidian product vault; migrated out of the repo).
 
 > Note: an earlier doc described a minimal "12 stable tools" baseline. The live config in `src/lib/editorjs-config.ts` has since expanded well beyond that; treat the troubleshooting guide as the record of *why* certain configurations were constrained, not as the current tool count.
 
@@ -33,4 +33,4 @@ Use **EditorJS** (`@editorjs/editorjs` 2.30.8), a block-based editor that output
 
 - `src/lib/editorjs-config.ts`
 - `src/features/evidence/components/EvidenceEditor.tsx`, `src/features/canvas/components/nodes/EvidenceNode.tsx`
-- `docs/editor/EDITORJS_TROUBLESHOOTING_GUIDE.md`, `docs/editor/NOTEBOOK_IMPLEMENTATION.md`
+- EditorJS troubleshooting + Notebook implementation notes (Obsidian product vault)

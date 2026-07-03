@@ -15,8 +15,8 @@ The team runs a lightweight product-learning workflow (details in the owner's va
 
 ## Claude-specific notes
 
-- **Product methodology:** the metric-tree principle the app draws from lives in `docs/reference/metric-tree-methodology.md`. It's the *principle*, not our spec — Metrimap has its own approach. Don't auto-generate features from it; discuss with the owner first and prioritize end-to-end **value pipelines**.
-- Root `README.md` is **not** the project readme (it's the upstream Supabase CLI readme by mistake). For project context use `docs/index.md`, the PRD in `docs/prd/`, and `@AGENTS.md`.
+- **Product methodology:** the metric-tree principle the app draws from lives in the **Obsidian product vault** (migrated out of the repo). It's the *principle*, not our spec — Metrimap has its own approach. Don't auto-generate features from it; discuss with the owner first and prioritize end-to-end **value pipelines**.
+- For project context read **@AGENTS.md** (source of truth) and `docs/index.md` (infra/structural docs index). Product docs (PRD, feature narratives, methodology) live in the Obsidian vault, not the repo — see the **Docs policy** in AGENTS.md.
 - Quick commands: `npm run dev` (port 3000), `npm run build` (type-check + build), `npm run lint`, `npm run test`, `npm run test:rls`. Use `npx supabase` for the CLI.
 - After non-trivial changes, run `npm run type-check` and `npm run lint`; run `npm run test` for logic changes.
 - Feature-based layout: code lives under `src/features/*` and `src/shared/*`; the Supabase access layer is `src/shared/lib/supabase/`. Path alias `@` → `src`.

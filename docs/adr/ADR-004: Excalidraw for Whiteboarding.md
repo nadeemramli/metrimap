@@ -38,4 +38,4 @@ The implementation diverged from the original decision:
 
 - `src/main.tsx` (Excalidraw CSS import only)
 - `src/features/canvas/components/whiteboard/`
-- `src/lib/machines/canvasMachine.ts`, `docs/editor/DRAW_MODE_ARCHITECTURE.md`
+- `src/lib/machines/canvasMachine.ts`; draw-mode architecture note (Obsidian product vault)
