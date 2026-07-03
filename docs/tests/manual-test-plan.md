@@ -201,6 +201,25 @@ multi-period data (e.g. any seeded example tree)
 - [ ] Switch to another canvas → time-travel resets to Live.
 - [ ] ⚠️ Dashboard KPI tiles still show latest (canvas-only time-travel for now).
 
+## 13. Permission tiers *(two users — an owner + an invited guest in a DIFFERENT
+org, or a personal-workspace canvas so the guest isn't an org member)*
+
+Model = org collaborative: workspace members always edit; these tiers gate guests.
+
+- [ ] Owner invites a guest (People tab) as **Viewer** → guest opens the canvas:
+      **view-only banner**, can't drag/connect/delete nodes, no comment composer
+      (view-only notice). RLS rejects any write.
+- [ ] Change guest to **Commenter** → **comment-only banner**; can post comments
+      (and @mention) but still can't edit nodes/edges.
+- [ ] Change guest to **Editor** → full editing, no banner.
+- [ ] **Admin** behaves like Editor for canvas editing (member management stays
+      owner-only).
+- [ ] Role dropdowns (invite + per-member) offer **Admin / Editor / Commenter /
+      Viewer**; the chosen role sticks and its behavior matches immediately after
+      the guest reloads.
+- [ ] Owner/org members are unaffected — always full edit.
+- [ ] (Optional) `npm run test:rls` still passes.
+
 ---
 
 ## If something fails
