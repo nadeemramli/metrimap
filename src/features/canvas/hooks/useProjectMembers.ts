@@ -3,7 +3,7 @@ import {
   getProjectCollaborators,
   type Collaborator,
 } from '@/shared/lib/supabase/services/collaborators';
-import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import { whenAuthenticatedClientReady } from '@/shared/utils/authenticatedClient';
 import * as React from 'react';
 
 export interface ProjectMember {
@@ -53,7 +53,12 @@ export function useProjectMembers(
     let mounted = true;
     if (!enabled || !projectId) return;
     setIsLoading(true);
-    getProjectCollaborators(projectId, getClientForEnvironment())
+    // Wait for the Clerk-authenticated client instead of calling
+    // getClientForEnvironment() synchronously — it THROWS if the client isn't set
+    // yet (it's evaluated as an argument, so the .catch below never sees it),
+    // which crashed the Strategy page on first render (CVS-22).
+    whenAuthenticatedClientReady()
+      .then((client) => getProjectCollaborators(projectId, client))
       .then((rows) => {
         if (mounted) setCollaborators(rows || []);
       })
