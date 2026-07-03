@@ -3,11 +3,13 @@ import {
   Eraser,
   Hand,
   Lasso,
+  Layers,
   MapPin,
   MessageSquarePlus,
   MousePointer,
   PenTool,
   Search,
+  SlidersHorizontal,
   Square,
 } from 'lucide-react';
 import AddNodeButton from './AddNodeButton';
@@ -49,6 +51,13 @@ interface TopCanvasToolbarProps {
       | 'whiteboardNode'
   ) => void;
   onAddFromCatalog?: (position?: { x: number; y: number }) => void;
+
+  // Organize cluster (folded in from the old top-right panel, CVS-31)
+  onToggleGroups?: () => void;
+  groupsActive?: boolean;
+  onToggleOperators?: () => void;
+  operatorsActive?: boolean;
+  exportSlot?: React.ReactNode;
 }
 
 export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
@@ -179,6 +188,42 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
           {/* Layout dropdown */}
           <LayoutDropdownButton />
           <FilterControls />
+          {/* Organize: groups + tools (operators) + export — folded in from the
+              old scattered top-right panel so the canvas has one toolbar (CVS-31) */}
+          {(props.onToggleGroups || props.onToggleOperators || props.exportSlot) && (
+            <>
+              <div className="mx-0.5 h-6 w-px bg-gray-200" aria-hidden />
+              {props.onToggleGroups && (
+                <WithTooltip label="Groups">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={getToolButtonClasses(!!props.groupsActive)}
+                    title="Groups"
+                    aria-pressed={!!props.groupsActive}
+                    onClick={props.onToggleGroups}
+                  >
+                    <Layers className="h-4 w-4" />
+                  </Button>
+                </WithTooltip>
+              )}
+              {props.onToggleOperators && (
+                <WithTooltip label="Tools">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={getToolButtonClasses(!!props.operatorsActive)}
+                    title="Tools"
+                    aria-pressed={!!props.operatorsActive}
+                    onClick={props.onToggleOperators}
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </Button>
+                </WithTooltip>
+              )}
+              {props.exportSlot}
+            </>
+          )}
         </div>
       )}
 
