@@ -19,6 +19,10 @@ import {
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { useUserName } from '@/shared/hooks/useUserName';
+import {
+  alertStateFor,
+  useAlertRulesStore,
+} from '@/features/canvas/stores/useAlertRulesStore';
 import { formatRelativeTime } from '@/shared/utils/relativeTime';
 import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
 import { Input } from '@/shared/components/ui/input';
@@ -59,6 +63,7 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
+  TriangleAlert,
   Users,
   X,
 } from 'lucide-react';
@@ -260,6 +265,13 @@ export default function MetricCard({ data, selected }: NodeProps) {
 
   // Last-edited-by attribution (server-stamped updated_by).
   const editedByName = useUserName(card.updatedBy);
+
+  // Alert state (monitored / breached) from the project-wide rules store.
+  const alertRules = useAlertRulesStore((s) => s.rulesByCard[card.id]);
+  const latestValue = Array.isArray(card.data)
+    ? card.data[card.data.length - 1]
+    : undefined;
+  const alertState = alertStateFor(alertRules, latestValue);
 
   // Inline editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -775,6 +787,24 @@ export default function MetricCard({ data, selected }: NodeProps) {
                         title="Linked to a catalogued Tracked Metric — its values and definition come from the catalog. Detach in card settings to fork an independent copy."
                       >
                         Tracked
+                      </span>
+                    )}
+                    {alertState.monitored && (
+                      <span
+                        className={cn(
+                          'nodrag ml-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                          alertState.breached
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-muted text-muted-foreground'
+                        )}
+                        title={
+                          alertState.breached
+                            ? 'An alert rule is currently breached'
+                            : 'This metric has alert rules (monitored)'
+                        }
+                      >
+                        <TriangleAlert className="h-2.5 w-2.5" />
+                        {alertState.breached ? 'Alert' : 'Monitored'}
                       </span>
                     )}
                   </>

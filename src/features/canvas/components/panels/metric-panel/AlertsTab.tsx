@@ -13,6 +13,7 @@ import {
 } from '@/shared/components/ui/select';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useCanvasStore } from '@/lib/stores';
+import { useAlertRulesStore } from '@/features/canvas/stores/useAlertRulesStore';
 import {
   createAlertRule,
   deleteAlertRule,
@@ -94,6 +95,7 @@ export default function AlertsTab({ cardId }: AlertsTabProps) {
         client
       );
       setRules((prev) => [...prev, rule]);
+      useAlertRulesStore.getState().upsertLocal(rule);
       setDraft({ ...emptyDraft });
       toast.success('Alert rule added');
     } catch (e) {
@@ -108,6 +110,7 @@ export default function AlertsTab({ cardId }: AlertsTabProps) {
     setRules((prev) =>
       prev.map((r) => (r.id === rule.id ? { ...r, enabled: next } : r))
     );
+    useAlertRulesStore.getState().setEnabledLocal(rule.card_id, rule.id, next);
     try {
       await updateAlertRule(rule.id, { enabled: next }, client ?? undefined);
     } catch {
@@ -120,6 +123,7 @@ export default function AlertsTab({ cardId }: AlertsTabProps) {
 
   const remove = async (rule: AlertRule) => {
     setRules((prev) => prev.filter((r) => r.id !== rule.id));
+    useAlertRulesStore.getState().removeLocal(rule.card_id, rule.id);
     try {
       await deleteAlertRule(rule.id, client ?? undefined);
     } catch {

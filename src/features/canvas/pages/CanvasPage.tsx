@@ -44,6 +44,7 @@ import {
   broadcastCanvasChange,
   registerExtraEdgesApply,
 } from '@/features/canvas/realtime/canvasSyncChannel';
+import { useAlertRulesStore } from '@/features/canvas/stores/useAlertRulesStore';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
 import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
 import {
@@ -397,6 +398,15 @@ function CanvasPageInner() {
             log.debug('✅ Canvas nodes loaded');
           } catch (error) {
             console.error('❌ Error loading canvas nodes:', error);
+          }
+
+          // Load alert rules for the project so metric cards can show a
+          // monitored/breached badge (one query, not per-card).
+          if (client) {
+            void useAlertRulesStore
+              .getState()
+              .loadForProject(canvasId, client)
+              .catch(() => {});
           }
         } else {
           console.error('❌ No project data returned for canvas:', canvasId);
