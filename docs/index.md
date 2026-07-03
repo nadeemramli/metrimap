@@ -13,7 +13,7 @@ CVS). See the **Docs policy** in [`../AGENTS.md`](../AGENTS.md).
 - **[adr/](adr/)** — Architecture Decision Records (technical choices + rationale)
 - **[architecture/](architecture/)** — structural technical notes (e.g. type-check debt)
 - **[auth/](auth/)** — Clerk + Supabase authentication integration
-- **[database/](database/)** — Prisma + Zod, Supabase client singleton, RLS solution + testing
+- **[database/](database/)** — Prisma + Zod, Supabase client singleton, RLS solution + testing, [security advisors triage](database/SECURITY_ADVISORS.md)
 - **[environment/](environment/)** — environment setup + secrets guide
 - **[state-management/](state-management/)** — XState patterns
 - **features/ (infra only)** — [system-health-intake](features/system-health-intake.md),
