@@ -26,6 +26,7 @@ import EvidenceRepositoryPage from './features/evidence/pages/EvidenceRepository
 import CatalogPage from './features/catalog/pages/CatalogPage';
 import FeedPage from './features/notifications/pages/FeedPage';
 import WorkspaceSettingsPage from './features/settings/pages/WorkspaceSettingsPage';
+import AccountSettingsPage from './features/settings/pages/AccountSettingsPage';
 import EmbedCanvasPage from './features/canvas/pages/EmbedCanvasPage';
 import HomePage from './features/projects/pages/HomePage';
 
@@ -143,6 +144,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <FeedPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <AccountSettingsPage />
                     </ProtectedRoute>
                   }
                 />
