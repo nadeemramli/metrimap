@@ -185,6 +185,22 @@ or Data hub → Candidates → promote).
 - [ ] Move a canvas into a space (card/table "move to space") → it appears under
       that space's filter.
 
+## 12. Value time-travel *(solo)* — needs a canvas with metric cards that have
+multi-period data (e.g. any seeded example tree)
+
+- [ ] Canvas header shows a **"Live"** control (History icon). Hidden if the
+      canvas has no time-series.
+- [ ] Open it → **View as of** a past period → every metric card shows its value
+      **as of that period** (series truncated to ≤ that period); header reads
+      "As of <period>". A card with no data yet shows "No data as of <period>".
+- [ ] **Compare with** a period → each card shows the **delta** (abs + %) between
+      the as-of and compare periods (green up / red down).
+- [ ] **Reset to live** → cards return to latest.
+- [ ] Alerts still reflect the **live** value while time-traveling (a red "Alert"
+      badge doesn't change just because you view an old period).
+- [ ] Switch to another canvas → time-travel resets to Live.
+- [ ] ⚠️ Dashboard KPI tiles still show latest (canvas-only time-travel for now).
+
 ---
 
 ## If something fails
