@@ -3,7 +3,7 @@
 // NAMED inputs (a, b, … + `x` = sum alias), applies its operation, and returns the
 // computed value per operator and the proposed new latest value per downstream
 // card. Used for BOTH live preview (no write) and Run (the persist wrapper in
-// runSimulation.ts). See docs/backlog/operator-revamp-feature.md (Phase A).
+// runSimulation.ts). See the product vault (Phase A).
 
 import { workerManager } from '@/lib/workers/worker-manager';
 import type { MetricCard } from '@/shared/types';

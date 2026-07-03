@@ -47,7 +47,7 @@ import { useNavigate } from 'react-router-dom';
  * The semantic-layer surface: Tracked = catalogued metrics (the moat);
  * Candidates = operationalized cards eligible to be promoted. Rendered both as
  * the top-level /catalog page and as the Data hub "Tracked Metrics" tab.
- * See docs/backlog/object-model-and-catalog.md.
+ * See the product vault.
  */
 export function TrackedMetricsPanel({ intro }: { intro?: string }) {
   const client = useClerkSupabase();

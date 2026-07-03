@@ -3,7 +3,7 @@
 // Connection metadata is read directly from `source_connections` (RLS scopes it
 // to the owner). Anything touching a credential — save, test, query — goes
 // through the `warehouse-proxy` edge function, because the password must never
-// be read by the browser (see docs/backlog/data-source-architecture.md).
+// be read by the browser (see the product vault).
 
 import type { MetricValue } from '@/shared/types';
 import type { SupabaseClient } from '@supabase/supabase-js';

@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 // The Metric Catalog — the user-facing surface of the semantic layer, mounted at
 // the top-level /catalog route. The in-canvas surface is the Data hub "Tracked
 // Metrics" tab; both render <TrackedMetricsPanel/>. See
-// docs/backlog/object-model-and-catalog.md.
+// the product vault.
 export default function CatalogPage() {
   const navigate = useNavigate();
 

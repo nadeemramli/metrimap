@@ -1,5 +1,5 @@
 // Semantic layer — the workspace Metric Catalog. A Tracked Metric is the shared
-// definition of a real, sourced metric (see docs/backlog/object-model-and-catalog.md).
+// definition of a real, sourced metric (see the product vault).
 // Born when an operationalized card (Source Node -> Metric Card with real data) is
 // explicitly catalogued; other canvases reference it via metric_cards.tracked_metric_id.
 // Owner-scoped for now (created_by); re-scoped to the Clerk-org workspace later.
