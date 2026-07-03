@@ -25,6 +25,7 @@ import {
 import { Separator } from '@/shared/components/ui/separator';
 import { useCanvasStore } from '@/lib/stores';
 import { toast } from 'sonner';
+import { nodeToolbarHas, type NodeToolbarAction } from './nodeToolbarManifest';
 
 interface EnhancedNodeToolbarProps {
   isVisible: boolean;
@@ -75,16 +76,27 @@ export default function EnhancedNodeToolbar({
   onExport,
   onAddTag,
   onCreateLink,
-  showView = true,
-  showEdit = true,
-  showSettings = true,
-  showCopy = true,
-  showDelete = true,
+  showView,
+  showEdit,
+  showSettings,
+  showCopy,
+  showDelete,
   showMoreActions = true,
   nodeType,
   customActions = [],
 }: EnhancedNodeToolbarProps) {
   const [showMore, setShowMore] = React.useState(false);
+
+  // Node-type-aware visibility (CVS-67): when a show* flag isn't explicitly
+  // passed, derive it from the capability manifest for this node type (unknown
+  // types fall back to visible). This is what tailors each node's toolbar.
+  const resolveShow = (explicit: boolean | undefined, action: NodeToolbarAction) =>
+    explicit !== undefined ? explicit : nodeToolbarHas(nodeType, action);
+  const showViewR = resolveShow(showView, 'view');
+  const showEditR = resolveShow(showEdit, 'edit');
+  const showSettingsR = resolveShow(showSettings, 'settings');
+  const showCopyR = resolveShow(showCopy, 'duplicate');
+  const showDeleteR = resolveShow(showDelete, 'delete');
 
   // Core actions that are always visible
   const coreActions = [
@@ -92,7 +104,7 @@ export default function EnhancedNodeToolbar({
       icon: Eye,
       label: 'View Details',
       onClick: onView,
-      show: showView && onView,
+      show: showViewR && onView,
       variant: 'default' as const,
       className: 'hover:bg-blue-50 hover:text-blue-600',
     },
@@ -100,7 +112,7 @@ export default function EnhancedNodeToolbar({
       icon: Edit,
       label: 'Edit',
       onClick: onEdit,
-      show: showEdit && onEdit,
+      show: showEditR && onEdit,
       variant: 'default' as const,
       className: 'hover:bg-green-50 hover:text-green-600',
     },
@@ -108,7 +120,7 @@ export default function EnhancedNodeToolbar({
       icon: Settings,
       label: 'Settings',
       onClick: onSettings,
-      show: showSettings && onSettings,
+      show: showSettingsR && onSettings,
       variant: 'default' as const,
       className: 'hover:bg-purple-50 hover:text-purple-600',
     },
@@ -116,7 +128,7 @@ export default function EnhancedNodeToolbar({
       icon: Copy,
       label: 'Duplicate',
       onClick: onCopy,
-      show: showCopy && onCopy,
+      show: showCopyR && onCopy,
       variant: 'default' as const,
       className: 'hover:bg-gray-50 hover:text-gray-600',
     },
@@ -156,7 +168,7 @@ export default function EnhancedNodeToolbar({
     icon: Trash2,
     label: 'Delete',
     onClick: onDelete,
-    show: showDelete && onDelete,
+    show: showDeleteR && onDelete,
     variant: 'destructive' as const,
     className: 'hover:bg-red-50 hover:text-red-600',
   };
