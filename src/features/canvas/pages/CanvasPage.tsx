@@ -46,6 +46,7 @@ import {
 } from '@/features/canvas/realtime/canvasSyncChannel';
 import { useAlertRulesStore } from '@/features/canvas/stores/useAlertRulesStore';
 import { useCatalogRealtime } from '@/features/canvas/realtime/useCatalogRealtime';
+import { TimeTravelControl } from '@/features/canvas/components/TimeTravelControl';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
 import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
 import {
@@ -215,6 +216,7 @@ function CanvasPageInner() {
       title: canvas?.name || 'Untitled Canvas',
       description: canvas?.description,
       editableTitle: true,
+      actions: <TimeTravelControl />,
       autoSaveStatus: {
         text: 'Auto-save enabled',
         icon: () => null,

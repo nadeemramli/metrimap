@@ -23,6 +23,8 @@ import {
   alertStateFor,
   useAlertRulesStore,
 } from '@/features/canvas/stores/useAlertRulesStore';
+import { useTimeTravelStore } from '@/features/canvas/stores/useTimeTravelStore';
+import { deltaBetween, seriesAsOf } from '@/features/canvas/utils/timeTravel';
 import { formatRelativeTime } from '@/shared/utils/relativeTime';
 import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
 import { Input } from '@/shared/components/ui/input';
@@ -266,12 +268,22 @@ export default function MetricCard({ data, selected }: NodeProps) {
   // Last-edited-by attribution (server-stamped updated_by).
   const editedByName = useUserName(card.updatedBy);
 
-  // Alert state (monitored / breached) from the project-wide rules store.
+  // Alert state (monitored / breached) — evaluated against the LIVE latest
+  // value, independent of any time-travel view.
   const alertRules = useAlertRulesStore((s) => s.rulesByCard[card.id]);
   const latestValue = Array.isArray(card.data)
     ? card.data[card.data.length - 1]
     : undefined;
   const alertState = alertStateFor(alertRules, latestValue);
+
+  // Time-travel: what the card DISPLAYS reflects the canvas "as of" period.
+  const asOfPeriod = useTimeTravelStore((s) => s.asOfPeriod);
+  const comparePeriod = useTimeTravelStore((s) => s.comparePeriod);
+  const viewedData = seriesAsOf(card.data, asOfPeriod);
+  const timeTravelDelta =
+    card.category === 'Data/Metric' && comparePeriod
+      ? deltaBetween(card.data, asOfPeriod, comparePeriod)
+      : null;
 
   // Inline editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -940,8 +952,35 @@ export default function MetricCard({ data, selected }: NodeProps) {
       {/* Data/Metric Specific Content */}
       {isDataMetric && card.data && isExpanded && (
         <div className="nodrag p-3 border-b border-border/50 bg-background/50">
+          {/* Time-travel context: as-of period + delta vs a compare period */}
+          {(asOfPeriod || timeTravelDelta) && (
+            <div className="nodrag mb-2 flex items-center justify-between rounded bg-amber-50 px-2 py-1 text-[10px] text-amber-700">
+              <span>{asOfPeriod ? `As of ${asOfPeriod}` : 'Live'}</span>
+              {timeTravelDelta && (
+                <span
+                  className={cn(
+                    'font-semibold',
+                    timeTravelDelta.abs >= 0
+                      ? 'text-emerald-700'
+                      : 'text-red-700'
+                  )}
+                >
+                  {timeTravelDelta.abs >= 0 ? '+' : ''}
+                  {formatValue(timeTravelDelta.abs)}
+                  {timeTravelDelta.pct != null &&
+                    ` (${timeTravelDelta.pct >= 0 ? '+' : ''}${timeTravelDelta.pct.toFixed(1)}%)`}{' '}
+                  vs {comparePeriod}
+                </span>
+              )}
+            </div>
+          )}
+          {viewedData.length === 0 ? (
+            <div className="nodrag text-xs text-muted-foreground/70">
+              No data as of {asOfPeriod}
+            </div>
+          ) : (
           <div className="nodrag space-y-2">
-            {[...card.data]
+            {[...viewedData]
               .slice(-3)
               .reverse()
               .map((metric: MetricValue, index: number) => (
@@ -972,6 +1011,7 @@ export default function MetricCard({ data, selected }: NodeProps) {
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 
