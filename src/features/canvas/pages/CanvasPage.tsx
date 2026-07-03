@@ -651,13 +651,17 @@ function CanvasPageInner() {
   }, [focusedGroupId]);
 
   // Create stable event handlers to prevent circular dependencies
+  // Depend on the concrete (stable) useState setters, NOT the whole `state`
+  // object — `state` from useCanvasPageState is a fresh object every render, so
+  // `[state]` made these "stable" handlers churn each render, rebuilding the
+  // `nodes` memo and feeding React Flow new nodes every render (React #185 loop).
   const stableHandleOpenSettingsSheet = useCallback(
     (nodeId: string) => {
       log.debug('🔧 Opening settings sheet for node:', nodeId);
       state.setIsSettingsSheetOpen(true);
       state.setSettingsCardId?.(nodeId);
     },
-    [state]
+    [state.setIsSettingsSheetOpen, state.setSettingsCardId]
   );
 
   const stableHandleSwitchToCard = useCallback(
@@ -669,7 +673,11 @@ function CanvasPageInner() {
         state.setSettingsInitialTab?.(tab);
       }
     },
-    [state]
+    [
+      state.setIsSettingsSheetOpen,
+      state.setSettingsCardId,
+      state.setSettingsInitialTab,
+    ]
   );
 
   const stableHandleToggleCollapse = useCallback((groupId: string) => {
@@ -788,7 +796,12 @@ function CanvasPageInner() {
     }));
 
     const convertedEvidenceNodes = evidenceNodes.map((evidence) =>
-      convertToEvidenceNode(evidence, updateEvidence, deleteEvidence)
+      convertToEvidenceNode(
+        evidence,
+        updateEvidence,
+        deleteEvidence,
+        selectedNodeIds
+      )
     );
 
     // Grouping redesign: the on-canvas group frame is gone. Group data still

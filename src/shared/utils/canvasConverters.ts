@@ -155,7 +155,8 @@ export const convertToEdge = (
 export const convertToEvidenceNode = (
   evidence: EvidenceItem,
   onUpdateEvidence: (id: string, updates: Partial<EvidenceItem>) => void,
-  onDeleteEvidence: (id: string) => void
+  onDeleteEvidence: (id: string) => void,
+  selectedNodeIds: string[] = []
 ): Node => ({
   id: evidence.id,
   type: 'evidenceNode',
@@ -165,6 +166,10 @@ export const convertToEvidenceNode = (
     onUpdateEvidence,
     onDeleteEvidence,
   },
+  // Keep the controlled `selected` prop symmetric with every other node type
+  // (cards/canvas/PRD). Omitting it let React Flow and the store disagree on
+  // selection, bouncing onSelectionChange -> setState -> re-derive (React #185).
+  selected: selectedNodeIds.includes(evidence.id),
   selectable: true,
   draggable: true,
 });
