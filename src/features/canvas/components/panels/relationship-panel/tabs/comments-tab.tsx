@@ -12,6 +12,7 @@ import {
   type CommentRow,
 } from '@/shared/lib/supabase/services/collaboration';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import { userCodename } from '@/shared/utils/codename';
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -45,14 +46,15 @@ export function CommentsTab({ cardId }: CommentsTabProps) {
   const { canvasId } = useParams();
   const projectId = canvasId && canvasId !== 'new' ? canvasId : undefined;
   const user = useAppStore((s) => s.user);
-  const { members, byId } = useProjectMembers(projectId, Boolean(cardId));
+  const { members } = useProjectMembers(projectId, Boolean(cardId));
 
   const [threadId, setThreadId] = React.useState<string | null>(null);
   const [comments, setComments] = React.useState<CommentRow[]>([]);
   const [posting, setPosting] = React.useState(false);
 
-  const authorName = (id: string | null) =>
-    (id && byId[id]?.name) || id || 'Unknown';
+  // Privacy: show a stable pseudonymous codename, never the raw Clerk id or the
+  // real name/email (CVS-33).
+  const authorName = (id: string | null) => userCodename(id);
 
   // Resolve (but don't create) this card's thread on open.
   React.useEffect(() => {
