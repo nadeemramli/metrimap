@@ -41,14 +41,53 @@ export async function getProjectCollaborators(
   return (data?.filter((item) => item.users !== null) || []) as Collaborator[];
 }
 
+// The guest collaborator tiers (org members are handled by workspace RLS, not
+// these rows). Each maps to a coherent permissions[] token set the RLS helpers
+// key off, so role and permissions never disagree.
+export type ProjectRole =
+  | 'viewer'
+  | 'commenter'
+  | 'editor'
+  | 'admin'
+  | 'owner'
+  | 'member';
+
+export function permissionsForRole(role: string): string[] {
+  switch (role) {
+    case 'owner':
+    case 'admin':
+      return ['read', 'comment', 'edit', 'admin'];
+    case 'editor':
+      return ['read', 'comment', 'edit'];
+    case 'commenter':
+      return ['read', 'comment'];
+    default: // viewer / member / unknown => read-only
+      return ['read'];
+  }
+}
+
+/** Current user's effective permission on a project: none | view | comment | edit. */
+export async function getMyProjectPermission(
+  projectId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<'none' | 'view' | 'comment' | 'edit'> {
+  const client = authenticatedClient || supabase();
+  const { data, error } = await client.rpc('my_project_permission' as never, {
+    pid: projectId,
+  } as never);
+  if (error) throw new Error(error.message);
+  return (data as 'none' | 'view' | 'comment' | 'edit') ?? 'none';
+}
+
 // Add a collaborator to a project
 export async function addCollaborator(
   projectId: string,
   userEmail: string,
-  role: 'owner' | 'admin' | 'member' | 'viewer' = 'viewer',
-  permissions: string[] = ['read'],
+  role: ProjectRole = 'viewer',
+  permissions?: string[],
   authenticatedClient?: SupabaseClient<Database>
 ) {
+  const perms = permissions ?? permissionsForRole(role);
   const client = authenticatedClient || supabase();
 
   // First, find the user by email
@@ -72,7 +111,7 @@ export async function addCollaborator(
           project_id: projectId,
           user_id: userData.id,
           role,
-          permissions,
+          permissions: perms,
           invited_at: new Date().toISOString(),
         } as const;
         try {

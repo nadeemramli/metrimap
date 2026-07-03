@@ -35,6 +35,7 @@ import {
 import { getProjectChangelog } from '@/shared/lib/supabase/services/changelog';
 import {
   addCollaborator,
+  permissionsForRole,
   removeCollaborator,
   updateCollaborator,
 } from '@/shared/lib/supabase/services/collaborators';
@@ -74,7 +75,9 @@ interface CollaborationPanelProps {
   currentPage?: string;
 }
 
-const INVITE_ROLES = ['admin', 'member', 'viewer'] as const;
+// Guest collaborator tiers, most→least privileged. (Org members get write via
+// workspace RLS, not these rows; 'owner' is the project creator, not assignable.)
+const INVITE_ROLES = ['admin', 'editor', 'commenter', 'viewer'] as const;
 
 function initials(name: string) {
   return name
@@ -164,7 +167,7 @@ function PeopleTab({
 }) {
   const [inviteEmail, setInviteEmail] = React.useState('');
   const [inviteRole, setInviteRole] =
-    React.useState<(typeof INVITE_ROLES)[number]>('member');
+    React.useState<(typeof INVITE_ROLES)[number]>('editor');
   const [inviting, setInviting] = React.useState(false);
   const [isPublic, setIsPublic] = React.useState(false);
   const [togglingPublic, setTogglingPublic] = React.useState(false);
@@ -177,7 +180,7 @@ function PeopleTab({
         projectId,
         inviteEmail.trim(),
         inviteRole,
-        ['read'],
+        undefined, // permissions derived from role
         getClientForEnvironment()
       );
       toast.success(`Invited ${inviteEmail.trim()}`);
@@ -195,7 +198,8 @@ function PeopleTab({
     try {
       await updateCollaborator(
         collaboratorId,
-        { role },
+        // Keep permissions coherent with the role so RLS never disagrees.
+        { role, permissions: permissionsForRole(role) },
         getClientForEnvironment()
       );
       toast.success('Role updated');
@@ -322,7 +326,15 @@ function PeopleTab({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {['owner', 'admin', 'member', 'viewer'].map((r) => (
+                        {Array.from(
+                          new Set([
+                            'admin',
+                            'editor',
+                            'commenter',
+                            'viewer',
+                            m.role || 'member', // keep legacy/owner value selectable
+                          ])
+                        ).map((r) => (
                           <SelectItem key={r} value={r} className="text-xs">
                             {r}
                           </SelectItem>

@@ -18,7 +18,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Layers, SlidersHorizontal } from 'lucide-react';
+import { Eye, Layers, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 
 // Extracted utilities and hooks
@@ -48,6 +48,7 @@ import { useAlertRulesStore } from '@/features/canvas/stores/useAlertRulesStore'
 import { useCatalogRealtime } from '@/features/canvas/realtime/useCatalogRealtime';
 import { TimeTravelControl } from '@/features/canvas/components/TimeTravelControl';
 import { useTimeTravelStore } from '@/features/canvas/stores/useTimeTravelStore';
+import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
 import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
 import {
@@ -284,6 +285,11 @@ function CanvasPageInner() {
   });
   // Live cross-canvas catalog propagation (metric_values / tracked_metrics).
   useCatalogRealtime(currentCanvasId, supabaseClient);
+
+  // Effective permission on this canvas — gates edit affordances so viewers/
+  // commenters don't get an editor whose writes silently fail at RLS.
+  const permission = useCanvasPermission(currentCanvasId);
+  const canEdit = permission.canEdit;
 
   // Load canvas data from database when component mounts
   useEffect(() => {
@@ -1926,10 +1932,14 @@ function CanvasPageInner() {
                 : null
             }
             nodesDraggable={
-              state.toolbarMode === 'edit' || state.whiteboardTool === 'select'
+              canEdit &&
+              (state.toolbarMode === 'edit' ||
+                state.whiteboardTool === 'select')
             }
             nodesConnectable={
-              state.toolbarMode === 'edit' || state.whiteboardTool === 'select'
+              canEdit &&
+              (state.toolbarMode === 'edit' ||
+                state.whiteboardTool === 'select')
             }
             elementsSelectable={
               state.toolbarMode === 'edit' || state.whiteboardTool === 'select'
@@ -1943,7 +1953,7 @@ function CanvasPageInner() {
             // existing selection / click-selects additional nodes.
             multiSelectionKeyCode={['Shift', 'Meta', 'Control']}
             selectionKeyCode={null}
-            deleteKeyCode={['Backspace', 'Delete']}
+            deleteKeyCode={canEdit ? ['Backspace', 'Delete'] : null}
             onMoveEnd={(_, viewport) =>
               viewportSync.syncFromReactFlow(viewport)
             }
@@ -1951,6 +1961,18 @@ function CanvasPageInner() {
             <Background />
             <Controls />
             <CanvasCursorsLayer sendCursor={sendCursor} />
+
+            {/* Read-only / comment-only banner for restricted collaborators. */}
+            {!permission.loading && !canEdit && (
+              <Panel position="top-center">
+                <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 shadow-sm">
+                  <Eye className="h-3.5 w-3.5" />
+                  {permission.canComment
+                    ? 'Comment-only — you can add comments but not edit this canvas'
+                    : 'View-only — you don’t have edit access to this canvas'}
+                </div>
+              </Panel>
+            )}
 
             {/* Top toolbar */}
             <Panel
