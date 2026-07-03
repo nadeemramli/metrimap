@@ -58,6 +58,7 @@ import {
   linkCardToMetric,
   promoteCardToTrackedMetric,
 } from '@/shared/lib/supabase/services/trackedMetrics';
+import AlertsTab from './AlertsTab';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   DropdownMenu,
@@ -488,6 +489,12 @@ function CardSettingsSheetComponent({
                     Evidence
                   </TabsTrigger>
                   <TabsTrigger
+                    value="alerts"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                  >
+                    Alerts
+                  </TabsTrigger>
+                  <TabsTrigger
                     value="settings"
                     className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
                   >
@@ -504,6 +511,11 @@ function CardSettingsSheetComponent({
                   isModified={isModified}
                   onFieldChange={handleTabChange}
                 />
+              </TabsContent>
+
+              {/* Alerts Tab */}
+              <TabsContent value="alerts" className="space-y-6 pt-2">
+                {cardId && <AlertsTab cardId={cardId} />}
               </TabsContent>
 
               {/* Source tab content removed */}
