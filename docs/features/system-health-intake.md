@@ -41,6 +41,9 @@ A DB trigger rolls each report into `error_report_groups` (the Linear unit);
 
 ## Deploy (one-time)
 
+> For the full step-by-step operator walkthrough (Linear account, labels, API key,
+> IDs, secrets), see **[linear-setup.md](./linear-setup.md)**. Short version below.
+
 Migrations are already applied. To turn on the Linear sync:
 
 1. **Create Linear labels** on the target team (only existing labels are attached —
