@@ -34,7 +34,11 @@ export function useCanvasEvents({
   latest.current = { state, onApplyLayout, screenToFlowPosition };
 
   const handlePaneClick = useCallback(() => {
-    // Clear any transient UI or selections if neededs
+    // Clicking empty canvas clears the (controlled) selection. Without this,
+    // React Flow's native pane-click deselect is immediately overridden by our
+    // `selected` prop (derived from selectedNodeIds), so nodes stay stuck
+    // selected and there's no way back to "nothing selected" (CVS-68).
+    useCanvasStore.getState().clearSelection();
   }, []);
 
   const handleOpenSettingsSheet = useCallback((nodeId: string) => {
