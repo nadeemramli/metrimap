@@ -87,6 +87,26 @@ function makeSeries(title) {
 }
 const isQuantitative = (cat) => cat === MET || cat === VAL;
 
+// --- workflow enrichment (Strategy board) ---
+// Deterministic cycles so every kanban column, priority and confidence tier is
+// exercised; statuses must be the canonical snake_case values (CHECK constraint).
+const ACT_STATUS_CYCLE = ['in_progress', 'planning', 'backlog', 'done', 'on_hold'];
+const HYP_STATUS_CYCLE = ['backlog', 'planning', 'in_progress'];
+const PRIORITY_CYCLE = ['High', 'Medium', 'Low'];
+const ACTION_SUBCATS = ['Experiment', 'Initiative', 'BAU'];
+const EVIDENCE_TYPES = ['Experiment', 'Analysis', 'External Research'];
+function isoDaysFromNow(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function guessUnit(title) {
+  const t = title.toLowerCase();
+  if (/(rate|%|conversion|churn|margin|retention|nrr)/.test(t)) return '%';
+  if (/(revenue|profit|mrr|arr|arpa|cac|ltv|aov|basket|spend|value)/.test(t)) return 'USD';
+  return null;
+}
+
 // ===================== SaaS =====================
 const saas = {
   name: 'SaaS — Example Metric Tree',
@@ -202,6 +222,11 @@ const saas = {
     { name: 'Unit Economics', keys: ['cac','ltv','ltvcac','payback','churnrate','nrr'] },
     { name: 'Cost Structure', keys: ['costs','cogs','hosting','support','sm','rnd','gna','gm'] },
   ],
+  journey: [
+    { key: 'j_acquire', title: 'Acquire', desc: 'Traffic → leads → trials', links: ['visitors','mql'], work: ['lever_seo'] },
+    { key: 'j_activate', title: 'Activate', desc: 'Trials become paying customers', links: ['trials','trialconv'], work: ['lever_onboard','hyp_selfserve'] },
+    { key: 'j_retain', title: 'Retain & Expand', desc: 'Keep and grow accounts', links: ['churnrate','nrr','expmrr'], work: ['lever_cs','hyp_annual'] },
+  ],
 };
 
 // ===================== E-commerce =====================
@@ -313,6 +338,11 @@ const ecom = {
     { name: 'AOV & Retention', keys: ['aov','items','itemprice','crosssell','upsell','repeat','freq','ltv'] },
     { name: 'Cost Structure', keys: ['costs','cogs','gm','shipping','returns','marketing','payfees','fulfil','cac'] },
   ],
+  journey: [
+    { key: 'j_discover', title: 'Discover', desc: 'Shoppers find the store', links: ['sessions','reach'], work: ['lever_ugc'] },
+    { key: 'j_purchase', title: 'Purchase', desc: 'Visit converts to an order', links: ['cvr','checkoutcvr'], work: ['lever_email','hyp_reviews'] },
+    { key: 'j_repeat', title: 'Repeat & Grow', desc: 'Customers come back for more', links: ['repeat','ltv'], work: ['lever_bundle','hyp_freeship'] },
+  ],
 };
 
 // ===================== Retail (walk-in) =====================
@@ -415,6 +445,11 @@ const retail = {
     { name: 'Conversion & Basket', keys: ['txn','cvr','staffratio','availability','queue','basket','items','itemprice','impulse'] },
     { name: 'Retention', keys: ['loyalty','repeat','nps'] },
     { name: 'Cost Structure', keys: ['costs','cogs','gm','rent','labor','staffhours','wage','utilities','shrink','marketing'] },
+  ],
+  journey: [
+    { key: 'j_attract', title: 'Attract', desc: 'Passersby walk into the store', links: ['passersby','capture'], work: ['lever_window','hyp_events'] },
+    { key: 'j_convert', title: 'Convert', desc: 'Visits become transactions', links: ['cvr','basket'], work: ['lever_train','hyp_staff'] },
+    { key: 'j_return', title: 'Return', desc: 'Customers come back', links: ['loyalty','repeat'], work: ['lever_loyalty'] },
   ],
 };
 
@@ -895,6 +930,10 @@ function buildShowcase({ tree, idOf, pos, projectId, dataByKey }) {
     title: `${anchorTitle} — Projection`,
     description: `Operator output: ${anchorTitle} × 1.1 + live feed`,
     category: MET,
+    sub_category: null,
+    status: null,
+    workflow: {},
+    tracked_metric_id: null,
     position_x: x0 + 720,
     position_y: baseY,
     created_by: OWNER,
@@ -996,30 +1035,135 @@ function buildTree(tree) {
     tags: ['example', 'template'],
     settings: {},
   };
-  const cards = tree.nodes.map((n) => ({
-    id: idOf.get(n.key),
-    project_id: projectId,
-    title: n.title,
-    description: n.desc || '',
-    category: n.cat,
-    position_x: pos.get(n.key).x,
-    position_y: pos.get(n.key).y,
-    created_by: OWNER,
-    data: dataByKey.get(n.key),
-  }));
-  const rels = tree.edges.map((e) => ({
-    id: randomUUID(),
-    project_id: projectId,
-    source_id: idOf.get(e.from),
-    target_id: idOf.get(e.to),
-    type: e.type,
-    confidence: e.conf,
-    weight: e.w,
-    created_by: OWNER,
-  }));
+  // Cards, enriched so the Strategy board / journey strip have real content:
+  // actions & hypotheses get sub_category + status + workflow, values get their
+  // Core/Value subtype.
+  let actIdx = 0;
+  let hypIdx = 0;
+  const cards = tree.nodes.map((n) => {
+    const card = {
+      id: idOf.get(n.key),
+      project_id: projectId,
+      title: n.title,
+      description: n.desc || '',
+      category: n.cat,
+      sub_category: null,
+      status: null,
+      workflow: {},
+      tracked_metric_id: null,
+      position_x: pos.get(n.key).x,
+      position_y: pos.get(n.key).y,
+      created_by: OWNER,
+      data: dataByKey.get(n.key),
+    };
+    if (n.cat === ACT) {
+      const i = actIdx++;
+      card.sub_category = ACTION_SUBCATS[i % ACTION_SUBCATS.length];
+      card.status = ACT_STATUS_CYCLE[i % ACT_STATUS_CYCLE.length];
+      card.workflow = {
+        priority: PRIORITY_CYCLE[i % PRIORITY_CYCLE.length],
+        dueDate: isoDaysFromNow(14 + i * 21),
+        effort: 3 + (i % 4) * 4,
+      };
+    } else if (n.cat === HYP) {
+      const i = hypIdx++;
+      card.sub_category = 'Factor';
+      card.status = HYP_STATUS_CYCLE[i % HYP_STATUS_CYCLE.length];
+      card.workflow = {
+        confidence: PRIORITY_CYCLE[i % PRIORITY_CYCLE.length],
+        testable: true,
+        assumptions: [`${n.title} holds for the core segment`],
+        successCriteria: ['Statistically significant lift within one quarter'],
+      };
+    } else if (n.cat === VAL) {
+      card.sub_category = 'Critical Path';
+      card.workflow = { businessImpact: 'High' };
+    }
+    return card;
+  });
+  const relIdByEdge = new Map();
+  const rels = tree.edges.map((e) => {
+    const id = randomUUID();
+    relIdByEdge.set(`${e.from}->${e.to}`, id);
+    return {
+      id,
+      project_id: projectId,
+      source_id: idOf.get(e.from),
+      target_id: idOf.get(e.to),
+      type: e.type,
+      confidence: e.conf,
+      weight: e.w,
+      created_by: OWNER,
+    };
+  });
+
+  // Journey steps (Core/Value) for the Strategy page's value strip: a row of
+  // Journey Step cards above the tree, ordered left→right (position.x = journey
+  // order), wired to their driving metrics and attached work.
+  (tree.journey || []).forEach((j, i) => {
+    const jid = randomUUID();
+    idOf.set(j.key, jid);
+    // Entirely left of the root (x=0) so the journey strip reads
+    // step 1 → step 2 → step 3 → root value (position.x = journey order).
+    const x = Math.round((i - tree.journey.length) * 720);
+    pos.set(j.key, { x, y: -380 });
+    cards.push({
+      id: jid,
+      project_id: projectId,
+      title: j.title,
+      description: j.desc || '',
+      category: VAL,
+      sub_category: 'Journey Step',
+      status: null,
+      workflow: {
+        businessImpact: i === tree.journey.length - 1 ? 'Medium' : 'High',
+        stakeholders: ['Growth', 'Product'],
+      },
+      tracked_metric_id: null,
+      position_x: x,
+      position_y: -380,
+      created_by: OWNER,
+      data: [],
+    });
+    for (const link of j.links || []) {
+      if (!idOf.get(link)) continue;
+      rels.push({
+        id: randomUUID(),
+        project_id: projectId,
+        source_id: idOf.get(link),
+        target_id: jid,
+        type: 'Compositional',
+        confidence: 'High',
+        weight: 70,
+        created_by: OWNER,
+      });
+    }
+    for (const w of j.work || []) {
+      if (!idOf.get(w)) continue;
+      rels.push({
+        id: randomUUID(),
+        project_id: projectId,
+        source_id: idOf.get(w),
+        target_id: jid,
+        type: 'Causal',
+        confidence: 'Medium',
+        weight: 60,
+        created_by: OWNER,
+      });
+    }
+  });
 
   const SEED_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6'];
-  const groupRows = (tree.groups || []).map((g, gi) => {
+  // A group holding every action + hypothesis gives the Strategy page its
+  // per-group pill (the work-card analog of group → dashboard).
+  const workKeys = tree.nodes
+    .filter((n) => n.cat === ACT || n.cat === HYP)
+    .map((n) => n.key);
+  const groupDefs = [...(tree.groups || [])];
+  if (workKeys.length) {
+    groupDefs.push({ name: 'Strategy — Levers & Bets', keys: workKeys });
+  }
+  const groupRows = groupDefs.map((g, gi) => {
     const ps = g.keys.map((k) => pos.get(k)).filter(Boolean);
     const xs = ps.map((p) => p.x);
     const ys = ps.map((p) => p.y);
@@ -1051,19 +1195,235 @@ function buildTree(tree) {
     project.settings = { dataFlowEdges: showcase.dataFlowEdges };
   }
 
+  // --- semantic layer: promote the anchor card into the Tracked Metrics
+  // catalog, with a real value-store series (two-tier storage). ---
+  const anchor = pickAnchor(tree);
+  const anchorId = anchor ? idOf.get(anchor.key) : null;
+  const anchorData = anchor ? dataByKey.get(anchor.key) || [] : [];
+  const shortName = tree.name.split('—')[0].trim();
+  const trackedId = randomUUID();
+  const trackedName = anchor ? `${anchor.title} — ${shortName}` : null;
+  const trackedMetrics = anchor
+    ? [
+        {
+          id: trackedId,
+          name: trackedName,
+          state: 'tracked',
+          unit: guessUnit(anchor.title),
+          formula: null,
+          owner_label: 'Growth',
+          source_kind: 'manual',
+          origin_card_id: anchorId,
+          origin_project_id: projectId,
+          created_by: OWNER,
+        },
+      ]
+    : [];
+  const metricValues = anchorData.map((d) => ({
+    id: randomUUID(),
+    tracked_metric_id: trackedId,
+    period: d.period,
+    value: d.value,
+    change_percent: d.change_percent,
+    trend: d.trend,
+    source: 'seed',
+    created_by: OWNER,
+  }));
+  if (anchor) {
+    const anchorCard = cards.find((c) => c.id === anchorId);
+    if (anchorCard) anchorCard.tracked_metric_id = trackedId;
+  }
+
+  // --- evidence on the strongest causal/probabilistic edges ---
+  const evidenceRows = [...tree.edges]
+    .filter((e) => e.type === 'Causal' || e.type === 'Probabilistic')
+    .sort((a, b) => b.w - a.w)
+    .slice(0, 3)
+    .map((e, i) => {
+      const from = tree.nodes.find((n) => n.key === e.from)?.title || e.from;
+      const to = tree.nodes.find((n) => n.key === e.to)?.title || e.to;
+      return {
+        id: randomUUID(),
+        relationship_id: relIdByEdge.get(`${e.from}->${e.to}`),
+        title: `${EVIDENCE_TYPES[i % EVIDENCE_TYPES.length]}: ${from} → ${to}`,
+        type: EVIDENCE_TYPES[i % EVIDENCE_TYPES.length],
+        date: isoDaysFromNow(-7 * (i + 1)),
+        summary: `Observed a consistent relationship between ${from} and ${to} over the last two quarters; effect size supports the current ${e.conf.toLowerCase()}-confidence rating.`,
+        hypothesis: `${from} is a leading driver of ${to}`,
+        link: null,
+        impact_on_confidence: i === 0 ? 'Increases confidence' : 'Supports current rating',
+        owner_id: OWNER,
+        created_by: OWNER,
+      };
+    })
+    .filter((e) => e.relationship_id);
+
+  // --- comments: one open thread on the anchor card + one resolved canvas
+  // thread, so the collaboration panel has content. ---
+  const nodeThreadId = randomUUID();
+  const canvasThreadId = randomUUID();
+  const commentThreads = anchor
+    ? [
+        {
+          id: nodeThreadId,
+          project_id: projectId,
+          source: 'node',
+          context: { cardId: anchorId },
+          is_resolved: false,
+          created_by: OWNER,
+        },
+        {
+          id: canvasThreadId,
+          project_id: projectId,
+          source: 'canvas',
+          context: null,
+          is_resolved: true,
+          created_by: OWNER,
+        },
+      ]
+    : [];
+  const commentRows = anchor
+    ? [
+        {
+          id: randomUUID(),
+          thread_id: nodeThreadId,
+          author_id: OWNER,
+          content: `${anchor.title} is our anchor metric — the operator projection to the right recomputes it live. Does the seasonality here look right?`,
+          resolved: false,
+        },
+        {
+          id: randomUUID(),
+          thread_id: nodeThreadId,
+          author_id: OWNER,
+          content: 'Compared it against the tracked-metric series in the catalog — trends match. Leaving this open until we wire the warehouse source.',
+          resolved: false,
+        },
+        {
+          id: randomUUID(),
+          thread_id: canvasThreadId,
+          author_id: OWNER,
+          content: 'Grouped the levers & bets into a Strategy group — check the Strategy page for the kanban view.',
+          resolved: true,
+        },
+      ]
+    : [];
+
+  // --- dashboard widgets: KPI (tracked), driver chart (cards), summary table ---
+  const chartCardIds = [
+    anchorId,
+    showcase?.projectionCard?.id,
+    ...cards
+      .filter((c) => c.category === MET && c.id !== anchorId && (c.data?.length ?? 0) > 0)
+      .slice(0, 2)
+      .map((c) => c.id),
+  ].filter(Boolean);
+  const widgets = anchor
+    ? [
+        {
+          id: randomUUID(),
+          project_id: projectId,
+          title: trackedName,
+          widget_type: 'kpi',
+          config: { source: 'tracked', trackedMetricIds: [trackedId] },
+          layout: { x: 0, y: 0, w: 3, h: 4 },
+          sort_index: 0,
+          created_by: OWNER,
+        },
+        {
+          id: randomUUID(),
+          project_id: projectId,
+          title: `${anchor.title} & drivers`,
+          widget_type: 'area',
+          config: { source: 'card', cardIds: chartCardIds, display: { showLegend: true } },
+          layout: { x: 3, y: 0, w: 9, h: 8 },
+          sort_index: 1,
+          created_by: OWNER,
+        },
+        {
+          id: randomUUID(),
+          project_id: projectId,
+          title: 'Key metrics',
+          widget_type: 'table',
+          config: { source: 'card', cardIds: chartCardIds },
+          layout: { x: 0, y: 4, w: 3, h: 8 },
+          sort_index: 2,
+          created_by: OWNER,
+        },
+      ]
+    : [];
+
+  // --- alert rules on the anchor: a floor threshold + a drop alert ---
+  const latestAnchor = anchorData.at(-1)?.value ?? 0;
+  const alertRules = anchor
+    ? [
+        {
+          id: randomUUID(),
+          project_id: projectId,
+          card_id: anchorId,
+          name: `${anchor.title} floor`,
+          rule_type: 'threshold',
+          config: { comparator: 'lte', value: round(latestAnchor * 0.85) },
+          enabled: true,
+          created_by: OWNER,
+        },
+        {
+          id: randomUUID(),
+          project_id: projectId,
+          card_id: anchorId,
+          name: `${anchor.title} sudden drop`,
+          rule_type: 'change',
+          config: { direction: 'down', pct: 10 },
+          enabled: true,
+          created_by: OWNER,
+        },
+      ]
+    : [];
+
   // SQL
+  const S = (v) => (v == null ? 'NULL' : `'${sqlEsc(v)}'`);
+  const J = (v) => `'${sqlEsc(JSON.stringify(v ?? null))}'::jsonb`;
   sql += `\nDELETE FROM public.projects WHERE created_by='${OWNER}' AND name='${sqlEsc(tree.name)}';\n`;
+  if (trackedName)
+    sql += `DELETE FROM public.tracked_metrics WHERE created_by='${OWNER}' AND name='${sqlEsc(trackedName)}';\n`;
   sql += `INSERT INTO public.projects (id,name,description,created_by,last_modified_by,is_public,tags,settings) VALUES ('${projectId}','${sqlEsc(tree.name)}','${sqlEsc(tree.description)}','${OWNER}','${OWNER}',${IS_PUBLIC},ARRAY['example','template'],'${sqlEsc(JSON.stringify(project.settings))}'::jsonb);\n`;
+  for (const t of trackedMetrics)
+    sql += `INSERT INTO public.tracked_metrics (id,name,state,unit,formula,owner_label,source_kind,origin_card_id,origin_project_id,created_by) VALUES ('${t.id}',${S(t.name)},'${t.state}',${S(t.unit)},${S(t.formula)},${S(t.owner_label)},${S(t.source_kind)},'${t.origin_card_id}','${t.origin_project_id}','${OWNER}');\n`;
   for (const c of cards)
-    sql += `INSERT INTO public.metric_cards (id,project_id,title,description,category,position_x,position_y,created_by,data) VALUES ('${c.id}','${c.project_id}','${sqlEsc(c.title)}','${sqlEsc(c.description)}','${c.category}',${c.position_x},${c.position_y},'${OWNER}','${sqlEsc(JSON.stringify(c.data))}'::jsonb);\n`;
+    sql += `INSERT INTO public.metric_cards (id,project_id,title,description,category,sub_category,status,workflow,tracked_metric_id,position_x,position_y,created_by,data) VALUES ('${c.id}','${c.project_id}','${sqlEsc(c.title)}','${sqlEsc(c.description)}','${c.category}',${S(c.sub_category)},${S(c.status)},${J(c.workflow ?? {})},${c.tracked_metric_id ? `'${c.tracked_metric_id}'` : 'NULL'},${c.position_x},${c.position_y},'${OWNER}',${J(c.data)});\n`;
+  for (const v of metricValues)
+    sql += `INSERT INTO public.metric_values (id,tracked_metric_id,period,value,change_percent,trend,source,created_by) VALUES ('${v.id}','${v.tracked_metric_id}','${v.period}',${v.value},${v.change_percent},${S(v.trend)},'seed','${OWNER}');\n`;
   for (const r of rels)
     sql += `INSERT INTO public.relationships (id,project_id,source_id,target_id,type,confidence,weight,created_by) VALUES ('${r.id}','${r.project_id}','${r.source_id}','${r.target_id}','${r.type}','${r.confidence}',${r.weight},'${OWNER}');\n`;
+  for (const ev of evidenceRows)
+    sql += `INSERT INTO public.evidence_items (id,relationship_id,title,type,date,summary,hypothesis,link,impact_on_confidence,owner_id,created_by) VALUES ('${ev.id}','${ev.relationship_id}','${sqlEsc(ev.title)}','${ev.type}','${ev.date}','${sqlEsc(ev.summary)}',${S(ev.hypothesis)},${S(ev.link)},${S(ev.impact_on_confidence)},'${OWNER}','${OWNER}');\n`;
   for (const g of groupRows)
     sql += `INSERT INTO public.groups (id,project_id,name,color,node_ids,position_x,position_y,width,height,created_by) VALUES ('${g.id}','${g.project_id}','${sqlEsc(g.name)}','${g.color}',ARRAY[${g.node_ids.map((id) => `'${id}'`).join(',')}]::uuid[],${g.position_x},${g.position_y},${g.width},${g.height},'${OWNER}');\n`;
   for (const cn of canvasNodes)
     sql += `INSERT INTO public.canvas_nodes (id,project_id,node_type,title,position_x,position_y,data,created_by) VALUES ('${cn.id}','${cn.project_id}','${cn.node_type}','${sqlEsc(cn.title)}',${cn.position_x},${cn.position_y},'${sqlEsc(JSON.stringify(cn.data))}'::jsonb,'${OWNER}');\n`;
+  for (const th of commentThreads)
+    sql += `INSERT INTO public.comment_threads (id,project_id,source,context,is_resolved,created_by) VALUES ('${th.id}','${th.project_id}','${th.source}',${th.context ? J(th.context) : 'NULL'},${th.is_resolved},'${OWNER}');\n`;
+  for (const cm of commentRows)
+    sql += `INSERT INTO public.comments (id,thread_id,author_id,content,resolved) VALUES ('${cm.id}','${cm.thread_id}','${OWNER}','${sqlEsc(cm.content)}',${cm.resolved});\n`;
+  for (const w of widgets)
+    sql += `INSERT INTO public.dashboard_widgets (id,project_id,title,widget_type,config,layout,sort_index,created_by) VALUES ('${w.id}','${w.project_id}',${S(w.title)},'${w.widget_type}',${J(w.config)},${J(w.layout)},${w.sort_index},'${OWNER}');\n`;
+  for (const a of alertRules)
+    sql += `INSERT INTO public.alert_rules (id,project_id,card_id,name,rule_type,config,enabled,created_by) VALUES ('${a.id}','${a.project_id}','${a.card_id}',${S(a.name)},'${a.rule_type}',${J(a.config)},${a.enabled},'${OWNER}');\n`;
 
-  return { project, cards, rels, groups: groupRows, canvasNodes };
+  return {
+    project,
+    cards,
+    rels,
+    groups: groupRows,
+    canvasNodes,
+    trackedMetrics,
+    trackedName,
+    metricValues,
+    evidenceRows,
+    commentThreads,
+    commentRows,
+    widgets,
+    alertRules,
+  };
 }
 
 const built = TREES.map(buildTree);
@@ -1091,24 +1451,40 @@ const db = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false },
 });
 
-for (const { project, cards, rels, groups, canvasNodes } of built) {
+async function insertAll(table, rows, label) {
+  if (!rows || !rows.length) return;
+  const { error } = await db.from(table).insert(rows);
+  if (error) throw new Error(`${table} ${label}: ${error.message}`);
+}
+
+for (const b of built) {
+  const { project } = b;
   await db.from('projects').delete().eq('created_by', OWNER).eq('name', project.name);
+  if (b.trackedName) {
+    // tracked_metrics are workspace-scoped (survive project deletes); clear the
+    // prior run's entry so re-runs don't duplicate. metric_values cascade.
+    await db
+      .from('tracked_metrics')
+      .delete()
+      .eq('created_by', OWNER)
+      .eq('name', b.trackedName);
+  }
   let { error: pe } = await db.from('projects').insert(project);
   if (pe) throw new Error(`project ${project.name}: ${pe.message}`);
-  let { error: ce } = await db.from('metric_cards').insert(cards);
-  if (ce) throw new Error(`cards ${project.name}: ${ce.message}`);
-  let { error: re } = await db.from('relationships').insert(rels);
-  if (re) throw new Error(`relationships ${project.name}: ${re.message}`);
-  if (groups && groups.length) {
-    let { error: ge } = await db.from('groups').insert(groups);
-    if (ge) throw new Error(`groups ${project.name}: ${ge.message}`);
-  }
-  if (canvasNodes && canvasNodes.length) {
-    let { error: ne } = await db.from('canvas_nodes').insert(canvasNodes);
-    if (ne) throw new Error(`canvas_nodes ${project.name}: ${ne.message}`);
-  }
+  // tracked_metrics before cards: metric_cards.tracked_metric_id FK.
+  await insertAll('tracked_metrics', b.trackedMetrics, project.name);
+  await insertAll('metric_values', b.metricValues, project.name);
+  await insertAll('metric_cards', b.cards, project.name);
+  await insertAll('relationships', b.rels, project.name);
+  await insertAll('evidence_items', b.evidenceRows, project.name);
+  await insertAll('groups', b.groups, project.name);
+  await insertAll('canvas_nodes', b.canvasNodes, project.name);
+  await insertAll('comment_threads', b.commentThreads, project.name);
+  await insertAll('comments', b.commentRows, project.name);
+  await insertAll('dashboard_widgets', b.widgets, project.name);
+  await insertAll('alert_rules', b.alertRules, project.name);
   console.log(
-    `✅ ${project.name}: ${cards.length} cards, ${rels.length} relationships, ${(groups || []).length} groups, ${(canvasNodes || []).length} canvas nodes`
+    `✅ ${project.name}: ${b.cards.length} cards, ${b.rels.length} relationships, ${b.groups.length} groups, ${b.canvasNodes.length} canvas nodes, ${b.evidenceRows.length} evidence, ${b.commentRows.length} comments, ${b.widgets.length} widgets, ${b.alertRules.length} alerts, ${b.trackedMetrics.length} tracked (+${b.metricValues.length} values)`
   );
 }
 console.log('🌱 Seed complete.');
