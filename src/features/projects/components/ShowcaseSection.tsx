@@ -1,29 +1,28 @@
-import { Badge } from '@/shared/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui/card';
+import { Button } from '@/shared/components/ui/button';
 import { getShowcaseProjects } from '@/shared/lib/supabase/services/projects';
-import { BarChart3, Network, Sparkles } from 'lucide-react';
+import { BarChart3, ChevronDown, Network, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const countOf = (v: any): number =>
   Array.isArray(v) ? (v[0]?.count ?? 0) : 0;
+
+const COLLAPSE_KEY = 'metrimap.showcase.collapsed';
 
 interface ShowcaseSectionProps {
   onOpenCanvas: (canvasId: string) => void;
 }
 
 /**
- * Read-only "Examples" showcase at the top of the homepage. Loads the public
- * example/template projects (anyone can read them via public RLS). These are
- * intentionally NOT in the user's own list, so they can't be deleted from the UI.
+ * Read-only "Examples" rail at the top of the homepage: one horizontal row of
+ * compact cards (template-gallery pattern — user canvases stay the page's
+ * primary content). Collapsible, remembered per browser. Examples load via
+ * public RLS and are intentionally NOT in the user's own list.
  */
 export function ShowcaseSection({ onOpenCanvas }: ShowcaseSectionProps) {
   const [examples, setExamples] = useState<any[]>([]);
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(COLLAPSE_KEY) === '1'
+  );
 
   useEffect(() => {
     let active = true;
@@ -37,41 +36,51 @@ export function ShowcaseSection({ onOpenCanvas }: ShowcaseSectionProps) {
     };
   }, []);
 
+  const toggle = () => {
+    setCollapsed((c) => {
+      localStorage.setItem(COLLAPSE_KEY, c ? '0' : '1');
+      return !c;
+    });
+  };
+
   if (examples.length === 0) return null;
 
   return (
-    <div className="mb-8">
-      <div className="mb-3 flex items-center gap-2">
+    <div className="mb-6">
+      <div className="mb-2 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold">
-          Examples — explore sample metric trees
-        </h2>
-        <Badge variant="secondary" className="text-[10px]">
-          read-only
-        </Badge>
+        <h2 className="text-sm font-semibold">Examples</h2>
+        <span className="text-xs text-muted-foreground">
+          {examples.length} read-only metric trees to explore
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto h-6 gap-1 px-2 text-xs text-muted-foreground"
+          onClick={toggle}
+        >
+          {collapsed ? 'Show' : 'Hide'}
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform ${collapsed ? '' : 'rotate-180'}`}
+          />
+        </Button>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {examples.map((p) => (
-          <Card
-            key={p.id}
-            onClick={() => onOpenCanvas(p.id)}
-            className="cursor-pointer border-primary/20 bg-primary/[0.03] transition-all duration-300 hover:scale-[1.02] hover:border-primary/40 hover:shadow-md active:scale-[0.99]"
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base">
-                  {String(p.name).replace(/\s*—\s*Example Metric Tree$/, '')}
-                </CardTitle>
-                <Badge variant="outline" className="shrink-0 text-[10px]">
-                  Example
-                </Badge>
-              </div>
-              <CardDescription className="line-clamp-2 text-xs">
+
+      {!collapsed && (
+        <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
+          {examples.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onOpenCanvas(p.id)}
+              className="w-[248px] shrink-0 snap-start rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/[0.03]"
+            >
+              <p className="truncate text-sm font-medium">
+                {String(p.name).replace(/\s*—\s*Example Metric Tree$/, '')}
+              </p>
+              <p className="mt-1 line-clamp-2 min-h-[2rem] text-xs leading-4 text-muted-foreground">
                 {p.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              </p>
+              <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <BarChart3 className="h-3 w-3 text-blue-500" />
                   {countOf(p.metric_cards)} metrics
@@ -81,10 +90,10 @@ export function ShowcaseSection({ onOpenCanvas }: ShowcaseSectionProps) {
                   {countOf(p.relationships)} links
                 </span>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
