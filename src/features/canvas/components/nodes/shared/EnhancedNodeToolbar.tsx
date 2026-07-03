@@ -23,6 +23,8 @@ import {
   PopoverTrigger,
 } from '@/shared/components/ui/popover';
 import { Separator } from '@/shared/components/ui/separator';
+import { useCanvasStore } from '@/lib/stores';
+import { toast } from 'sonner';
 
 interface EnhancedNodeToolbarProps {
   isVisible: boolean;
@@ -275,9 +277,17 @@ export function useNodeToolbarActions(nodeId: string, nodeType: string) {
   }, [nodeId, nodeType]);
 
   const handleDelete = React.useCallback(() => {
-    console.log(`🗑️ Delete ${nodeType} node:`, nodeId);
-    // Implement delete logic with confirmation
-  }, [nodeId, nodeType]);
+    // The per-node toolbar delete was a no-op stub (CVS-61). Wire it to the real
+    // store's persisting delete — the same path the card's own delete uses — so it
+    // actually removes the node (all 4 toolbar node types are metric_cards).
+    void useCanvasStore
+      .getState()
+      .persistNodeDelete(nodeId)
+      .catch((e) => {
+        console.error('Toolbar delete failed:', e);
+        toast.error('Failed to delete');
+      });
+  }, [nodeId]);
 
   const handleShare = React.useCallback(() => {
     console.log(`🔗 Share ${nodeType} node:`, nodeId);
