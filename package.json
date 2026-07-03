@@ -15,6 +15,7 @@
     "prepare": "husky",
     "test": "vitest",
     "test:rls": "tsx src/tests/run-rls-tests.ts",
+    "sync:errors": "node scripts/sync-error-reports.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "docs:dev": "vitepress dev docs",

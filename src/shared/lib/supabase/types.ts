@@ -146,6 +146,7 @@ export type Database = {
           component_stack: string | null
           created_at: string
           error_stack: string | null
+          fingerprint: string | null
           id: string
           message: string | null
           note: string | null
@@ -160,6 +161,7 @@ export type Database = {
           component_stack?: string | null
           created_at?: string
           error_stack?: string | null
+          fingerprint?: string | null
           id?: string
           message?: string | null
           note?: string | null
@@ -174,6 +176,7 @@ export type Database = {
           component_stack?: string | null
           created_at?: string
           error_stack?: string | null
+          fingerprint?: string | null
           id?: string
           message?: string | null
           note?: string | null
@@ -181,6 +184,63 @@ export type Database = {
           reporter_user_id?: string | null
           url?: string | null
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      error_report_groups: {
+        Row: {
+          created_at: string
+          fingerprint: string
+          first_seen_at: string
+          last_seen_at: string
+          last_synced_count: number
+          linear_issue_id: string | null
+          linear_issue_identifier: string | null
+          linear_issue_url: string | null
+          linear_synced_at: string | null
+          occurrence_count: number
+          sample_report_id: string | null
+          severity: string
+          sync_error: string | null
+          sync_status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fingerprint: string
+          first_seen_at?: string
+          last_seen_at?: string
+          last_synced_count?: number
+          linear_issue_id?: string | null
+          linear_issue_identifier?: string | null
+          linear_issue_url?: string | null
+          linear_synced_at?: string | null
+          occurrence_count?: number
+          sample_report_id?: string | null
+          severity?: string
+          sync_error?: string | null
+          sync_status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fingerprint?: string
+          first_seen_at?: string
+          last_seen_at?: string
+          last_synced_count?: number
+          linear_issue_id?: string | null
+          linear_issue_identifier?: string | null
+          linear_issue_url?: string | null
+          linear_synced_at?: string | null
+          occurrence_count?: number
+          sample_report_id?: string | null
+          severity?: string
+          sync_error?: string | null
+          sync_status?: string
+          title?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

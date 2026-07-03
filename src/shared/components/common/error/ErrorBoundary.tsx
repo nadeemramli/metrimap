@@ -20,6 +20,7 @@ import { ScrollArea } from "@/shared/components/ui/scroll-area";
 // The shared wrapper also depends on next-themes, which is unavailable up here.
 import { Toaster, toast } from "sonner";
 import { submitErrorReport } from "@/shared/lib/supabase/services/errorReports";
+import { computeErrorFingerprint } from "@/shared/utils/errorFingerprint";
 import { useAppStore } from "@/shared/stores/useAppStore";
 import {
   AlertTriangle,
@@ -127,17 +128,27 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ sending: true });
     const { error, errorInfo } = this.state;
     const identity = this.getReporterIdentity();
+    const message = error?.message ?? error?.toString() ?? null;
+    const errorStack = error?.stack ?? null;
+    const componentStack = errorInfo?.componentStack ?? null;
+    const fingerprint = await computeErrorFingerprint({
+      message,
+      errorStack,
+      componentStack,
+      pathname: window.location.pathname,
+    });
     try {
       await submitErrorReport({
-        message: error?.message ?? error?.toString() ?? null,
-        errorStack: error?.stack ?? null,
-        componentStack: errorInfo?.componentStack ?? null,
+        message,
+        errorStack,
+        componentStack,
         note: this.state.note.trim() || null,
         url: window.location.href,
         userAgent: navigator.userAgent,
         reporterUserId: identity.id,
         reporterEmail: identity.email,
         clientTime: new Date().toISOString(),
+        fingerprint,
       });
       this.setState({ sending: false, sent: true });
       toast.success("Report sent. Thank you!");

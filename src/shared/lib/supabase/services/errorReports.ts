@@ -20,6 +20,7 @@ export interface ErrorReportPayload {
   reporterUserId: string | null;
   reporterEmail: string | null;
   clientTime: string | null; // ISO timestamp
+  fingerprint: string | null; // stable group key; see utils/errorFingerprint.ts
 }
 
 export async function submitErrorReport(
@@ -37,6 +38,7 @@ export async function submitErrorReport(
     reporter_user_id: payload.reporterUserId,
     reporter_email: payload.reporterEmail,
     client_time: payload.clientTime,
+    fingerprint: payload.fingerprint,
     // clerk_user_id is filled server-side by the column DEFAULT.
   });
   if (error) throw new Error(error.message);

@@ -4,6 +4,15 @@ This file gives Claude Code guidance for working in this repository.
 
 The cross-tool project guide (architecture, stack, commands, conventions, Supabase client, secrets) lives in **@AGENTS.md** — read it first; it is the source of truth and is shared with all AI tools.
 
+## Development Operating System
+
+The team runs a lightweight product-learning workflow (details in the owner's vault):
+
+- **Linear** is the source of truth for work; **Obsidian** stores durable learning; the **repo** is implementation truth. Don't duplicate the same truth across tools.
+- A raw signal is not a task — it passes through **intake → normalize → classify → prioritize**. Automated intake issues start in **Intake/Triage**, never Ready/In Progress.
+- **Runtime crashes = System Health intake.** They flow **browser → Supabase `error_reports` → server-side Linear sync**, deduped by fingerprint. Never expose Linear credentials in the browser. See `docs/features/system-health-intake.md`.
+- Keep Supabase `error_reports` as the raw evidence store; Linear is the work item, not the event log.
+
 ## Claude-specific notes
 
 - **Product methodology:** the metric-tree principle the app draws from lives in `docs/reference/metric-tree-methodology.md`. It's the *principle*, not our spec — Metrimap has its own approach. Don't auto-generate features from it; discuss with the owner first and prioritize end-to-end **value pipelines**.
