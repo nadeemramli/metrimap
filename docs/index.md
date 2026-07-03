@@ -18,6 +18,7 @@ CVS). See the **Docs policy** in [`../AGENTS.md`](../AGENTS.md).
 - **[state-management/](state-management/)** — XState patterns
 - **features/ (infra only)** — [system-health-intake](features/system-health-intake.md),
   [linear-setup](features/linear-setup.md), [linear-initiatives](features/linear-initiatives.md),
+  [userback-customer-requests](features/userback-customer-requests.md),
   [metrics-api](features/metrics-api.md)
 
 Anything product-facing (feature narratives, changelogs, methodology, PRD) belongs

@@ -15,7 +15,8 @@
     "prepare": "husky",
     "test": "vitest",
     "test:rls": "tsx src/tests/run-rls-tests.ts",
-    "sync:errors": "node scripts/sync-error-reports.mjs"
+    "sync:errors": "node scripts/sync-error-reports.mjs",
+    "sync:userback": "node scripts/sync-userback.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": "eslint --no-warn-ignored"
