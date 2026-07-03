@@ -1,0 +1,27 @@
+# Free dependency (SCA) scanning — GitHub-native, surfaced in the repo Security tab.
+# Part of the security PR-checks work (CVS-28, Path B: Dependabot + CodeQL instead
+# of paid Snyk). Weekly PRs for npm deps + the GitHub Actions we use.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    # Reduce PR noise: batch non-major bumps; majors still come as their own PRs.
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"

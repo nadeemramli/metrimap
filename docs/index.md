@@ -19,6 +19,7 @@ CVS). See the **Docs policy** in [`../AGENTS.md`](../AGENTS.md).
 - **features/ (infra only)** — [system-health-intake](features/system-health-intake.md),
   [linear-setup](features/linear-setup.md), [linear-initiatives](features/linear-initiatives.md),
   [userback-customer-requests](features/userback-customer-requests.md),
+  [security-scanning](features/security-scanning.md),
   [metrics-api](features/metrics-api.md)
 
 Anything product-facing (feature narratives, changelogs, methodology, PRD) belongs
