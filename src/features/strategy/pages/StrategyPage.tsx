@@ -27,7 +27,7 @@ import { StrategyBoard } from '@/features/strategy/components/StrategyBoard';
 import { StrategyTable } from '@/features/strategy/components/StrategyTable';
 import { CardCommentSheet } from '@/features/strategy/components/CardCommentSheet';
 import { ValueJourneyStrip } from '@/features/strategy/components/ValueJourneyStrip';
-import CardSettingsSheet from '@/features/canvas/components/panels/metric-panel/CardSettingsSheet';
+import { TaskPanel } from '@/features/canvas/components/panels/task-panel/TaskPanel';
 import {
   buildGroupStrategy,
   isWorkCard,
@@ -335,10 +335,18 @@ export default function StrategyPage() {
             </Button>
           </div>
         </Card>
-        <CardSettingsSheet
+        <TaskPanel
           isOpen={Boolean(settingsCardId)}
           onClose={() => setSettingsCardId(null)}
           cardId={settingsCardId ?? undefined}
+          card={cards.find((c) => c.id === settingsCardId)}
+          projectId={canvasId}
+          onPersist={(updates) => {
+            if (settingsCardId) applyPatch(settingsCardId, updates);
+          }}
+          onDelete={async () => {
+            if (settingsCardId) await handleDeleteCard(settingsCardId);
+          }}
         />
       </div>
     );
@@ -437,10 +445,18 @@ export default function StrategyPage() {
         />
       )}
 
-      <CardSettingsSheet
+      <TaskPanel
         isOpen={Boolean(settingsCardId)}
         onClose={() => setSettingsCardId(null)}
         cardId={settingsCardId ?? undefined}
+        card={cards.find((c) => c.id === settingsCardId)}
+        projectId={canvasId}
+        onPersist={(updates) => {
+          if (settingsCardId) applyPatch(settingsCardId, updates);
+        }}
+        onDelete={async () => {
+          if (settingsCardId) await handleDeleteCard(settingsCardId);
+        }}
       />
       <CardCommentSheet
         cardId={commentCardId}

@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import React, { memo, useState } from 'react';
+import { useOpenConfigOnDoubleClick } from '@/features/canvas/hooks/useOpenConfigOnDoubleClick';
 import { SourceConfigSheet } from './source-config-sheet';
 
 const originIconMap: Record<string, React.ReactNode> = {
@@ -34,6 +35,7 @@ const originIconMap: Record<string, React.ReactNode> = {
 export const SourceNode = memo(({ id, data, selected }: NodeProps) => {
   const d = (data || {}) as SourceNodeData;
   const [showConfig, setShowConfig] = useState(false);
+  useOpenConfigOnDoubleClick(id, () => setShowConfig(true));
 
   // Origin label: new `config.origin`, else legacy `sourceType`, else unconfigured.
   const origin = d.config?.origin ?? d.sourceType ?? 'unconfigured';

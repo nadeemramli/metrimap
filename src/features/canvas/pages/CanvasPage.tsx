@@ -1896,8 +1896,24 @@ function CanvasPageInner() {
               if (node.type === 'operatorNode') setSelectedOperatorId(node.id);
             }}
             onNodeDoubleClick={(_, node) => {
-              log.debug('🔧 Node double-clicked:', node.id);
-              events.handleOpenSettingsSheet(node.id);
+              log.debug('🔧 Node double-clicked:', node.id, node.type);
+              // Metric cards (incl. Action/Value/Hypothesis, all persisted as
+              // metricCard) open the category-routed detail panel. Utility nodes
+              // open their OWN config instead of the generic sheet.
+              if (node.type === 'metricCard') {
+                events.handleOpenSettingsSheet(node.id);
+              } else if (
+                node.type === 'sourceNode' ||
+                node.type === 'chartNode'
+              ) {
+                window.dispatchEvent(
+                  new CustomEvent('node:open-config', {
+                    detail: { id: node.id },
+                  })
+                );
+              }
+              // operator / whiteboard / comment / group: handled inline / by
+              // selection — no generic sheet.
             }}
             onEdgeDoubleClick={(_, edge) => {
               log.debug('🔗 Edge double-clicked:', edge.id);

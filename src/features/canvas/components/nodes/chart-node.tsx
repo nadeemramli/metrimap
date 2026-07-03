@@ -23,6 +23,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
+import { useOpenConfigOnDoubleClick } from '@/features/canvas/hooks/useOpenConfigOnDoubleClick';
 import { ChartNodeSettings } from './chart-node-settings';
 
 export type { ChartType };
@@ -53,6 +54,7 @@ const ChartNodeInner = memo(({ id, data, selected }: NodeProps) => {
   );
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  useOpenConfigOnDoubleClick(id, () => setSettingsOpen(true));
 
   // Live metric cards — re-renders when an operator sim updates a plotted card.
   const cards = useCanvasStore((s) => s.canvas?.nodes) as

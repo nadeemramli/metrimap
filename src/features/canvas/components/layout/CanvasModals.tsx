@@ -10,10 +10,11 @@ import {
   CardSettingsSheet,
   RelationshipSheet,
 } from '@/features/canvas/components/panels';
-import NodeSettingsRouter from '@/features/canvas/components/panels/NodeSettingsRouter';
+import { TaskPanel } from '@/features/canvas/components/panels/task-panel/TaskPanel';
+import { ValueContextPanel } from '@/features/canvas/components/panels/value-panel/ValueContextPanel';
 import type { CanvasPageState } from '@/features/canvas/hooks/useCanvasPageState';
 import { useCanvasStore } from '@/lib/stores';
-import type { AnyNode } from '@/shared/types';
+import type { MetricCard } from '@/shared/types';
 
 interface CanvasModalsProps {
   state: CanvasPageState;
@@ -34,30 +35,32 @@ export default function CanvasModals({
   onCloseRelationshipSheet,
 }: CanvasModalsProps) {
   const getNodeById = useCanvasStore((s) => s.getNodeById);
-  const persistNodeUpdate = useCanvasStore((s) => s.persistNodeUpdate);
 
   const currentNode = state.settingsCardId
-    ? getNodeById(state.settingsCardId)
-    : null;
+    ? (getNodeById(state.settingsCardId) as MetricCard | undefined)
+    : undefined;
 
-  // New PRD node types use the dedicated router; everything else (metric cards,
-  // etc.) uses the legacy CardSettingsSheet.
-  const useNewNodeSettings =
-    !!currentNode &&
-    ['valueNode', 'actionNode', 'hypothesisNode', 'metricNode'].includes(
-      (currentNode as { type?: string }).type || ''
-    );
+  // The detail panel is chosen by the card's CATEGORY, not the React-Flow node
+  // type (persisted Action/Value/Hypothesis nodes are all `metricCard` rows).
+  // Each node type serves a different purpose, so each gets its own panel.
+  const category = currentNode?.category;
+  const isTask =
+    category === 'Work/Action' || category === 'Ideas/Hypothesis';
+  const isValue = category === 'Core/Value';
 
   return (
     <>
-      {useNewNodeSettings ? (
-        <NodeSettingsRouter
-          node={currentNode as unknown as AnyNode}
+      {isTask ? (
+        <TaskPanel
+          cardId={state.settingsCardId}
           isOpen={state.isSettingsSheetOpen}
           onClose={onCloseSettingsSheet}
-          onSave={(nodeId: string, updatedData: Partial<AnyNode>) =>
-            persistNodeUpdate(nodeId, updatedData as never)
-          }
+        />
+      ) : isValue ? (
+        <ValueContextPanel
+          cardId={state.settingsCardId}
+          isOpen={state.isSettingsSheetOpen}
+          onClose={onCloseSettingsSheet}
         />
       ) : (
         <CardSettingsSheet
