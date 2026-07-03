@@ -19,6 +19,10 @@ import {
   createMetricNode
 } from '@/shared/lib/supabase/services/newNodeTypes';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import {
+  extractCardWorkflow,
+  normalizeWorkflowStatus,
+} from '@/features/canvas/utils/workflow';
 import { useAppStore } from '@/shared/stores/useAppStore';
 import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
 
@@ -114,16 +118,29 @@ export const useNewNodeTypesStore = create<NewNodeTypesStoreState>()(
         };
         const category = categoryByType[nodeType] || 'Core/Value';
 
+        // Keep the PRD fields instead of discarding them: the type-specific
+        // subtype rides in sub_category, the kanban status in status, and the
+        // remaining attributes in workflow jsonb (see utils/workflow.ts).
+        const subCategory =
+          nodeData.actionType ||
+          nodeData.hypothesisType ||
+          nodeData.valueType ||
+          nodeData.metricType ||
+          undefined;
+
         const metricCardData = {
           title: baseNodeData.title,
           description: baseNodeData.description,
           category,
+          subCategory,
           tags: baseNodeData.tags || [],
           causalFactors: [],
           dimensions: [],
           position: baseNodeData.position,
           assignees: [],
           owner: user.id,
+          status: normalizeWorkflowStatus(nodeData.status),
+          workflow: extractCardWorkflow(nodeData),
         };
 
         await useCanvasStore.getState().createNode(metricCardData as any);

@@ -884,6 +884,8 @@ export type Database = {
       dimensions: string[] | null
       assignees: string[] | null
       owner_id: string | null
+      status: string | null
+      workflow: Json
       project_id: string
       created_at: string | null
       updated_at: string | null
@@ -906,6 +908,8 @@ export type Database = {
       dimensions?: string[] | null
       assignees?: string[] | null
       owner_id?: string | null
+      status?: string | null
+      workflow?: Json
       project_id: string
       created_at?: string | null
       updated_at?: string | null
@@ -928,6 +932,8 @@ export type Database = {
       dimensions?: string[] | null
       assignees?: string[] | null
       owner_id?: string | null
+      status?: string | null
+      workflow?: Json
       project_id?: string
       created_at?: string | null
       updated_at?: string | null

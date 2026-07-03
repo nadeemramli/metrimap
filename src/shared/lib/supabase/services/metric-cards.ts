@@ -40,6 +40,8 @@ function transformMetricCard(card: MetricCardRow): MetricCard {
     formula: card.formula || undefined,
     owner: card.owner_id || undefined,
     assignees: card.assignees || [],
+    status: (card.status as MetricCard['status']) ?? null,
+    workflow: (card.workflow ?? {}) as MetricCard['workflow'],
     createdAt: card.created_at || new Date().toISOString(),
     updatedAt: card.updated_at || new Date().toISOString(),
     updatedBy: (card as { updated_by?: string | null }).updated_by ?? null,
@@ -67,6 +69,8 @@ function transformToInsert(
     dimensions: card.dimensions,
     assignees: card.assignees,
     owner_id: card.owner && card.owner.trim() !== '' ? card.owner.trim() : null,
+    status: card.status ?? null,
+    workflow: (card.workflow ?? {}) as MetricCardInsert['workflow'],
     created_by: userId,
   };
 }
@@ -91,6 +95,8 @@ function buildUpdateData(updates: Partial<MetricCard>): MetricCardUpdate {
   setIfDefined(updateData, 'causal_factors', updates.causalFactors);
   setIfDefined(updateData, 'dimensions', updates.dimensions);
   setIfDefined(updateData, 'assignees', updates.assignees);
+  setIfDefined(updateData, 'status', updates.status);
+  setIfDefined(updateData, 'workflow', updates.workflow as any);
 
   const trimmedOwner = updates.owner?.trim();
   if (trimmedOwner) updateData.owner_id = trimmedOwner;

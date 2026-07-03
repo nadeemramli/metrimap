@@ -59,6 +59,8 @@ model metric_cards {
   dimensions      String[]  @default([])
   owner_id        String?
   assignees       String[]  @default([]) @db.Uuid
+  status          String?
+  workflow        Json      @default("{}")
   created_at      DateTime? @default(now()) @db.Timestamptz(6)
   updated_at      DateTime? @default(now()) @db.Timestamptz(6)
   created_by      String

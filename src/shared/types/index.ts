@@ -65,6 +65,28 @@ export interface MetricValue {
   trend: 'up' | 'down' | 'neutral';
 }
 
+// Kanban lifecycle shared by Work/Action and Ideas/Hypothesis cards. Must
+// match the metric_cards.status CHECK constraint.
+export type WorkflowStatus =
+  | 'backlog'
+  | 'planning'
+  | 'in_progress'
+  | 'done'
+  | 'on_hold';
+
+// Non-columnar workflow attributes, stored in metric_cards.workflow jsonb.
+export interface CardWorkflow {
+  priority?: 'High' | 'Medium' | 'Low';
+  dueDate?: string;
+  effort?: number;
+  confidence?: 'High' | 'Medium' | 'Low';
+  testable?: boolean;
+  assumptions?: string[];
+  successCriteria?: string[];
+  businessImpact?: 'High' | 'Medium' | 'Low';
+  stakeholders?: string[];
+}
+
 export interface MetricCard {
   id: string;
   title: string;
@@ -90,6 +112,11 @@ export interface MetricCard {
   // Semantic layer: set when this card is a placement of a catalogued Tracked
   // Metric (see tracked_metrics). null/undefined = exploratory/uncatalogued.
   trackedMetricId?: string | null;
+
+  // Workflow (Strategy board) — status drives the kanban column; the rest
+  // rides in `workflow` jsonb. NULL status renders as backlog.
+  status?: WorkflowStatus | null;
+  workflow?: CardWorkflow;
 
   // Metadata
   owner?: string;
