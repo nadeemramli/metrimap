@@ -147,6 +147,22 @@ or Data hub → Candidates → promote).
       gains the item **without reload** (subscribes to notification inserts).
 - [ ] Bookmarks persist across devices (same account, different browser).
 
+## 10. Alerting / monitoring
+
+- [ ] Metric card → Settings → **Alerts** tab. Add each rule type:
+      **Value threshold** (e.g. value > 100), **Sharp change** (drops ≥ 10%),
+      **Outside a range** (min–max). They list with enable toggle + delete.
+- [ ] The card shows a muted **"Monitored"** badge once it has an enabled rule.
+- [ ] Change the card's value so a rule trips (edit data / run source / operator)
+      → card badge turns red **"Alert"**, and an **alert notification** appears in
+      the bell inbox + `/feed` (Alerts tab / amber ⚠ icon).
+- [ ] Re-saving the **same** value doesn't re-fire (debounced by last value).
+- [ ] Disable a rule → no longer evaluated; badge clears if it was the only one.
+- [ ] The alert notifies the **rule creator + card owner** (test with two users:
+      user A owns the card, user B edits it and trips the rule → A gets notified).
+- [ ] ⚠️ Only evaluated **in-app on value change** — a scheduled server-side sweep
+      (for warehouse-source refreshes etc.) is a planned follow-up, not built yet.
+
 ---
 
 ## If something fails
