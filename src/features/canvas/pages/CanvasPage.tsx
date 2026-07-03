@@ -18,8 +18,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Eye, Layers, SlidersHorizontal } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import { Eye } from 'lucide-react';
 
 // Extracted utilities and hooks
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
@@ -2061,6 +2060,11 @@ function CanvasPageInner() {
                 currentLayoutDirection={state.currentLayoutDirection}
                 onAddCustomNode={handleAddCustomNode}
                 onAddFromCatalog={handleAddFromCatalog}
+                onToggleGroups={() => setShowGroupsPanel((v) => !v)}
+                groupsActive={showGroupsPanel}
+                onToggleOperators={() => setShowOperatorPanel((v) => !v)}
+                operatorsActive={showOperatorPanel}
+                exportSlot={<CanvasExportMenu />}
               />
             </Panel>
 
@@ -2087,33 +2091,10 @@ function CanvasPageInner() {
               </Panel>
             )}
 
-            {/* Top-right toggles: Groups (focus/filter) + Tools (operators) */}
-            {state.toolbarMode === 'edit' && (
+            {/* Groups fly-out — toggled from the consolidated toolbar (CVS-31) */}
+            {state.toolbarMode === 'edit' && showGroupsPanel && (
               <Panel position="top-right">
                 <div className="flex flex-col items-end gap-2">
-                  <div className="flex items-center gap-2">
-                    <CanvasExportMenu />
-                    <Button
-                      variant={showGroupsPanel ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setShowGroupsPanel((v) => !v)}
-                      className="h-8 gap-1.5 border bg-background/90 shadow-sm backdrop-blur"
-                      title={showGroupsPanel ? 'Hide groups' : 'Show groups'}
-                    >
-                      <Layers className="h-4 w-4" />
-                      {showGroupsPanel ? 'Hide groups' : 'Groups'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowOperatorPanel((v) => !v)}
-                      className="h-8 gap-1.5 border bg-background/90 shadow-sm backdrop-blur"
-                      title={showOperatorPanel ? 'Hide tools' : 'Show tools'}
-                    >
-                      <SlidersHorizontal className="h-4 w-4" />
-                      {showOperatorPanel ? 'Hide tools' : 'Tools'}
-                    </Button>
-                  </div>
                   {showGroupsPanel && (
                     <GroupsPanel
                       groups={canvas?.groups || []}
