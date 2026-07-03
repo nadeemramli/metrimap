@@ -382,3 +382,13 @@ body[data-scroll-locked='1'] .sheet-content {
 .react-flow__edge:not(.rf-edge-dimmed) {
   transition: opacity 0.25s ease;
 }
+
+/* ── Drop-target highlight (CVS-38) ─────────────────────────────────
+   While a node is dragged over others, the overlapped nodes get a ring so
+   the user can see valid drop targets (foundation for grouping/subflows). */
+.react-flow__node.rf-node-drop-target {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 10px;
+  transition: outline-color 0.12s ease;
+}
