@@ -33,14 +33,17 @@ import { CardCommentSheet } from '@/features/strategy/components/CardCommentShee
 import { StrategyImpactSheet } from '@/features/strategy/components/StrategyImpactSheet';
 import { ImpactTraceDialog } from '@/features/strategy/components/ImpactTraceDialog';
 import { listContractsWithLinksForProject } from '@/shared/lib/supabase/services/strategyImpact';
+import { getMetricValuesByMetricIds } from '@/shared/lib/supabase/services/trackedMetrics';
 import {
   summarizeImpact,
   type ImpactSummary,
 } from '@/features/strategy/impact/impactContract';
+import { measuredByNode } from '@/features/strategy/impact/measurement';
 import type {
   ImpactContract,
   MetricLink,
 } from '@/features/strategy/impact/types';
+import type { MetricValue } from '@/shared/types';
 import { ValueJourneyStrip } from '@/features/strategy/components/ValueJourneyStrip';
 import { TaskPanel } from '@/features/canvas/components/panels/task-panel/TaskPanel';
 import {
@@ -195,6 +198,35 @@ export default function StrategyPage() {
     for (const e of impactEntries) map[e.contract.strategyNodeId] = e;
     return map;
   }, [impactEntries]);
+
+  // Measured deltas (CVS-176): load tracked-metric snapshots referenced by any
+  // contract, then evaluate each bet for a compact measured summary.
+  const [impactTrackedValues, setImpactTrackedValues] = useState<
+    Record<string, MetricValue[]>
+  >({});
+  const impactTrackedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const { links } of impactEntries) {
+      for (const l of links) if (l.refSource === 'tracked' && l.trackedMetricId) ids.add(l.trackedMetricId);
+    }
+    return Array.from(ids).sort();
+  }, [impactEntries]);
+  const impactTrackedKey = impactTrackedIds.join(',');
+  useEffect(() => {
+    if (!client || impactTrackedIds.length === 0) {
+      setImpactTrackedValues({});
+      return;
+    }
+    getMetricValuesByMetricIds(impactTrackedIds, client)
+      .then(setImpactTrackedValues)
+      .catch(() => setImpactTrackedValues({}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, impactTrackedKey]);
+
+  const measuredMap = useMemo(
+    () => measuredByNode(impactEntries, cards, impactTrackedValues),
+    [impactEntries, cards, impactTrackedValues]
+  );
 
   // Members carry avatars too — merge so a just-assigned person resolves before
   // the batched user fetch returns.
@@ -489,6 +521,7 @@ export default function StrategyPage() {
           onStatusChange={handleStatusChange}
           onCardClick={setSettingsCardId}
           impactSummaries={impactSummaries}
+          measuredMap={measuredMap}
         />
       ) : viewMode === 'tree' ? (
         <StrategyTree
@@ -507,6 +540,7 @@ export default function StrategyPage() {
           members={members}
           commentCounts={commentCounts}
           impactSummaries={impactSummaries}
+          measuredMap={measuredMap}
           canEdit={canEdit}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}

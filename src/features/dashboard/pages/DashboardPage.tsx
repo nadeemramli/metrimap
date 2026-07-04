@@ -21,6 +21,7 @@ import {
   linkedStrategyForWidget,
   type WidgetStrategyLink,
 } from '@/features/strategy/impact/widgetLinks';
+import { measuredByNode } from '@/features/strategy/impact/measurement';
 import { ImpactTraceDialog } from '@/features/strategy/components/ImpactTraceDialog';
 import type {
   ImpactContract,
@@ -171,8 +172,12 @@ export default function DashboardPage() {
         (w.config.trackedMetricIds ?? []).forEach((id) => ids.add(id));
       }
     });
+    // Also the metrics referenced by impact contracts, so measured deltas resolve.
+    for (const { links } of impactEntries) {
+      for (const l of links) if (l.refSource === 'tracked' && l.trackedMetricId) ids.add(l.trackedMetricId);
+    }
     return Array.from(ids);
-  }, [widgets]);
+  }, [widgets, impactEntries]);
 
   useEffect(() => {
     if (!client || referencedTrackedIds.length === 0) {
@@ -198,6 +203,12 @@ export default function DashboardPage() {
     }
     return map;
   }, [widgets, impactEntries, cards]);
+
+  // Measured deltas per strategy node (CVS-176), for the badge overlay.
+  const measuredMap = useMemo(
+    () => measuredByNode(impactEntries, cards, trackedValues),
+    [impactEntries, cards, trackedValues]
+  );
 
   const openStrategyItem = useMemo(
     () => () => {
@@ -538,6 +549,7 @@ export default function DashboardPage() {
                 onConfigure={openConfigure}
                 onRemove={handleRemove}
                 strategyLinks={strategyLinksByWidget[w.id]}
+                measuredMap={measuredMap}
                 currentPeriod={currentPeriod}
                 onOpenStrategy={openStrategyItem}
                 onOpenTrace={setTraceNodeId}

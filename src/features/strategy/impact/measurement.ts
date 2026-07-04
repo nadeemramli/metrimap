@@ -6,7 +6,7 @@
 //
 // NOT causal attribution or significance — just baseline/current comparison.
 
-import type { MetricValue } from '@/shared/types';
+import type { MetricCard, MetricValue } from '@/shared/types';
 import { metricRefKey } from './impactContract';
 import type { ImpactContract, MetricLink, MetricLinkRole } from './types';
 
@@ -159,4 +159,61 @@ export function evaluateImpact(
   else suggestedResult = 'lost';
 
   return { target, leading, guardrails, expected, met, guardrailStatus, suggestedResult };
+}
+
+/**
+ * Build the series-by-refKey map for a contract's links from the loaded
+ * tracked-metric snapshots + canvas card data. Pure — callers do the I/O.
+ */
+export function buildSeriesByKey(
+  links: MetricLink[],
+  cards: MetricCard[],
+  trackedValues: Record<string, MetricValue[]>
+): Record<string, MetricValue[]> {
+  const map: Record<string, MetricValue[]> = {};
+  for (const l of links) {
+    const key = metricRefKey(l);
+    if (!key) continue;
+    if (l.refSource === 'tracked' && l.trackedMetricId) {
+      map[key] = trackedValues[l.trackedMetricId] ?? [];
+    } else if (l.refSource === 'card' && l.cardId) {
+      map[key] = cards.find((c) => c.id === l.cardId)?.data ?? [];
+    }
+  }
+  return map;
+}
+
+/** Compact measured outcome for chips/badges/trace (CVS-176). */
+export interface MeasuredImpact {
+  deltaText: string | null;
+  pctDelta: number | null;
+  met: MetTarget;
+  guardrailStatus: GuardrailStatus;
+  hasData: boolean;
+}
+
+export function toMeasured(ev: ImpactEvaluation): MeasuredImpact {
+  const t = ev.target;
+  const hasData = !!t?.hasData;
+  let deltaText: string | null = null;
+  if (t && hasData) {
+    const pct = t.pctDelta != null ? `${t.pctDelta > 0 ? '+' : ''}${t.pctDelta.toFixed(1)}%` : null;
+    const abs = t.absDelta != null ? `${t.absDelta > 0 ? '+' : ''}${t.absDelta}` : null;
+    deltaText = pct ?? abs;
+  }
+  return { deltaText, pctDelta: t?.pctDelta ?? null, met: ev.met, guardrailStatus: ev.guardrailStatus, hasData };
+}
+
+/** Evaluate many contracts at once → measured summary keyed by strategy node id. */
+export function measuredByNode(
+  entries: Array<{ contract: ImpactContract; links: MetricLink[] }>,
+  cards: MetricCard[],
+  trackedValues: Record<string, MetricValue[]>
+): Record<string, MeasuredImpact> {
+  const out: Record<string, MeasuredImpact> = {};
+  for (const { contract, links } of entries) {
+    const ev = evaluateImpact(contract, links, buildSeriesByKey(links, cards, trackedValues));
+    if (ev.target) out[contract.strategyNodeId] = toMeasured(ev);
+  }
+  return out;
 }

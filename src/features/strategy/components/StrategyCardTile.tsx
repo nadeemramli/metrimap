@@ -2,6 +2,7 @@ import { PRIORITY_STYLES } from '@/features/canvas/utils/workflow';
 import { Badge } from '@/shared/components/ui/badge';
 import { ImpactChip } from '@/features/strategy/components/ImpactChip';
 import type { ImpactSummary } from '@/features/strategy/impact/impactContract';
+import type { MeasuredImpact } from '@/features/strategy/impact/measurement';
 import type { MetricCard } from '@/shared/types';
 import { cn } from '@/shared/utils';
 import { CalendarDays, FlaskConical, Hammer } from 'lucide-react';
@@ -13,9 +14,10 @@ interface StrategyCardTileProps {
   card: MetricCard;
   onClick?: (cardId: string) => void;
   impact?: ImpactSummary;
+  measured?: MeasuredImpact;
 }
 
-export function StrategyCardTile({ card, onClick, impact }: StrategyCardTileProps) {
+export function StrategyCardTile({ card, onClick, impact, measured }: StrategyCardTileProps) {
   const isHypothesis = card.category === 'Ideas/Hypothesis';
   const workflow = card.workflow ?? {};
   const KindIcon = isHypothesis ? FlaskConical : Hammer;
@@ -84,7 +86,7 @@ export function StrategyCardTile({ card, onClick, impact }: StrategyCardTileProp
 
       {impact && (
         <div className="border-t pt-2">
-          <ImpactChip summary={impact} />
+          <ImpactChip summary={impact} measured={measured} />
         </div>
       )}
     </div>

@@ -17,6 +17,7 @@ import {
   type EffectiveStatus,
   type WidgetStrategyLink,
 } from '@/features/strategy/impact/widgetLinks';
+import type { MeasuredImpact } from '@/features/strategy/impact/measurement';
 
 const STATUS_STYLES: Record<EffectiveStatus, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -43,6 +44,7 @@ interface WidgetImpactBadgeProps {
   currentPeriod: string;
   onOpenStrategy: (nodeId: string) => void;
   onOpenTrace?: (nodeId: string) => void;
+  measuredMap?: Record<string, MeasuredImpact>;
 }
 
 export function WidgetImpactBadge({
@@ -50,6 +52,7 @@ export function WidgetImpactBadge({
   currentPeriod,
   onOpenStrategy,
   onOpenTrace,
+  measuredMap,
 }: WidgetImpactBadgeProps) {
   const [open, setOpen] = useState(false);
   if (links.length === 0) return null;
@@ -111,6 +114,20 @@ export function WidgetImpactBadge({
                     </span>
                   ))}
                   {delta && <span>expect {delta}</span>}
+                  {measuredMap?.[contract.strategyNodeId]?.hasData && (
+                    <span
+                      className={cn(
+                        'font-medium',
+                        measuredMap[contract.strategyNodeId].met === 'met'
+                          ? 'text-emerald-600'
+                          : measuredMap[contract.strategyNodeId].met === 'missed'
+                            ? 'text-red-600'
+                            : 'text-muted-foreground'
+                      )}
+                    >
+                      actual {measuredMap[contract.strategyNodeId].deltaText}
+                    </span>
+                  )}
                   {contract.confidence && <span>{contract.confidence} conf.</span>}
                   {window && <span>{window}</span>}
                   {contract.ownerLabel && <span>· {contract.ownerLabel}</span>}
