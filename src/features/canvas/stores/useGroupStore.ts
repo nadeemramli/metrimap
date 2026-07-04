@@ -1,4 +1,3 @@
-// @ts-nocheck
 // TODO(type-debt): pre-existing type errors quarantined when strict type-checking
 // was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
 // this directive — do not add new code here assuming it is type-checked.
@@ -20,7 +19,9 @@ export interface GroupStoreState {
   deleteGroup: (groupId: string) => Promise<void>;
 
   // Local Group management (for optimistic updates and realtime)
-  addGroupLocal: (group: GroupNode) => GroupNode[];
+  addGroupLocal: (
+    group: GroupNode
+  ) => (currentGroups: GroupNode[]) => GroupNode[];
   updateGroupLocal: (
     groups: GroupNode[],
     groupId: string,
@@ -69,7 +70,7 @@ export interface GroupStoreState {
 }
 
 export const useGroupStore = create<GroupStoreState>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((_set, get) => ({
     // Async Group management (Supabase)
     createGroup: async (group: GroupNode, canvasId: string) => {
       try {
@@ -127,7 +128,7 @@ export const useGroupStore = create<GroupStoreState>()(
     },
 
     // Local Group management (for optimistic updates and realtime)
-    addGroupLocal: (group: GroupNode): GroupNode[] => {
+    addGroupLocal: (group: GroupNode) => {
       return (currentGroups: GroupNode[]) => [...currentGroups, group];
     },
 
