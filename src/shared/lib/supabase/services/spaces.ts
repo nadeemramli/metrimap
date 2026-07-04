@@ -2,7 +2,7 @@
 // workspace later). A canvas (project) belongs to 0..1 space via projects.space_id.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { Database } from '../types';
 
 type Client = SupabaseClient<Database>;
@@ -15,7 +15,7 @@ export interface Space {
 }
 
 export async function listSpaces(client?: Client): Promise<Space[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('spaces')
     .select('id, name, color, sort_order')
@@ -30,7 +30,7 @@ export async function createSpace(
   color?: string | null,
   client?: Client
 ): Promise<Space> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('spaces')
     .insert({ name, color: color ?? null })
@@ -45,7 +45,7 @@ export async function renameSpace(
   name: string,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c
     .from('spaces')
     .update({ name, updated_at: new Date().toISOString() })
@@ -59,7 +59,7 @@ export async function updateSpace(
   patch: { name?: string; color?: string | null },
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c
     .from('spaces')
     .update({ ...patch, updated_at: new Date().toISOString() })
@@ -69,7 +69,7 @@ export async function updateSpace(
 
 /** Delete a space; its canvases unlink to Uncategorized via FK ON DELETE SET NULL. */
 export async function deleteSpace(id: string, client?: Client): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c.from('spaces').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
@@ -80,7 +80,7 @@ export async function setProjectSpace(
   spaceId: string | null,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c
     .from('projects')
     .update({ space_id: spaceId })

@@ -5,8 +5,8 @@
 // Owner-scoped for now (created_by); re-scoped to the Clerk-org workspace later.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { MetricValue } from '@/shared/types';
-import { supabase } from '../client';
 import type { Database } from '../types';
 
 type Client = SupabaseClient<Database>;
@@ -21,7 +21,7 @@ export async function getMetricValues(
   trackedMetricId: string,
   client?: Client
 ): Promise<MetricValue[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('metric_values')
     .select('period, value, change_percent, trend')
@@ -42,7 +42,7 @@ export async function getMetricValuesByMetricIds(
   client?: Client
 ): Promise<Record<string, MetricValue[]>> {
   if (!ids.length) return {};
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('metric_values')
     .select('tracked_metric_id, period, value, change_percent, trend')
@@ -69,7 +69,7 @@ export async function writeMetricValues(
   client?: Client
 ): Promise<void> {
   if (!series.length) return;
-  const c = client || supabase();
+  const c = resolveClient(client);
   const rows = series.map((p) => ({
     tracked_metric_id: trackedMetricId,
     period: p.period,
@@ -142,7 +142,7 @@ async function getExampleProjectIds(c: Client): Promise<Set<string>> {
 export async function listTrackedMetrics(
   client?: Client
 ): Promise<TrackedMetric[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const [exampleIds, { data, error }] = await Promise.all([
     getExampleProjectIds(c),
     c
@@ -169,7 +169,7 @@ export async function getTrackedMetricsByIds(
   client?: Client
 ): Promise<Record<string, TrackedMetric>> {
   if (!ids.length) return {};
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('tracked_metrics')
     .select(
@@ -190,7 +190,7 @@ export async function getTrackedMetricsByIds(
 export async function listCandidateCards(
   client?: Client
 ): Promise<CandidateCard[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const [exampleIds, { data, error }] = await Promise.all([
     getExampleProjectIds(c),
     c
@@ -236,7 +236,7 @@ export async function promoteCardToTrackedMetric(
   input: PromoteInput,
   client?: Client
 ): Promise<string> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('tracked_metrics')
     .insert({
@@ -279,7 +279,7 @@ export async function linkCardToMetric(
   trackedMetricId: string | null,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c
     .from('metric_cards')
     .update({ tracked_metric_id: trackedMetricId })
@@ -292,7 +292,7 @@ export async function updateTrackedMetric(
   updates: Partial<Pick<TrackedMetric, 'name' | 'unit' | 'formula' | 'owner_label'>>,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c
     .from('tracked_metrics')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -313,7 +313,7 @@ export async function getMetricUsage(
   trackedMetricId: string,
   client?: Client
 ): Promise<MetricUsage[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('metric_cards')
     .select('id, title, project_id, projects(name)')
@@ -332,7 +332,7 @@ export async function deleteTrackedMetric(
   id: string,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c.from('tracked_metrics').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }

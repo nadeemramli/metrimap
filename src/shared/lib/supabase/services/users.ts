@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 
 export interface UserLite {
   id: string;
@@ -14,7 +14,7 @@ export async function getUsersByIds(
   client?: SupabaseClient
 ): Promise<Record<string, UserLite>> {
   if (!ids.length) return {};
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('users')
     .select('id, name, email, avatar_url')

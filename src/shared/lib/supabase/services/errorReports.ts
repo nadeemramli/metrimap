@@ -27,6 +27,8 @@ export async function submitErrorReport(
   payload: ErrorReportPayload,
   client?: Client
 ): Promise<void> {
+  // Deliberately the anon singleton — the crash sink must work even for
+  // logged-out / broken-session users (CVS-82: this path is the exception).
   const c = client || supabase();
   const { error } = await c.from('error_reports').insert({
     message: payload.message,

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../lib/supabase/types';
+import { supabase } from '../lib/supabase/client';
 
 // This is a temporary solution to get authenticated client in stores
 // In a real app, you'd want to pass the client through props or use a different pattern
@@ -16,6 +17,20 @@ export function setAuthenticatedClient(client: SupabaseClient<Database>) {
 
 export function getAuthenticatedClient(): SupabaseClient<Database> | null {
   return authenticatedClient;
+}
+
+/**
+ * Resolve the Supabase client for a data operation (CVS-82). An explicitly
+ * passed client wins; otherwise use the memoized Clerk-authenticated client;
+ * fall back to the anon client ONLY in genuinely anonymous contexts (public
+ * embed / showcase). Authenticated paths therefore never silently query as
+ * anon (which RLS would return empty), replacing the old `client || supabase()`
+ * fallback that reached for anon whenever no client was threaded through.
+ */
+export function resolveClient(
+  client?: SupabaseClient<Database> | null
+): SupabaseClient<Database> {
+  return client ?? getAuthenticatedClient() ?? supabase();
 }
 
 export function isAuthenticatedClientReady(): boolean {
