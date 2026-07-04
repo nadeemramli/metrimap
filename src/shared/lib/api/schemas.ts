@@ -101,6 +101,28 @@ export const LayoutTreeInput = z.object({
   direction: z.enum(LAYOUT_DIRECTIONS).optional(),
 });
 
+// --- Data ingest (staging → materialize) ---
+export const StageSeriesInput = z.object({
+  projectId: z.string().uuid(),
+  series: z.array(MetricValueInput).min(1).max(5000),
+});
+
+export const UploadCsvInput = z.object({
+  projectId: z.string().uuid(),
+  filename: z.string().max(200).optional(),
+  csv: z.string().min(1).max(1_000_000), // ~1MB payload cap
+});
+
+export const MaterializeInput = z.object({
+  batchId: z.string().uuid(),
+  mapping: z.object({
+    cardId: z.string().uuid(),
+    // Required for CSV batches; ignored for series batches (already period/value).
+    periodColumn: z.string().max(200).optional(),
+    valueColumn: z.string().max(200).optional(),
+  }),
+});
+
 export type CreateCanvasInputT = z.infer<typeof CreateCanvasInput>;
 export type UpdateCanvasInputT = z.infer<typeof UpdateCanvasInput>;
 export type CreateNodeInputT = z.infer<typeof CreateNodeInput>;
@@ -109,3 +131,6 @@ export type UpdateNodeInputT = z.infer<typeof UpdateNodeInput>;
 export type CreateRelationshipInputT = z.infer<typeof CreateRelationshipInput>;
 export type PushValuesInputT = z.infer<typeof PushValuesInput>;
 export type LayoutTreeInputT = z.infer<typeof LayoutTreeInput>;
+export type StageSeriesInputT = z.infer<typeof StageSeriesInput>;
+export type UploadCsvInputT = z.infer<typeof UploadCsvInput>;
+export type MaterializeInputT = z.infer<typeof MaterializeInput>;

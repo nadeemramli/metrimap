@@ -34,15 +34,26 @@ RLS — the **service-role key must never be passed here**. `userId` is used for
 | `relationships` | `create({projectId, sourceId, targetId, type, confidence?, weight?, notes?})`, `delete(id)`, `list(projectId)` |
 | `tree` | `get(projectId)` → `{ cards, relationships }` (context so agents extend, not duplicate); `layout(projectId, direction?)` — Dagre auto-layout, persists positions |
 | `values` | `push({trackedMetricId, series, source?})` — upsert a tracked-metric series (two-tier value store) |
+| `ingest` | `stageSeries` / `uploadCsv` → TTL staging (`import_batches`/`import_rows`); `materialize({batchId, mapping})` → writes the card's `data` (canvas shows it) + syncs catalogued cards to `metric_values`. Idempotent; staging auto-expires (CVS-102). |
 
 - **Categories:** `Core/Value`, `Data/Metric`, `Work/Action`, `Ideas/Hypothesis`, `Metadata`.
 - **Relationship types:** `Deterministic`, `Probabilistic`, `Causal`, `Compositional`.
 - Inputs are validated with **Zod** (`src/shared/lib/api/schemas.ts`); invalid input throws a `ZodError` with a clear message.
 
+## Data ingest (CVS-102)
+
+`stage → map → materialize`, all RLS-scoped:
+1. `ingest.stageSeries({projectId, series})` or `ingest.uploadCsv({projectId, csv})`
+   → a row lands in `import_batches` + `import_rows` (per-user RLS, `expires_at`
+   TTL, daily GC cron). CSV is parsed into columns for a mapping step.
+2. `ingest.materialize({batchId, mapping:{cardId, periodColumn?, valueColumn?}})`
+   → maps rows to a `MetricValue[]`, writes the **card's `data`** (the canvas
+   visualizes it), and — if the card is catalogued — upserts the shared
+   `metric_values` store. Returns an ingest report (`materialized` / `skipped` /
+   `errors`). Idempotent (replaces the card's series); expired batches are
+   invisible to reads and GC'd.
+
 ## Scope boundaries
 
-- **Ingest staging + column mapping** (`import_batches`/`import_rows`, TTL,
-  `map_and_materialize`) is **CVS-102** — this layer exposes the direct value
-  upsert only.
 - **Auth** (OAuth Connect + personal API keys) is CVS-99; the MCP **server**
-  scaffold is CVS-100. This issue is only the service layer they call.
+  scaffold is CVS-100. This layer is what they call.

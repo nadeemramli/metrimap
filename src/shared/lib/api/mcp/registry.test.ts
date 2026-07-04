@@ -29,6 +29,11 @@ const { fakeApi } = vi.hoisted(() => ({
       layout: vi.fn(async (pid: string) => ({ projectId: pid, count: 0, positions: [] })),
     },
     values: { push: vi.fn(async () => undefined) },
+    ingest: {
+      stageSeries: vi.fn(async () => ({ batchId: 'b', kind: 'series', rowCount: 1 })),
+      uploadCsv: vi.fn(async () => ({ batchId: 'b', kind: 'csv', columns: [], rowCount: 0 })),
+      materialize: vi.fn(async () => ({ batchId: 'b', cardId: 'c', materialized: 1, skipped: 0, errors: [] })),
+    },
   },
 }));
 
@@ -62,6 +67,7 @@ describe('registry metadata', () => {
       expect.arrayContaining([
         'list_canvases', 'create_canvas', 'get_tree', 'create_metric',
         'create_driver_node', 'create_relationship', 'push_values', 'layout_tree',
+        'upload_csv', 'materialize', 'stage_series',
       ])
     );
   });
@@ -96,6 +102,11 @@ describe('dispatchTool', () => {
   it('routes layout_tree to tree.layout with direction', async () => {
     await dispatchTool('layout_tree', { projectId: PROJECT, direction: 'LR' }, ctx());
     expect(fakeApi.tree.layout).toHaveBeenCalledWith(PROJECT, 'LR');
+  });
+
+  it('routes materialize to ingest.materialize', async () => {
+    await dispatchTool('materialize', { batchId: PROJECT, mapping: { cardId: NODE_A } }, ctx());
+    expect(fakeApi.ingest.materialize).toHaveBeenCalledWith({ batchId: PROJECT, mapping: { cardId: NODE_A } });
   });
 
   it('splits id + patch for update_node', async () => {

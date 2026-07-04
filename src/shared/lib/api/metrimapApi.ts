@@ -51,6 +51,7 @@ import {
   getProjectRelationships,
 } from '@/shared/lib/supabase/services/relationships';
 import { writeMetricValues } from '@/shared/lib/supabase/services/trackedMetrics';
+import { createIngest } from './ingest';
 
 export const API_VERSION = 'v1' as const;
 
@@ -216,8 +217,7 @@ export function createMetrimapApi(client: Client, userId: string) {
     },
 
     values: {
-      // Upsert a tracked-metric series (two-tier value store). Full staging +
-      // column mapping is CVS-102.
+      // Upsert a tracked-metric series directly into the two-tier value store.
       push: (input: unknown) => {
         const v = PushValuesInput.parse(input);
         const series: MetricValue[] = v.series.map((s) => ({
@@ -229,6 +229,9 @@ export function createMetrimapApi(client: Client, userId: string) {
         return writeMetricValues(v.trackedMetricId, series, v.source, client);
       },
     },
+
+    // Data ingest: stage (series/CSV, TTL) → map → materialize onto a card.
+    ingest: createIngest(client, userId),
   };
 }
 
