@@ -70,6 +70,20 @@ const evidenceTypeOptions = [
   { value: 'User Interview', icon: Users, variant: 'pink' },
 ] as const;
 
+// Card preview: first real text from the notebook content, falling back to the
+// summary — so the card reflects what's actually written in the notebook.
+function contentPreview(ev: EvidenceItem): string {
+  const blocks = (ev.content as any)?.blocks;
+  if (Array.isArray(blocks)) {
+    for (const b of blocks) {
+      const raw = b?.data?.text ?? b?.data?.items?.[0] ?? '';
+      const text = String(raw).replace(/<[^>]+>/g, '').trim();
+      if (text) return text;
+    }
+  }
+  return ev.summary || '';
+}
+
 export default function EvidenceRepositoryPage() {
   const { canvasId } = useParams();
   const isCanvasScoped = Boolean(canvasId);
@@ -460,7 +474,7 @@ export default function EvidenceRepositoryPage() {
                   </div>
                   <CardTitle className="text-lg">{evidence.title}</CardTitle>
                   <CardDescription className="line-clamp-2">
-                    {evidence.summary}
+                    {contentPreview(evidence)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
