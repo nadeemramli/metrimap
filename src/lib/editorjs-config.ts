@@ -27,6 +27,9 @@ import Paragraph from "@editorjs/paragraph";
 import EJLaTeX from "editorjs-latex";
 import TOC from "@phigoro/editorjs-toc";
 import NestedChecklist from "@calumk/editorjs-nested-checklist";
+// Metrimap custom analytical-notebook blocks (CVS-34 slice 4)
+import NoteBlock from "@/features/evidence/blocks/NoteBlock";
+import NodeRefBlock from "@/features/evidence/blocks/NodeRefBlock";
 // Note: DragDrop and Undo are problematic, we'll implement them later
 
 export interface EditorJSConfigOptions {
@@ -66,7 +69,10 @@ export const VALID_BLOCK_TYPES = [
   "hyperlink",
   "changeCase",
   "latex",
-  "toc"
+  "toc",
+  // Metrimap analytical-notebook blocks (CVS-34 slice 4)
+  "note",
+  "metricNode"
 ] as const;
 
 export type ValidBlockType = typeof VALID_BLOCK_TYPES[number];
@@ -269,6 +275,13 @@ export const createEditorJSTools = () => {
         showLocaleOption: true,
         locale: 'en'
       },
+    },
+    // Metrimap analytical-notebook blocks (CVS-34 slice 4)
+    note: {
+      class: NoteBlock as any,
+    },
+    metricNode: {
+      class: NodeRefBlock as any,
     },
   };
 };
