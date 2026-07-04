@@ -439,6 +439,145 @@ export type Database = {
           },
         ]
       }
+      strategy_impact_contracts: {
+        Row: {
+          baseline_end: string | null
+          baseline_is_manual: boolean
+          baseline_start: string | null
+          confidence: string | null
+          created_at: string
+          created_by: string
+          expected_delta_unit: string | null
+          expected_delta_value: number | null
+          expected_direction: string | null
+          id: string
+          impact_status: string
+          measure_end: string | null
+          measure_start: string | null
+          owner_label: string | null
+          project_id: string | null
+          result_note: string | null
+          strategy_node_id: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          baseline_end?: string | null
+          baseline_is_manual?: boolean
+          baseline_start?: string | null
+          confidence?: string | null
+          created_at?: string
+          created_by?: string
+          expected_delta_unit?: string | null
+          expected_delta_value?: number | null
+          expected_direction?: string | null
+          id?: string
+          impact_status?: string
+          measure_end?: string | null
+          measure_start?: string | null
+          owner_label?: string | null
+          project_id?: string | null
+          result_note?: string | null
+          strategy_node_id: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          baseline_end?: string | null
+          baseline_is_manual?: boolean
+          baseline_start?: string | null
+          confidence?: string | null
+          created_at?: string
+          created_by?: string
+          expected_delta_unit?: string | null
+          expected_delta_value?: number | null
+          expected_direction?: string | null
+          id?: string
+          impact_status?: string
+          measure_end?: string | null
+          measure_start?: string | null
+          owner_label?: string | null
+          project_id?: string | null
+          result_note?: string | null
+          strategy_node_id?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_impact_contracts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_impact_contracts_strategy_node_id_fkey"
+            columns: ["strategy_node_id"]
+            isOneToOne: true
+            referencedRelation: "metric_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_metric_links: {
+        Row: {
+          card_id: string | null
+          contract_id: string
+          created_at: string
+          created_by: string
+          id: string
+          ref_source: string
+          role: string
+          tracked_metric_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          card_id?: string | null
+          contract_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          ref_source: string
+          role: string
+          tracked_metric_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          card_id?: string | null
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          ref_source?: string
+          role?: string
+          tracked_metric_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_metric_links_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "strategy_impact_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_metric_links_tracked_metric_id_fkey"
+            columns: ["tracked_metric_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_metrics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_metric_links_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "metric_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tracked_metrics: {
         Row: {
           created_at: string
