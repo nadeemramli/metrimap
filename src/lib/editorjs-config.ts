@@ -30,6 +30,8 @@ import NestedChecklist from "@calumk/editorjs-nested-checklist";
 // Metrimap custom analytical-notebook blocks (CVS-34 slice 4)
 import NoteBlock from "@/features/evidence/blocks/NoteBlock";
 import NodeRefBlock from "@/features/evidence/blocks/NodeRefBlock";
+import RelationshipRefBlock from "@/features/evidence/blocks/RelationshipRefBlock";
+import MetricRefBlock from "@/features/evidence/blocks/MetricRefBlock";
 // Note: DragDrop and Undo are problematic, we'll implement them later
 
 export interface EditorJSConfigOptions {
@@ -72,7 +74,9 @@ export const VALID_BLOCK_TYPES = [
   "toc",
   // Metrimap analytical-notebook blocks (CVS-34 slice 4)
   "note",
-  "metricNode"
+  "metricNode",
+  "relationshipRef",
+  "metricValue"
 ] as const;
 
 export type ValidBlockType = typeof VALID_BLOCK_TYPES[number];
@@ -282,6 +286,12 @@ export const createEditorJSTools = () => {
     },
     metricNode: {
       class: NodeRefBlock as any,
+    },
+    relationshipRef: {
+      class: RelationshipRefBlock as any,
+    },
+    metricValue: {
+      class: MetricRefBlock as any,
     },
   };
 };
