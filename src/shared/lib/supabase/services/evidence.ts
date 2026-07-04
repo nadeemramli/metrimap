@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../client';
-import type { Database, Tables } from '../types';
+import type { Database, Json, Tables } from '../types';
 import type { EvidenceItem } from '@/shared/types';
 
 // Card-scoped evidence (task/action nodes). Relationship evidence lives in
@@ -21,6 +21,7 @@ function rowToEvidence(row: Tables<'evidence_items'>): EvidenceItem {
     hypothesis: row.hypothesis || undefined,
     summary: row.summary,
     impactOnConfidence: row.impact_on_confidence || undefined,
+    content: (row.content as EvidenceItem['content']) ?? undefined,
   };
 }
 
@@ -61,6 +62,7 @@ export async function createCardEvidence(
       hypothesis: evidence.hypothesis ?? null,
       summary: evidence.summary,
       impact_on_confidence: evidence.impactOnConfidence ?? null,
+      content: (evidence.content ?? null) as Json,
       created_by: userId,
     })
     .select('*')

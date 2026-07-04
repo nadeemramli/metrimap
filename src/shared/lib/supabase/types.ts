@@ -797,6 +797,7 @@ export type Database = {
       evidence_items: {
         Row: {
           card_id: string | null
+          content: Json | null
           created_at: string | null
           created_by: string
           date: string
@@ -814,6 +815,7 @@ export type Database = {
         }
         Insert: {
           card_id?: string | null
+          content?: Json | null
           created_at?: string | null
           created_by: string
           date: string
@@ -831,6 +833,7 @@ export type Database = {
         }
         Update: {
           card_id?: string | null
+          content?: Json | null
           created_at?: string | null
           created_by?: string
           date?: string
