@@ -1498,6 +1498,66 @@ export type Database = {
           }
         ]
       }
+      tag_audiences: {
+        Row: {
+          group_id: string
+          tag_id: string
+        }
+        Insert: {
+          group_id: string
+          tag_id: string
+        }
+        Update: {
+          group_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tag_audiences_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_audiences_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_access_grants: {
+        Row: {
+          group_id: string
+          metric_card_id: string
+        }
+        Insert: {
+          group_id: string
+          metric_card_id: string
+        }
+        Update: {
+          group_id?: string
+          metric_card_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_access_grants_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_access_grants_metric_card_id_fkey"
+            columns: ["metric_card_id"]
+            isOneToOne: false
+            referencedRelation: "metric_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           id: string
@@ -1508,6 +1568,8 @@ export type Database = {
           created_by: string
           created_at: string | null
           updated_at: string | null
+          is_access: boolean
+          redaction_mode: string
         }
         Insert: {
           id?: string
@@ -1518,6 +1580,8 @@ export type Database = {
           created_by: string
           created_at?: string | null
           updated_at?: string | null
+          is_access?: boolean
+          redaction_mode?: string
         }
         Update: {
           id?: string
@@ -1528,6 +1592,8 @@ export type Database = {
           created_by?: string
           created_at?: string | null
           updated_at?: string | null
+          is_access?: boolean
+          redaction_mode?: string
         }
         Relationships: [
           {
@@ -1581,6 +1647,10 @@ export type Database = {
       my_groups: {
         Args: Record<PropertyKey, never>
         Returns: string[]
+      }
+      node_visible_to_me: {
+        Args: { card_id: string }
+        Returns: boolean
       }
     }
     Enums: {
