@@ -10,3 +10,11 @@ export {
   type McpRequestLike,
   type AuthContextResolver,
 } from './authContext';
+// Auth (CVS-99): API-key resolver + JWT minting. OAuth "Connect" is a follow-up.
+export {
+  createApiKeyAuthResolver,
+  supabaseApiKeyLookup,
+  type ApiKeyAuthOptions,
+  type ApiKeyLookup,
+} from './auth/apiKeyResolver';
+export { mintSupabaseJwt, hashApiKey, decodeJwtPayload } from './auth/jwt';
