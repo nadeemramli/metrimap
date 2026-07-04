@@ -1,0 +1,26 @@
+# Fly.io config for the Metrimap MCP server (cheap, scales to zero).
+# First run `fly launch --no-deploy` to create the app + set the name, then set
+# secrets and `fly deploy`. See README.md.
+app = "metrimap-mcp"
+primary_region = "sin"
+
+[build]
+  dockerfile = "mcp-server/Dockerfile"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
