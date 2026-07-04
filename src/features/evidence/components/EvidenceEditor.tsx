@@ -143,6 +143,12 @@ export default function EvidenceEditor({
     }, 100);
   }, [autoSave, formData]);
 
+  // Route onChange through a ref so it isn't a dependency of the init effect.
+  // Depending on it (and on evidence?.content) destroyed + re-created the editor
+  // on every autosave → repeated "Editor ready", lost text, duplicate editor.
+  const handleEditorChangeRef = useRef(handleEditorChange);
+  handleEditorChangeRef.current = handleEditorChange;
+
   const handleFormDataChange = useCallback(
     (newFormData: Partial<EvidenceItem>) => {
       setFormData(newFormData);
@@ -167,7 +173,7 @@ export default function EvidenceEditor({
           placeholder:
             "Start writing your evidence notebook... Press '/' for commands",
           minHeight: 300,
-          onChange: handleEditorChange,
+          onChange: () => handleEditorChangeRef.current?.(),
           onReady: () =>
             toast.success('📝 Editor ready!', {
               duration: 1500,
@@ -193,7 +199,7 @@ export default function EvidenceEditor({
           },
           placeholder: "Start writing... Press '/' for the full command menu",
           minHeight: 300,
-          onChange: handleEditorChange,
+          onChange: () => handleEditorChangeRef.current?.(),
         });
         editorRef.current = fallback;
       }
@@ -208,7 +214,10 @@ export default function EvidenceEditor({
         editorRef.current = null;
       }
     };
-  }, [isOpen, evidence?.content, handleEditorChange]);
+    // Re-init only when the dialog opens or a DIFFERENT evidence loads (id) —
+    // never on content/handler changes (those come from the editor itself and
+    // caused the destroy→re-init loop / duplicate editor). onChange uses a ref.
+  }, [isOpen, evidence?.id]);
 
   const handleSave = async () => {
     if (!editorRef.current) return;
