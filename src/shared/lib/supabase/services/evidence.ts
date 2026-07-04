@@ -40,6 +40,21 @@ export async function getCardEvidence(
   return (data ?? []).map(rowToEvidence);
 }
 
+/** A single evidence item by id (any scope), or null — the notebook's DB source. */
+export async function getEvidenceItemById(
+  id: string,
+  client?: Client
+): Promise<EvidenceItem | null> {
+  const c = client || supabase();
+  const { data, error } = await c
+    .from('evidence_items')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? rowToEvidence(data) : null;
+}
+
 /** Create an evidence item attached to a card. */
 export async function createCardEvidence(
   evidence: EvidenceItem,
