@@ -44,6 +44,7 @@ import type { MetricCard, Relationship } from '@/shared/types';
 import type {
   Confidence,
   ExpectedDirection,
+  ImpactContract,
   ImpactStatus,
   MetricLink,
   MetricLinkInput,
@@ -55,6 +56,7 @@ import {
   IMPACT_STATUSES,
 } from '@/features/strategy/impact/types';
 import { resolveImpactTrace } from '@/features/strategy/impact/impactTrace';
+import { ImpactReviewSection } from '@/features/strategy/components/ImpactReviewSection';
 
 /** A selectable metric — a catalogued tracked metric or a canvas metric card. */
 interface MetricOption {
@@ -229,13 +231,14 @@ export function StrategyImpactSheet({
   }, [open, cardId, client]);
 
   // Live trace preview from the current (possibly unsaved) selections.
-  const trace = useMemo(() => {
-    if (!cardId) return null;
+  // Live links + a draft contract from the current form — shared by the trace
+  // preview and the review section so both reflect unsaved edits.
+  const formLinks = useMemo(() => {
     const links: MetricLink[] = [];
     const push = (o: MetricOption, role: MetricLinkRole, i: number) =>
       links.push({
-        id: `preview-${role}-${i}`,
-        contractId: 'preview',
+        id: `form-${role}-${i}`,
+        contractId: 'form',
         role,
         refSource: o.source,
         trackedMetricId: o.source === 'tracked' ? o.id : null,
@@ -244,17 +247,48 @@ export function StrategyImpactSheet({
     if (target) push(target, 'target', 0);
     leading.forEach((o, i) => push(o, 'leading', i));
     guardrails.forEach((o, i) => push(o, 'guardrail', i));
+    return links;
+  }, [target, leading, guardrails]);
+
+  const formContract: ImpactContract = useMemo(
+    () => ({
+      id: contractId ?? 'draft',
+      workspaceId: null,
+      projectId: projectId ?? null,
+      strategyNodeId: cardId ?? '',
+      expectedDirection: direction || null,
+      expectedDeltaValue: deltaValue.trim() === '' ? null : Number(deltaValue),
+      expectedDeltaUnit: direction === 'stabilize' ? null : deltaUnit,
+      baselineStart: baselineStart.trim() || null,
+      baselineEnd: baselineEnd.trim() || null,
+      measureStart: measureStart.trim() || null,
+      measureEnd: measureEnd.trim() || null,
+      baselineIsManual: false,
+      confidence: confidence || null,
+      impactStatus: status,
+      ownerLabel: null,
+      resultNote: resultNote.trim() || null,
+      createdBy: '',
+      createdAt: '',
+      updatedAt: '',
+    }),
+    [contractId, projectId, cardId, direction, deltaValue, deltaUnit, baselineStart, baselineEnd, measureStart, measureEnd, confidence, status, resultNote]
+  );
+
+  const trace = useMemo(() => {
+    if (!cardId) return null;
     return resolveImpactTrace({
       strategyNodeId: cardId,
-      links,
+      links: formLinks,
       cards,
       relationships,
       widgets: [],
     });
-  }, [cardId, target, leading, guardrails, cards, relationships]);
+  }, [cardId, formLinks, cards, relationships]);
 
-  const handleSave = async () => {
+  const handleSave = async (statusOverride?: ImpactStatus) => {
     if (!cardId || !client) return;
+    const nextStatus = statusOverride ?? status;
     setSaving(true);
     try {
       const contract = await upsertContract(
@@ -269,7 +303,7 @@ export function StrategyImpactSheet({
           measureStart: measureStart.trim() || null,
           measureEnd: measureEnd.trim() || null,
           confidence: confidence || null,
-          impactStatus: status,
+          impactStatus: nextStatus,
           resultNote: resultNote.trim() || null,
         },
         client
@@ -287,6 +321,12 @@ export function StrategyImpactSheet({
     } finally {
       setSaving(false);
     }
+  };
+
+  // Review: mark an outcome — persists the status + all current fields/links.
+  const markResult = async (next: ImpactStatus) => {
+    setStatus(next);
+    await handleSave(next);
   };
 
   const handleRemove = async () => {
@@ -513,6 +553,20 @@ export function StrategyImpactSheet({
               />
             </div>
 
+            {cardId && target && (
+              <ImpactReviewSection
+                contract={formContract}
+                links={formLinks}
+                cards={cards}
+                cardId={cardId}
+                cardTitle={cardTitle || 'Strategy item'}
+                projectId={projectId}
+                canEdit={canEdit}
+                resultNote={resultNote}
+                onMarkResult={markResult}
+              />
+            )}
+
             {canEdit && (
               <div className="flex items-center justify-between pt-1">
                 {contractId ? (
@@ -522,7 +576,7 @@ export function StrategyImpactSheet({
                 ) : (
                   <span />
                 )}
-                <Button onClick={handleSave} disabled={saving}>
+                <Button onClick={() => handleSave()} disabled={saving}>
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   Save impact
                 </Button>
