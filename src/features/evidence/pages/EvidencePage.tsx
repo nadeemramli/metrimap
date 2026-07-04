@@ -15,7 +15,10 @@ import {
 import { useAppStore } from '@/shared/stores/useAppStore';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
-import { getEvidenceItemById } from '@/shared/lib/supabase/services/evidence';
+import {
+  createProjectEvidence,
+  getEvidenceItemById,
+} from '@/shared/lib/supabase/services/evidence';
 import { updateEvidenceItem } from '@/shared/lib/supabase/services/relationships';
 import type { EvidenceItem } from '@/shared/types';
 import EditorJS from '@editorjs/editorjs';
@@ -25,7 +28,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export default function EvidencePage() {
-  const { evidenceId } = useParams();
+  const { evidenceId, canvasId } = useParams();
   const navigate = useNavigate();
   const client = useClerkSupabase();
   const { getEvidenceById, addEvidence, updateEvidence } = useEvidenceStore();
@@ -128,7 +131,27 @@ export default function EvidencePage() {
           await updateEvidenceItem(initialEvidence.id, updated, client);
         }
       } else {
-        addEvidence(updated);
+        // Brand-new evidence: persist to the DB (project-scoped) when in a canvas
+        // context so it isn't store-only, then adopt the DB id so reload works
+        // and later saves become updates (CVS-34 slice 3b).
+        let created = updated;
+        if (canvasId && client && user?.id) {
+          try {
+            created = await createProjectEvidence(
+              updated,
+              canvasId,
+              user.id,
+              client
+            );
+            setInitialEvidence(created);
+            navigate(`/canvas/${canvasId}/evidence/${created.id}`, {
+              replace: true,
+            });
+          } catch (e) {
+            console.error('Failed to create evidence in DB; storing locally', e);
+          }
+        }
+        addEvidence(created);
       }
 
       toast.success('Evidence saved successfully');
@@ -146,6 +169,8 @@ export default function EvidencePage() {
     updateEvidence,
     client,
     user?.id,
+    canvasId,
+    navigate,
   ]);
 
   useEffect(() => {
