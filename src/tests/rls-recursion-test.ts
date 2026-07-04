@@ -103,6 +103,14 @@ class RLSRecursionTester {
       'evidence_items',
       'groups',
       'changelog',
+      // Node-level visibility (CVS-119/120/121). metric_cards/relationships
+      // SELECT now call node_hidden_from_me(), which itself selects
+      // metric_cards — this exercises that path for recursion/timeout.
+      'workspace_groups',
+      'group_members',
+      'tag_audiences',
+      'node_access_grants',
+      'metric_values',
     ];
 
     const results: TestResult[] = [];
@@ -381,6 +389,62 @@ class RLSRecursionTester {
   }
 
   /**
+   * Test the node-visibility SECURITY DEFINER helpers (CVS-119/120/121). These
+   * are the recursion-risk surface: node_hidden_from_me / node_visible_to_me
+   * read metric_cards + the tag/audience tables, and are invoked from the
+   * metric_cards & relationships SELECT policies. Under anon they must resolve
+   * quickly (no rows / false), never recurse or time out.
+   */
+  async testVisibilityFunctions(): Promise<TestResult[]> {
+    const results: TestResult[] = [];
+    const DUMMY_UUID = '00000000-0000-0000-0000-000000000000';
+
+    results.push(
+      await this.runTestWithTimeout(
+        async () => {
+          const { data, error } = await supabase().rpc('my_groups' as any);
+          if (error) throw error;
+          return data;
+        },
+        'my_groups',
+        'RPC'
+      )
+    );
+
+    results.push(
+      await this.runTestWithTimeout(
+        async () => {
+          const { data, error } = await supabase().rpc(
+            'node_visible_to_me' as any,
+            { card_id: DUMMY_UUID } as any
+          );
+          if (error) throw error;
+          return data;
+        },
+        'node_visible_to_me',
+        'RPC'
+      )
+    );
+
+    results.push(
+      await this.runTestWithTimeout(
+        async () => {
+          const { data, error } = await supabase().rpc(
+            'node_hidden_from_me' as any,
+            { card_id: DUMMY_UUID } as any
+          );
+          if (error) throw error;
+          return data;
+        },
+        'node_hidden_from_me',
+        'RPC'
+      )
+    );
+
+    return results;
+  }
+
+  /**
    * Generate comprehensive test report
    */
   private generateSummary(results: TestResult[]): TestSuite['summary'] {
@@ -423,6 +487,10 @@ class RLSRecursionTester {
       console.log('⚡ Running stress tests...');
       const stressTests = await this.testStressScenarios();
       allResults.push(...stressTests);
+
+      console.log('🔐 Testing node-visibility functions...');
+      const visibilityTests = await this.testVisibilityFunctions();
+      allResults.push(...visibilityTests);
     } catch (error) {
       console.error('❌ Test suite failed:', error);
     }
