@@ -4,8 +4,10 @@ FROM node:22-slim
 WORKDIR /app
 
 # App runtime deps (the tool registry pulls supabase-js / zod / dagre from here).
+# --ignore-scripts: skip the root "prepare": "husky" hook — husky is a devDep that
+# --omit=dev doesn't install, so the lifecycle script would fail with exit 127.
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev --no-audit --no-fund
+RUN npm install --omit=dev --no-audit --no-fund --ignore-scripts
 
 # App source the server imports + the server itself.
 COPY tsconfig*.json ./
