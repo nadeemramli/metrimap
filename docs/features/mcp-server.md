@@ -29,10 +29,15 @@ Transport-agnostic and unit-tested (no server/DB needed):
   `unauthenticated` / `forbidden` / `not_found` / `internal`). `listTools()` feeds
   `tools/list`.
 - **`authContext.ts`** — the **auth seam**: `McpAuthContext { userId, client, scopes }`
-  and the `AuthContextResolver` type that **CVS-99** implements (OAuth token
-  exchange / API-key lookup → a Clerk-authenticated, RLS-scoped client). Until
-  then `unimplementedAuthResolver` refuses calls. The service-role key is never
-  used.
+  and the `AuthContextResolver` type. Service-role key is never used.
+- **`auth/` (CVS-99)** — the **API-key resolver**: `createApiKeyAuthResolver` reads
+  `Authorization: Bearer <key>` (or `x-api-key`), hashes it (SHA-256, same as
+  `apiKeys.ts`), resolves the owner via the `mcp_resolve_api_key` SECURITY DEFINER
+  RPC (anon-callable, exact-hash match, bumps `last_used_at`), then **mints a
+  short-lived Supabase JWT** (`mintSupabaseJwt`, HS256 with the Supabase JWT
+  secret) whose `sub`/`o.id` claims make every DB call run under that user's RLS.
+  Works for Codex/CLI and claude.ai via a static token. **OAuth "Connect"
+  sign-in is the follow-up** (see below).
 - **`errors.ts`** — the structured error codes.
 
 Tools wired (finalized in **CVS-101**): `list_canvases`, `get_tree`, `list_nodes`,
@@ -93,7 +98,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { listTools, dispatchTool, McpToolError } from '@/shared/lib/api/mcp';
 
-const resolveAuth = /* CVS-99 AuthContextResolver */;
+// CVS-99 API-key resolver (needs SUPABASE_JWT_SECRET at deploy):
+import { createApiKeyAuthResolver, supabaseApiKeyLookup } from '@/shared/lib/api/mcp';
+import { createClient } from '@supabase/supabase-js';
+const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const resolveAuth = createApiKeyAuthResolver({
+  jwtSecret: SUPABASE_JWT_SECRET, supabaseUrl: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY,
+  lookupKey: supabaseApiKeyLookup(anon),
+});
 
 export async function handler(req, res) {
   const server = new McpServer({ name: 'metrimap', version: '0.1.0' });
@@ -119,6 +131,21 @@ Plus a `GET /health` returning `{ ok: true, version }`.
 Reachable at `https://mcp.canvasm.app/mcp`, addable via
 `claude mcp add --transport http metrimap https://mcp.canvasm.app/mcp` and the
 claude.ai connector. Add request logging + a `mcp_audit_log` (CVS-104).
+
+## OAuth "Connect" — follow-up
+
+Nicer UX ("sign in → connected" in the Claude connector) but more setup: an OAuth
+2.1 authorization server (dynamic client registration + `/authorize` + `/token`)
+backed by Clerk sign-in, storing tokens server-side. It resolves the same way — a
+bearer token → user → `mintSupabaseJwt` → RLS-scoped client — so it slots into the
+same seam. Needs a Clerk **OAuth application** (client id/secret, redirect URIs).
+Ship API-key auth first; add this once hosting + Clerk OAuth are set up.
+
+## Deploy secrets (CVS-99)
+
+The API-key resolver needs, as **server env** (never client):
+`SUPABASE_URL`, `SUPABASE_ANON_KEY` (public), and **`SUPABASE_JWT_SECRET`**
+(Supabase → Project Settings → API → JWT Secret) to sign the per-user tokens.
 
 ## Status vs acceptance criteria
 - [x] Tool registry wired to the API layer; structured errors — **done + tested**.
