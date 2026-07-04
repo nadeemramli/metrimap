@@ -1,5 +1,6 @@
 import type { StrategyBoardData } from '@/features/strategy/utils/groupStrategy';
 import { StrategyCardTile } from '@/features/strategy/components/StrategyCardTile';
+import type { ImpactSummary } from '@/features/strategy/impact/impactContract';
 import type { WorkflowStatus } from '@/shared/types';
 import { cn } from '@/shared/utils';
 import { useState } from 'react';
@@ -11,12 +12,14 @@ interface StrategyBoardProps {
   board: StrategyBoardData;
   onStatusChange: (cardId: string, status: WorkflowStatus) => void;
   onCardClick?: (cardId: string) => void;
+  impactSummaries?: Record<string, ImpactSummary>;
 }
 
 export function StrategyBoard({
   board,
   onStatusChange,
   onCardClick,
+  impactSummaries,
 }: StrategyBoardProps) {
   const [dragOver, setDragOver] = useState<WorkflowStatus | null>(null);
 
@@ -56,6 +59,7 @@ export function StrategyBoard({
                 key={card.id}
                 card={card}
                 onClick={onCardClick}
+                impact={impactSummaries?.[card.id]}
               />
             ))}
           </div>

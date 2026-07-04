@@ -3,7 +3,9 @@
 // trace resolver (CVS-168).
 
 import type {
+  Confidence,
   ImpactContract,
+  ImpactStatus,
   MetricLink,
   MetricLinkInput,
   MetricLinkRole,
@@ -77,4 +79,102 @@ export function isMeasurable(contract: ImpactContract, links: MetricLink[]): boo
   const hasBaseline = !!contract.baselineStart || contract.baselineIsManual;
   const hasWindow = !!contract.measureStart;
   return hasTarget && hasBaseline && hasWindow;
+}
+
+/** A minimal card shape for resolving a target metric to a readable label. */
+export interface LabelledCard {
+  id: string;
+  title: string;
+  trackedMetricId?: string | null;
+}
+
+/** Compact, scannable view of a contract for board/table columns (CVS-170). */
+export interface ImpactSummary {
+  hasTarget: boolean;
+  targetLabel: string | null;
+  status: ImpactStatus;
+  deltaText: string | null;
+  confidence: Confidence | null;
+  measureEnd: string | null;
+}
+
+export function summarizeImpact(
+  contract: ImpactContract,
+  links: MetricLink[],
+  cards: LabelledCard[]
+): ImpactSummary {
+  const t = targetLink(links);
+  let targetLabel: string | null = null;
+  if (t) {
+    if (t.refSource === 'card' && t.cardId) {
+      targetLabel = cards.find((c) => c.id === t.cardId)?.title ?? 'Metric card';
+    } else if (t.refSource === 'tracked' && t.trackedMetricId) {
+      targetLabel =
+        cards.find((c) => c.trackedMetricId === t.trackedMetricId)?.title ?? 'Tracked metric';
+    }
+  }
+  return {
+    hasTarget: !!t,
+    targetLabel,
+    status: contract.impactStatus,
+    deltaText: describeExpectedDelta(contract),
+    confidence: contract.confidence,
+    measureEnd: contract.measureEnd,
+  };
+}
+
+export type ImpactFilter =
+  | 'all'
+  | 'has_target'
+  | 'missing_target'
+  | 'measuring'
+  | 'review_ready'
+  | 'won'
+  | 'lost'
+  | 'inconclusive';
+
+export const IMPACT_FILTERS: { value: ImpactFilter; label: string }[] = [
+  { value: 'all', label: 'All impact' },
+  { value: 'has_target', label: 'Has target' },
+  { value: 'missing_target', label: 'Missing target' },
+  { value: 'measuring', label: 'Measuring' },
+  { value: 'review_ready', label: 'Review ready' },
+  { value: 'won', label: 'Won' },
+  { value: 'lost', label: 'Lost' },
+  { value: 'inconclusive', label: 'Inconclusive' },
+];
+
+/**
+ * Predicate for a strategy item given its impact summary (or undefined when the
+ * item has no contract). `currentPeriod` is a 'YYYY-MM' used for "review ready"
+ * (window has ended while still measuring).
+ */
+export function matchesImpactFilter(
+  filter: ImpactFilter,
+  summary: ImpactSummary | undefined,
+  currentPeriod: string
+): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'missing_target') return !summary || !summary.hasTarget;
+  if (!summary) return false;
+  switch (filter) {
+    case 'has_target':
+      return summary.hasTarget;
+    case 'measuring':
+      return summary.status === 'measuring';
+    case 'review_ready':
+      return (
+        summary.status === 'measuring' &&
+        !!summary.measureEnd &&
+        summary.measureEnd < currentPeriod
+      );
+    case 'won':
+      return summary.status === 'won';
+    case 'lost':
+      return summary.status === 'lost';
+    case 'inconclusive':
+      return summary.status === 'inconclusive';
+    default:
+      return true;
+  }
 }

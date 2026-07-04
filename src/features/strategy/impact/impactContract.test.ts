@@ -4,7 +4,9 @@ import {
   groupLinksByRole,
   isMeasurable,
   isValidLinkInput,
+  matchesImpactFilter,
   metricRefKey,
+  summarizeImpact,
   targetLink,
 } from './impactContract';
 import type { ImpactContract, MetricLink } from './types';
@@ -91,6 +93,60 @@ describe('describeExpectedDelta', () => {
     expect(describeExpectedDelta(contract({ expectedDirection: 'stabilize' }))).toBe('stabilize');
     expect(describeExpectedDelta(contract({ expectedDirection: 'increase' }))).toBe('increase');
     expect(describeExpectedDelta(contract())).toBeNull();
+  });
+});
+
+describe('summarizeImpact', () => {
+  const cards = [
+    { id: 'card_cvr', title: 'Checkout CVR' },
+    { id: 'card_rev', title: 'Revenue', trackedMetricId: 'tm_rev' },
+  ];
+  it('resolves a card-ref target label', () => {
+    const s = summarizeImpact(
+      contract({ impactStatus: 'measuring', measureEnd: '2026-08' }),
+      [link({ role: 'target', refSource: 'card', trackedMetricId: null, cardId: 'card_cvr' })],
+      cards
+    );
+    expect(s).toMatchObject({ hasTarget: true, targetLabel: 'Checkout CVR', status: 'measuring', measureEnd: '2026-08' });
+  });
+  it('resolves a tracked-ref target via a canvas placement, else falls back', () => {
+    expect(
+      summarizeImpact(contract(), [link({ role: 'target', refSource: 'tracked', trackedMetricId: 'tm_rev', cardId: null })], cards).targetLabel
+    ).toBe('Revenue');
+    expect(
+      summarizeImpact(contract(), [link({ role: 'target', refSource: 'tracked', trackedMetricId: 'tm_missing', cardId: null })], cards).targetLabel
+    ).toBe('Tracked metric');
+  });
+  it('reports no target when only guardrails are linked', () => {
+    const s = summarizeImpact(contract(), [link({ role: 'guardrail', refSource: 'card', trackedMetricId: null, cardId: 'card_cvr' })], cards);
+    expect(s.hasTarget).toBe(false);
+    expect(s.targetLabel).toBeNull();
+  });
+});
+
+describe('matchesImpactFilter', () => {
+  const withTarget = summarizeImpact(
+    contract({ impactStatus: 'measuring', measureEnd: '2026-06' }),
+    [link({ role: 'target' })],
+    []
+  );
+  it('all matches everything incl. no-contract items', () => {
+    expect(matchesImpactFilter('all', undefined, '2026-07')).toBe(true);
+  });
+  it('missing_target matches no-contract and target-less items', () => {
+    expect(matchesImpactFilter('missing_target', undefined, '2026-07')).toBe(true);
+    const noTarget = summarizeImpact(contract(), [], []);
+    expect(matchesImpactFilter('missing_target', noTarget, '2026-07')).toBe(true);
+    expect(matchesImpactFilter('missing_target', withTarget, '2026-07')).toBe(false);
+  });
+  it('review_ready = measuring with an ended window', () => {
+    expect(matchesImpactFilter('review_ready', withTarget, '2026-07')).toBe(true); // ended 2026-06 < 2026-07
+    expect(matchesImpactFilter('review_ready', withTarget, '2026-06')).toBe(false); // not yet ended
+  });
+  it('status filters and no-contract exclusion', () => {
+    expect(matchesImpactFilter('measuring', withTarget, '2026-07')).toBe(true);
+    expect(matchesImpactFilter('won', withTarget, '2026-07')).toBe(false);
+    expect(matchesImpactFilter('has_target', undefined, '2026-07')).toBe(false);
   });
 });
 

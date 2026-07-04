@@ -45,6 +45,20 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
+import { ImpactChip } from '@/features/strategy/components/ImpactChip';
+import {
+  IMPACT_FILTERS,
+  matchesImpactFilter,
+  type ImpactFilter,
+  type ImpactSummary,
+} from '@/features/strategy/impact/impactContract';
 
 const STATUS_OPTIONS: PillOption<WorkflowStatus>[] = WORKFLOW_STATUSES.map(
   (s) => ({ value: s.value, label: s.label, className: WORKFLOW_STATUS_STYLES[s.value] })
@@ -73,6 +87,7 @@ interface StrategyTableProps extends StrategyTableHandlers {
   userMap: Record<string, UserLite>;
   members: ProjectMember[];
   commentCounts: Record<string, number>;
+  impactSummaries: Record<string, ImpactSummary>;
   canEdit: boolean;
 }
 
@@ -98,6 +113,7 @@ export function StrategyTable({
   userMap,
   members,
   commentCounts,
+  impactSummaries,
   canEdit,
   onStatusChange,
   onPriorityChange,
@@ -111,6 +127,9 @@ export function StrategyTable({
 }: StrategyTableProps) {
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [impactFilter, setImpactFilter] = useState<ImpactFilter>('all');
+  // 'YYYY-MM' — drives the "review ready" filter (window ended while measuring).
+  const currentPeriod = useMemo(() => new Date().toISOString().slice(0, 7), []);
 
   // cardId -> the groups it belongs to (dot + name), from group node_ids.
   const cardGroups = useMemo(() => {
@@ -164,11 +183,32 @@ export function StrategyTable({
           placeholder="Search items…"
           className="h-8 max-w-xs"
         />
+
+        <Select
+          value={impactFilter}
+          onValueChange={(v) => setImpactFilter(v as ImpactFilter)}
+        >
+          <SelectTrigger className="h-8 w-40" aria-label="Filter by impact">
+            <Target className="h-3.5 w-3.5 opacity-70" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {IMPACT_FILTERS.map((f) => (
+              <SelectItem key={f.value} value={f.value}>
+                {f.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {board.columns.map((column) => {
-        const rows = column.cards.filter(matches);
-        if (query && rows.length === 0) return null;
+        const rows = column.cards
+          .filter(matches)
+          .filter((c) =>
+            matchesImpactFilter(impactFilter, impactSummaries[c.id], currentPeriod)
+          );
+        if ((query || impactFilter !== 'all') && rows.length === 0) return null;
         const isCollapsed = collapsed[column.status];
 
         return (
@@ -206,6 +246,7 @@ export function StrategyTable({
                       </TableHead>
                       <TableHead className="w-36">Type</TableHead>
                       <TableHead className="w-40">Group</TableHead>
+                      <TableHead className="w-48">Impact</TableHead>
                       <TableHead className="w-28">People</TableHead>
                       <TableHead className="w-28">Due</TableHead>
                       <TableHead className="w-32">Status</TableHead>
@@ -266,6 +307,24 @@ export function StrategyTable({
                                   </span>
                                 )}
                               </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {impactSummaries[card.id] ? (
+                              <button
+                                onClick={() => onOpenImpact(card.id)}
+                                className="text-left"
+                                title="Edit impact"
+                              >
+                                <ImpactChip summary={impactSummaries[card.id]} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => onOpenImpact(card.id)}
+                                className="text-xs text-muted-foreground opacity-0 hover:text-primary group-hover:opacity-100"
+                              >
+                                + Impact
+                              </button>
                             )}
                           </TableCell>
                           <TableCell>

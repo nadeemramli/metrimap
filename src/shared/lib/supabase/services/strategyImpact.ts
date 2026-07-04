@@ -99,6 +99,38 @@ export async function listContractsForWorkspace(client?: Client): Promise<Impact
   return (data ?? []).map((r) => rowToContract(r as ContractRow));
 }
 
+/**
+ * All contracts originating on a canvas, each with its metric links — for the
+ * Strategy board/table impact columns + filters (CVS-170). Two queries.
+ */
+export async function listContractsWithLinksForProject(
+  projectId: string,
+  client?: Client
+): Promise<Array<{ contract: ImpactContract; links: MetricLink[] }>> {
+  const c = client || supabase();
+  const contracts = await listContractsForProject(projectId, c);
+  if (!contracts.length) return [];
+  const { data, error } = await c
+    .from('strategy_metric_links')
+    .select(LINK_COLS)
+    .in(
+      'contract_id',
+      contracts.map((ct) => ct.id)
+    );
+  if (error) throw new Error(error.message);
+  const linksByContract = new Map<string, MetricLink[]>();
+  for (const r of data ?? []) {
+    const link = rowToLink(r as LinkRow);
+    const list = linksByContract.get(link.contractId) ?? [];
+    list.push(link);
+    linksByContract.set(link.contractId, list);
+  }
+  return contracts.map((contract) => ({
+    contract,
+    links: linksByContract.get(contract.id) ?? [],
+  }));
+}
+
 export interface UpsertContractInput {
   strategyNodeId: string;
   projectId?: string | null;

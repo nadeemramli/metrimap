@@ -30,6 +30,15 @@ import { StrategyBoard } from '@/features/strategy/components/StrategyBoard';
 import { StrategyTable } from '@/features/strategy/components/StrategyTable';
 import { CardCommentSheet } from '@/features/strategy/components/CardCommentSheet';
 import { StrategyImpactSheet } from '@/features/strategy/components/StrategyImpactSheet';
+import { listContractsWithLinksForProject } from '@/shared/lib/supabase/services/strategyImpact';
+import {
+  summarizeImpact,
+  type ImpactSummary,
+} from '@/features/strategy/impact/impactContract';
+import type {
+  ImpactContract,
+  MetricLink,
+} from '@/features/strategy/impact/types';
 import { ValueJourneyStrip } from '@/features/strategy/components/ValueJourneyStrip';
 import { TaskPanel } from '@/features/canvas/components/panels/task-panel/TaskPanel';
 import {
@@ -81,6 +90,10 @@ export default function StrategyPage() {
   const [settingsCardId, setSettingsCardId] = useState<string | null>(null);
   const [commentCardId, setCommentCardId] = useState<string | null>(null);
   const [impactCardId, setImpactCardId] = useState<string | null>(null);
+  const [impactEntries, setImpactEntries] = useState<
+    Array<{ contract: ImpactContract; links: MetricLink[] }>
+  >([]);
+  const [impactReload, setImpactReload] = useState(0);
 
   // Prefer the live in-canvas store when it matches this canvas (fresher,
   // holds unsaved edits); otherwise fall back to what we loaded from the DB.
@@ -157,6 +170,22 @@ export default function StrategyPage() {
   useEffect(() => {
     refreshCommentCounts();
   }, [refreshCommentCounts]);
+
+  // Impact contracts for this canvas → keyed summaries for board/table columns.
+  useEffect(() => {
+    if (!client || !canvasId) return;
+    listContractsWithLinksForProject(canvasId, client)
+      .then(setImpactEntries)
+      .catch(() => setImpactEntries([]));
+  }, [client, canvasId, impactReload]);
+
+  const impactSummaries = useMemo(() => {
+    const map: Record<string, ImpactSummary> = {};
+    for (const { contract, links } of impactEntries) {
+      map[contract.strategyNodeId] = summarizeImpact(contract, links, cards);
+    }
+    return map;
+  }, [impactEntries, cards]);
 
   // Members carry avatars too — merge so a just-assigned person resolves before
   // the batched user fetch returns.
@@ -437,7 +466,12 @@ export default function StrategyPage() {
       </div>
 
       {viewMode === 'board' ? (
-        <StrategyBoard board={board} onStatusChange={handleStatusChange} />
+        <StrategyBoard
+          board={board}
+          onStatusChange={handleStatusChange}
+          onCardClick={setSettingsCardId}
+          impactSummaries={impactSummaries}
+        />
       ) : (
         <StrategyTable
           board={board}
@@ -445,6 +479,7 @@ export default function StrategyPage() {
           userMap={userMap}
           members={members}
           commentCounts={commentCounts}
+          impactSummaries={impactSummaries}
           canEdit={canEdit}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}
@@ -486,7 +521,12 @@ export default function StrategyPage() {
         relationships={edges}
         canEdit={canEdit}
         open={Boolean(impactCardId)}
-        onOpenChange={(open) => !open && setImpactCardId(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setImpactCardId(null);
+            setImpactReload((n) => n + 1);
+          }
+        }}
       />
     </div>
   );
