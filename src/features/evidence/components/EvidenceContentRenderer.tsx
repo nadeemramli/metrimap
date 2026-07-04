@@ -51,11 +51,33 @@ export default function EvidenceContentRenderer({
   }, [evidence.content]);
 
   if (!evidence.content) {
+    // No EditorJS notebook yet — render whatever structured fields are populated
+    // (summary / hypothesis / impact) rather than the bare placeholder, which
+    // wrongly showed even for populated Analysis-type evidence (CVS-35).
+    const sections = [
+      { label: "Summary", value: evidence.summary },
+      { label: "Hypothesis", value: evidence.hypothesis },
+      { label: "Impact on confidence", value: evidence.impactOnConfidence },
+    ].filter((s) => s.value && s.value.trim());
+
     return (
       <div className={`codex-editor codex-editor--readonly ${className}`}>
-        <p className="text-gray-500 italic">
-          {evidence.summary || "No content available"}
-        </p>
+        {sections.length > 0 ? (
+          <div className="space-y-2">
+            {sections.map((s) => (
+              <div key={s.label}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  {s.label}
+                </p>
+                <p className="whitespace-pre-wrap text-sm text-gray-700">
+                  {s.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 italic">No content available</p>
+        )}
       </div>
     );
   }
