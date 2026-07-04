@@ -15,6 +15,7 @@ When a decision changes, we add or amend an ADR rather than silently editing his
 | [ADR-005](./ADR-005:%20Realtime-js,%20WASM,%20and%20Websocket.md) | Realtime collaboration (Automerge, WASM, WebSocket) | Proposed / Scaffolded |
 | [ADR-006](./ADR-006:%20Use%20Prisma%20+%20Zod.md) | Prisma (schema-only) + Zod for type safety & validation | Accepted |
 | [ADR-007](./ADR-007:%20Adding%20XState.md) | XState for canvas interaction state | Accepted |
+| [ADR-008](./ADR-008:%20Canvas%20State%20Ownership.md) | Canvas state ownership (React Flow owns view state; one-way persistence; retire XState slice) — fixes recurring React #185 | Proposed |
 
 ## Status legend
 
