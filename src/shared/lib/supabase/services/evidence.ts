@@ -85,3 +85,33 @@ export async function createCardEvidence(
   if (error) throw new Error(error.message);
   return rowToEvidence(data);
 }
+
+/** Create a general project-scoped evidence item (no card / relationship). Used
+ *  by the Evidence Repository "New Evidence" so it's DB-backed, not store-only. */
+export async function createProjectEvidence(
+  evidence: EvidenceItem,
+  projectId: string,
+  userId: string,
+  client?: Client
+): Promise<EvidenceItem> {
+  const c = client || supabase();
+  const { data, error } = await c
+    .from('evidence_items')
+    .insert({
+      project_id: projectId,
+      title: evidence.title,
+      type: evidence.type,
+      date: evidence.date,
+      owner_id: evidence.owner || null,
+      link: evidence.link ?? null,
+      hypothesis: evidence.hypothesis ?? null,
+      summary: evidence.summary || evidence.title,
+      impact_on_confidence: evidence.impactOnConfidence ?? null,
+      content: (evidence.content ?? null) as Json,
+      created_by: userId,
+    })
+    .select('*')
+    .single();
+  if (error) throw new Error(error.message);
+  return rowToEvidence(data);
+}

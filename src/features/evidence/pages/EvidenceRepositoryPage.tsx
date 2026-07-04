@@ -57,6 +57,10 @@ import {
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import EvidenceEditor from '../components/EvidenceEditor';
+import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { useAppStore } from '@/shared/stores/useAppStore';
+import { createProjectEvidence } from '@/shared/lib/supabase/services/evidence';
+import { updateEvidenceItem } from '@/shared/lib/supabase/services/relationships';
 
 const evidenceTypeOptions = [
   { value: 'Experiment', icon: FlaskConical, variant: 'blue' },
@@ -69,6 +73,8 @@ const evidenceTypeOptions = [
 export default function EvidenceRepositoryPage() {
   const { canvasId } = useParams();
   const isCanvasScoped = Boolean(canvasId);
+  const client = useClerkSupabase();
+  const { user } = useAppStore();
   const { canvas } = useCanvasStore();
   const confirm = useConfirm();
   const {
@@ -158,16 +164,38 @@ export default function EvidenceRepositoryPage() {
     setIsEditorOpen(true);
   };
 
-  const handleSaveEvidence = (
+  const handleSaveEvidence = async (
     evidence: EvidenceItem,
     options?: { autoSave?: boolean }
   ) => {
     if (selectedEvidence) {
-      // Update existing evidence
+      // Update existing evidence (store + DB)
       updateEvidence(selectedEvidence.id, evidence);
+      if (client) {
+        try {
+          await updateEvidenceItem(selectedEvidence.id, evidence, client);
+        } catch (e) {
+          console.error('Failed to persist evidence edit to DB', e);
+        }
+      }
     } else {
-      // Create new evidence
-      addEvidence(evidence);
+      // Create new evidence — persist to the DB (project-scoped) when we have a
+      // canvas/project context, so it's DB-backed rather than store-only and
+      // resolvable by id across surfaces (CVS-34 slice 3).
+      let created = evidence;
+      if (canvasId && client && user?.id) {
+        try {
+          created = await createProjectEvidence(
+            evidence,
+            canvasId,
+            user.id,
+            client
+          );
+        } catch (e) {
+          console.error('Failed to create evidence in DB; storing locally', e);
+        }
+      }
+      addEvidence(created);
     }
 
     // Only close dialog on manual save, not auto-save
