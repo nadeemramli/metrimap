@@ -5,6 +5,7 @@ import { DataEventsTab } from '@/features/canvas/components/panels/relationship-
 import { ResultsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/results-tab';
 import { SettingsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/settings-tab';
 import { WorkflowSection } from '@/features/canvas/components/panels/metric-panel/WorkflowSection';
+import { NodeVisibilityControl } from '@/features/settings/components/NodeVisibilityControl';
 import EvidenceDialog from '@/features/evidence/components/EvidenceDialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -1208,6 +1209,7 @@ function CardSettingsSheetComponent({
 
               {/* Settings Tab */}
               <TabsContent value="settings" className="space-y-6 pt-2">
+                {cardId && <NodeVisibilityControl cardId={cardId} />}
                 {card && (
                   <WorkflowSection
                     card={card}

@@ -116,3 +116,115 @@ export async function nodeVisibleToMe(
   if (error) throw error;
   return data ?? false;
 }
+
+/**
+ * Card ids in a project restricted for the current viewer (CVS-122) — one call
+ * powers the "Restricted" badge + value masking across a canvas.
+ */
+export async function getMyRestrictedCards(
+  projectId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<string[]> {
+  const client = db(authenticatedClient);
+  const { data, error } = await client.rpc('my_restricted_cards', {
+    pid: projectId,
+  });
+  if (error) throw error;
+  return (data as string[] | null) ?? [];
+}
+
+/** Admin-only "view as <group>" preview: cards restricted for those groups. */
+export async function getRestrictedCardsForGroups(
+  projectId: string,
+  groupIds: string[],
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<string[]> {
+  const client = db(authenticatedClient);
+  const { data, error } = await client.rpc('cards_restricted_for_groups', {
+    pid: projectId,
+    group_ids: groupIds,
+  });
+  if (error) throw error;
+  return (data as string[] | null) ?? [];
+}
+
+export type WorkspaceAccessTag = {
+  id: string;
+  name: string;
+  redactionMode: RedactionMode;
+  projectId: string | null;
+  audienceGroupIds: string[];
+};
+
+/** Every access tag visible to the user (across their projects) + audiences —
+ *  powers the admin access matrix (access tags × groups). */
+export async function getWorkspaceAccessTags(
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<WorkspaceAccessTag[]> {
+  const client = db(authenticatedClient);
+  const { data: tags, error } = await client
+    .from('tags')
+    .select('id, name, redaction_mode, project_id')
+    .eq('is_access', true)
+    .order('name');
+  if (error) throw error;
+  const ids = (tags ?? []).map((t) => t.id);
+  const byTag = new Map<string, string[]>();
+  if (ids.length) {
+    const { data: auds, error: aErr } = await client
+      .from('tag_audiences')
+      .select('tag_id, group_id')
+      .in('tag_id', ids);
+    if (aErr) throw aErr;
+    for (const a of auds ?? []) {
+      const arr = byTag.get(a.tag_id) ?? [];
+      arr.push(a.group_id);
+      byTag.set(a.tag_id, arr);
+    }
+  }
+  return (tags ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    redactionMode: t.redaction_mode === 'hide_node' ? 'hide_node' : 'hide_value',
+    projectId: t.project_id,
+    audienceGroupIds: byTag.get(t.id) ?? [],
+  }));
+}
+
+export type CardAccessTag = {
+  tagId: string;
+  name: string;
+  redactionMode: RedactionMode;
+  audienceGroupIds: string[];
+};
+
+/** The access tags applied to a card + their audiences (for "Who can see this"). */
+export async function getCardAccessInfo(
+  metricCardId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<CardAccessTag[]> {
+  const client = db(authenticatedClient);
+  const { data, error } = await client
+    .from('metric_card_tags')
+    .select('tag_id, tags!inner(id, name, is_access, redaction_mode)')
+    .eq('metric_card_id', metricCardId);
+  if (error) throw error;
+  const accessTags = (data ?? []).filter(
+    (r) => (r.tags as unknown as { is_access: boolean }).is_access
+  );
+  const result: CardAccessTag[] = [];
+  for (const r of accessTags) {
+    const t = r.tags as unknown as {
+      id: string;
+      name: string;
+      redaction_mode: string;
+    };
+    result.push({
+      tagId: t.id,
+      name: t.name,
+      redactionMode: t.redaction_mode === 'hide_node' ? 'hide_node' : 'hide_value',
+      audienceGroupIds: await getTagAudience(t.id, client),
+    });
+  }
+  return result;
+}
