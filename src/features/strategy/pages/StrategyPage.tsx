@@ -28,6 +28,7 @@ import type { PriorityLevel } from '@/features/canvas/utils/workflow';
 import { resolveGroupMembers } from '@/features/dashboard/utils/groupDashboard';
 import { StrategyBoard } from '@/features/strategy/components/StrategyBoard';
 import { StrategyTable } from '@/features/strategy/components/StrategyTable';
+import { StrategyTree } from '@/features/strategy/components/StrategyTree';
 import { CardCommentSheet } from '@/features/strategy/components/CardCommentSheet';
 import { StrategyImpactSheet } from '@/features/strategy/components/StrategyImpactSheet';
 import { listContractsWithLinksForProject } from '@/shared/lib/supabase/services/strategyImpact';
@@ -47,7 +48,7 @@ import {
 } from '@/features/strategy/utils/groupStrategy';
 import { buildValueJourney } from '@/features/strategy/utils/valueJourney';
 import { cn } from '@/shared/utils';
-import { Loader2, Plus, SquareKanban, Table as TableIcon } from 'lucide-react';
+import { Loader2, Plus, SquareKanban, Table as TableIcon, Target } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -57,7 +58,7 @@ import { toast } from 'sonner';
 // (Monday.com-style) views over the same work cards.
 
 const ALL_VIEW = '__all__';
-type ViewMode = 'board' | 'table';
+type ViewMode = 'board' | 'table' | 'tree';
 
 export default function StrategyPage() {
   const { canvasId } = useParams();
@@ -186,6 +187,12 @@ export default function StrategyPage() {
     }
     return map;
   }, [impactEntries, cards]);
+
+  const impactByNode = useMemo(() => {
+    const map: Record<string, { contract: ImpactContract; links: MetricLink[] }> = {};
+    for (const e of impactEntries) map[e.contract.strategyNodeId] = e;
+    return map;
+  }, [impactEntries]);
 
   // Members carry avatars too — merge so a just-assigned person resolves before
   // the batched user fetch returns.
@@ -449,11 +456,20 @@ export default function StrategyPage() {
           <Button
             variant={viewMode === 'table' ? 'default' : 'ghost'}
             size="sm"
-            className="h-8 gap-1.5 rounded-l-none"
+            className="h-8 gap-1.5 rounded-none"
             onClick={() => setViewMode('table')}
           >
             <TableIcon className="h-3.5 w-3.5" />
             Table
+          </Button>
+          <Button
+            variant={viewMode === 'tree' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 gap-1.5 rounded-l-none"
+            onClick={() => setViewMode('tree')}
+          >
+            <Target className="h-3.5 w-3.5" />
+            Tree
           </Button>
         </div>
       </div>
@@ -471,6 +487,14 @@ export default function StrategyPage() {
           onStatusChange={handleStatusChange}
           onCardClick={setSettingsCardId}
           impactSummaries={impactSummaries}
+        />
+      ) : viewMode === 'tree' ? (
+        <StrategyTree
+          cards={scopedCards}
+          groups={groups}
+          relationships={edges}
+          impactByNode={impactByNode}
+          onOpenImpact={setImpactCardId}
         />
       ) : (
         <StrategyTable
