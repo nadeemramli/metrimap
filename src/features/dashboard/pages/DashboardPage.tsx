@@ -21,6 +21,7 @@ import {
   linkedStrategyForWidget,
   type WidgetStrategyLink,
 } from '@/features/strategy/impact/widgetLinks';
+import { ImpactTraceDialog } from '@/features/strategy/components/ImpactTraceDialog';
 import type {
   ImpactContract,
   MetricLink,
@@ -95,6 +96,7 @@ export default function DashboardPage() {
   const [configOpen, setConfigOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardWidget | null>(null);
   const [view, setView] = useState<string>(CUSTOM_VIEW);
+  const [traceNodeId, setTraceNodeId] = useState<string | null>(null);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -538,6 +540,7 @@ export default function DashboardPage() {
                 strategyLinks={strategyLinksByWidget[w.id]}
                 currentPeriod={currentPeriod}
                 onOpenStrategy={openStrategyItem}
+                onOpenTrace={setTraceNodeId}
               />
             </div>
           ))}
@@ -551,6 +554,13 @@ export default function DashboardPage() {
         trackedOptions={trackedOptions}
         cardOptions={cardOptions}
         onSave={handleSave}
+      />
+
+      <ImpactTraceDialog
+        nodeId={traceNodeId}
+        projectId={canvasId}
+        open={Boolean(traceNodeId)}
+        onOpenChange={(o) => !o && setTraceNodeId(null)}
       />
     </div>
   );

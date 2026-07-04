@@ -32,6 +32,7 @@ interface WidgetCardProps {
   strategyLinks?: WidgetStrategyLink[];
   currentPeriod?: string;
   onOpenStrategy?: (nodeId: string) => void;
+  onOpenTrace?: (nodeId: string) => void;
 }
 
 const CHART_TYPES: ChartType[] = ['line', 'area', 'bar', 'pie'];
@@ -45,6 +46,7 @@ export function WidgetCard({
   strategyLinks,
   currentPeriod,
   onOpenStrategy,
+  onOpenTrace,
 }: WidgetCardProps) {
   const isChart = (CHART_TYPES as string[]).includes(widget.widget_type);
 
@@ -63,6 +65,7 @@ export function WidgetCard({
               links={strategyLinks}
               currentPeriod={currentPeriod ?? new Date().toISOString().slice(0, 7)}
               onOpenStrategy={onOpenStrategy}
+              onOpenTrace={onOpenTrace}
             />
           )}
           {editMode && (
