@@ -14,6 +14,9 @@ import {
 } from '@/lib/editorjs-config';
 import { useAppStore } from '@/shared/stores/useAppStore';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
+import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { getEvidenceItemById } from '@/shared/lib/supabase/services/evidence';
+import { updateEvidenceItem } from '@/shared/lib/supabase/services/relationships';
 import type { EvidenceItem } from '@/shared/types';
 import EditorJS from '@editorjs/editorjs';
 import { ArrowLeft, Maximize2, Minimize2, Save } from 'lucide-react';
@@ -24,26 +27,71 @@ import { toast } from 'sonner';
 export default function EvidencePage() {
   const { evidenceId } = useParams();
   const navigate = useNavigate();
+  const client = useClerkSupabase();
   const { getEvidenceById, addEvidence, updateEvidence } = useEvidenceStore();
   const { user } = useAppStore();
 
-  const initialEvidence = evidenceId ? getEvidenceById(evidenceId) : null;
-
   const editorRef = useRef<EditorJS | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const loadedRef = useRef<string | null>(null);
 
+  const [initialEvidence, setInitialEvidence] = useState<EvidenceItem | null>(
+    null
+  );
+  const [ready, setReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [formData, setFormData] = useState<Partial<EvidenceItem>>({
-    id: initialEvidence?.id || `evidence_${Date.now()}`,
-    title: initialEvidence?.title || '',
-    type: initialEvidence?.type || 'Analysis',
-    date: initialEvidence?.date || new Date().toISOString().split('T')[0],
-    owner: initialEvidence?.owner || '',
-    link: initialEvidence?.link || '',
-    hypothesis: initialEvidence?.hypothesis || '',
-    impactOnConfidence: initialEvidence?.impactOnConfidence || '',
+    id: `evidence_${Date.now()}`,
+    title: '',
+    type: 'Analysis',
+    date: new Date().toISOString().split('T')[0],
+    owner: '',
+    link: '',
+    hypothesis: '',
+    impactOnConfidence: '',
   });
+
+  // Load the notebook by id from the DB (the source of truth), falling back to
+  // the local store; gate the editor on `ready` so it inits with DB content and
+  // survives reload / direct navigation (CVS-34).
+  useEffect(() => {
+    if (!evidenceId) {
+      setReady(true);
+      return;
+    }
+    if (!client) return; // wait for the authenticated client
+    if (loadedRef.current === evidenceId) return; // load once per id
+    loadedRef.current = evidenceId;
+    let alive = true;
+    (async () => {
+      let ev: EvidenceItem | null = getEvidenceById(evidenceId) ?? null;
+      try {
+        const dbEv = await getEvidenceItemById(evidenceId, client);
+        if (dbEv) ev = ev ? { ...ev, ...dbEv } : dbEv;
+      } catch (e) {
+        console.warn('Evidence DB load failed; using local store', e);
+      }
+      if (!alive) return;
+      setInitialEvidence(ev);
+      if (ev) {
+        setFormData({
+          id: ev.id,
+          title: ev.title || '',
+          type: ev.type || 'Analysis',
+          date: ev.date || new Date().toISOString().split('T')[0],
+          owner: ev.owner || '',
+          link: ev.link || '',
+          hypothesis: ev.hypothesis || '',
+          impactOnConfidence: ev.impactOnConfidence || '',
+        });
+      }
+      setReady(true);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [evidenceId, client, getEvidenceById]);
 
   const handleSave = useCallback(async () => {
     if (!editorRef.current) return;
@@ -74,7 +122,11 @@ export default function EvidencePage() {
       };
 
       if (initialEvidence) {
-        updateEvidence(initialEvidence.id, updated);
+        updateEvidence(initialEvidence.id, updated); // in-memory store
+        if (client) {
+          // Persist the notebook (incl. content) to the DB so it survives reload.
+          await updateEvidenceItem(initialEvidence.id, updated, client);
+        }
       } else {
         addEvidence(updated);
       }
@@ -92,10 +144,12 @@ export default function EvidencePage() {
     initialEvidence,
     addEvidence,
     updateEvidence,
+    client,
+    user?.id,
   ]);
 
   useEffect(() => {
-    if (!containerRef.current || editorRef.current) return;
+    if (!ready || !containerRef.current || editorRef.current) return;
 
     try {
       const editor = createEditorJSInstance({
@@ -121,7 +175,7 @@ export default function EvidencePage() {
         }
       }
     };
-  }, [containerRef.current, initialEvidence?.content]);
+  }, [ready, initialEvidence?.content]);
 
   return (
     <div className="w-full min-h-screen flex flex-col">
