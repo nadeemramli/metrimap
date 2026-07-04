@@ -11,7 +11,13 @@ import {
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EvidenceItem, Relationship } from '../../types';
 import { supabase } from '../client';
-import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
+import type {
+  Database,
+  Json,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+} from '../types';
 
 export type RelationshipRow = Tables<'relationships'>;
 export type RelationshipInsert = TablesInsert<'relationships'>;
@@ -51,6 +57,7 @@ function transformEvidenceItem(evidence: EvidenceItemRow): EvidenceItem {
     hypothesis: evidence.hypothesis || undefined,
     summary: evidence.summary,
     impactOnConfidence: evidence.impact_on_confidence || undefined,
+    content: (evidence.content as EvidenceItem['content']) ?? undefined,
   };
 }
 
@@ -204,6 +211,11 @@ export async function createEvidenceItem(
     console.error('Validation error creating evidence item:', error);
     throw error;
   }
+  // `content` is jsonb and not in the generated (strict) Zod schema — set it
+  // after validation so relationship evidence persists its notebook (CVS-34).
+  if (evidence.content !== undefined) {
+    insertData.content = (evidence.content ?? null) as Json;
+  }
 
   const client = authenticatedClient || supabase();
   const { data, error } = await client
@@ -245,6 +257,11 @@ export async function updateEvidenceItem(
   } catch (error) {
     console.error('Validation error updating evidence item:', error);
     throw error;
+  }
+  // `content` is jsonb and not part of the generated (strict) Zod schema — set it
+  // after validation so the notebook persists on edit/autosave (CVS-34).
+  if (updates.content !== undefined) {
+    updateData.content = (updates.content ?? null) as Json;
   }
   const { data, error } = await client
     .from('evidence_items')
