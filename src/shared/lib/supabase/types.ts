@@ -1652,6 +1652,14 @@ export type Database = {
         Args: { card_id: string }
         Returns: boolean
       }
+      my_restricted_cards: {
+        Args: { pid: string }
+        Returns: string[]
+      }
+      cards_restricted_for_groups: {
+        Args: { pid: string; group_ids: string[] }
+        Returns: string[]
+      }
     }
     Enums: {
       [_ in never]: never
