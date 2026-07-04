@@ -35,11 +35,11 @@ Transport-agnostic and unit-tested (no server/DB needed):
   used.
 - **`errors.ts`** — the structured error codes.
 
-Tools wired (representative; the finalized surface + polished descriptions are
-**CVS-101**): `list_canvases`, `get_tree`, `list_nodes`, `list_relationships`,
-`create_canvas`, `update_canvas`, `delete_canvas`, `create_metric`,
-`create_value`, `create_action`, `update_node`, `delete_node`,
-`create_relationship`, `delete_relationship`, `push_values`.
+Tools wired (finalized in **CVS-101**): `list_canvases`, `get_tree`, `list_nodes`,
+`list_relationships`, `create_canvas`, `update_canvas`, `delete_canvas`,
+`create_metric`, `create_value`, `create_action`, `create_driver_node`,
+`update_node`, `delete_node`, `create_relationship`, `delete_relationship`,
+`push_values`, `layout_tree` (Dagre auto-layout so pushed trees render sensibly).
 
 ## Transport + deploy — the remaining work (owner decision)
 

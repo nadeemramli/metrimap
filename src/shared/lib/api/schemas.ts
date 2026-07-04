@@ -45,6 +45,9 @@ export const CreateNodeInput = z.object({
   projectId: z.string().uuid(),
   title: z.string().min(1).max(200),
   category: z.enum(CARD_CATEGORIES),
+  // Category-specific role (e.g. 'Input Metric', 'North Star Metric'). Validated
+  // loosely here; the DB accepts any string sub_category.
+  subCategory: z.string().max(100).optional(),
   description: z.string().max(4000).optional(),
   position: zPosition.optional(),
   formula: z.string().max(2000).optional(),
@@ -91,6 +94,13 @@ export const PushValuesInput = z.object({
   source: z.string().max(200).optional(),
 });
 
+// --- Layout ---
+export const LAYOUT_DIRECTIONS = ['TB', 'BT', 'LR', 'RL'] as const;
+export const LayoutTreeInput = z.object({
+  projectId: z.string().uuid(),
+  direction: z.enum(LAYOUT_DIRECTIONS).optional(),
+});
+
 export type CreateCanvasInputT = z.infer<typeof CreateCanvasInput>;
 export type UpdateCanvasInputT = z.infer<typeof UpdateCanvasInput>;
 export type CreateNodeInputT = z.infer<typeof CreateNodeInput>;
@@ -98,3 +108,4 @@ export type CreateTypedNodeInputT = z.infer<typeof CreateTypedNodeInput>;
 export type UpdateNodeInputT = z.infer<typeof UpdateNodeInput>;
 export type CreateRelationshipInputT = z.infer<typeof CreateRelationshipInput>;
 export type PushValuesInputT = z.infer<typeof PushValuesInput>;
+export type LayoutTreeInputT = z.infer<typeof LayoutTreeInput>;

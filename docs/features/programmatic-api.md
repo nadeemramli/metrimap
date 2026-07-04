@@ -30,9 +30,9 @@ RLS — the **service-role key must never be passed here**. `userId` is used for
 | Group | Methods |
 |---|---|
 | `canvases` | `list()`, `get(id)`, `create({name, description?, isPublic?})`, `update(id, patch)`, `delete(id)` |
-| `nodes` | `create({projectId, title, category, …})`, `createMetric` / `createValue` / `createAction` / `createHypothesis` (category preset), `update(id, patch)`, `delete(id)`, `list(projectId)` |
+| `nodes` | `create({projectId, title, category, subCategory?, …})`, `createMetric` / `createValue` / `createAction` / `createHypothesis` / `createDriver` (category/subcategory preset), `update(id, patch)`, `delete(id)`, `list(projectId)` |
 | `relationships` | `create({projectId, sourceId, targetId, type, confidence?, weight?, notes?})`, `delete(id)`, `list(projectId)` |
-| `tree` | `get(projectId)` → `{ cards, relationships }` (context so agents extend, not duplicate) |
+| `tree` | `get(projectId)` → `{ cards, relationships }` (context so agents extend, not duplicate); `layout(projectId, direction?)` — Dagre auto-layout, persists positions |
 | `values` | `push({trackedMetricId, series, source?})` — upsert a tracked-metric series (two-tier value store) |
 
 - **Categories:** `Core/Value`, `Data/Metric`, `Work/Action`, `Ideas/Hypothesis`, `Metadata`.

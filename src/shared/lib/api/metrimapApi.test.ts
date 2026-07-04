@@ -13,15 +13,21 @@ vi.mock('@/shared/lib/supabase/services/metric-cards', () => ({
   createMetricCard: vi.fn(),
   updateMetricCard: vi.fn(),
   deleteMetricCard: vi.fn(),
-  getProjectMetricCards: vi.fn(async () => [{ id: 'c1' }]),
+  getProjectMetricCards: vi.fn(async () => [{ id: 'c1', position: { x: 0, y: 0 } }]),
+  updateMetricCardPosition: vi.fn(),
 }));
 vi.mock('@/shared/lib/supabase/services/relationships', () => ({
   createRelationship: vi.fn(),
   deleteRelationship: vi.fn(),
-  getProjectRelationships: vi.fn(async () => [{ id: 'r1' }]),
+  getProjectRelationships: vi.fn(async () => [{ id: 'r1', sourceId: 'c1', targetId: 'c1' }]),
 }));
 vi.mock('@/shared/lib/supabase/services/trackedMetrics', () => ({
   writeMetricValues: vi.fn(),
+}));
+vi.mock('@/shared/utils/autoLayout', () => ({
+  applyAutoLayout: vi.fn((nodes: Array<{ id: string }>) =>
+    nodes.map((n) => ({ ...n, position: { x: 100, y: 200 } }))
+  ),
 }));
 
 import { createMetrimapApi, API_VERSION } from './metrimapApi';
@@ -94,6 +100,14 @@ describe('nodes', () => {
       api.nodes.create({ projectId: PROJECT, title: 'x', category: 'Nope' } as never)
     ).toThrow();
   });
+  it('createDriver builds a Data/Metric with the Input Metric subcategory', () => {
+    const api = createMetrimapApi(client, USER);
+    api.nodes.createDriver({ projectId: PROJECT, title: 'Signups' });
+    expect(vi.mocked(cards.createMetricCard).mock.calls[0][0]).toMatchObject({
+      category: 'Data/Metric',
+      subCategory: 'Input Metric',
+    });
+  });
 });
 
 describe('relationships', () => {
@@ -117,9 +131,22 @@ describe('tree.get', () => {
   it('composes cards + relationships for a project', async () => {
     const api = createMetrimapApi(client, USER);
     const tree = await api.tree.get(PROJECT);
-    expect(tree).toEqual({ projectId: PROJECT, cards: [{ id: 'c1' }], relationships: [{ id: 'r1' }] });
+    expect(tree).toEqual({
+      projectId: PROJECT,
+      cards: [{ id: 'c1', position: { x: 0, y: 0 } }],
+      relationships: [{ id: 'r1', sourceId: 'c1', targetId: 'c1' }],
+    });
     expect(cards.getProjectMetricCards).toHaveBeenCalledWith(PROJECT, client);
     expect(rels.getProjectRelationships).toHaveBeenCalledWith(PROJECT, client);
+  });
+});
+
+describe('tree.layout', () => {
+  it('auto-lays out the tree and persists each new position', async () => {
+    const api = createMetrimapApi(client, USER);
+    const res = await api.tree.layout(PROJECT);
+    expect(cards.updateMetricCardPosition).toHaveBeenCalledWith('c1', { x: 100, y: 200 }, client);
+    expect(res).toMatchObject({ projectId: PROJECT, count: 1 });
   });
 });
 

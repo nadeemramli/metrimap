@@ -14,6 +14,7 @@ const { fakeApi } = vi.hoisted(() => ({
       createMetric: vi.fn(async () => ({ id: 'n' })),
       createValue: vi.fn(async () => ({ id: 'v' })),
       createAction: vi.fn(async () => ({ id: 'a' })),
+      createDriver: vi.fn(async () => ({ id: 'd' })),
       update: vi.fn(async () => ({ id: 'n' })),
       delete: vi.fn(async () => undefined),
       list: vi.fn(async () => []),
@@ -23,7 +24,10 @@ const { fakeApi } = vi.hoisted(() => ({
       delete: vi.fn(async () => undefined),
       list: vi.fn(async () => []),
     },
-    tree: { get: vi.fn(async (pid: string) => ({ projectId: pid, cards: [], relationships: [] })) },
+    tree: {
+      get: vi.fn(async (pid: string) => ({ projectId: pid, cards: [], relationships: [] })),
+      layout: vi.fn(async (pid: string) => ({ projectId: pid, count: 0, positions: [] })),
+    },
     values: { push: vi.fn(async () => undefined) },
   },
 }));
@@ -54,7 +58,12 @@ describe('registry metadata', () => {
       expect(t.inputSchema).toBeDefined();
       expect(['read', 'write']).toContain(t.scope);
     }
-    expect(names).toEqual(expect.arrayContaining(['list_canvases', 'create_canvas', 'get_tree', 'create_metric', 'create_relationship', 'push_values']));
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'list_canvases', 'create_canvas', 'get_tree', 'create_metric',
+        'create_driver_node', 'create_relationship', 'push_values', 'layout_tree',
+      ])
+    );
   });
   it('listTools mirrors the registry', () => {
     expect(listTools().map((t) => t.name)).toEqual(TOOLS.map((t) => t.name));
@@ -77,6 +86,16 @@ describe('dispatchTool', () => {
     const out = await dispatchTool('get_tree', { projectId: PROJECT }, ctx());
     expect(fakeApi.tree.get).toHaveBeenCalledWith(PROJECT);
     expect(out).toMatchObject({ projectId: PROJECT });
+  });
+
+  it('routes create_driver_node to nodes.createDriver', async () => {
+    await dispatchTool('create_driver_node', { projectId: PROJECT, title: 'Signups' }, ctx());
+    expect(fakeApi.nodes.createDriver).toHaveBeenCalledWith({ projectId: PROJECT, title: 'Signups' });
+  });
+
+  it('routes layout_tree to tree.layout with direction', async () => {
+    await dispatchTool('layout_tree', { projectId: PROJECT, direction: 'LR' }, ctx());
+    expect(fakeApi.tree.layout).toHaveBeenCalledWith(PROJECT, 'LR');
   });
 
   it('splits id + patch for update_node', async () => {
