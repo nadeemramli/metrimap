@@ -32,6 +32,9 @@ import NoteBlock from "@/features/evidence/blocks/NoteBlock";
 import NodeRefBlock from "@/features/evidence/blocks/NodeRefBlock";
 import RelationshipRefBlock from "@/features/evidence/blocks/RelationshipRefBlock";
 import MetricRefBlock from "@/features/evidence/blocks/MetricRefBlock";
+import HypothesisBlock from "@/features/evidence/blocks/HypothesisBlock";
+import SourceBlock from "@/features/evidence/blocks/SourceBlock";
+import EvidenceLinkBlock from "@/features/evidence/blocks/EvidenceLinkBlock";
 // Note: DragDrop and Undo are problematic, we'll implement them later
 
 export interface EditorJSConfigOptions {
@@ -76,7 +79,10 @@ export const VALID_BLOCK_TYPES = [
   "note",
   "metricNode",
   "relationshipRef",
-  "metricValue"
+  "metricValue",
+  "hypothesisBlock",
+  "sourceCite",
+  "evidenceLink"
 ] as const;
 
 export type ValidBlockType = typeof VALID_BLOCK_TYPES[number];
@@ -292,6 +298,15 @@ export const createEditorJSTools = () => {
     },
     metricValue: {
       class: MetricRefBlock as any,
+    },
+    hypothesisBlock: {
+      class: HypothesisBlock as any,
+    },
+    sourceCite: {
+      class: SourceBlock as any,
+    },
+    evidenceLink: {
+      class: EvidenceLinkBlock as any,
     },
   };
 };
