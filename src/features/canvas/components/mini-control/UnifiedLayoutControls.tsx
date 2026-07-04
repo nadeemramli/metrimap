@@ -29,6 +29,7 @@ import {
   applyAutoLayoutWithValidation,
   AUTO_LAYOUT_ALGORITHMS,
 } from '@/shared/utils/autoLayout';
+import { animateLayout } from '@/features/canvas/utils/layoutAnimation';
 import { ControlButton, useReactFlow } from '@xyflow/react';
 import { LayoutGrid, Play, Settings } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -91,6 +92,8 @@ export default function UnifiedLayoutControls() {
           );
         }
 
+        // Ease nodes into their new positions instead of jumping (CVS-39).
+        animateLayout();
         rf?.setNodes?.(layoutedNodes as any);
 
         setTimeout(() => {
