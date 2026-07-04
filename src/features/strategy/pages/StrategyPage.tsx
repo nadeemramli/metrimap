@@ -29,6 +29,7 @@ import { resolveGroupMembers } from '@/features/dashboard/utils/groupDashboard';
 import { StrategyBoard } from '@/features/strategy/components/StrategyBoard';
 import { StrategyTable } from '@/features/strategy/components/StrategyTable';
 import { CardCommentSheet } from '@/features/strategy/components/CardCommentSheet';
+import { StrategyImpactSheet } from '@/features/strategy/components/StrategyImpactSheet';
 import { ValueJourneyStrip } from '@/features/strategy/components/ValueJourneyStrip';
 import { TaskPanel } from '@/features/canvas/components/panels/task-panel/TaskPanel';
 import {
@@ -79,6 +80,7 @@ export default function StrategyPage() {
 
   const [settingsCardId, setSettingsCardId] = useState<string | null>(null);
   const [commentCardId, setCommentCardId] = useState<string | null>(null);
+  const [impactCardId, setImpactCardId] = useState<string | null>(null);
 
   // Prefer the live in-canvas store when it matches this canvas (fresher,
   // holds unsaved edits); otherwise fall back to what we loaded from the DB.
@@ -450,6 +452,7 @@ export default function StrategyPage() {
           onDueDateChange={handleDueDateChange}
           onOpenCard={setSettingsCardId}
           onOpenComments={setCommentCardId}
+          onOpenImpact={setImpactCardId}
           onCreateItem={handleCreateItem}
           onDeleteCard={handleDeleteCard}
         />
@@ -474,6 +477,16 @@ export default function StrategyPage() {
         open={Boolean(commentCardId)}
         onOpenChange={(open) => !open && setCommentCardId(null)}
         onClosed={refreshCommentCounts}
+      />
+      <StrategyImpactSheet
+        cardId={impactCardId}
+        cardTitle={cards.find((c) => c.id === impactCardId)?.title}
+        projectId={canvasId}
+        cards={cards}
+        relationships={edges}
+        canEdit={canEdit}
+        open={Boolean(impactCardId)}
+        onOpenChange={(open) => !open && setImpactCardId(null)}
       />
     </div>
   );

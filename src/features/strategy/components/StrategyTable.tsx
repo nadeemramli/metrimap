@@ -41,6 +41,7 @@ import {
   MessageSquare,
   MoreVertical,
   Plus,
+  Target,
   Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -61,6 +62,7 @@ export interface StrategyTableHandlers {
   onDueDateChange: (cardId: string, iso: string | undefined) => void;
   onOpenCard: (cardId: string) => void;
   onOpenComments: (cardId: string) => void;
+  onOpenImpact: (cardId: string) => void;
   onCreateItem: (category: MetricCard['category'], status: WorkflowStatus) => void;
   onDeleteCard: (cardId: string) => void;
 }
@@ -103,6 +105,7 @@ export function StrategyTable({
   onDueDateChange,
   onOpenCard,
   onOpenComments,
+  onOpenImpact,
   onCreateItem,
   onDeleteCard,
 }: StrategyTableProps) {
@@ -321,6 +324,12 @@ export function StrategyTable({
                                   onSelect={() => onOpenComments(card.id)}
                                 >
                                   Discussion
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => onOpenImpact(card.id)}
+                                >
+                                  <Target className="mr-2 h-4 w-4" />
+                                  Impact
                                 </DropdownMenuItem>
                                 {canEdit && (
                                   <>
