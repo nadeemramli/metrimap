@@ -1,0 +1,5 @@
+# Automatic HTTPS (Let's Encrypt) once DNS points MCP_DOMAIN at this server.
+# MCP_DOMAIN is substituted by deploy.sh (defaults to mcp.canvasm.app).
+{$MCP_DOMAIN} {
+	reverse_proxy mcp:8787
+}
