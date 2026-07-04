@@ -19,6 +19,8 @@ interface NodeCardShellProps {
   onDoubleClick?: () => void;
   /** React Flow <Handle> elements. */
   handles?: ReactNode;
+  /** Bottom drag-handle bar (e.g. a `.drag-handle__custom` pill). */
+  dragHandle?: ReactNode;
   /** Hover/selection toolbar (caller controls visibility). */
   toolbar?: ReactNode;
   width?: number;
@@ -44,6 +46,7 @@ export function NodeCardShell({
   selected,
   onDoubleClick,
   handles,
+  dragHandle,
   toolbar,
   width = 300,
   className,
@@ -99,6 +102,12 @@ export function NodeCardShell({
         {footer && (
           <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-muted/40 px-3 py-1.5 text-[11px] text-muted-foreground">
             {footer}
+          </div>
+        )}
+
+        {dragHandle && (
+          <div className="border-t border-border/40 bg-muted/20 p-2">
+            {dragHandle}
           </div>
         )}
       </div>
