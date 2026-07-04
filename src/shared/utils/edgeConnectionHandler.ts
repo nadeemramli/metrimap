@@ -1,7 +1,3 @@
-// @ts-nocheck
-// TODO(type-debt): pre-existing type errors quarantined when strict type-checking
-// was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
-// this directive — do not add new code here assuming it is type-checked.
 /**
  * Enhanced Edge Connection Handler
  * Handles creating connections between nodes with proper validation and edge type selection
@@ -161,7 +157,7 @@ function handleRelationshipEdge(
   connection: Connection,
   sourceNode: Node,
   targetNode: Node,
-  edgeInfo: { relationshipType?: any },
+  _edgeInfo: { relationshipType?: any },
   onCreateRelationship?: (data: any) => Promise<void>
 ): ConnectionResult {
   const relationshipData = {
@@ -264,7 +260,7 @@ function handleReferenceEdge(
  */
 function getNodeTitle(node: Node): string {
   return (
-    node.data?.card?.title ||
+    (node.data?.card as any)?.title ||
     node.data?.title ||
     node.data?.label ||
     `${node.type} (${node.id.slice(0, 8)})`
@@ -300,7 +296,7 @@ function getDataFlowLabel(sourceNode: Node, targetNode: Node): string {
 /**
  * Get appropriate label for reference edges
  */
-function getReferenceLabel(sourceNode: Node, targetNode: Node): string {
+function getReferenceLabel(sourceNode: Node, _targetNode: Node): string {
   const sourceType = sourceNode.type;
 
   switch (sourceType) {

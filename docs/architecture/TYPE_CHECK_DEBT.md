@@ -31,8 +31,9 @@ It now runs **`tsc -b --noEmit`**, which actually checks the app. Turning that o
 ## Quarantined files
 
 > Being discharged incrementally (CVS-72). ✅ Done: the 3 canvas stores
-> (`useEdgeStore`, `useNodeStore`, `useGroupStore`). The table below lists what
-> remains; counts drift as files change — re-measure by stripping the directives.
+> (`useEdgeStore`/`useNodeStore`/`useGroupStore`), plus `nodeTypes.ts` +
+> `edgeConnectionHandler.ts`. The table below lists what remains; counts drift
+> as files change — re-measure by stripping the directives.
 
 Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 
@@ -70,8 +71,6 @@ Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 | `shared/lib/supabase/services/newNodeTypes.ts` | 9 | TS2339(5) TS2353(4) |
 | `shared/lib/supabase/services/relationships.ts` | 1 | TS2307(1) |
 | `shared/lib/supabase/services/version-history.ts` | 19 | TS2769(13) TS2339(5) TS2307(1) |
-| `shared/types/nodeTypes.ts` | 2 | TS2304(2) |
-| `shared/utils/edgeConnectionHandler.ts` | 3 | TS6133(2) TS2339(1) |
 
 ## Notes
 
