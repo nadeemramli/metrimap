@@ -1,4 +1,3 @@
-// @ts-nocheck
 // TODO(type-debt): pre-existing type errors quarantined when strict type-checking
 // was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
 // this directive — do not add new code here assuming it is type-checked.
@@ -122,8 +121,8 @@ export const useNodeStore = create<NodeStoreState>()(
     },
 
     // Local Node management (for optimistic updates)
-    addNodeLocal: (node: MetricCard): MetricCard[] => {
-      // This returns the new nodes array for the canvas store to use
+    addNodeLocal: (node: MetricCard) => {
+      // Returns an updater the canvas store applies to its nodes array.
       return (currentNodes: MetricCard[]) => [...currentNodes, node];
     },
 

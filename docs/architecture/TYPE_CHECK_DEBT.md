@@ -28,7 +28,11 @@ It now runs **`tsc -b --noEmit`**, which actually checks the app. Turning that o
 - `lib/workers/compute.worker.ts` (2)
 - `features/canvas/components/CanvasDebugPanels.tsx`, `features/canvas/components/CanvasModals.tsx`, `features/canvas/components/panels/chart-panel/chart-builder.tsx`, `shared/lib/supabase/services/relationships.ts`, `shared/lib/supabase/services/version-history.ts` (1 each)
 
-## Quarantined files (37 files, 219 errors)
+## Quarantined files
+
+> Being discharged incrementally (CVS-72). ✅ Done: the 3 canvas stores
+> (`useEdgeStore`, `useNodeStore`, `useGroupStore`). The table below lists what
+> remains; counts drift as files change — re-measure by stripping the directives.
 
 Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 
@@ -55,10 +59,7 @@ Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 | `features/canvas/components/settings/cards/ImportExportCard.tsx` | 1 | TS2339(1) |
 | `features/canvas/pages/CanvasPage.tsx` | 5 | TS6133(4) TS2322(1) |
 | `features/canvas/stores/useCanvasStore.ts` | 3 | TS2349(3) |
-| `features/canvas/stores/useEdgeStore.ts` | 1 | TS2322(1) |
-| `features/canvas/stores/useGroupStore.ts` | 2 | TS6133(1) TS2322(1) |
 | `features/canvas/stores/useNewNodeTypesStore.ts` | 7 | TS2353(4) TS6133(1) TS2352(1) TS2345(1) |
-| `features/canvas/stores/useNodeStore.ts` | 2 | TS2322(2) |
 | `lib/services/typed-canvas.ts` | 3 | TS2322(3) |
 | `lib/services/typed-operations.ts` | 23 | TS2345(20) TS2740(1) TS2352(1) TS2322(1) |
 | `lib/services/typed-projects.ts` | 3 | TS2345(1) TS2304(1) TS1484(1) |

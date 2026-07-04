@@ -1,4 +1,3 @@
-// @ts-nocheck
 // TODO(type-debt): pre-existing type errors quarantined when strict type-checking
 // was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
 // this directive — do not add new code here assuming it is type-checked.
@@ -29,7 +28,9 @@ export interface EdgeStoreState {
   persistEdgeDelete: (edgeId: string) => Promise<void>;
 
   // Local Edge management (for optimistic updates)
-  addEdgeLocal: (edge: Relationship) => Relationship[];
+  addEdgeLocal: (
+    edge: Relationship
+  ) => (currentEdges: Relationship[]) => Relationship[];
   updateEdgeLocal: (
     edges: Relationship[],
     edgeId: string,
@@ -110,7 +111,7 @@ export const useEdgeStore = create<EdgeStoreState>()(
     },
 
     // Local Edge management (for optimistic updates)
-    addEdgeLocal: (edge: Relationship): Relationship[] => {
+    addEdgeLocal: (edge: Relationship) => {
       return (currentEdges: Relationship[]) => [...currentEdges, edge];
     },
 
