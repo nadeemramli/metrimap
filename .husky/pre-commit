@@ -1,8 +1,8 @@
 # Quality gate on every commit (there is no CI yet):
-#   1. lint-staged — ESLint on the files this commit touches (errors block;
-#      the repo's pre-existing lint debt in untouched files does not — see CVS-64).
-#   2. type-check   — whole-repo tsc (fast, currently clean).
-#   3. tests        — the full Vitest suite (jsdom, no browser).
-npx lint-staged &&
+#   1. lint       — full-repo ESLint, 0 errors enforced (CVS-64 cleared the debt,
+#      so any new error anywhere blocks the commit). Warnings don't block.
+#   2. type-check — whole-repo tsc.
+#   3. tests      — the full Vitest suite (jsdom, no browser).
+npm run lint &&
 npm run type-check &&
 npx vitest run

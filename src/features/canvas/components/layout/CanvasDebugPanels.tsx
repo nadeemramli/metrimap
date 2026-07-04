@@ -22,12 +22,12 @@ export default function CanvasDebugPanels({
   canvas,
   isDevelopment,
 }: CanvasDebugPanelsProps) {
+  // Local toggle for collapsing the Debug State panel (dev only)
+  const [isOpen, setIsOpen] = useState(true);
+
   if (!isDevelopment && !import.meta.env.DEV) {
     return null;
   }
-
-  // Local toggle for collapsing the Debug State panel (dev only)
-  const [isOpen, setIsOpen] = useState(true);
 
   return (
     <>

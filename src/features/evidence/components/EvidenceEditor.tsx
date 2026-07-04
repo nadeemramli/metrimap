@@ -137,7 +137,9 @@ export default function EvidenceEditor({
       try {
         const content = await editorRef.current!.save();
         autoSave(content, formData);
-      } catch {}
+      } catch {
+        /* EditorJS save can race during unmount — safe to ignore */
+      }
     }, 100);
   }, [autoSave, formData]);
 
@@ -200,7 +202,9 @@ export default function EvidenceEditor({
       if (editorRef.current) {
         try {
           editorRef.current.destroy();
-        } catch {}
+        } catch {
+          /* EditorJS save/teardown can race during unmount — safe to ignore */
+        }
         editorRef.current = null;
       }
     };

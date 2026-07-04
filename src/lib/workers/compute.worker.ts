@@ -386,10 +386,11 @@ const computationWorker: ComputationWorker = {
       case 'sum':
         return data.reduce((sum, item) => sum + (typeof item === 'number' ? item : 0), 0);
       
-      case 'average':
+      case 'average': {
         const numbers = data.filter(item => typeof item === 'number');
         return numbers.length > 0 ? numbers.reduce((sum, num) => sum + num, 0) / numbers.length : 0;
-      
+      }
+
       case 'group':
         return data.reduce((groups, item) => {
           const key = item.category || 'uncategorized';

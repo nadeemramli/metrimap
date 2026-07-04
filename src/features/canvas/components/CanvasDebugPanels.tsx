@@ -26,11 +26,11 @@ export default function CanvasDebugPanels({
   canvas,
   isDevelopment,
 }: CanvasDebugPanelsProps) {
+  const [isOpen, setIsOpen] = useState(true);
+
   if (!isDevelopment && !import.meta.env.DEV) {
     return null;
   }
-
-  const [isOpen, setIsOpen] = useState(true);
 
   return (
     <>

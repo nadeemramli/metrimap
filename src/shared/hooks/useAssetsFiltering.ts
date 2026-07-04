@@ -92,7 +92,7 @@ export function useAssetsFiltering({
     return filtered.sort((a: Relationship, b: Relationship) => {
       const multiplier = sortOrder === 'asc' ? 1 : -1;
       switch (sortField) {
-        case 'name':
+        case 'name': {
           const sourceNodeA = metrics.find(
             (m: MetricCard) => m.id === a.sourceId
           );
@@ -108,6 +108,7 @@ export function useAssetsFiltering({
           const nameA = `${sourceNodeA?.title || 'Unknown'} → ${targetNodeA?.title || 'Unknown'}`;
           const nameB = `${sourceNodeB?.title || 'Unknown'} → ${targetNodeB?.title || 'Unknown'}`;
           return nameA.localeCompare(nameB) * multiplier;
+        }
         case 'type':
           return a.type.localeCompare(b.type) * multiplier;
         case 'confidence':

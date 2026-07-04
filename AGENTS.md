@@ -64,8 +64,8 @@ npx supabase <cmd>   # Always use npx for the Supabase CLI
 
 A single Husky **`pre-commit`** hook gates quality on every commit (there is no CI yet — this is the safety net). Don't bypass it without reason. It runs, in order:
 
-1. `lint-staged` — ESLint on just the files the commit touches. Because it's staged-scoped, the repo's pre-existing lint debt in untouched files won't block you (tracked in **CVS-64**) — but new/edited files must be lint-clean.
-2. `npm run type-check` — whole-repo `tsc` (fast, currently clean).
+1. `npm run lint` — full-repo ESLint, **0 errors enforced** (CVS-64 cleared the pre-existing error debt, so any new error anywhere blocks the commit; warnings don't block).
+2. `npm run type-check` — whole-repo `tsc`.
 3. `vitest run` — the full Vitest suite (jsdom, no browser — Storybook/Chromium was removed, so tests are fast).
 
 ## Branching
