@@ -16,6 +16,15 @@ import {
 } from '@/shared/lib/supabase/services/dashboards';
 import { getProjectById } from '@/shared/lib/supabase/services/projects';
 import { getCanvasNodesByProject } from '@/shared/lib/supabase/services/canvasNodes';
+import { listContractsWithLinksForProject } from '@/shared/lib/supabase/services/strategyImpact';
+import {
+  linkedStrategyForWidget,
+  type WidgetStrategyLink,
+} from '@/features/strategy/impact/widgetLinks';
+import type {
+  ImpactContract,
+  MetricLink,
+} from '@/features/strategy/impact/types';
 import type {
   CanvasNode,
   GroupNode,
@@ -52,7 +61,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -65,6 +74,7 @@ const CUSTOM_VIEW = '__custom__';
 
 export default function DashboardPage() {
   const { canvasId } = useParams();
+  const navigate = useNavigate();
   const client = useClerkSupabase();
   const storeCanvas = useCanvasStore((s) => s.canvas);
 
@@ -77,6 +87,9 @@ export default function DashboardPage() {
   const [loadedCards, setLoadedCards] = useState<MetricCard[]>([]);
   const [loadedGroups, setLoadedGroups] = useState<GroupNode[]>([]);
   const [chartNodes, setChartNodes] = useState<CanvasNode[]>([]);
+  const [impactEntries, setImpactEntries] = useState<
+    Array<{ contract: ImpactContract; links: MetricLink[] }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
@@ -111,8 +124,9 @@ export default function DashboardPage() {
       getCanvasNodesByProject(canvasId, client).catch(
         () => [] as CanvasNode[]
       ),
+      listContractsWithLinksForProject(canvasId, client).catch(() => []),
     ])
-      .then(([w, metrics, project, nodes]) => {
+      .then(([w, metrics, project, nodes, impact]) => {
         setWidgets(w);
         setTrackedNames(
           Object.fromEntries(metrics.map((m) => [m.id, m.name]))
@@ -120,6 +134,7 @@ export default function DashboardPage() {
         setLoadedCards(project?.nodes ?? []);
         setLoadedGroups(project?.groups ?? []);
         setChartNodes(nodes.filter((n) => n.nodeType === 'chartNode'));
+        setImpactEntries(impact);
       })
       .catch(() => {
         setWidgets([]);
@@ -127,6 +142,7 @@ export default function DashboardPage() {
         setLoadedCards([]);
         setLoadedGroups([]);
         setChartNodes([]);
+        setImpactEntries([]);
       })
       .finally(() => setLoading(false));
   }, [client, canvasId]);
@@ -169,6 +185,23 @@ export default function DashboardPage() {
   const sources: WidgetDataSources = useMemo(
     () => ({ cards, trackedValues, trackedNames }),
     [cards, trackedValues, trackedNames]
+  );
+
+  // Linked Strategy bets per widget (CVS-172). currentPeriod drives review-ready.
+  const currentPeriod = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const strategyLinksByWidget = useMemo(() => {
+    const map: Record<string, WidgetStrategyLink[]> = {};
+    for (const w of widgets) {
+      map[w.id] = linkedStrategyForWidget(w, impactEntries, cards);
+    }
+    return map;
+  }, [widgets, impactEntries, cards]);
+
+  const openStrategyItem = useMemo(
+    () => () => {
+      if (canvasId) navigate(`/canvas/${canvasId}/strategy`);
+    },
+    [canvasId, navigate]
   );
 
   const trackedOptions: MetricOption[] = useMemo(
@@ -502,6 +535,9 @@ export default function DashboardPage() {
                 editMode={editMode}
                 onConfigure={openConfigure}
                 onRemove={handleRemove}
+                strategyLinks={strategyLinksByWidget[w.id]}
+                currentPeriod={currentPeriod}
+                onOpenStrategy={openStrategyItem}
               />
             </div>
           ))}
