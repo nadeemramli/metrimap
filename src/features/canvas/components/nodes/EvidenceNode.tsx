@@ -51,7 +51,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 
@@ -92,9 +92,14 @@ function debounce<T extends (...args: any[]) => any>(
 type EvidenceFlowNode = Node<EvidenceNodeData, 'evidence'>;
 
 export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
-  if (!data) return null;
-  const { evidence, onUpdateEvidence, onDeleteEvidence } = data;
+  // Hooks must run unconditionally (react-hooks/rules-of-hooks). `data` is always
+  // provided for a React Flow node; guard the null case AFTER the hooks below.
+  // Use a safe fallback so the hook initializers don't crash in that (never) case.
+  const onUpdateEvidence = data?.onUpdateEvidence;
+  const onDeleteEvidence = data?.onDeleteEvidence;
+  const evidence = data?.evidence ?? ({} as EvidenceItem);
   const { addComment } = useEvidenceStore();
+  const { canvasId } = useParams();
   const confirm = useConfirm();
 
   const editorRef = useRef<EditorJS | null>(null);
@@ -299,6 +304,17 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
     };
   }, [isEditing, evidence?.content, handleEditorChange]);
 
+  // All hooks are above this line — now safe to bail on the (never-in-practice)
+  // missing-data case.
+  if (!data?.evidence) return null;
+
+  // "View Full" opens the evidence under the current canvas (nested route) so the
+  // canvas layout + populated evidence store are kept — the old absolute
+  // /evidence/:id left the canvas and landed on an empty store (CVS-36).
+  const evidenceHref = canvasId
+    ? `/canvas/${canvasId}/evidence/${evidence.id}`
+    : `/evidence/${evidence.id}`;
+
   const handleAddComment = () => {
     if (newComment.trim()) {
       addComment(evidence.id, {
@@ -488,7 +504,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                     <Trash2 className="h-3 w-3" />
                   </Button>
                   <Link
-                    to={`/evidence/${evidence.id}`}
+                    to={evidenceHref}
                     title="Open full page"
                     className="nodrag"
                   >
@@ -607,7 +623,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
               </span>
               {!isEditing && (
                 <Link
-                  to={`/evidence/${evidence.id}`}
+                  to={evidenceHref}
                   className="nodrag text-xs text-blue-600 hover:text-blue-800 hover:underline"
                   title="View full content"
                 >
