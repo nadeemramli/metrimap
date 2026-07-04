@@ -36,6 +36,8 @@ vi.mock('../metrimapApi', () => ({ createMetrimapApi: vi.fn(() => fakeApi) }));
 
 import { TOOLS, listTools, dispatchTool } from './registry';
 import { McpToolError } from './errors';
+import { RateLimiter } from './guards';
+import type { AuditSink } from './audit';
 import type { McpAuthContext } from './authContext';
 
 const ctx = (scopes?: ('read' | 'write')[]): McpAuthContext => ({
@@ -138,5 +140,37 @@ describe('dispatchTool', () => {
     expect(err).toBeInstanceOf(McpToolError);
     expect(err.code).toBe('internal');
     expect(err.message).toMatch(/db exploded/);
+  });
+});
+
+describe('dispatchTool guards (CVS-104)', () => {
+  it('rate-limits per user', async () => {
+    const rateLimiter = new RateLimiter(1, 0); // one call, no refill
+    await dispatchTool('list_canvases', {}, ctx(), { rateLimiter });
+    await expect(dispatchTool('list_canvases', {}, ctx(), { rateLimiter })).rejects.toMatchObject({
+      code: 'rate_limited',
+    });
+  });
+
+  it('rejects oversized payloads', async () => {
+    await expect(
+      dispatchTool('create_canvas', { name: 'a-fairly-long-name' }, ctx(), { maxPayloadBytes: 5 })
+    ).rejects.toMatchObject({ code: 'payload_too_large' });
+  });
+
+  it('records an ok audit entry on success', async () => {
+    const audit: AuditSink = { record: vi.fn(async () => {}) };
+    await dispatchTool('create_canvas', { name: 'Tree' }, ctx(), { audit });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u1', tool: 'create_canvas', scope: 'write', outcome: 'ok', errorCode: null })
+    );
+  });
+
+  it('records an error audit entry on invalid input', async () => {
+    const audit: AuditSink = { record: vi.fn(async () => {}) };
+    await dispatchTool('create_canvas', { name: '' }, ctx(), { audit }).catch(() => {});
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ tool: 'create_canvas', outcome: 'error', errorCode: 'invalid_input' })
+    );
   });
 });

@@ -1033,6 +1033,39 @@ export type Database = {
           }
         ]
       }
+      mcp_audit_log: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_code: string | null
+          id: string
+          outcome: string
+          scope: string | null
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          outcome: string
+          scope?: string | null
+          tool_name: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          outcome?: string
+          scope?: string | null
+          tool_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       metric_card_tags: {
         Row: {
           id: string

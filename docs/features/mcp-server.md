@@ -41,6 +41,41 @@ Tools wired (finalized in **CVS-101**): `list_canvases`, `get_tree`, `list_nodes
 `update_node`, `delete_node`, `create_relationship`, `delete_relationship`,
 `push_values`, `layout_tree` (Dagre auto-layout so pushed trees render sensibly).
 
+## Security & abuse controls (CVS-104)
+
+Injected into `dispatchTool(name, args, ctx, guards)` so they stay transport-
+agnostic and unit-tested; the deployed server always supplies them:
+
+- **RLS everywhere** — every tool runs through `createMetrimapApi(client, userId)`;
+  the client is the caller's Clerk-scoped client, so no cross-tenant access and
+  the service-role key is never used.
+- **Scopes** — tools declare `read`/`write`; `dispatchTool` rejects a `write` tool
+  when the connection lacks the `write` scope (`forbidden`). Per-key scopes come
+  from CVS-89.
+- **Rate limiting** — `RateLimiter` (token bucket) keyed by user → `rate_limited`.
+  In-memory per instance; a multi-instance deploy should back it with
+  Postgres/Redis.
+- **Payload caps** — `enforcePayloadSize` (default 2 MB, above the 1 MB CSV Zod
+  cap) → `payload_too_large`; per-tool Zod schemas cap the rest.
+- **Audit log** — `supabaseAuditSink` writes every call (who/what/when/outcome/
+  duration) to `public.mcp_audit_log` (RLS-scoped, append-only), best-effort so
+  logging never fails a call.
+- **Safe failure** — a rejected call (bad scope/input/rate/size) runs no handler,
+  so a tree is never partially corrupted; downstream errors surface as structured
+  `McpToolError`s.
+
+Wire them in the adapter:
+
+```ts
+import { RateLimiter, supabaseAuditSink, DEFAULT_MAX_PAYLOAD_BYTES } from '@/shared/lib/api/mcp';
+const rateLimiter = new RateLimiter(120, 2); // 120 burst, 2/s sustained per user
+// per request, after resolving ctx:
+const guards = { rateLimiter, maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES, audit: supabaseAuditSink(ctx.client) };
+await dispatchTool(t.name, args, ctx, guards);
+```
+
+Remaining before public exposure: a **load/security review** (AC) once deployed.
+
 ## Transport + deploy — the remaining work (owner decision)
 
 **Blocked on:** (1) a **hosting decision** and (2) the **auth resolver (CVS-99)**.
@@ -66,7 +101,8 @@ export async function handler(req, res) {
     server.registerTool(t.name, { title: t.title, description: t.description, inputSchema: t.inputSchema },
       async (args) => {
         const ctx = await resolveAuth(req);                 // per-request, RLS-scoped
-        try { return { content: [{ type: 'text', text: JSON.stringify(await dispatchTool(t.name, args, ctx)) }] }; }
+        const guards = { rateLimiter, maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES, audit: supabaseAuditSink(ctx.client) };
+        try { return { content: [{ type: 'text', text: JSON.stringify(await dispatchTool(t.name, args, ctx, guards)) }] }; }
         catch (e) { const code = e instanceof McpToolError ? e.code : 'internal';
           return { isError: true, content: [{ type: 'text', text: `${code}: ${(e as Error).message}` }] }; }
       });
