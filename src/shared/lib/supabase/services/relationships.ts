@@ -197,7 +197,6 @@ export async function createEvidenceItem(
     relationship_id: relationshipId,
     title: evidence.title,
     type: evidence.type,
-    date: evidence.date,
     owner_id: evidence.owner || null,
     link: evidence.link,
     hypothesis: evidence.hypothesis,
@@ -211,8 +210,10 @@ export async function createEvidenceItem(
     console.error('Validation error creating evidence item:', error);
     throw error;
   }
-  // `content` is jsonb and not in the generated (strict) Zod schema — set it
-  // after validation so relationship evidence persists its notebook (CVS-34).
+  // `date` (date-only string, schema validates it as datetime) + jsonb `content`
+  // are set AFTER validation — the strict generated schema would reject them but
+  // the Postgres columns accept them directly (CVS-34).
+  insertData.date = evidence.date;
   if (evidence.content !== undefined) {
     insertData.content = (evidence.content ?? null) as Json;
   }
@@ -242,7 +243,6 @@ export async function updateEvidenceItem(
 
   if (updates.title !== undefined) updateData.title = updates.title;
   if (updates.type !== undefined) updateData.type = updates.type;
-  if (updates.date !== undefined) updateData.date = updates.date;
   if (updates.owner !== undefined) updateData.owner_id = updates.owner;
   if (updates.link !== undefined) updateData.link = updates.link;
   if (updates.hypothesis !== undefined)
@@ -258,8 +258,14 @@ export async function updateEvidenceItem(
     console.error('Validation error updating evidence item:', error);
     throw error;
   }
-  // `content` is jsonb and not part of the generated (strict) Zod schema — set it
-  // after validation so the notebook persists on edit/autosave (CVS-34).
+  // The generated (strict) Zod schema validates `date` as a datetime, but the app
+  // uses date-only strings ("2026-07-04"); and `content` is jsonb the schema
+  // doesn't know. Set both AFTER validation — the Postgres `date`/`jsonb` columns
+  // accept the values directly, and the strict parse would otherwise reject them
+  // (CVS-34 — this is what broke evidence autosave-to-DB).
+  if (updates.date !== undefined) {
+    updateData.date = updates.date;
+  }
   if (updates.content !== undefined) {
     updateData.content = (updates.content ?? null) as Json;
   }

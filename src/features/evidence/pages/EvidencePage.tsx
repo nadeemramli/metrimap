@@ -128,7 +128,12 @@ export default function EvidencePage() {
         updateEvidence(initialEvidence.id, updated); // in-memory store
         if (client) {
           // Persist the notebook (incl. content) to the DB so it survives reload.
-          await updateEvidenceItem(initialEvidence.id, updated, client);
+          // Don't let a DB failure discard the save — the store already has it.
+          try {
+            await updateEvidenceItem(initialEvidence.id, updated, client);
+          } catch (e) {
+            console.error('Failed to persist evidence to DB', e);
+          }
         }
       } else {
         // Brand-new evidence: persist to the DB (project-scoped) when in a canvas
