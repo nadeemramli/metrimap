@@ -426,20 +426,7 @@ export default function RelationshipWorkflows({
   const config = getWorkflowConfig(type);
   const [workflowData, setWorkflowData] = useState<any>({});
 
-  if (!config) return null;
-
-  const Icon = config.icon;
-
-  const handleTemplateChange = (field: string, value: string) => {
-    setWorkflowData((prev: any) => ({ ...prev, [field]: value }));
-  };
-
-  const handleUpgradeToCausal = () => {
-    if (onTypeUpgrade) {
-      onTypeUpgrade("Causal");
-    }
-  };
-
+  // Hooks must run before the early return below (Rules of Hooks).
   const validateAndSuggestConfidence = useCallback(() => {
     // Auto-suggest confidence based on workflow completion
     let suggestedConfidence: ConfidenceLevel = "Low";
@@ -452,7 +439,7 @@ export default function RelationshipWorkflows({
           suggestedConfidence = "Medium";
         }
         break;
-      case "Probabilistic":
+      case "Probabilistic": {
         const r = parseFloat(workflowData.correlationCoefficient);
         const n = parseInt(workflowData.sampleSize);
         const p = parseFloat(workflowData.pValue);
@@ -463,6 +450,7 @@ export default function RelationshipWorkflows({
           suggestedConfidence = "Medium";
         }
         break;
+      }
       case "Causal":
         if (
           workflowData.experimentType === "RCT" &&
@@ -485,6 +473,20 @@ export default function RelationshipWorkflows({
 
     onConfidenceChange(suggestedConfidence);
   }, [type, workflowData, onConfidenceChange]);
+
+  if (!config) return null;
+
+  const Icon = config.icon;
+
+  const handleTemplateChange = (field: string, value: string) => {
+    setWorkflowData((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const handleUpgradeToCausal = () => {
+    if (onTypeUpgrade) {
+      onTypeUpgrade("Causal");
+    }
+  };
 
   const generateTemplateEvidence = () => {
     const evidence: EvidenceItem = {
