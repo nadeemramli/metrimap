@@ -771,7 +771,14 @@ function CanvasPageInner() {
   );
 
   // UNIFIED: Use only canvasNodes from Zustand store, remove state.extraNodes
-  const temporaryExtraNodes = state.extraNodes || [];
+  // Memoize so an empty/unchanged value keeps a STABLE reference — otherwise this
+  // was a fresh `[]` every render, recomputing the whole `nodes` memo each render
+  // and feeding React Flow new node objects continuously (a driver of the
+  // controlled-nodes update loop → React #185). See CVS-23/65.
+  const temporaryExtraNodes = useMemo(
+    () => state.extraNodes || [],
+    [state.extraNodes]
+  );
 
   // Memoized data conversions
   const nodes = useMemo(() => {
