@@ -27,6 +27,7 @@ import CatalogPage from './features/catalog/pages/CatalogPage';
 import FeedPage from './features/notifications/pages/FeedPage';
 import WorkspaceSettingsPage from './features/settings/pages/WorkspaceSettingsPage';
 import AccountSettingsPage from './features/settings/pages/AccountSettingsPage';
+import ConnectAgentPage from './features/settings/pages/ConnectAgentPage';
 import EmbedCanvasPage from './features/canvas/pages/EmbedCanvasPage';
 import HomePage from './features/projects/pages/HomePage';
 
@@ -160,6 +161,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <WorkspaceSettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/connect"
+                  element={
+                    <ProtectedRoute>
+                      <ConnectAgentPage />
                     </ProtectedRoute>
                   }
                 />
