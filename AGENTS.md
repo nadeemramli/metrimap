@@ -14,16 +14,16 @@ Work is driven by Linear (team **CVS**), organized as **Initiatives → Projects
 4. **Verify:** `npm run type-check`, `npm run lint`, `npm run test` (+ `npm run test:rls` if RLS). Never bypass Husky.
 5. **Open a PR** referencing the issue (keep `CVS-XX` in the branch/PR).
 6. **Move the feature issue to In Review** (never straight to Done).
-7. **Create a manual-test SUB-ISSUE** — child of the feature issue, title `Manual test: <feature>`, assigned to `checkpoint.xyz@gmail.com`, labelled `manual-test`. Body: link to parent + PR, preconditions, and numbered test cases derived from each acceptance criterion (steps → expected → pass/fail). A feature is **Done** only after Checkpoint passes it and the change is merged/released.
+7. **Create a manual-test SUB-ISSUE** — child of the feature issue, title `Manual test: <feature>`, in the **Manual Test** project, labelled `manual-test`, and **assigned to the owner** (`m.nadeemramli@gmail.com`) so it lands in his Todo. Body: link to parent + PR, preconditions, and numbered test cases derived from each acceptance criterion (steps → expected → pass/fail). A feature is **Done** only after the owner passes the manual test and the change is merged/released.
 8. **Capture durable learning** in the product Obsidian vault (see **Docs policy**), not repo docs.
 
-Roles: **Builder** (agents / Nadeem) implement; **Checkpoint** (`checkpoint.xyz@gmail.com`) manually tests. Full loop: vault note *"3.a Workflow Architecture"*.
+Roles: **Builder** (agents / Nadeem) implement; the **owner** (`m.nadeemramli@gmail.com`) manually tests the queued sub-issues in the **Manual Test** project. Full loop: vault note *"3.a Workflow Architecture"*.
 
 ## Docs policy
 
 - **Product knowledge → Obsidian product vault:** PRD, feature explanations, product decisions, methodology, durable learning. Not the repo.
 - **Repo `docs/` → infrastructure/structural technical docs ONLY:** ADRs, environment, auth, database/RLS, migrations, architecture, state-management, and infra feature docs (e.g. `system-health-intake`, `linear-setup`, `metrics-api`).
-- **Not in the repo:** feature narratives, changelogs, point-in-time write-ups, or a compiled manual-test plan — manual tests are Linear sub-issues.
+- **Not in the repo:** feature narratives, changelogs, point-in-time write-ups, or a compiled manual-test plan — manual tests are Linear sub-issues in the **Manual Test** project.
 
 ## What this project is
 
