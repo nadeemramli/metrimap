@@ -14,6 +14,16 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { useAppStore } from '@/shared/stores/useAppStore';
+import { useCanvasStore } from '@/lib/stores';
+
+// Predefined "impact on confidence" levels (dropdown instead of free text).
+const IMPACT_OPTIONS = [
+  'Strongly supports',
+  'Supports',
+  'Neutral / inconclusive',
+  'Weakens',
+  'Strongly weakens',
+];
 import type { EvidenceItem } from '@/shared/types';
 import EditorJS from '@editorjs/editorjs';
 import {
@@ -75,6 +85,11 @@ export default function EvidenceEditor({
   onToggleFullscreen,
 }: EvidenceEditorProps) {
   const { user } = useAppStore();
+  const canvas = useCanvasStore((s) => s.canvas);
+  // Hypothesis nodes on this canvas — the Hypothesis field links to one of these.
+  const hypothesisNodes = ((canvas?.nodes ?? []) as any[]).filter(
+    (n) => n.category === 'Ideas/Hypothesis'
+  );
   const editorRef = useRef<EditorJS | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -405,17 +420,36 @@ export default function EvidenceEditor({
               <Label className="text-xs font-medium text-gray-600">
                 Hypothesis
               </Label>
-              <Input
-                value={formData.hypothesis}
-                onChange={(e) =>
-                  handleFormDataChange({
-                    ...formData,
-                    hypothesis: e.target.value,
-                  })
+              <Select
+                value={formData.hypothesis || ''}
+                onValueChange={(value) =>
+                  handleFormDataChange({ ...formData, hypothesis: value })
                 }
-                placeholder="What hypothesis is being tested?"
-                className="mt-1"
-              />
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Link a hypothesis node" />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.hypothesis &&
+                    !hypothesisNodes.some(
+                      (n) => n.title === formData.hypothesis
+                    ) && (
+                      <SelectItem value={formData.hypothesis}>
+                        {formData.hypothesis}
+                      </SelectItem>
+                    )}
+                  {hypothesisNodes.map((n) => (
+                    <SelectItem key={n.id} value={n.title}>
+                      {n.title}
+                    </SelectItem>
+                  ))}
+                  {hypothesisNodes.length === 0 && !formData.hypothesis && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      No hypothesis nodes on this canvas yet.
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="text-xs font-medium text-gray-600">
@@ -434,17 +468,32 @@ export default function EvidenceEditor({
               <Label className="text-xs font-medium text-gray-600">
                 Impact on Confidence
               </Label>
-              <Input
-                value={formData.impactOnConfidence}
-                onChange={(e) =>
+              <Select
+                value={formData.impactOnConfidence || ''}
+                onValueChange={(value) =>
                   handleFormDataChange({
                     ...formData,
-                    impactOnConfidence: e.target.value,
+                    impactOnConfidence: value,
                   })
                 }
-                placeholder="How does this affect confidence?"
-                className="mt-1"
-              />
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select impact…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.impactOnConfidence &&
+                    !IMPACT_OPTIONS.includes(formData.impactOnConfidence) && (
+                      <SelectItem value={formData.impactOnConfidence}>
+                        {formData.impactOnConfidence}
+                      </SelectItem>
+                    )}
+                  {IMPACT_OPTIONS.map((o) => (
+                    <SelectItem key={o} value={o}>
+                      {o}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="md:col-span-3">
               <Label className="text-xs font-medium text-gray-600">Tags</Label>

@@ -3,8 +3,8 @@ import {
   UpdateMetricCardSchema,
 } from '@/shared/lib/validation/zod';
 import type { MetricCard } from '@/shared/types';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 import { createLogger } from '@/shared/utils/logger';
 
@@ -121,7 +121,7 @@ async function executeUpdate(
   updateData: MetricCardUpdate,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('metric_cards')
     .update(updateData)
@@ -161,7 +161,7 @@ export async function createMetricCard(
   }
   log.debug('🔍 Insert data:', insertData);
 
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
 
   const { data, error } = await client
     .from('metric_cards')
@@ -195,7 +195,7 @@ export async function deleteMetricCard(
   id: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client.from('metric_cards').delete().eq('id', id);
 
   if (error) {
@@ -209,7 +209,7 @@ export async function getProjectMetricCards(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('metric_cards')
     .select('*')
@@ -231,7 +231,7 @@ export async function updateMetricCardPosition(
 ) {
   log.debug(`💾 Updating position for metric card ${id}:`, position);
 
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('metric_cards')
     .update({

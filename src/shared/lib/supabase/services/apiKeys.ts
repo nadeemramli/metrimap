@@ -2,7 +2,7 @@
 // The full key is shown to the user ONCE; only its SHA-256 hash is stored.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { Database } from '../types';
 
 type Client = SupabaseClient<Database>;
@@ -30,7 +30,7 @@ function randomKey(): string {
 }
 
 export async function listApiKeys(client?: Client): Promise<ApiKey[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('api_keys')
     .select('id, name, key_prefix, created_at, last_used_at')
@@ -44,7 +44,7 @@ export async function createApiKey(
   name: string,
   client?: Client
 ): Promise<{ key: string; row: ApiKey }> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const key = randomKey();
   const key_hash = await sha256hex(key);
   const key_prefix = key.slice(0, 12); // e.g. "mk_live_a1b2"
@@ -58,7 +58,7 @@ export async function createApiKey(
 }
 
 export async function deleteApiKey(id: string, client?: Client): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c.from('api_keys').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }

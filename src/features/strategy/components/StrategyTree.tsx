@@ -31,6 +31,7 @@ interface StrategyTreeProps {
   relationships: Relationship[];
   impactByNode: Record<string, { contract: ImpactContract; links: MetricLink[] }>;
   onOpenImpact: (cardId: string) => void;
+  onOpenTrace?: (cardId: string) => void;
 }
 
 const UNGROUPED = '__ungrouped__';
@@ -41,6 +42,7 @@ export function StrategyTree({
   relationships,
   impactByNode,
   onOpenImpact,
+  onOpenTrace,
 }: StrategyTreeProps) {
   const [filter, setFilter] = useState<ImpactFilter>('all');
   const currentPeriod = useMemo(() => new Date().toISOString().slice(0, 7), []);
@@ -152,6 +154,7 @@ export function StrategyTree({
                   cards={cards}
                   relationships={relationships}
                   onOpenImpact={onOpenImpact}
+                  onOpenTrace={onOpenTrace}
                 />
               ))}
             </div>
@@ -168,6 +171,7 @@ interface StrategyTreeItemProps {
   cards: MetricCard[];
   relationships: Relationship[];
   onOpenImpact: (cardId: string) => void;
+  onOpenTrace?: (cardId: string) => void;
 }
 
 function StrategyTreeItem({
@@ -176,6 +180,7 @@ function StrategyTreeItem({
   cards,
   relationships,
   onOpenImpact,
+  onOpenTrace,
 }: StrategyTreeItemProps) {
   const isHypothesis = card.category === 'Ideas/Hypothesis';
   const KindIcon = isHypothesis ? FlaskConical : Hammer;
@@ -210,7 +215,17 @@ function StrategyTreeItem({
           />
           {card.title || 'Untitled'}
         </button>
-        {summary && <ImpactChip summary={summary} />}
+        <div className="flex shrink-0 items-center gap-2">
+          {summary && <ImpactChip summary={summary} />}
+          {onOpenTrace && trace.target && (
+            <button
+              onClick={() => onOpenTrace(card.id)}
+              className="text-[11px] text-primary hover:underline"
+            >
+              Trace
+            </button>
+          )}
+        </div>
       </div>
 
       {!trace.target ? (

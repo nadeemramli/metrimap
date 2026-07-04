@@ -1,3 +1,4 @@
+import { AccessTagControls } from '@/features/settings/components/AccessTagControls';
 import { AssetsChartsTab } from '@/features/assets/components/AssetsChartsTab';
 import { AssetsDataTab } from '@/features/assets/components/AssetsDataTab';
 import { AssetsEmptyState } from '@/features/assets/components/emptystate/AssetsEmptyState';
@@ -1714,16 +1715,11 @@ export default function AssetsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      // TODO: Implement tag editing
-                      console.log('Edit tag:', tag);
-                    }}
-                  >
-                    Edit
-                  </Button>
+                  <AccessTagControls
+                    tagId={tag.id}
+                    isAccess={tag.is_access}
+                    redactionMode={tag.redaction_mode}
+                  />
                   <Button
                     variant="destructive"
                     size="sm"

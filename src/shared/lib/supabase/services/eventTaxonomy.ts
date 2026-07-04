@@ -3,7 +3,7 @@
 // catalog-only; RLS scopes rows to the owner (see the event_taxonomy migration).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { Database, Json } from '../types';
 
 type Client = SupabaseClient<Database>;
@@ -72,7 +72,7 @@ const PROPERTY_COLS =
 export async function listEvents(
   authenticatedClient?: Client
 ): Promise<EventDefinition[]> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('event_definitions')
     .select(EVENT_COLS)
@@ -85,7 +85,7 @@ export async function createEvent(
   input: EventDefinitionInput,
   authenticatedClient?: Client
 ): Promise<EventDefinition> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('event_definitions')
     .insert(input)
@@ -100,7 +100,7 @@ export async function updateEvent(
   patch: Partial<EventDefinitionInput>,
   authenticatedClient?: Client
 ): Promise<void> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client
     .from('event_definitions')
     .update({ ...patch, updated_at: new Date().toISOString() })
@@ -112,7 +112,7 @@ export async function deleteEvent(
   id: string,
   authenticatedClient?: Client
 ): Promise<void> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client
     .from('event_definitions')
     .delete()
@@ -125,7 +125,7 @@ export async function listProperties(
   eventId: string,
   authenticatedClient?: Client
 ): Promise<EventProperty[]> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('event_properties')
     .select(PROPERTY_COLS)
@@ -139,7 +139,7 @@ export async function upsertProperty(
   input: EventPropertyInput & { id?: string },
   authenticatedClient?: Client
 ): Promise<EventProperty> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('event_properties')
     .upsert(input)
@@ -153,7 +153,7 @@ export async function deleteProperty(
   id: string,
   authenticatedClient?: Client
 ): Promise<void> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client.from('event_properties').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }

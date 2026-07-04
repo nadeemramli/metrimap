@@ -395,6 +395,68 @@ export type Database = {
         }
         Relationships: []
       }
+      group_members: {
+        Row: {
+          added_at: string
+          added_by: string
+          group_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string
+          group_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string
+          group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_groups: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       metric_values: {
         Row: {
           change_percent: number | null
@@ -1469,6 +1531,66 @@ export type Database = {
           }
         ]
       }
+      tag_audiences: {
+        Row: {
+          group_id: string
+          tag_id: string
+        }
+        Insert: {
+          group_id: string
+          tag_id: string
+        }
+        Update: {
+          group_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tag_audiences_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_audiences_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_access_grants: {
+        Row: {
+          group_id: string
+          metric_card_id: string
+        }
+        Insert: {
+          group_id: string
+          metric_card_id: string
+        }
+        Update: {
+          group_id?: string
+          metric_card_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_access_grants_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_access_grants_metric_card_id_fkey"
+            columns: ["metric_card_id"]
+            isOneToOne: false
+            referencedRelation: "metric_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           id: string
@@ -1479,6 +1601,8 @@ export type Database = {
           created_by: string
           created_at: string | null
           updated_at: string | null
+          is_access: boolean
+          redaction_mode: string
         }
         Insert: {
           id?: string
@@ -1489,6 +1613,8 @@ export type Database = {
           created_by: string
           created_at?: string | null
           updated_at?: string | null
+          is_access?: boolean
+          redaction_mode?: string
         }
         Update: {
           id?: string
@@ -1499,6 +1625,8 @@ export type Database = {
           created_by?: string
           created_at?: string | null
           updated_at?: string | null
+          is_access?: boolean
+          redaction_mode?: string
         }
         Relationships: [
           {
@@ -1549,7 +1677,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      my_groups: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+      node_visible_to_me: {
+        Args: { card_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

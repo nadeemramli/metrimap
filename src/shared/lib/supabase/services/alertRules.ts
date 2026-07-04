@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { Database } from '../types';
 import type { MetricValue } from '@/shared/types';
 
@@ -36,7 +36,7 @@ export async function listAlertRules(
   cardId: string,
   client?: Client
 ): Promise<AlertRule[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('alert_rules')
     .select(SELECT)
@@ -56,7 +56,7 @@ export async function createAlertRule(
   },
   client?: Client
 ): Promise<AlertRule> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('alert_rules')
     .insert({
@@ -77,7 +77,7 @@ export async function updateAlertRule(
   updates: Partial<Pick<AlertRule, 'name' | 'enabled' | 'config' | 'rule_type'>>,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c
     .from('alert_rules')
     .update(updates as never)
@@ -89,7 +89,7 @@ export async function deleteAlertRule(
   id: string,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c.from('alert_rules').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
@@ -102,7 +102,7 @@ export async function emitCardAlert(
   metadata: Record<string, unknown>,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c.rpc('emit_card_alert' as never, {
     p_rule_id: ruleId,
     p_title: title,

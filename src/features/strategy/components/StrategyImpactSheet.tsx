@@ -75,6 +75,7 @@ interface StrategyImpactSheetProps {
   canEdit: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenTrace?: (nodeId: string) => void;
 }
 
 function optionKey(o: Pick<MetricOption, 'source' | 'id'>): string {
@@ -99,6 +100,7 @@ export function StrategyImpactSheet({
   canEdit,
   open,
   onOpenChange,
+  onOpenTrace,
 }: StrategyImpactSheetProps) {
   const client = useClerkSupabase();
 
@@ -324,9 +326,19 @@ export function StrategyImpactSheet({
           <div className="mt-4 space-y-5 px-1 pb-6">
             {/* Trace preview */}
             <div className="rounded-md border bg-muted/40 p-3">
-              <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <TrendingUp className="h-3.5 w-3.5" />
-                Impact path
+              <div className="mb-1 flex items-center justify-between gap-1.5 text-xs font-medium text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Impact path
+                </span>
+                {onOpenTrace && cardId && (
+                  <button
+                    onClick={() => onOpenTrace(cardId)}
+                    className="text-primary hover:underline"
+                  >
+                    View trace
+                  </button>
+                )}
               </div>
               {!target ? (
                 <p className="text-sm text-muted-foreground">

@@ -31,6 +31,7 @@ import { StrategyTable } from '@/features/strategy/components/StrategyTable';
 import { StrategyTree } from '@/features/strategy/components/StrategyTree';
 import { CardCommentSheet } from '@/features/strategy/components/CardCommentSheet';
 import { StrategyImpactSheet } from '@/features/strategy/components/StrategyImpactSheet';
+import { ImpactTraceDialog } from '@/features/strategy/components/ImpactTraceDialog';
 import { listContractsWithLinksForProject } from '@/shared/lib/supabase/services/strategyImpact';
 import {
   summarizeImpact,
@@ -91,6 +92,7 @@ export default function StrategyPage() {
   const [settingsCardId, setSettingsCardId] = useState<string | null>(null);
   const [commentCardId, setCommentCardId] = useState<string | null>(null);
   const [impactCardId, setImpactCardId] = useState<string | null>(null);
+  const [traceCardId, setTraceCardId] = useState<string | null>(null);
   const [impactEntries, setImpactEntries] = useState<
     Array<{ contract: ImpactContract; links: MetricLink[] }>
   >([]);
@@ -495,6 +497,7 @@ export default function StrategyPage() {
           relationships={edges}
           impactByNode={impactByNode}
           onOpenImpact={setImpactCardId}
+          onOpenTrace={setTraceCardId}
         />
       ) : (
         <StrategyTable
@@ -551,6 +554,13 @@ export default function StrategyPage() {
             setImpactReload((n) => n + 1);
           }
         }}
+        onOpenTrace={setTraceCardId}
+      />
+      <ImpactTraceDialog
+        nodeId={traceCardId}
+        projectId={canvasId}
+        open={Boolean(traceCardId)}
+        onOpenChange={(open) => !open && setTraceCardId(null)}
       />
     </div>
   );
