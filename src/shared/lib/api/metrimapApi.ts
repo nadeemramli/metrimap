@@ -14,8 +14,10 @@
 // Building" (the CVS-97 spike). Ingest staging/mapping (import_batches, TTL) is
 // CVS-102; this layer exposes the direct value upsert only.
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Edge, Node } from '@xyflow/react';
 import type { Database } from '@/shared/lib/supabase/types';
 import type { MetricCard, MetricValue, Relationship } from '@/shared/types';
+import { applyAutoLayout, type LayoutDirection } from '@/shared/utils/autoLayout';
 
 import {
   CreateCanvasInput,
@@ -41,6 +43,7 @@ import {
   deleteMetricCard,
   getProjectMetricCards,
   updateMetricCard,
+  updateMetricCardPosition,
 } from '@/shared/lib/supabase/services/metric-cards';
 import {
   createRelationship,
@@ -80,6 +83,7 @@ export function createMetrimapApi(client: Client, userId: string) {
       title: v.title,
       description: v.description ?? '',
       category: v.category,
+      subCategory: v.subCategory as MetricCard['subCategory'],
       tags: [],
       causalFactors: [],
       dimensions: [],
@@ -138,6 +142,15 @@ export function createMetrimapApi(client: Client, userId: string) {
       createValue: typedNode('Core/Value'),
       createAction: typedNode('Work/Action'),
       createHypothesis: typedNode('Ideas/Hypothesis'),
+      // A driver is an input metric that drives an output metric/value.
+      createDriver: (input: CreateTypedNodeInputT) => {
+        const v = CreateTypedNodeInput.parse(input);
+        return createNode({
+          ...v,
+          category: 'Data/Metric',
+          subCategory: v.subCategory ?? 'Input Metric',
+        });
+      },
       update: (id: string, patch: unknown) => {
         const v = UpdateNodeInput.parse(patch);
         return updateMetricCard(id, v as Partial<MetricCard>, client);
@@ -174,6 +187,32 @@ export function createMetrimapApi(client: Client, userId: string) {
         cards: await getProjectMetricCards(projectId, client),
         relationships: await getProjectRelationships(projectId, client),
       }),
+
+      // Auto-layout (Dagre) so a programmatically-built tree renders sensibly.
+      // Reuses the app's applyAutoLayout, then persists each new position.
+      layout: async (projectId: string, direction: LayoutDirection = 'TB') => {
+        const cards = await getProjectMetricCards(projectId, client);
+        const rels = (await getProjectRelationships(projectId, client)) as Array<{
+          id: string;
+          sourceId: string;
+          targetId: string;
+        }>;
+        const nodes: Node[] = cards.map(
+          (c) => ({ id: c.id, position: c.position ?? { x: 0, y: 0 }, data: {} }) as Node
+        );
+        const edges: Edge[] = rels.map(
+          (r) => ({ id: r.id, source: r.sourceId, target: r.targetId }) as Edge
+        );
+        const laid = applyAutoLayout(nodes, edges, { direction });
+        await Promise.all(
+          laid.map((n) => updateMetricCardPosition(n.id, n.position, client))
+        );
+        return {
+          projectId,
+          count: laid.length,
+          positions: laid.map((n) => ({ id: n.id, position: n.position })),
+        };
+      },
     },
 
     values: {

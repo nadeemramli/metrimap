@@ -10,6 +10,7 @@ import {
   CreateCanvasInput,
   CreateRelationshipInput,
   CreateTypedNodeInput,
+  LayoutTreeInput,
   PushValuesInput,
 } from '../schemas';
 import type { McpAuthContext, McpScope } from './authContext';
@@ -131,6 +132,15 @@ export const TOOLS: McpTool[] = [
     handler: (a, ctx) => api(ctx).nodes.createAction(a),
   }),
   defineTool({
+    name: 'create_driver_node',
+    title: 'Create driver node',
+    description:
+      'Create an input-driver metric (Data/Metric, subCategory "Input Metric") that drives an output metric or value node. Returns the node id; connect it with create_relationship.',
+    scope: 'write',
+    inputSchema: CreateTypedNodeInput,
+    handler: (a, ctx) => api(ctx).nodes.createDriver(a),
+  }),
+  defineTool({
     name: 'update_node',
     title: 'Update node',
     description: 'Update a metric card (title, description, category, formula, position).',
@@ -173,6 +183,15 @@ export const TOOLS: McpTool[] = [
     scope: 'write',
     inputSchema: PushValuesInput,
     handler: (a, ctx) => api(ctx).values.push(a),
+  }),
+  defineTool({
+    name: 'layout_tree',
+    title: 'Auto-layout tree',
+    description:
+      'Apply Dagre auto-layout to a canvas so a programmatically-built tree renders sensibly (no overlapping nodes at 0,0). Call once after adding nodes + relationships. direction defaults to TB (top-to-bottom).',
+    scope: 'write',
+    inputSchema: LayoutTreeInput,
+    handler: (a, ctx) => api(ctx).tree.layout(a.projectId, a.direction),
   }),
 ];
 
