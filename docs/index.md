@@ -21,6 +21,7 @@ CVS). See the **Docs policy** in [`../AGENTS.md`](../AGENTS.md).
   [userback-customer-requests](features/userback-customer-requests.md),
   [security-scanning](features/security-scanning.md),
   [programmatic-api](features/programmatic-api.md),
+  [mcp-server](features/mcp-server.md),
   [metrics-api](features/metrics-api.md)
 
 Anything product-facing (feature narratives, changelogs, methodology, PRD) belongs
