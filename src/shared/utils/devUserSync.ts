@@ -1,5 +1,5 @@
-import { supabase } from '@/shared/lib/supabase/client';
 import type { Database } from '@/shared/lib/supabase/types';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import { CreateUserSchema } from '@/shared/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -9,7 +9,7 @@ export async function syncDevUserToProduction(
   name?: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
 
   try {
     // Check if user already exists

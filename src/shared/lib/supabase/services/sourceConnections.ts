@@ -6,8 +6,8 @@
 // be read by the browser (see the product vault).
 
 import type { MetricValue } from '@/shared/types';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
 import type { Database } from '../types';
 import { seriesFromRows } from '@/features/canvas/utils/sourceBinding';
 
@@ -32,7 +32,7 @@ type Client = SupabaseClient<Database>;
 export async function listConnections(
   authenticatedClient?: Client
 ): Promise<SourceConnection[]> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('source_connections')
     .select(
@@ -49,7 +49,7 @@ export async function testConnection(
   password: string,
   authenticatedClient?: Client
 ): Promise<void> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client.functions.invoke('warehouse-proxy', {
     body: { action: 'test', connection, password },
   });
@@ -63,7 +63,7 @@ export async function saveConnection(
   password: string,
   authenticatedClient?: Client
 ): Promise<string> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client.functions.invoke('warehouse-proxy', {
     body: { action: 'save', connection, password },
   });
@@ -77,7 +77,7 @@ export async function deleteConnection(
   id: string,
   authenticatedClient?: Client
 ): Promise<void> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client
     .from('source_connections')
     .delete()
@@ -94,7 +94,7 @@ export async function runWarehouseQuery(
   sql: string,
   authenticatedClient?: Client
 ): Promise<MetricValue[]> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client.functions.invoke('warehouse-proxy', {
     body: { action: 'query', connectionId, sql },
   });

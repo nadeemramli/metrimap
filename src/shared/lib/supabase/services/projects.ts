@@ -5,9 +5,9 @@ import {
   UpdateProjectSchema,
 } from '@/shared/lib/validation/zod';
 import type { CanvasProject } from '@/shared/types';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import { transformCanvasProject } from '@/shared/utils/dataTransformers';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 import { createLogger } from '@/shared/utils/logger';
 
@@ -36,7 +36,7 @@ export async function getUserProjects(
       '⚠️ getUserProjects called without an authenticated client; falling back to anon (RLS will hide non-public rows). This usually means the Clerk client was not threaded through.'
     );
   }
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('projects')
     .select(
@@ -69,7 +69,7 @@ export async function getUserProjects(
 export async function listTemplates(
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('projects')
     .select(`*, metric_cards(count), relationships(count), groups(count)`)
@@ -86,7 +86,7 @@ export async function saveAsTemplate(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<string> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data: orig } = await client
     .from('projects')
     .select('name')
@@ -105,7 +105,7 @@ export async function saveAsTemplate(
 export async function getShowcaseProjects(
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('projects')
     .select(`*, metric_cards(count), relationships(count), groups(count)`)
@@ -127,7 +127,7 @@ export async function duplicateProjectDeep(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<string> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
 
   const { data: orig, error: origErr } = await client
     .from('projects')
@@ -260,7 +260,7 @@ export async function setProjectStarred(
   starred: boolean,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<void> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client
     .from('projects')
     .update({ is_starred: starred })
@@ -273,7 +273,7 @@ export async function setProjectArchived(
   archived: boolean,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<void> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client
     .from('projects')
     .update({ archived_at: archived ? new Date().toISOString() : null })
@@ -289,7 +289,7 @@ export async function getProjectById(
   log.debug('🔍 getProjectById called with projectId:', projectId);
   log.debug('🔍 authenticatedClient provided:', !!authenticatedClient);
 
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
 
   // First, fetch the project
   const { data: project, error: projectError } = await client
@@ -459,7 +459,7 @@ export async function createProject(
   project: Omit<ProjectInsert, 'id'>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   // Validate payload using Prisma-generated Zod schema
   try {
     CreateProjectSchema.parse(project as unknown);
@@ -487,7 +487,7 @@ export async function updateProject(
   updates: ProjectUpdate,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   // Validate update payload
   try {
     UpdateProjectSchema.parse(updates as unknown);
@@ -516,7 +516,7 @@ export async function setProjectPublic(
   isPublic: boolean,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const updateData = { is_public: isPublic } as any;
   try {
     UpdateProjectSchema.parse(updateData as unknown);
@@ -553,7 +553,7 @@ export async function mergeProjectSettings(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const run = async () => {
-    const client = authenticatedClient || supabase();
+    const client = resolveClient(authenticatedClient);
     const { data: proj, error: fetchErr } = await client
       .from('projects')
       .select('settings')
@@ -587,7 +587,7 @@ export async function deleteProject(
   id: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client.from('projects').delete().eq('id', id);
 
   if (error) {
@@ -641,7 +641,7 @@ export async function createGroup(
   },
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const insertData = {
     id: group.id,
     name: group.name,
@@ -709,7 +709,7 @@ export async function updateGroup(
     updateData.height = updates.size.height;
   }
 
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   try {
     UpdateGroupSchema.parse(updateData as unknown);
   } catch (error) {
@@ -735,7 +735,7 @@ export async function deleteGroup(
   groupId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client.from('groups').delete().eq('id', groupId);
 
   if (error) {

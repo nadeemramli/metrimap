@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { Database, Json, Tables } from '../types';
 import type { EvidenceItem } from '@/shared/types';
 
@@ -30,7 +30,7 @@ export async function getCardEvidence(
   cardId: string,
   client?: Client
 ): Promise<EvidenceItem[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('evidence_items')
     .select('*')
@@ -45,7 +45,7 @@ export async function getEvidenceItemById(
   id: string,
   client?: Client
 ): Promise<EvidenceItem | null> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('evidence_items')
     .select('*')
@@ -63,7 +63,7 @@ export async function createCardEvidence(
   userId: string,
   client?: Client
 ): Promise<EvidenceItem> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('evidence_items')
     .insert({
@@ -94,7 +94,7 @@ export async function createProjectEvidence(
   userId: string,
   client?: Client
 ): Promise<EvidenceItem> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('evidence_items')
     .insert({
