@@ -20,7 +20,9 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { memo, useState } from 'react';
-import { useNodeToolbarActions } from './shared/EnhancedNodeToolbar';
+import EnhancedNodeToolbar, {
+  useNodeToolbarActions,
+} from './shared/EnhancedNodeToolbar';
 
 interface MetricNodeData {
   node: MetricNodeType;
