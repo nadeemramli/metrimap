@@ -392,3 +392,16 @@ body[data-scroll-locked='1'] .sheet-content {
   border-radius: 10px;
   transition: outline-color 0.12s ease;
 }
+
+/* ── Layout position animation (CVS-39) ─────────────────────────────
+   Enabled only transiently around an auto-layout apply (class toggled by
+   layoutAnimation.ts) so node moves ease into place instead of jumping;
+   never active during drag. Disabled entirely for reduced-motion. */
+.rf-animate-layout .react-flow__node {
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rf-animate-layout .react-flow__node {
+    transition: none;
+  }
+}

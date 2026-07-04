@@ -20,6 +20,7 @@ import {
   applyAutoLayoutWithValidation,
   AUTO_LAYOUT_ALGORITHMS,
 } from '@/shared/utils/autoLayout';
+import { animateLayout } from '@/features/canvas/utils/layoutAnimation';
 import { useReactFlow } from '@xyflow/react';
 import { LayoutGrid, Settings } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -109,6 +110,8 @@ export default function LayoutDropdownButton() {
           'nodes'
         );
 
+        // Ease nodes into their new positions instead of jumping (CVS-39).
+        animateLayout();
         // Update ReactFlow state first for immediate visual feedback
         rf?.setNodes?.(layoutedNodes as any);
 

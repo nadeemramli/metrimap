@@ -77,6 +77,10 @@ import { getAvailableFilterOptions } from '@/shared/utils/filterUtils';
 import { useCanvasEvents } from '../hooks/useCanvasEvents';
 import { useCanvasKeyboard } from '../hooks/useCanvasKeyboard';
 import { useNodeIntersection } from '../hooks/useNodeIntersection';
+import {
+  animateLayout,
+  cancelLayoutAnimation,
+} from '../utils/layoutAnimation';
 import { useCanvasPageState } from '../hooks/useCanvasPageState';
 import { useCanvasStateMachine } from '../hooks/useCanvasStateMachine';
 import { useCanvasViewportSync } from '../hooks/useCanvasViewportSync';
@@ -528,6 +532,8 @@ function CanvasPageInner() {
         );
 
         setRoutedEdgePoints(edgePoints);
+        // Ease nodes into their new layout positions (CVS-39).
+        animateLayout();
         setNodes(layoutedFlow);
 
         // Persist the new card/node positions (mirror drag-stop routing) so the
@@ -1125,6 +1131,8 @@ function CanvasPageInner() {
   >({});
   const handleNodeDragStart = useCallback(
     (_: any, node: any) => {
+      // A drag must never lag behind a lingering layout transition.
+      cancelLayoutAnimation();
       const sel = new Set(useCanvasStore.getState().selectedNodeIds || []);
       const snap: Record<
         string,
