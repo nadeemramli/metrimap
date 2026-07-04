@@ -23,6 +23,7 @@ import { Eye } from 'lucide-react';
 // Extracted utilities and hooks
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useNewNodeTypesStore } from '@/features/canvas/stores/useNewNodeTypesStore';
+import { useCanvasNodeSources } from '@/features/canvas/hooks/useCanvasNodeSources';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useAppStore, useCanvasStore } from '@/lib/stores';
 import { useCanvasHeader } from '@/shared/contexts/CanvasHeaderContext';
@@ -780,12 +781,18 @@ function CanvasPageInner() {
     [state.extraNodes]
   );
 
+  // Step 2 (ADR-008 / CVS-230): the store-backed node sources, gathered once in a
+  // reference-stable hook. The `nodes` memo consumes this instead of reading four
+  // stores inline — one selector, fewer churny inputs, and the single place step 3
+  // will swap to React Flow's useNodesState.
+  const nodeSources = useCanvasNodeSources();
+
   // Memoized data conversions
   const nodes = useMemo(() => {
-    const metricCardNodes = canvas?.nodes || [];
-    const evidenceNodes = evidenceList?.filter((e) => e.position) || [];
-    const persistedCanvasNodes = canvasNodes || [];
-    const newNodeTypes = newNodes || [];
+    const metricCardNodes = nodeSources.metricCards;
+    const evidenceNodes = nodeSources.positionedEvidence;
+    const persistedCanvasNodes = nodeSources.canvasNodes;
+    const newNodeTypes = nodeSources.newNodes;
 
     const convertedMetricCardNodes = metricCardNodes.map((card) =>
       convertToNode(
@@ -855,15 +862,12 @@ function CanvasPageInner() {
     return allNodes;
   }, [
     canvasId,
-    canvas?.nodes,
+    nodeSources, // consolidated store-backed node sources (ADR-008 step 2)
     canvas?.groups,
     focusedGroupId,
-    evidenceList,
     updateEvidence,
     deleteEvidence,
-    canvasNodes, // Unified canvas nodes from Zustand store
-    newNodes, // New node types from Zustand store
-    temporaryExtraNodes, // Only temporary fallback nodes
+    temporaryExtraNodes, // Only temporary fallback nodes (XState, transient)
     selectedNodeIds,
     state.isSettingsSheetOpen,
     stableEvents,
