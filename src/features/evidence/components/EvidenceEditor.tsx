@@ -92,6 +92,26 @@ export default function EvidenceEditor({
     tags: evidence?.tags || [],
   });
 
+  // useState only runs once, so when the dialog is reused for a different (or
+  // existing) evidence, the form kept its original empty values → blank dialog.
+  // Re-sync from `evidence` whenever the dialog opens or a different item loads.
+  // Owner auto-populates with the creator's name for brand-new evidence.
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData({
+      id: evidence?.id || `evidence_${Date.now()}`,
+      title: evidence?.title || '',
+      type: evidence?.type || 'Analysis',
+      date: evidence?.date || new Date().toISOString().split('T')[0],
+      owner: evidence?.owner || user?.name || '',
+      link: evidence?.link || '',
+      hypothesis: evidence?.hypothesis || '',
+      impactOnConfidence: evidence?.impactOnConfidence || '',
+      tags: evidence?.tags || [],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, evidence?.id]);
+
   const autoSave = useCallback(
     debounce(async (content: any, metadata: Partial<EvidenceItem>) => {
       if (!editorRef.current) return;
