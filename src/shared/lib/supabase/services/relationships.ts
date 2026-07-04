@@ -57,6 +57,7 @@ function transformEvidenceItem(evidence: EvidenceItemRow): EvidenceItem {
     hypothesis: evidence.hypothesis || undefined,
     summary: evidence.summary,
     impactOnConfidence: evidence.impact_on_confidence || undefined,
+    content: (evidence.content as EvidenceItem['content']) ?? undefined,
   };
 }
 
@@ -209,6 +210,11 @@ export async function createEvidenceItem(
   } catch (error) {
     console.error('Validation error creating evidence item:', error);
     throw error;
+  }
+  // `content` is jsonb and not in the generated (strict) Zod schema — set it
+  // after validation so relationship evidence persists its notebook (CVS-34).
+  if (evidence.content !== undefined) {
+    insertData.content = (evidence.content ?? null) as Json;
   }
 
   const client = authenticatedClient || supabase();
