@@ -31,9 +31,10 @@ It now runs **`tsc -b --noEmit`**, which actually checks the app. Turning that o
 ## Quarantined files
 
 > Being discharged incrementally (CVS-72). ✅ Done: the 3 canvas stores
-> (`useEdgeStore`/`useNodeStore`/`useGroupStore`), plus `nodeTypes.ts` +
-> `edgeConnectionHandler.ts`. The table below lists what remains; counts drift
-> as files change — re-measure by stripping the directives.
+> (`useEdgeStore`/`useNodeStore`/`useGroupStore`), `nodeTypes.ts`,
+> `edgeConnectionHandler.ts`, and the dead `lib/services/typed-*` cluster
+> (deleted — see below). The table lists what remains; counts drift as files
+> change — re-measure by stripping the directives.
 
 Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 
@@ -61,9 +62,6 @@ Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 | `features/canvas/pages/CanvasPage.tsx` | 5 | TS6133(4) TS2322(1) |
 | `features/canvas/stores/useCanvasStore.ts` | 3 | TS2349(3) |
 | `features/canvas/stores/useNewNodeTypesStore.ts` | 7 | TS2353(4) TS6133(1) TS2352(1) TS2345(1) |
-| `lib/services/typed-canvas.ts` | 3 | TS2322(3) |
-| `lib/services/typed-operations.ts` | 23 | TS2345(20) TS2740(1) TS2352(1) TS2322(1) |
-| `lib/services/typed-projects.ts` | 3 | TS2345(1) TS2304(1) TS1484(1) |
 | `lib/stores/version-history/useVersionHistoryStore.ts` | 5 | TS2339(4) TS6133(1) |
 | `lib/workers/compute.worker.ts` | 8 | TS7006(6) TS2307(2) |
 | `shared/components/ui/chart.tsx` | 1 | TS2344(1) |
@@ -74,6 +72,6 @@ Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 
 ## Notes
 
-- The Prisma/Zod **type-debt is concentrated in the validation/service layer** (`typed-operations.ts`, `collaboration.ts`, `version-history.ts`). Much of it stems from the generated Zod types being loose (now `// @ts-nocheck`-stamped), so these may partly resolve once the validation types are tightened by hand.
+- The Prisma/Zod **type-debt is concentrated in the validation/service layer** (`collaboration.ts`, `version-history.ts`). Much of it stems from the generated Zod types being loose (now `// @ts-nocheck`-stamped), so these may partly resolve once the validation types are tightened by hand. (The dead `lib/services/typed-*` cluster — the worst offender at 23 errors — was deleted, not fixed.)
 - `src/tests/xstate-react-integration.test.tsx` was **fixed, not quarantined** (its errors were two wrong import paths + unused vars).
 - Error-code cheat sheet: `TS6133` unused · `TS7006` implicit any · `TS2307` module not found · `TS2339` property missing · `TS2345`/`TS2322` not assignable · `TS2769` no overload matches · `TS2344` type-arg constraint · `TS2678` switch-case type mismatch.

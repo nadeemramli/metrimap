@@ -93,7 +93,6 @@ src/
   lib/
     machines/           # canvasMachine.ts (XState)
     workers/            # compute.worker.ts + Comlink worker manager
-    services/           # typed-canvas, typed-operations, typed-projects
     prisma/             # schema.prisma + generated Zod schemas
     editorjs-config.ts
   tests/                # RLS + XState integration tests
