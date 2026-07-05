@@ -53,6 +53,7 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         'rounded-md border px-2 py-0.5 text-xs transition-colors',
         active
@@ -141,7 +142,10 @@ export default function FilterControls() {
         >
           <Filter className="h-4 w-4" />
           {activeFilterCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+            <span
+              data-testid="filter-active-count"
+              className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground"
+            >
               {activeFilterCount}
             </span>
           )}
@@ -180,6 +184,7 @@ export default function FilterControls() {
             <div className="flex items-center gap-1.5">
               <Input
                 type="date"
+                aria-label="Filter start date"
                 className="h-8 text-xs"
                 value={filters.dateRange.from}
                 onChange={(e) =>
@@ -189,6 +194,7 @@ export default function FilterControls() {
               <span className="text-xs text-muted-foreground">–</span>
               <Input
                 type="date"
+                aria-label="Filter end date"
                 className="h-8 text-xs"
                 value={filters.dateRange.to}
                 onChange={(e) =>

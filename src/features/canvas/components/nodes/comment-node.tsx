@@ -198,13 +198,19 @@ export default function CommentNode({ id, data }: NodeProps) {
         <MapPin className="w-4 h-4" />
       </button>
 
-      <Card className="w-[280px] rounded-xl border bg-card/95 p-3 shadow-md backdrop-blur-sm">
+      <Card
+        data-testid="comment-card"
+        className="w-[280px] rounded-xl border bg-card/95 p-3 shadow-md backdrop-blur-sm"
+      >
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Comments</span>
             {comments.length > 0 && (
-              <span className="text-xs text-muted-foreground">
+              <span
+                data-testid="comment-count"
+                className="text-xs text-muted-foreground"
+              >
                 {comments.length}
               </span>
             )}
@@ -218,7 +224,11 @@ export default function CommentNode({ id, data }: NodeProps) {
 
         <div className="max-h-44 space-y-3 overflow-y-auto pr-1">
           {comments.map((c) => (
-            <div key={c.id} className="flex items-start gap-2">
+            <div
+              key={c.id}
+              data-testid="comment-item"
+              className="flex items-start gap-2"
+            >
               <Avatar className="h-6 w-6 shrink-0">
                 <AvatarFallback className="bg-muted text-[10px] font-medium text-muted-foreground">
                   {codenameInitials(c.author_id)}

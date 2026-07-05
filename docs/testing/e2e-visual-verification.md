@@ -39,10 +39,20 @@ secure-context requirement.
 - `playwright.config.ts` → `webServer` boots `npm run dev` with `E2E_HTTPS=1`, and
   `baseURL: https://dev.canvasm.app:3000` with `ignoreHTTPSErrors` (self-signed cert).
 
-The harness uses the **production Clerk instance** (`pk_live`/`sk_live` from `.env`), because
-Supabase trusts its JWTs and `https://dev.canvasm.app:3000` was added to that instance's
-allowed origins. (`global-setup.ts` also has an idempotent "create the e2e user" path that
-only fires for a `sk_test` dev key — a no-op under `sk_live`.)
+The harness uses the **production Clerk instance** (`pk_live`/`sk_live` from `.env`) — **not**
+the dev instance — because **Supabase only trusts the production Clerk issuer**. A `pk_test`
+dev JWT is rejected by Supabase's data routes with `PGRST301: No suitable key was found to
+decode the JWT`, so authenticated canvases won't load real data. (`global-setup.ts` also has
+an idempotent "create the e2e user" path that only fires for a `sk_test` key — a no-op under
+`sk_live`.)
+
+`https://dev.canvasm.app:3000` must be in the production Clerk instance's **allowed origins**.
+Treat that as a **temporary** production-auth entry — add it only while running the lane and
+**remove it when done** (see setup below).
+
+> The owner's Obsidian vault note **"E2E Visual Verification"** is the authoritative
+> operational runbook (real org name, temporary-origin procedure, security notes). Keep this
+> repo doc in sync with it.
 
 ## One-time local setup
 
@@ -53,8 +63,23 @@ only fires for a `sk_test` dev key — a no-op under `sk_live`.)
    127.0.0.1   dev.canvasm.app
    ```
 
-2. **Allow the origin in Clerk.** In the Clerk dashboard for the instance whose keys are in
-   `.env`, add `https://dev.canvasm.app:3000` to the allowed origins / redirect URLs.
+2. **Temporarily allow the origin in production Clerk** (only while the lane runs). The
+   secret comes from `$CLERK_SECRET_KEY` in `.env` — never paste the value:
+
+   ```bash
+   # add the local HTTPS origin
+   curl -X PATCH https://api.clerk.com/v1/instance \
+     -H "Authorization: Bearer $CLERK_SECRET_KEY" -H "Content-Type: application/json" \
+     -d '{"allowed_origins":["https://dev.canvasm.app:3000"]}'
+   ```
+
+   **Remove it when the lane is done:**
+
+   ```bash
+   curl -X PATCH https://api.clerk.com/v1/instance \
+     -H "Authorization: Bearer $CLERK_SECRET_KEY" -H "Content-Type: application/json" \
+     -d '{"allowed_origins":[]}'
+   ```
 
 3. **Generate the local TLS cert** (self-signed, git-ignored under `e2e/certs/`). This runs
    automatically as the `prescreenshots` hook, or manually:
@@ -78,11 +103,14 @@ loads `.env` into the node process itself). Required:
 | --- | --- |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk publishable key (`pk_live`); the config mirrors it to `CLERK_PUBLISHABLE_KEY` for `clerkSetup`. |
 | `CLERK_SECRET_KEY` | Clerk secret (`sk_live`); enables sign-in + the `@clerk/testing` token. If unset, specs **skip**. |
-| `E2E_TEST_EMAIL` | Email of the pre-existing Clerk user the specs sign in as. |
+| `E2E_TEST_EMAIL` | Email of the pre-existing Clerk user the specs sign in as. Must belong to the real **Teroka Digital** org. |
 | `E2E_TEST_PASSWORD` | That user's password (password sign-in strategy). |
+| `E2E_CLERK_PUBLISHABLE_KEY` | Dev Clerk fallback key. Not useful for real data (Supabase rejects dev JWTs). |
+| `E2E_CLERK_SECRET_KEY` | Dev Clerk fallback secret. |
 
-The e2e user must **already exist** in the Clerk instance and be a member of at least one
-**organization** (the app is orgs-only; specs call `activateOrg` after sign-in).
+The e2e user must **already exist** in the production Clerk instance and be a member of the
+real **Teroka Digital** organization (the app is orgs-only; specs call `activateOrg` after
+sign-in). Do **not** auto-create production users/orgs from an agent — ask the owner first.
 
 `E2E_HTTPS=1` is set automatically by the Playwright `webServer` — you don't set it by hand.
 
@@ -104,17 +132,38 @@ Playwright boots its own dev server (`reuseExistingServer: false`), so **stop an
   canvas and the toolbar filter popover. Exports the shared `activateOrg(page)` helper.
 - **`e2e/visual.spec.ts`** — signs in → captures a set of authenticated workspace routes
   (`/`, `/?view=explore`, `/catalog`, `/feed`) as screenshots.
+- **`e2e/helpers.ts`** — shared, **non-test** module: `signIn(page)`, `activateOrg(page)`,
+  `openFirstCanvas(page)`, `collectConsoleErrors(page)` (with a `react185()` filter), `shot()`,
+  and `NO_CREDS`. Import shared code from here — Playwright forbids a spec importing another
+  spec file.
 
-Every spec starts with `setupClerkTestingToken({ page })` + `clerk.signIn({ strategy:
-'password', ... })`, and `test.skip(...)` when the Clerk creds are absent.
+### Automated-test specs (lane `e2e-visual-automation`)
+
+These turn owner-run visual checks into assertions + screenshots (feature → CVS):
+
+- **`e2e/filter-popover.spec.ts`** — CVS-272: compact anchored filter popover, sections, chip
+  toggle (`aria-pressed` + active-count badge), Clear all, Apply-closes, mobile.
+- **`e2e/comment-card.spec.ts`** — CVS-273: Figma-style empty thread, post a comment (codename,
+  never a raw `user_` id), reload persistence.
+- **`e2e/edge-pill.spec.ts`** — CVS-262: tone-aware edge score pill (`data-tone`), hover detail
+  + single action toolbar. (Compositional/Exploratory render no pill by design.)
+- **`e2e/node-toolbar.spec.ts`** — CVS-255: node-toolbar settings sheet, duplicate `(Copy)` +
+  reload persistence, delete, no ErrorBoundary/#185. Handles both toolbar variants.
+- **`e2e/evidence-editor.spec.ts`** — CVS-236: single editor (no re-init loop), typed text
+  survives, save→reload persists, no ZodError(date).
+
+Every spec starts with `signIn(page)` (= `setupClerkTestingToken` + password sign-in +
+`activateOrg`) and `test.skip(NO_CREDS, ...)` when the Clerk creds are absent; canvas-
+dependent specs also skip when no canvas/edges/nodes exist on the account.
 
 ## Adding a new capture / test
 
 - **New authenticated route** → add `{ path, name }` to the `ROUTES` array in
   `visual.spec.ts`.
-- **New flow** → new `e2e/<area>.spec.ts`; start with `setupClerkTestingToken` +
-  `clerk.signIn` + `activateOrg` (import it from `canvas.spec.ts`), then drive the page.
-- Prefer role/text/`title`-based locators (as the existing specs do) over brittle CSS.
+- **New flow** → new `e2e/<area>.spec.ts`; `import { signIn, openFirstCanvas } from
+  './helpers'` and start with `await signIn(page)`, then drive the page.
+- Prefer role/text/`title`/`aria-*` locators; add a minimal `data-testid` only where the UI
+  has no stable selector (e.g. the edge pill's `data-tone`, node-toolbar action testids).
 
 ## Troubleshooting
 
