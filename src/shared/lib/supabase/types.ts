@@ -1005,6 +1005,7 @@ export type Database = {
           hypothesis: string | null
           id: string
           impact_on_confidence: string | null
+          is_public: boolean
           link: string | null
           owner_id: string | null
           project_id: string | null
@@ -1023,6 +1024,7 @@ export type Database = {
           hypothesis?: string | null
           id?: string
           impact_on_confidence?: string | null
+          is_public?: boolean
           link?: string | null
           owner_id?: string | null
           project_id?: string | null
@@ -1041,6 +1043,7 @@ export type Database = {
           hypothesis?: string | null
           id?: string
           impact_on_confidence?: string | null
+          is_public?: boolean
           link?: string | null
           owner_id?: string | null
           project_id?: string | null

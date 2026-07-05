@@ -21,8 +21,27 @@ function rowToEvidence(row: Tables<'evidence_items'>): EvidenceItem {
     hypothesis: row.hypothesis || undefined,
     summary: row.summary,
     impactOnConfidence: row.impact_on_confidence || undefined,
+    isPublic: row.is_public ?? false,
     content: (row.content as EvidenceItem['content']) ?? undefined,
   };
+}
+
+/**
+ * Toggle an evidence item's public read-only share. When on, anyone with the
+ * link can view it at /embed/evidence/:id (RLS: is_public disjunct). Writes stay
+ * project-access gated, so only editors can flip this.
+ */
+export async function setEvidencePublic(
+  id: string,
+  isPublic: boolean,
+  client?: Client
+): Promise<void> {
+  const c = resolveClient(client);
+  const { error } = await c
+    .from('evidence_items')
+    .update({ is_public: isPublic })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
 }
 
 /** Evidence attached to a metric card, newest first. */
