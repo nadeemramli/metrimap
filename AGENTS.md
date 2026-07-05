@@ -130,9 +130,22 @@ npm run type-check   # TypeScript check only
 npm run lint         # ESLint (flat config: eslint.config.js)
 npm run test         # Vitest (jsdom unit/component tests)
 npm run test:rls     # RLS policy tests (tsx src/tests/run-rls-tests.ts)
+npm run screenshots  # Playwright e2e / visual-verification (signed-in, real canvas)
 npm run prisma:types # prisma db pull + generate (regenerate types/Zod from DB)
 npx supabase <cmd>   # Always use npx for the Supabase CLI
 ```
+
+**E2E / visual verification (Playwright + Clerk).** `npm run screenshots` drives the
+real app signed in as a test user (over HTTPS at `dev.canvasm.app:3000`, prod Clerk)
+and captures screenshots into `e2e/screenshots/`. Specs live in `e2e/*.spec.ts` with
+shared helpers in `e2e/helpers.ts` (`signIn`/`openFirstCanvas`/…). Needs local setup
+(`.env` `E2E_*`/Clerk keys, hosts entry, a temporary Clerk `allowed_origins` entry).
+For UI/canvas lanes, run it before handoff and add specs for new surfaces. Full guide:
+`docs/testing/e2e-visual-verification.md` (repo) + the owner's vault note
+*"E2E Visual Verification"* (authoritative runbook). Automated-test issues in the
+`Manual Test` project carry the `automated-test` label — they turn owner-run visual
+checks into Playwright coverage; move them to `Waiting for Manual Test`, don't
+add manual-test children unless you change runtime behavior.
 
 ### Git hooks (Husky)
 
