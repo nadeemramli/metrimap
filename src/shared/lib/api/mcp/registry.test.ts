@@ -24,6 +24,9 @@ const { fakeApi } = vi.hoisted(() => ({
       delete: vi.fn(async () => undefined),
       list: vi.fn(async () => []),
     },
+    evidence: {
+      create: vi.fn(async () => ({ id: 'ev' })),
+    },
     tree: {
       get: vi.fn(async (pid: string) => ({ projectId: pid, cards: [], relationships: [] })),
       layout: vi.fn(async (pid: string) => ({ projectId: pid, count: 0, positions: [] })),
@@ -63,7 +66,8 @@ describe('registry metadata', () => {
     expect(names).toEqual(
       expect.arrayContaining([
         'list_canvases', 'create_canvas', 'get_tree', 'create_metric',
-        'create_driver_node', 'create_relationship', 'push_values', 'layout_tree',
+        'create_driver_node', 'create_relationship', 'create_evidence',
+        'push_values', 'layout_tree',
       ])
     );
   });
@@ -93,6 +97,29 @@ describe('dispatchTool', () => {
   it('routes create_driver_node to nodes.createDriver', async () => {
     await dispatchTool('create_driver_node', { projectId: PROJECT, title: 'Signups' }, ctx());
     expect(fakeApi.nodes.createDriver).toHaveBeenCalledWith({ projectId: PROJECT, title: 'Signups' });
+  });
+
+  it('routes create_evidence to evidence.create (card target)', async () => {
+    const input = {
+      projectId: PROJECT,
+      cardId: NODE_A,
+      title: 'Ran an A/B test',
+      type: 'Experiment',
+      summary: 'Variant B lifted conversion',
+    };
+    const out = await dispatchTool('create_evidence', input, ctx(['write']));
+    expect(fakeApi.evidence.create).toHaveBeenCalledWith(input);
+    expect(out).toEqual({ id: 'ev' });
+  });
+
+  it('rejects create_evidence without exactly one target', async () => {
+    await expect(
+      dispatchTool(
+        'create_evidence',
+        { projectId: PROJECT, title: 'x', type: 'Analysis', summary: 'y' },
+        ctx(['write'])
+      )
+    ).rejects.toThrow();
   });
 
   it('routes layout_tree to tree.layout with direction', async () => {
