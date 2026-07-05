@@ -15,6 +15,7 @@
     "prepare": "husky",
     "test": "vitest",
     "test:rls": "tsx src/tests/run-rls-tests.ts",
+    "prescreenshots": "test -f e2e/certs/key.pem || (mkdir -p e2e/certs && openssl req -x509 -newkey rsa:2048 -nodes -keyout e2e/certs/key.pem -out e2e/certs/cert.pem -days 365 -subj '/CN=dev.canvasm.app' -addext 'subjectAltName=DNS:dev.canvasm.app')",
     "screenshots": "playwright test",
     "sync:errors": "node scripts/sync-error-reports.mjs",
     "sync:userback": "node scripts/sync-userback.mjs"

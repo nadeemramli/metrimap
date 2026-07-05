@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
+import fs from "fs";
 import path from "path";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
@@ -18,7 +19,21 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    host: "0.0.0.0"
+    host: "0.0.0.0",
+    // Local dev + e2e are served on dev.canvasm.app (a canvasm.app subdomain);
+    // Clerk keys reject bare localhost.
+    allowedHosts: [".canvasm.app"],
+    // HTTPS only when E2E_HTTPS is set (self-signed cert under e2e/certs, git-
+    // ignored). A non-localhost origin needs https to be a secure context, or
+    // Clerk's Web Crypto (crypto.subtle) is undefined. Normal `npm run dev` = http.
+    ...(process.env.E2E_HTTPS && fs.existsSync("e2e/certs/key.pem")
+      ? {
+          https: {
+            key: fs.readFileSync("e2e/certs/key.pem"),
+            cert: fs.readFileSync("e2e/certs/cert.pem"),
+          },
+        }
+      : {}),
   },
   build: {
     // 'hidden' sourcemaps: emit .map files (so React #185 / error_reports stacks
