@@ -602,6 +602,36 @@ function CanvasPageInner() {
 
   const handleClearFocus = useCallback(() => setFocusedGroupId(null), []);
 
+  // "Unlinked" cards: nodes with no typed relationship (never a source or target
+  // of any edge). Surfaced as a computed muted group in GroupsPanel so users can
+  // one-click focus them and wire-or-cull (CVS-76). Memoized so it doesn't add
+  // per-render churn to the fragile canvas render path.
+  const unlinkedNodeIds = useMemo(() => {
+    const allNodes = canvas?.nodes || [];
+    if (allNodes.length === 0) return [] as string[];
+    const connected = new Set<string>();
+    for (const e of canvas?.edges || []) {
+      const s = (e as any).sourceId ?? (e as any).source;
+      const t = (e as any).targetId ?? (e as any).target;
+      if (s) connected.add(s);
+      if (t) connected.add(t);
+    }
+    return allNodes.filter((n) => !connected.has(n.id)).map((n) => n.id);
+  }, [canvas?.nodes, canvas?.edges]);
+
+  const handleFocusUnlinked = useCallback(() => {
+    if (unlinkedNodeIds.length === 0) return;
+    // Select them (highlight + make them actionable) then fit the view to them.
+    useCanvasStore.setState({ selectedNodeIds: unlinkedNodeIds });
+    setTimeout(() => {
+      const ids = new Set(unlinkedNodeIds);
+      const toFit = getNodes().filter((n) => ids.has(n.id));
+      if (toFit.length > 0) {
+        fitView({ nodes: toFit as any, padding: 0.35, duration: 600 });
+      }
+    }, 60);
+  }, [unlinkedNodeIds, getNodes, fitView]);
+
   const handleAddSelectedToGroup = useCallback(
     (groupId: string) => {
       const group = (canvas?.groups || []).find((g) => g.id === groupId);
@@ -2167,6 +2197,8 @@ function CanvasPageInner() {
                       onRename={handleRenameGroup}
                       onRecolor={handleRecolorGroup}
                       onDelete={handleDeleteGroup}
+                      unlinkedCount={unlinkedNodeIds.length}
+                      onFocusUnlinked={handleFocusUnlinked}
                     />
                   )}
                 </div>
