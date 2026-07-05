@@ -42,6 +42,7 @@ function transformRelationship(
     weight: rel.weight || undefined,
     notes: rel.description || undefined,
     evidence: evidence.map(transformEvidenceItem),
+    causalMetadata: (rel.causal_metadata as Relationship['causalMetadata']) ?? undefined,
     createdAt: rel.created_at || new Date().toISOString(),
     updatedAt: rel.updated_at || new Date().toISOString(),
   };
@@ -76,6 +77,7 @@ function transformToInsert(
     type: rel.type,
     confidence: rel.confidence,
     weight: rel.weight,
+    causal_metadata: (rel.causalMetadata ?? null) as Json,
     created_by: userId,
   };
 }
@@ -126,6 +128,8 @@ export async function updateRelationship(
   if (updates.confidence !== undefined)
     updateData.confidence = updates.confidence;
   if (updates.weight !== undefined) updateData.weight = updates.weight;
+  if (updates.causalMetadata !== undefined)
+    updateData.causal_metadata = (updates.causalMetadata ?? null) as Json;
 
   const client = resolveClient(authenticatedClient);
   try {

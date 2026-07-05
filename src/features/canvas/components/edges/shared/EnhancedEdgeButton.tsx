@@ -70,6 +70,8 @@ interface EnhancedEdgeButtonProps {
   // Visual state
   selected?: boolean;
   isHovered?: boolean;
+  /** Force the warning look (red + dashed) — e.g. a refuted causal link. */
+  warn?: boolean;
   
   // Actions
   onOpenSettings?: () => void;
@@ -142,6 +144,7 @@ export default function EnhancedEdgeButton({
   weight,
   selected = false,
   isHovered = false,
+  warn = false,
   onOpenSettings,
   onView,
   onEdit,
@@ -165,10 +168,11 @@ export default function EnhancedEdgeButton({
     edgeType === 'relationshipEdge'
       ? getRelationshipEdgeStyle(relationshipType, weight)
       : null;
+  const effectiveTone = warn ? 'negative' : (relStyle?.tone ?? 'neutral');
   const pill = relStyle
-    ? TONE_PILL[relStyle.tone] ?? TONE_PILL.neutral
+    ? TONE_PILL[effectiveTone] ?? TONE_PILL.neutral
     : { bg: config.bgColor, border: config.borderColor, text: config.color };
-  const loose = relStyle?.loose ?? false;
+  const loose = warn || (relStyle?.loose ?? false);
 
   // Actions for the toolbar
   const actions = [

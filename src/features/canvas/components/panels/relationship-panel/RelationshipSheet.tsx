@@ -47,10 +47,12 @@ import {
 } from '@/shared/lib/supabase/services/changelog';
 
 import type {
+  CausalStatus,
   ConfidenceLevel,
   Relationship,
   RelationshipType,
 } from '@/shared/types';
+import { CAUSAL_STATUS_LIST } from '@/features/canvas/constants/relationshipTypeMeta';
 import {
   getEvidenceTypeIcon,
   getTypeColor,
@@ -190,6 +192,11 @@ export default function RelationshipSheet({
     },
   ]);
 
+  // Causal validation status (persisted in relationship.causalMetadata).
+  const [causalStatus, setCausalStatus] = useState<CausalStatus>(
+    relationship?.causalMetadata?.status ?? 'unvalidated'
+  );
+
   // Worker hook for statistical analysis
   const { analyzeCorrelation, isLoading: isWorkerLoading } = useWorker();
 
@@ -230,6 +237,19 @@ export default function RelationshipSheet({
         evidence: relationship.evidence || [],
         notes: relationship.notes || '',
       });
+
+      // Hydrate causal validation state from the persisted metadata (the static
+      // labels/descriptions stay local; only checked/notes + status persist).
+      const saved = relationship.causalMetadata;
+      setCausalStatus(saved?.status ?? 'unvalidated');
+      setCausalChecklist((prev) =>
+        prev.map((item) => {
+          const hit = saved?.checklist?.find((c) => c.id === item.id);
+          return hit
+            ? { ...item, checked: !!hit.checked, notes: hit.notes ?? '' }
+            : { ...item, checked: false, notes: '' };
+        })
+      );
     }
   }, [relationship]);
 
@@ -340,16 +360,17 @@ export default function RelationshipSheet({
     field: 'checked' | 'notes',
     value: boolean | string
   ) => {
-    setCausalChecklist((prev) => {
-      const updated = prev.map((item) =>
+    setCausalChecklist((prev) =>
+      prev.map((item) =>
         item.id === id ? { ...item, [field]: value } : item
-      );
+      )
+    );
+    setIsModified(true);
+  };
 
-      // Note: causalChecklist is not part of the Relationship type,
-      // but we store it locally for UI state management
-
-      return updated;
-    });
+  const handleCausalStatusChange = (status: CausalStatus) => {
+    setCausalStatus(status);
+    setIsModified(true);
   };
 
   // Calculate checklist progress
@@ -383,9 +404,21 @@ export default function RelationshipSheet({
           };
         }
 
-        // Save the relationship
+        // Save the relationship (causal validation state rides along for Causal).
         await persistEdgeUpdate(relationshipId, {
           ...formData,
+          ...(formData.type === 'Causal'
+            ? {
+                causalMetadata: {
+                  status: causalStatus,
+                  checklist: causalChecklist.map((i) => ({
+                    id: i.id,
+                    checked: i.checked,
+                    notes: i.notes,
+                  })),
+                },
+              }
+            : {}),
           updatedAt: new Date().toISOString(),
         });
 
@@ -1361,6 +1394,35 @@ export default function RelationshipSheet({
                   <p className="text-sm text-gray-600">
                     Systematic validation of causal claims based on established
                     criteria
+                  </p>
+                </div>
+
+                {/* Validation status — surfaces on the edge (CVS-264) */}
+                <div>
+                  <p className="mb-2 text-sm font-medium text-gray-700">
+                    Validation status
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {CAUSAL_STATUS_LIST.map((s) => (
+                      <button
+                        key={s.status}
+                        type="button"
+                        onClick={() => handleCausalStatusChange(s.status)}
+                        className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                          causalStatus === s.status
+                            ? `${s.badge} font-medium`
+                            : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Correlation isn't causation — work the checklist below, then
+                    mark this claim <strong>validated</strong> or{' '}
+                    <strong>refuted</strong>. A refuted causal link is flagged on
+                    the canvas.
                   </p>
                 </div>
 
