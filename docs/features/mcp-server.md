@@ -44,7 +44,26 @@ Tools wired (finalized in **CVS-101**): `list_canvases`, `get_tree`, `list_nodes
 `list_relationships`, `create_canvas`, `update_canvas`, `delete_canvas`,
 `create_metric`, `create_value`, `create_action`, `create_driver_node`,
 `update_node`, `delete_node`, `create_relationship`, `delete_relationship`,
-`push_values`, `layout_tree` (Dagre auto-layout so pushed trees render sensibly).
+`create_evidence`, `push_values`, `layout_tree` (Dagre auto-layout so pushed
+trees render sensibly).
+
+### `create_evidence` (CVS-251)
+
+Attaches an evidence item to a **card** or a **relationship** (RLS-scoped,
+`created_by` = the authed user). Input: `projectId`, exactly one of `cardId` /
+`relationshipId`, plus `title`, `type` (`Experiment` / `Analysis` / `Notebook` /
+`External Research` / `User Interview`) and `summary`; optional `date`, `owner`,
+`hypothesis`, `link`, `content` (EditorJS JSON). Returns the evidence id. Backed
+by `metrimapApi.evidence.create` → `createCardEvidence` / `createEvidenceItem`.
+
+> **Lane ownership / coordination.** `create_evidence` is owned by the
+> **relationship + evidence lane** (CVS-251), not the integrations/MCP lane, to
+> keep the evidence surface consistent with the app's evidence services and the
+> public-share work (CVS-248). It is an additive change to the shared registry +
+> API + schemas — the integrations agent should **not** add a duplicate evidence
+> tool. Any further evidence MCP surface (update/delete/list evidence) should be
+> coordinated on CVS-251. The deployed server (`mcp.canvasm.app`) picks it up on
+> the next redeploy of `mcp-server/`.
 
 ## Security & abuse controls (CVS-104)
 

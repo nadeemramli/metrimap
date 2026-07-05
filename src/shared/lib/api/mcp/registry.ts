@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { createMetrimapApi } from '../metrimapApi';
 import {
   CreateCanvasInput,
+  CreateEvidenceInput,
   CreateRelationshipInput,
   CreateTypedNodeInput,
   LayoutTreeInput,
@@ -178,6 +179,16 @@ export const TOOLS: McpTool[] = [
     scope: 'write',
     inputSchema: idInput,
     handler: (a, ctx) => api(ctx).relationships.delete(a.id),
+  }),
+  // --- Write: evidence ---
+  defineTool({
+    name: 'create_evidence',
+    title: 'Create evidence',
+    description:
+      'Attach an evidence item to a card or a relationship. Provide projectId, exactly one of cardId or relationshipId, plus title, type (Experiment / Analysis / Notebook / External Research / User Interview) and summary. Optional: date, owner, hypothesis, link, content (EditorJS JSON). Returns the evidence id.',
+    scope: 'write',
+    inputSchema: CreateEvidenceInput,
+    handler: (a, ctx) => api(ctx).evidence.create(a),
   }),
   // --- Write: values ---
   defineTool({
