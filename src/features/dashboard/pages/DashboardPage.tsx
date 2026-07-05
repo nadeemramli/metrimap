@@ -1,23 +1,22 @@
 import { useCanvasStore } from '@/lib/stores';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useVisibilityStore } from '@/shared/stores/useVisibilityStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/shared/queries/keys';
 import {
-  getMetricValuesByMetricIds,
-  listTrackedMetrics,
-} from '@/shared/lib/supabase/services/trackedMetrics';
+  useDashboardData,
+  useTrackedMetricValues,
+} from '@/features/dashboard/hooks/useDashboardData';
 import {
   createWidget,
   deleteWidget,
-  listWidgets,
   updateLayouts,
   updateWidget,
 } from '@/shared/lib/supabase/services/dashboards';
-import { getProjectById } from '@/shared/lib/supabase/services/projects';
-import { getCanvasNodesByProject } from '@/shared/lib/supabase/services/canvasNodes';
-import { listContractsWithLinksForProject } from '@/shared/lib/supabase/services/strategyImpact';
 import {
   linkedStrategyForWidget,
   type WidgetStrategyLink,
@@ -59,7 +58,6 @@ import {
   Eye,
   LayoutGrid,
   Lock,
-  Loader2,
   Pencil,
   Plus,
 } from 'lucide-react';
@@ -76,25 +74,43 @@ const ROW_HEIGHT = 40;
 
 const CUSTOM_VIEW = '__custom__';
 
+// Stable empty defaults so derived useMemos don't churn on every render while the query
+// resolves (a fresh `[]`/`{}` each render would defeat memoization).
+const EMPTY_NAMES: Record<string, string> = {};
+const EMPTY_CARDS: MetricCard[] = [];
+const EMPTY_GROUPS: GroupNode[] = [];
+const EMPTY_NODES: CanvasNode[] = [];
+const EMPTY_IMPACT: Array<{ contract: ImpactContract; links: MetricLink[] }> = [];
+const EMPTY_VALUES: Record<string, MetricValue[]> = {};
+
 export default function DashboardPage() {
   const { canvasId } = useParams();
   const navigate = useNavigate();
   const client = useClerkSupabase();
   const storeCanvas = useCanvasStore((s) => s.canvas);
+  const queryClient = useQueryClient();
 
-  const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
-  const [trackedNames, setTrackedNames] = useState<Record<string, string>>({});
-  const [trackedValues, setTrackedValues] = useState<
-    Record<string, MetricValue[]>
-  >({});
+  // Server state via TanStack Query (CVS-70): cached + stale-while-revalidate, so
+  // revisiting the dashboard is instant instead of refetching behind a spinner.
+  const { data: dashboardData, isLoading } = useDashboardData(canvasId);
+  const trackedNames = dashboardData?.trackedNames ?? EMPTY_NAMES;
   // Persisted nodes + groups for this canvas (drives the group dashboards).
-  const [loadedCards, setLoadedCards] = useState<MetricCard[]>([]);
-  const [loadedGroups, setLoadedGroups] = useState<GroupNode[]>([]);
-  const [chartNodes, setChartNodes] = useState<CanvasNode[]>([]);
-  const [impactEntries, setImpactEntries] = useState<
-    Array<{ contract: ImpactContract; links: MetricLink[] }>
-  >([]);
-  const [loading, setLoading] = useState(true);
+  const loadedCards = dashboardData?.cards ?? EMPTY_CARDS;
+  const loadedGroups = dashboardData?.groups ?? EMPTY_GROUPS;
+  const chartNodes = dashboardData?.chartNodes ?? EMPTY_NODES;
+  const impactEntries = dashboardData?.impactEntries ?? EMPTY_IMPACT;
+
+  // Widgets stay in local state so drag/resize/create/remove feel instant; seeded from the
+  // query and re-seeded whenever a mutation invalidates and the bundle refetches.
+  const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
+  useEffect(() => {
+    if (dashboardData) setWidgets(dashboardData.widgets);
+  }, [dashboardData]);
+
+  const invalidateDashboard = () => {
+    if (canvasId) void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.data(canvasId) });
+  };
+
   const [editMode, setEditMode] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardWidget | null>(null);
@@ -135,40 +151,6 @@ export default function DashboardPage() {
     [storeMatches, storeCanvas?.groups, loadedGroups]
   );
 
-  // Load widgets + the catalog (names) + the project (nodes/groups) for this canvas.
-  useEffect(() => {
-    if (!client || !canvasId) return;
-    setLoading(true);
-    Promise.all([
-      listWidgets(canvasId, client),
-      listTrackedMetrics(client),
-      getProjectById(canvasId, client).catch(() => null),
-      getCanvasNodesByProject(canvasId, client).catch(
-        () => [] as CanvasNode[]
-      ),
-      listContractsWithLinksForProject(canvasId, client).catch(() => []),
-    ])
-      .then(([w, metrics, project, nodes, impact]) => {
-        setWidgets(w);
-        setTrackedNames(
-          Object.fromEntries(metrics.map((m) => [m.id, m.name]))
-        );
-        setLoadedCards(project?.nodes ?? []);
-        setLoadedGroups(project?.groups ?? []);
-        setChartNodes(nodes.filter((n) => n.nodeType === 'chartNode'));
-        setImpactEntries(impact);
-      })
-      .catch(() => {
-        setWidgets([]);
-        setTrackedNames({});
-        setLoadedCards([]);
-        setLoadedGroups([]);
-        setChartNodes([]);
-        setImpactEntries([]);
-      })
-      .finally(() => setLoading(false));
-  }, [client, canvasId]);
-
   // Default to the first group's dashboard when groups exist, else Custom.
   useEffect(() => {
     if (groups.length > 0) {
@@ -198,15 +180,7 @@ export default function DashboardPage() {
     return Array.from(ids);
   }, [widgets, impactEntries]);
 
-  useEffect(() => {
-    if (!client || referencedTrackedIds.length === 0) {
-      setTrackedValues({});
-      return;
-    }
-    getMetricValuesByMetricIds(referencedTrackedIds, client)
-      .then(setTrackedValues)
-      .catch(() => setTrackedValues({}));
-  }, [client, referencedTrackedIds]);
+  const { data: trackedValues = EMPTY_VALUES } = useTrackedMetricValues(referencedTrackedIds);
 
   const sources: WidgetDataSources = useMemo(
     () => ({ cards: visibleCards, trackedValues, trackedNames }),
@@ -343,6 +317,7 @@ export default function DashboardPage() {
         );
         setWidgets((prev) => [...prev, created]);
       }
+      invalidateDashboard();
     } catch {
       toast.error('Failed to save widget');
     }
@@ -354,6 +329,7 @@ export default function DashboardPage() {
     setWidgets((w) => w.filter((x) => x.id !== id));
     try {
       await deleteWidget(id, client);
+      invalidateDashboard();
     } catch {
       setWidgets(prev);
       toast.error('Failed to remove widget');
@@ -374,6 +350,7 @@ export default function DashboardPage() {
         client
       );
       setWidgets((prev) => [...prev, created]);
+      invalidateDashboard();
       toast.success('Chart added to dashboard');
     } catch {
       toast.error('Failed to import chart');
@@ -439,10 +416,12 @@ export default function DashboardPage() {
     deps: [editMode, isCustom, chartNodes, widgets],
   });
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-xl" />
+        ))}
       </div>
     );
   }

@@ -36,8 +36,19 @@ import AppShell from './shared/components/layout/AppShell';
 // Auth Pages
 import SignInPage from './features/auth/pages/SignInPage';
 
-// Create a client
-const queryClient = new QueryClient();
+// Server-state defaults (CVS-70): keep data cached across navigations so revisits are
+// instant (stale-while-revalidate) instead of refetching from a spinner. Client/UI state
+// stays in Zustand — this only governs TanStack Query's server cache.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000, // 30s: treat data as fresh, serve from cache without refetch
+      gcTime: 5 * 60_000, // keep unused cache 5min for instant back-navigation
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 export default function App() {
   return (
