@@ -19,7 +19,7 @@ import {
   generateClerkProtectedResourceMetadata,
   corsHeaders,
 } from '@clerk/mcp-tools/server';
-import { z } from 'zod';
+import type { ZodRawShape } from 'zod';
 import {
   listTools,
   dispatchTool,
@@ -124,8 +124,13 @@ function buildMcpServer(authed: McpAuthContext): McpServer {
   const server = new McpServer({ name: 'metrimap', version: VERSION });
 
   for (const t of listTools()) {
-    const shape =
-      t.inputSchema instanceof z.ZodObject ? t.inputSchema.shape : undefined;
+    // Extract the ZodRawShape by duck-typing, NOT `instanceof z.ZodObject`. The app
+    // is on zod 3 while this server's deps pull zod 4, so a v4 instanceof check is
+    // always false for our v3 schemas — that silently dropped every input schema and
+    // published empty `{properties:{}}` to connectors, so create_*/get_* got no
+    // fields to send → invalid_input on every call. The SDK's shape handling is
+    // v3/v4-compat (objectFromShape rebuilds the fields), so the raw shape is enough.
+    const shape = (t.inputSchema as { shape?: ZodRawShape }).shape;
     server.registerTool(
       t.name,
       {
