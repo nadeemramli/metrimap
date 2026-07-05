@@ -14,6 +14,7 @@ import {
   Minus,
   Plus,
   Trash2,
+  Unlink,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -41,6 +42,10 @@ interface GroupsPanelProps {
   onRename: (groupId: string, name: string) => void;
   onRecolor: (groupId: string, color: string) => void;
   onDelete: (groupId: string) => void;
+  /** Count of cards with no typed relationship (computed "Unlinked" group). */
+  unlinkedCount: number;
+  /** Select + fit-view the unlinked cards so they can be wired or culled. */
+  onFocusUnlinked: () => void;
 }
 
 export default function GroupsPanel({
@@ -55,6 +60,8 @@ export default function GroupsPanel({
   onRename,
   onRecolor,
   onDelete,
+  unlinkedCount,
+  onFocusUnlinked,
 }: GroupsPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
@@ -112,6 +119,36 @@ export default function GroupsPanel({
       )}
 
       <div className="p-2 space-y-1.5">
+        {/* Computed "Unlinked" group: cards with no typed relationship. Muted +
+            dashed to signal it isn't a real saved group — just a focus shortcut. */}
+        {unlinkedCount > 0 && (
+          <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/40 p-2">
+            <div className="flex items-center gap-2">
+              <Unlink className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1 min-w-0 truncate text-left text-xs font-medium text-muted-foreground">
+                Unlinked
+              </span>
+              <Badge variant="outline" className="text-[10px] shrink-0">
+                {unlinkedCount}
+              </Badge>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {unlinkedCount === 1 ? '1 card has' : `${unlinkedCount} cards have`}{' '}
+              no relationship yet.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2 h-7 w-full gap-1 px-2 text-xs"
+              onClick={onFocusUnlinked}
+              title="Select and zoom to the unlinked cards to wire or remove them"
+            >
+              <Crosshair className="h-3 w-3" />
+              Focus to wire or cull
+            </Button>
+          </div>
+        )}
+
         {groups.length === 0 ? (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">
             No groups yet.
