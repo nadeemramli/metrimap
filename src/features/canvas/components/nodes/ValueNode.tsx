@@ -57,7 +57,7 @@ const ValueNode = memo(({ data, selected }: NodeProps<ValueNodeData>) => {
       case 'Critical Path':
         return 'bg-red-100 text-red-800 border-red-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-muted text-foreground border-border';
     }
   };
 
@@ -77,11 +77,11 @@ const ValueNode = memo(({ data, selected }: NodeProps<ValueNodeData>) => {
   return (
     <div
       className={cn(
-        'relative bg-white rounded-lg border-2 shadow-sm transition-all duration-200 cursor-pointer',
+        'relative bg-card rounded-lg border-2 shadow-sm transition-all duration-200 cursor-pointer',
         'min-w-[280px] max-w-[320px]',
         isSelected
           ? 'border-blue-500 shadow-lg ring-2 ring-blue-200'
-          : 'border-gray-200 hover:border-gray-300',
+          : 'border-border hover:border-border',
         isHovered &&
           !isSelected &&
           'shadow-md transform scale-[1.02] border-blue-300',
@@ -161,19 +161,19 @@ const ValueNode = memo(({ data, selected }: NodeProps<ValueNodeData>) => {
           </div>
           <div className="flex items-center gap-1">
             {getBusinessImpactIcon(node.businessImpact)}
-            <GripVertical className="w-4 h-4 text-gray-400 cursor-move" />
+            <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
           </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="p-3">
-        <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
+        <h3 className="font-semibold text-foreground text-sm mb-1 line-clamp-2">
           {node.title}
         </h3>
 
         {node.description && (
-          <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
             {node.description}
           </p>
         )}
@@ -181,7 +181,7 @@ const ValueNode = memo(({ data, selected }: NodeProps<ValueNodeData>) => {
         {/* Business Impact */}
         {node.businessImpact && (
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-gray-500">Impact:</span>
+            <span className="text-xs text-muted-foreground">Impact:</span>
             <Badge
               variant="outline"
               className={cn(
@@ -202,8 +202,8 @@ const ValueNode = memo(({ data, selected }: NodeProps<ValueNodeData>) => {
         {/* Stakeholders */}
         {node.stakeholders && node.stakeholders.length > 0 && (
           <div className="flex items-center gap-2 mb-2">
-            <Users className="w-3 h-3 text-gray-400" />
-            <span className="text-xs text-gray-600">
+            <Users className="w-3 h-3 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
               {node.stakeholders.length} stakeholder
               {node.stakeholders.length !== 1 ? 's' : ''}
             </span>
@@ -232,8 +232,8 @@ const ValueNode = memo(({ data, selected }: NodeProps<ValueNodeData>) => {
       </div>
 
       {/* Footer */}
-      <div className="px-3 py-2 bg-gray-50 rounded-b-lg border-t border-gray-100">
-        <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="px-3 py-2 bg-muted rounded-b-lg border-t border-gray-100">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Value Node</span>
           <span className="font-mono">{node.id.slice(0, 8)}</span>
         </div>
