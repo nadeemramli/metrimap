@@ -1115,8 +1115,15 @@ function CanvasPageInner() {
     };
     const onKey = (e: KeyboardEvent) => {
       if (isEditable(e.target)) return;
-      // Esc → back to "nothing selected" (CVS-68).
+      // Esc → in Draw mode, break from the active tool back to Select (CVS-107);
+      // in Edit mode, clear the selection (CVS-68).
       if (e.key === 'Escape') {
+        if (state.toolbarMode === 'draw') {
+          if (state.whiteboardTool !== 'select') {
+            state.setWhiteboardTool('select');
+          }
+          return;
+        }
         const s = useCanvasStore.getState();
         if (s.selectedNodeIds.length || s.selectedEdgeIds.length) {
           s.clearSelection();
@@ -1128,6 +1135,29 @@ function CanvasPageInner() {
         e.preventDefault();
         fitView({ padding: 0.2, duration: 800 });
         return;
+      }
+      // Draw-mode single-key tool hotkeys (CVS-107): V/H/E/L/R/P. No modifier held;
+      // typing is already excluded by isEditable above. (T = Text tool → CVS-108.)
+      if (
+        state.toolbarMode === 'draw' &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey
+      ) {
+        const toolByKey: Record<string, WhiteboardTool> = {
+          v: 'select',
+          h: 'hand',
+          e: 'eraser',
+          l: 'lasso',
+          r: 'rectangle',
+          p: 'freehand',
+        };
+        const tool = toolByKey[e.key.toLowerCase()];
+        if (tool) {
+          e.preventDefault();
+          state.setWhiteboardTool(tool);
+          return;
+        }
       }
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
@@ -1147,7 +1177,13 @@ function CanvasPageInner() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [canvasActions, fitView]);
+  }, [
+    canvasActions,
+    fitView,
+    state.toolbarMode,
+    state.whiteboardTool,
+    state.setWhiteboardTool,
+  ]);
 
   // Memoized filter options
   const availableFilterOptions = useMemo(() => {
@@ -2055,13 +2091,10 @@ function CanvasPageInner() {
               state.whiteboardTool === 'select' ||
               state.whiteboardTool === 'hand'
             }
-            panActivationKeyCode={
-              state.toolbarMode === 'edit' ||
-              state.whiteboardTool === 'select' ||
-              state.whiteboardTool === 'hand'
-                ? 'Space'
-                : null
-            }
+            // Space is a hold-to-pan in every mode — including Draw mode with an
+            // active drawing tool (temporary hand; releasing returns to the tool).
+            // Previously null for active draw tools, so Space didn't pan (CVS-107).
+            panActivationKeyCode="Space"
             nodesDraggable={
               canEdit &&
               (state.toolbarMode === 'edit' ||
