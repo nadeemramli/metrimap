@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getCausalStatusMeta,
   getRelationshipEdgeStyle,
   getRelationshipStroke,
 } from './relationshipTypeMeta';
@@ -77,5 +78,31 @@ describe('getRelationshipStroke (delegates to edge style)', () => {
     expect(getRelationshipStroke('Causal', -80)).toBe('#dc2626');
     expect(getRelationshipStroke('Probabilistic', 5)).toBe('#d97706');
     expect(getRelationshipStroke('Deterministic', 80)).toBe('#6b7280');
+  });
+});
+
+// CVS-264 — causal validation/refutation state.
+describe('getCausalStatusMeta', () => {
+  it('refuted warns (negative tone) so it never looks healthy', () => {
+    const m = getCausalStatusMeta('refuted');
+    expect(m.warn).toBe(true);
+    expect(m.tone).toBe('negative');
+    expect(m.color).toBe('#dc2626');
+  });
+
+  it('validated is positive and does not warn', () => {
+    const m = getCausalStatusMeta('validated');
+    expect(m.tone).toBe('positive');
+    expect(m.warn).toBe(false);
+  });
+
+  it('validating reads amber/weak', () => {
+    expect(getCausalStatusMeta('validating').tone).toBe('weak');
+  });
+
+  it('undefined / unknown defaults to unvalidated (neutral, no warn)', () => {
+    expect(getCausalStatusMeta(undefined).status).toBe('unvalidated');
+    expect(getCausalStatusMeta('bogus').tone).toBe('neutral');
+    expect(getCausalStatusMeta('bogus').warn).toBe(false);
   });
 });

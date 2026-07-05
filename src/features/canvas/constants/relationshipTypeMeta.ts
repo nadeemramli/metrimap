@@ -20,7 +20,11 @@ import {
   Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { ConfidenceLevel, RelationshipType } from '@/shared/types';
+import type {
+  CausalStatus,
+  ConfidenceLevel,
+  RelationshipType,
+} from '@/shared/types';
 
 export type RelationshipLayer = 'component' | 'influence';
 
@@ -330,3 +334,69 @@ export function getRelationshipWeightLabel(
   // Truthy check matches prior edge behavior (weight 0 falls back to default).
   return weight ? `${weight}` : meta.defaultWeightLabel;
 }
+
+// --- Causal validation state (CVS-165 / CVS-264) --------------------------
+
+export interface CausalStatusMeta {
+  status: CausalStatus;
+  label: string;
+  tone: RelationshipTone;
+  /** Hex colour for a status dot/badge. */
+  color: string;
+  /** Tailwind classes for a small status badge. */
+  badge: string;
+  /** True when this status should visually WARN (a refuted causal claim). */
+  warn: boolean;
+}
+
+const CAUSAL_STATUS_META: Record<CausalStatus, CausalStatusMeta> = {
+  validated: {
+    status: 'validated',
+    label: 'Validated',
+    tone: 'positive',
+    color: EDGE_COLORS.positiveStrong,
+    badge: 'bg-green-50 text-green-700 border-green-300',
+    warn: false,
+  },
+  refuted: {
+    status: 'refuted',
+    label: 'Refuted',
+    tone: 'negative',
+    color: EDGE_COLORS.negative,
+    badge: 'bg-red-50 text-red-700 border-red-300',
+    warn: true,
+  },
+  validating: {
+    status: 'validating',
+    label: 'Validating',
+    tone: 'weak',
+    color: EDGE_COLORS.weak,
+    badge: 'bg-amber-50 text-amber-700 border-amber-300',
+    warn: false,
+  },
+  unvalidated: {
+    status: 'unvalidated',
+    label: 'Unvalidated',
+    tone: 'neutral',
+    color: EDGE_COLORS.neutral,
+    badge: 'bg-gray-50 text-gray-600 border-gray-300',
+    warn: false,
+  },
+};
+
+/** Visual meta for a causal relationship's validation status (defaults to unvalidated). */
+export function getCausalStatusMeta(
+  status?: CausalStatus | string
+): CausalStatusMeta {
+  return (
+    CAUSAL_STATUS_META[status as CausalStatus] ??
+    CAUSAL_STATUS_META.unvalidated
+  );
+}
+
+export const CAUSAL_STATUS_LIST: CausalStatusMeta[] = [
+  CAUSAL_STATUS_META.unvalidated,
+  CAUSAL_STATUS_META.validating,
+  CAUSAL_STATUS_META.validated,
+  CAUSAL_STATUS_META.refuted,
+];

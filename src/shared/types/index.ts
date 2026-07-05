@@ -161,12 +161,33 @@ export interface Relationship {
   evidence: EvidenceItem[];
   notes?: string;
 
+  // Causal validation (only meaningful for type === 'Causal'): the checklist +
+  // its validated/refuted status, persisted so it surfaces on the edge (CVS-165).
+  causalMetadata?: CausalMetadata;
+
   // History for influence drift analysis
   history?: RelationshipHistoryEntry[];
 
   // Metadata
   createdAt: string;
   updatedAt: string;
+}
+
+export type CausalStatus =
+  | 'unvalidated'
+  | 'validating'
+  | 'validated'
+  | 'refuted';
+
+export interface CausalChecklistItem {
+  id: string;
+  checked: boolean;
+  notes?: string;
+}
+
+export interface CausalMetadata {
+  status: CausalStatus;
+  checklist: CausalChecklistItem[];
 }
 
 export interface RelationshipHistoryEntry {

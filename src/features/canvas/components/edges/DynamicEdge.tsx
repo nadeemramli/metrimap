@@ -22,6 +22,7 @@ import EnhancedEdgeButton, {
   useEdgeActions,
 } from './shared/EnhancedEdgeButton';
 import {
+  getCausalStatusMeta,
   getRelationshipEdgeStyle,
   getRelationshipStroke,
   getRelationshipTypeMeta,
@@ -160,11 +161,27 @@ export default function DynamicEdge({
   );
   const confidenceConfig = getConfidenceConfig(relationship.confidence);
   // CVS-165: the drawn line encodes direction/strength/confidence.
-  const edgeStyle = getRelationshipEdgeStyle(
+  const baseEdgeStyle = getRelationshipEdgeStyle(
     relationship.type,
     relationship.weight,
     relationship.confidence
   );
+  // Causal validation state (CVS-264): a refuted causal claim must NOT look like
+  // a healthy one — warn it red + dashed regardless of its weight.
+  const causal =
+    relationship.type === 'Causal'
+      ? getCausalStatusMeta(relationship.causalMetadata?.status)
+      : null;
+  const edgeStyle = causal?.warn
+    ? {
+        ...baseEdgeStyle,
+        stroke: '#dc2626',
+        strokeDasharray: '6,4',
+        opacity: Math.min(baseEdgeStyle.opacity, 0.75),
+        tone: 'negative' as const,
+        loose: true,
+      }
+    : baseEdgeStyle;
 
   // Debug logging for edge styling updates - REMOVED to reduce console noise
 
@@ -339,6 +356,17 @@ export default function DynamicEdge({
             >
               {relationship.confidence}
             </Badge>
+            {causal && relationship.causalMetadata?.status && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-xs font-normal backdrop-blur-sm',
+                  causal.badge
+                )}
+              >
+                {causal.label}
+              </Badge>
+            )}
             {relationship.evidence.length > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {relationship.evidence.length} evidence
@@ -360,6 +388,7 @@ export default function DynamicEdge({
           confidence={relationship.confidence}
           selected={selected}
           isHovered={isHovered}
+          warn={!!causal?.warn}
           onOpenSettings={() => {
             if (isRelationshipSheetOpen && onSwitchToRelationship) {
               onSwitchToRelationship(relationship.id);

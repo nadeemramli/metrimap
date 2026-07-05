@@ -1473,6 +1473,7 @@ export type Database = {
           type: string
           confidence: string
           weight: number | null
+          causal_metadata: Json | null
           description: string | null
           project_id: string
           created_at: string | null
@@ -1487,6 +1488,7 @@ export type Database = {
           type: string
           confidence: string
           weight?: number | null
+          causal_metadata?: Json | null
           description?: string | null
           project_id: string
           created_at?: string | null
@@ -1501,6 +1503,7 @@ export type Database = {
           type?: string
           confidence?: string
           weight?: number | null
+          causal_metadata?: Json | null
           description?: string | null
           project_id?: string
           created_at?: string | null
