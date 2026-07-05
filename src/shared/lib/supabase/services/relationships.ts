@@ -40,6 +40,7 @@ function transformRelationship(
     type: rel.type as any,
     confidence: rel.confidence as any,
     weight: rel.weight || undefined,
+    notes: rel.description || undefined,
     evidence: evidence.map(transformEvidenceItem),
     createdAt: rel.created_at || new Date().toISOString(),
     updatedAt: rel.updated_at || new Date().toISOString(),
@@ -93,6 +94,10 @@ export async function createRelationship(
     console.error('Validation error creating relationship:', error);
     throw error;
   }
+  // Notes → `description` column, set after validation (see updateRelationship).
+  if (relationship.notes !== undefined) {
+    insertData.description = relationship.notes ?? null;
+  }
   const client = resolveClient(authenticatedClient);
 
   const { data, error } = await client
@@ -129,6 +134,10 @@ export async function updateRelationship(
     console.error('Validation error updating relationship:', error);
     throw error;
   }
+  // Relationship notes live in the `description` column (the domain model calls
+  // it `notes`). Set it AFTER validation — the generated strict schema doesn't
+  // know this column (stale Prisma mirror) but Postgres accepts it (cf. CVS-34).
+  if (updates.notes !== undefined) updateData.description = updates.notes ?? null;
   const { data, error } = await client
     .from('relationships')
     .update(updateData)
