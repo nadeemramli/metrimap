@@ -693,6 +693,27 @@ function CanvasPageInner() {
     ]
   );
 
+  // Bridge for the per-node toolbar's view/edit/settings actions (CVS-135). Those
+  // live in the decoupled `useNodeToolbarActions` hook, which can't reach this
+  // page-local settings-sheet state — so it dispatches a window CustomEvent and we
+  // open the sheet here (switching to the requested tab when one is given).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { nodeId?: string; tab?: string }
+        | undefined;
+      if (!detail?.nodeId) return;
+      if (detail.tab) {
+        stableHandleSwitchToCard(detail.nodeId, detail.tab);
+      } else {
+        stableHandleOpenSettingsSheet(detail.nodeId);
+      }
+    };
+    window.addEventListener('canvas:open-node-settings', handler);
+    return () =>
+      window.removeEventListener('canvas:open-node-settings', handler);
+  }, [stableHandleOpenSettingsSheet, stableHandleSwitchToCard]);
+
   const stableHandleToggleCollapse = useCallback((groupId: string) => {
     log.debug('📁 Toggle collapse for group:', groupId);
     // Update group collapse state in canvas
