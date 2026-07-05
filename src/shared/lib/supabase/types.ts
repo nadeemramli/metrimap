@@ -732,6 +732,92 @@ export type Database = {
           },
         ]
       }
+      connector_runs: {
+        Row: {
+          id: string
+          created_by: string
+          workspace_id: string | null
+          connected_account_id: string | null
+          connector_id: string
+          stream: string | null
+          event: string
+          status: string
+          sync_mode: string | null
+          pages: number
+          fetched: number
+          accepted: number
+          skipped: number
+          rejected: number
+          materialized: number
+          cursor: string | null
+          error_class: string | null
+          error_message: string | null
+          resumable: boolean
+          duration_ms: number | null
+          started_at: string | null
+          finished_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connected_account_id?: string | null
+          connector_id: string
+          stream?: string | null
+          event: string
+          status?: string
+          sync_mode?: string | null
+          pages?: number
+          fetched?: number
+          accepted?: number
+          skipped?: number
+          rejected?: number
+          materialized?: number
+          cursor?: string | null
+          error_class?: string | null
+          error_message?: string | null
+          resumable?: boolean
+          duration_ms?: number | null
+          started_at?: string | null
+          finished_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connected_account_id?: string | null
+          connector_id?: string
+          stream?: string | null
+          event?: string
+          status?: string
+          sync_mode?: string | null
+          pages?: number
+          fetched?: number
+          accepted?: number
+          skipped?: number
+          rejected?: number
+          materialized?: number
+          cursor?: string | null
+          error_class?: string | null
+          error_message?: string | null
+          resumable?: boolean
+          duration_ms?: number | null
+          started_at?: string | null
+          finished_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connector_runs_connected_account_id_fkey"
+            columns: ["connected_account_id"]
+            isOneToOne: false
+            referencedRelation: "connected_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       connected_accounts: {
         Row: {
           id: string
