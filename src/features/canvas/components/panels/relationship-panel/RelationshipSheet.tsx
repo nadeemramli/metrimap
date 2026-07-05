@@ -270,22 +270,11 @@ export default function RelationshipSheet({
     }
   };
 
-  // Function to generate mock data for analysis
-  const generateMockData = (): number[] => {
-    // Generate mock time series data for demonstration
-    // In a real implementation, this would come from the node's actual data
-    const baseValue = Math.random() * 100;
-    const trend = (Math.random() - 0.5) * 0.5;
-    const data: number[] = [];
-
-    for (let i = 0; i < 30; i++) {
-      const noise = (Math.random() - 0.5) * 10;
-      const value = baseValue + trend * i + noise;
-      data.push(Math.max(0, value)); // Ensure non-negative values
-    }
-
-    return data;
-  };
+  // Extract a node's real numeric value series (from its tracked metric data).
+  const seriesFromNode = (node: typeof sourceNode): number[] =>
+    (node?.data ?? [])
+      .map((d: { value?: number }) => d?.value)
+      .filter((v: unknown): v is number => typeof v === 'number');
 
   // Function to run statistical analysis
   const handleRunAnalysis = async () => {
@@ -298,14 +287,19 @@ export default function RelationshipSheet({
     setAnalysisError(null);
 
     try {
-      // Generate mock data for the nodes
-      const sourceData = generateMockData();
-      const targetData = generateMockData();
+      // Use the nodes' REAL metric values (not mock data).
+      const sourceData = seriesFromNode(sourceNode);
+      const targetData = seriesFromNode(targetNode);
 
-      // Check if we have enough data
+      // Need enough overlapping data to correlate.
       if (sourceData.length < 3 || targetData.length < 3) {
         throw new Error(
-          'Insufficient data for statistical analysis. At least 3 data points required.'
+          `Need at least 3 data points in each metric to analyze correlation (have ${sourceData.length} and ${targetData.length}). Add values to both cards first.`
+        );
+      }
+      if (sourceData.length !== targetData.length) {
+        throw new Error(
+          `Both metrics must have the same number of data points to correlate (have ${sourceData.length} vs ${targetData.length}).`
         );
       }
 
