@@ -1,4 +1,8 @@
 @import 'tailwindcss';
+/* v4 successor to tailwindcss-animate — provides animate-in / fade-in / zoom-in /
+   slide-in utilities used by the shadcn dialog/dropdown/popover components. The old
+   tailwindcss-animate plugin lived in tailwind.config.ts, which v4 no longer loads. */
+@import 'tw-animate-css';
 
 /* Import Editor.js styles */
 @import './editor.css';
