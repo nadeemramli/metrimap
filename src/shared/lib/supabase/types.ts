@@ -1414,6 +1414,54 @@ export type Database = {
           },
         ]
       }
+      relationship_history: {
+        Row: {
+          changed_by: string
+          confidence: string | null
+          created_at: string
+          id: string
+          project_id: string | null
+          relationship_id: string
+          type: string | null
+          weight: number | null
+        }
+        Insert: {
+          changed_by?: string
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          relationship_id: string
+          type?: string | null
+          weight?: number | null
+        }
+        Update: {
+          changed_by?: string
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          relationship_id?: string
+          type?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relationship_history_relationship_id_fkey"
+            columns: ["relationship_id"]
+            isOneToOne: false
+            referencedRelation: "relationships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relationship_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       relationships: {
         Row: {
           id: string

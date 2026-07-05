@@ -13,6 +13,10 @@ import {
   type ChangelogEntry,
 } from '@/shared/lib/supabase/services/changelog';
 import {
+  getRelationshipHistory,
+  type RelationshipHistoryPoint,
+} from '@/shared/lib/supabase/services/relationshipHistory';
+import {
   addTagsToRelationship,
   getRelationshipTags,
   removeTagsFromRelationship,
@@ -115,6 +119,9 @@ export function useRelationshipEvidence(
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
   const [isLoadingChangelog, setIsLoadingChangelog] = useState(false);
+  const [strengthHistory, setStrengthHistory] = useState<
+    RelationshipHistoryPoint[]
+  >([]);
 
   const currentProject = projectId ? getProjectById(projectId) : null;
   const relationship = relationshipId
@@ -142,9 +149,24 @@ export function useRelationshipEvidence(
     }
   }, [relationshipId]);
 
+  // Load the strength/confidence trend (audit + sparkline).
+  const loadStrengthHistory = useCallback(async () => {
+    if (!relationshipId) {
+      setStrengthHistory([]);
+      return;
+    }
+    try {
+      setStrengthHistory(await getRelationshipHistory(relationshipId));
+    } catch (error) {
+      console.error('Failed to load relationship strength history:', error);
+      setStrengthHistory([]);
+    }
+  }, [relationshipId]);
+
   useEffect(() => {
     loadChangelog();
-  }, [loadChangelog]);
+    loadStrengthHistory();
+  }, [loadChangelog, loadStrengthHistory]);
 
   const openDialog = useCallback((evidence?: EvidenceItem) => {
     setSelectedEvidence(evidence || null);
@@ -282,5 +304,9 @@ export function useRelationshipEvidence(
     changelog,
     isLoadingChangelog,
     refetchChangelog: loadChangelog,
+
+    // Strength/confidence trend (audit + sparkline)
+    strengthHistory,
+    refetchStrengthHistory: loadStrengthHistory,
   };
 }
