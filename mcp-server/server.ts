@@ -15,40 +15,80 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createClient } from '@supabase/supabase-js';
+import {
+  generateClerkProtectedResourceMetadata,
+  corsHeaders,
+} from '@clerk/mcp-tools/server';
 import { z } from 'zod';
 import {
   listTools,
   dispatchTool,
   McpToolError,
   createApiKeyAuthResolver,
+  createOAuthAuthResolver,
+  createCompositeAuthResolver,
   supabaseApiKeyLookup,
   supabaseAuditSink,
   RateLimiter,
   DEFAULT_MAX_PAYLOAD_BYTES,
+  type McpAuthContext,
 } from '@/shared/lib/api/mcp';
+import { makeClerkVerifier } from './clerkAuth';
 
 const VERSION = '0.1.0';
 const {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
   SUPABASE_JWT_SECRET,
+  CLERK_SECRET_KEY,
+  CLERK_PUBLISHABLE_KEY,
+  MCP_PUBLIC_URL = 'https://mcp.canvasm.app',
   PORT = '8787',
 } = process.env;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_JWT_SECRET) {
+if (
+  !SUPABASE_URL ||
+  !SUPABASE_ANON_KEY ||
+  !SUPABASE_JWT_SECRET ||
+  !CLERK_SECRET_KEY ||
+  !CLERK_PUBLISHABLE_KEY
+) {
   console.error(
-    'Missing env. Required: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET.'
+    'Missing env. Required: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY.'
   );
   process.exit(1);
 }
 
+// The OAuth resource id this server represents (must match what clients request).
+const RESOURCE_URL = `${MCP_PUBLIC_URL}/mcp`;
+// RFC 9728 Protected Resource Metadata path (also served with a `/mcp` suffix).
+const PRM_PATH = '/.well-known/oauth-protected-resource';
+
 // One anon client for key lookups; the resolver mints a per-user JWT + client.
 const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const resolveAuth = createApiKeyAuthResolver({
+// Two auth paths behind one endpoint: `mk_live_…` personal API keys (CLI) and
+// Clerk OAuth access tokens (claude.ai / Desktop connectors). Both resolve to
+// the same RLS-scoped McpAuthContext.
+const resolveApiKey = createApiKeyAuthResolver({
   jwtSecret: SUPABASE_JWT_SECRET,
   supabaseUrl: SUPABASE_URL,
   anonKey: SUPABASE_ANON_KEY,
   lookupKey: supabaseApiKeyLookup(anon),
+});
+const resolveOAuth = createOAuthAuthResolver({
+  jwtSecret: SUPABASE_JWT_SECRET,
+  supabaseUrl: SUPABASE_URL,
+  anonKey: SUPABASE_ANON_KEY,
+  verifyOAuthToken: makeClerkVerifier({
+    secretKey: CLERK_SECRET_KEY,
+    publishableKey: CLERK_PUBLISHABLE_KEY,
+    resourceUrl: RESOURCE_URL,
+    authorizedParties: ['https://claude.ai', 'https://claude.com'],
+  }),
+});
+const resolveAuth = createCompositeAuthResolver({
+  apiKey: resolveApiKey,
+  oauth: resolveOAuth,
 });
 
 // 120 calls burst, 2/s sustained, per user (in-memory — see README for scaling).
@@ -77,15 +117,11 @@ function readJson(req: IncomingMessage): Promise<unknown> {
   });
 }
 
-// Build a fresh MCP server bound to one HTTP request's headers. Auth is resolved
-// lazily + once per request; each tool runs under that user's RLS + guards.
-function buildMcpServer(reqHeaders: Record<string, string | undefined>): McpServer {
+// Build a fresh MCP server for one already-authenticated HTTP request. Auth is
+// resolved up front (see the request handler), so each tool runs under that
+// user's RLS + guards.
+function buildMcpServer(authed: McpAuthContext): McpServer {
   const server = new McpServer({ name: 'metrimap', version: VERSION });
-  let ctx: ReturnType<typeof resolveAuth> | undefined;
-  const getCtx = () => {
-    if (!ctx) ctx = resolveAuth({ headers: reqHeaders });
-    return ctx;
-  };
 
   for (const t of listTools()) {
     const shape =
@@ -99,7 +135,6 @@ function buildMcpServer(reqHeaders: Record<string, string | undefined>): McpServ
       },
       async (args: unknown) => {
         try {
-          const authed = await getCtx();
           const result = await dispatchTool(t.name, args, authed, {
             rateLimiter,
             maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES,
@@ -127,14 +162,55 @@ const http = createServer(async (req: IncomingMessage, res: ServerResponse) => {
       res.end(JSON.stringify({ ok: true, name: 'metrimap-mcp', version: VERSION }));
       return;
     }
+
+    // OAuth 2.1 Protected Resource Metadata (RFC 9728). Points MCP clients at
+    // Clerk as the authorization server; also serve the `/mcp`-suffixed variant.
+    if (req.url && req.url.startsWith(PRM_PATH)) {
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, corsHeaders);
+        res.end();
+        return;
+      }
+      if (req.method === 'GET') {
+        const meta = generateClerkProtectedResourceMetadata({
+          publishableKey: CLERK_PUBLISHABLE_KEY,
+          resourceUrl: RESOURCE_URL,
+          properties: { scopes_supported: ['profile', 'email'] },
+        });
+        res.writeHead(200, { 'content-type': 'application/json', ...corsHeaders });
+        res.end(JSON.stringify(meta));
+        return;
+      }
+    }
+
     if (req.method !== 'POST') {
       res.writeHead(405, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ error: 'Method not allowed' }));
       return;
     }
 
+    // Resolve auth up front: a missing/invalid credential must be a real HTTP
+    // 401 + WWW-Authenticate so MCP connectors begin the OAuth handshake (Clerk
+    // sign-in). API-key/CLI clients always send the header, so they're
+    // unaffected. Non-auth errors fall through to the 500 handler.
+    let authed: McpAuthContext;
+    try {
+      authed = await resolveAuth({ headers: headersOf(req) });
+    } catch (e) {
+      if (e instanceof McpToolError && e.code === 'unauthenticated') {
+        res.writeHead(401, {
+          'content-type': 'application/json',
+          'WWW-Authenticate': `Bearer resource_metadata="${MCP_PUBLIC_URL}${PRM_PATH}", error="invalid_token"`,
+          ...corsHeaders,
+        });
+        res.end(JSON.stringify({ error: 'unauthorized', message: e.message }));
+        return;
+      }
+      throw e;
+    }
+
     const body = await readJson(req);
-    const server = buildMcpServer(headersOf(req));
+    const server = buildMcpServer(authed);
     // Stateless: one transport per request (sessionIdGenerator: undefined).
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => {

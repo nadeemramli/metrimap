@@ -28,11 +28,23 @@ export {
   type McpRequestLike,
   type AuthContextResolver,
 } from './authContext';
-// Auth (CVS-99): API-key resolver + JWT minting. OAuth "Connect" is a follow-up.
+// Auth (CVS-99): API-key resolver + JWT minting.
 export {
   createApiKeyAuthResolver,
   supabaseApiKeyLookup,
   type ApiKeyAuthOptions,
   type ApiKeyLookup,
 } from './auth/apiKeyResolver';
+// Auth (CVS-99): OAuth "Connect" — Clerk as authorization server, this server
+// as the OAuth resource server. Composite resolver routes API keys vs tokens.
+export {
+  createOAuthAuthResolver,
+  type OAuthAuthOptions,
+  type OAuthTokenVerifier,
+} from './auth/oauthResolver';
+export {
+  createCompositeAuthResolver,
+  extractBearer,
+  type CompositeResolverOptions,
+} from './auth/compositeResolver';
 export { mintSupabaseJwt, hashApiKey, decodeJwtPayload } from './auth/jwt';

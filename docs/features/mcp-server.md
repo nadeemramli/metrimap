@@ -132,20 +132,48 @@ Reachable at `https://mcp.canvasm.app/mcp`, addable via
 `claude mcp add --transport http metrimap https://mcp.canvasm.app/mcp` and the
 claude.ai connector. Add request logging + a `mcp_audit_log` (CVS-104).
 
-## OAuth "Connect" — follow-up
+## OAuth "Connect" — shipped
 
-Nicer UX ("sign in → connected" in the Claude connector) but more setup: an OAuth
-2.1 authorization server (dynamic client registration + `/authorize` + `/token`)
-backed by Clerk sign-in, storing tokens server-side. It resolves the same way — a
-bearer token → user → `mintSupabaseJwt` → RLS-scoped client — so it slots into the
-same seam. Needs a Clerk **OAuth application** (client id/secret, redirect URIs).
-Ship API-key auth first; add this once hosting + Clerk OAuth are set up.
+The claude.ai / Claude Desktop connectors authenticate via **OAuth only** (no
+static-key field), so "paste the URL and sign in" needs OAuth. **Clerk is the
+OAuth 2.1 authorization server** (it supports MCP + Dynamic Client Registration);
+this server is the **OAuth resource server**. We host no authorization server —
+Clerk handles sign-in, DCR, `/authorize`, `/token`, and PKCE.
+
+What this server does (`mcp-server/server.ts` + `mcp-server/clerkAuth.ts`):
+- Serves **RFC 9728 Protected Resource Metadata** at
+  `GET /.well-known/oauth-protected-resource` (via `@clerk/mcp-tools`), pointing
+  `authorization_servers` at the Clerk instance (`clerk.canvasm.app`).
+- Returns **`401` + `WWW-Authenticate: Bearer resource_metadata="…"`** for any
+  `/mcp` request without a valid credential — this is what makes a connector
+  start the OAuth handshake. (Gating `initialize`/`tools/list` is intentional and
+  required; CLI/API-key clients always send the header, so they're unaffected.)
+- Verifies the incoming Clerk OAuth access token with `@clerk/backend`
+  (`authenticateRequest`, `acceptsToken: 'oauth_token'`) → the Clerk user id →
+  the same `mintSupabaseJwt` seam → RLS-scoped client. Identical downstream shape
+  to the API-key path; a **composite resolver** routes `mk_live_…` keys to the
+  API-key path and everything else to OAuth.
+
+**v1 = personal scope.** The minted JWT carries only `sub` (the Clerk user id),
+no `o.id`. RLS is additive (`created_by = requesting_user_id()` is always an OR
+branch), so an OAuth user sees/edits every canvas **they created**. Workspace-
+shared canvases (needing `requesting_org_id()`) are a v2 follow-up (a
+default-workspace resolver would pass `orgId` into `mintSupabaseJwt`). The API-key
+path keeps full workspace scope because the key row carries `workspace_id`.
+
+**Clerk Dashboard prerequisites:** create a production **secret key**, enable
+**Dynamic Client Registration** (OAuth applications), configure scopes
+(`profile`, `email`), and confirm the FAPI domain `clerk.canvasm.app`.
 
 ## Deploy secrets (CVS-99)
 
-The API-key resolver needs, as **server env** (never client):
-`SUPABASE_URL`, `SUPABASE_ANON_KEY` (public), and **`SUPABASE_JWT_SECRET`**
-(Supabase → Project Settings → API → JWT Secret) to sign the per-user tokens.
+Server env (never client):
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY` (public), **`SUPABASE_JWT_SECRET`**
+  (Supabase → Project Settings → API → JWT Secret) to sign the per-user tokens.
+- **`CLERK_SECRET_KEY`** + **`CLERK_PUBLISHABLE_KEY`** for the OAuth path (verify
+  Clerk tokens + build the resource metadata).
+- Optional **`MCP_PUBLIC_URL`** (default `https://mcp.canvasm.app`) — the OAuth
+  resource id / metadata origin.
 
 ## Status vs acceptance criteria
 - [x] Tool registry wired to the API layer; structured errors — **done + tested**.

@@ -1,4 +1,3 @@
-import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import {
@@ -218,25 +217,19 @@ export default function ConnectAgentPage() {
           />
         </Section>
 
-        {/* OAuth (follow-up) */}
+        {/* OAuth (sign-in) — no key to copy */}
         <Section
           icon={Plug}
           title="Connect with sign-in (OAuth)"
-          description="One-click “sign in → connected”, no key to copy."
+          description="For claude.ai and Claude Desktop connectors: paste the URL, click Connect, and sign in — no key to copy."
         >
-          <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-            <span className="text-sm text-muted-foreground">
-              OAuth “Connect” flow
-            </span>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="font-normal">
-                Soon
-              </Badge>
-              <Button variant="outline" size="sm" disabled>
-                Connect
-              </Button>
-            </div>
-          </div>
+          <CopyBlock text={MCP_URL} />
+          <p className="mt-3 text-xs text-muted-foreground">
+            In claude.ai or Desktop → Settings → Connectors → Add custom
+            connector → paste the URL above and Connect. You’ll be sent to sign
+            in with your Metrimap account, then the tools appear. Signing in this
+            way gives access to canvases you created.
+          </p>
         </Section>
 
         {/* Status */}
