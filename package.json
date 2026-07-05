@@ -15,6 +15,7 @@
     "prepare": "husky",
     "test": "vitest",
     "test:rls": "tsx src/tests/run-rls-tests.ts",
+    "screenshots": "playwright test",
     "sync:errors": "node scripts/sync-error-reports.mjs",
     "sync:userback": "node scripts/sync-userback.mjs"
   },
@@ -126,7 +127,9 @@
     "zustand": "^5.0.7"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.2.2",
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.1.11",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
