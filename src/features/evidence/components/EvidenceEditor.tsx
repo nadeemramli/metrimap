@@ -3,7 +3,7 @@ import {
   validateAndMigrateEditorData,
 } from '@/lib/editorjs-config';
 import { Button } from '@/shared/components/ui/button';
-import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
+import { TagTokenInput } from '@/features/canvas/components/primitives';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import {
@@ -302,12 +302,12 @@ export default function EvidenceEditor({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div
-        className={`w-full h-[90vh] bg-white rounded-lg shadow-xl flex flex-col ${isFullscreen ? 'max-w-[95vw]' : 'max-w-6xl'} transition-all duration-300`}
+        className={`w-full h-[90vh] bg-card text-card-foreground rounded-lg shadow-xl flex flex-col ${isFullscreen ? 'max-w-[95vw]' : 'max-w-6xl'} transition-all duration-300`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-4">
-            <div className={`p-2 rounded-lg bg-gray-50`}>
+            <div className={`p-2 rounded-lg bg-muted`}>
               <TypeIcon className="h-5 w-5" />
             </div>
             <div className="flex-1">
@@ -319,7 +319,7 @@ export default function EvidenceEditor({
                 placeholder="Evidence title"
                 className="text-2xl font-bold border-none p-0 focus:ring-0"
               />
-              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
                   <Input
@@ -387,14 +387,14 @@ export default function EvidenceEditor({
             </Button>
             <div className="flex items-center gap-2">
               {isAutoSaving && (
-                <div className="flex items-center gap-1 text-xs text-blue-600">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <div className="flex items-center gap-1 text-xs text-primary">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                   <span>Auto-saving</span>
                 </div>
               )}
               {lastSaved && !isAutoSaving && (
-                <div className="flex items-center gap-1 text-xs text-green-600">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="flex items-center gap-1 text-xs text-success">
+                  <div className="w-2 h-2 bg-success rounded-full"></div>
                   <span>Saved</span>
                 </div>
               )}
@@ -411,13 +411,13 @@ export default function EvidenceEditor({
 
         {/* Metadata */}
         <div
-          className={`px-6 py-4 border-b bg-gray-50 ${isFullscreen ? 'py-2' : 'py-4'}`}
+          className={`px-6 py-4 border-b bg-muted ${isFullscreen ? 'py-2' : 'py-4'}`}
         >
           <div
             className={`grid gap-4 ${isFullscreen ? 'grid-cols-1 md:grid-cols-6' : 'grid-cols-1 md:grid-cols-3'}`}
           >
             <div>
-              <Label className="text-xs font-medium text-gray-600">
+              <Label className="text-xs font-medium text-muted-foreground">
                 Hypothesis
               </Label>
               <Select
@@ -452,7 +452,7 @@ export default function EvidenceEditor({
               </Select>
             </div>
             <div>
-              <Label className="text-xs font-medium text-gray-600">
+              <Label className="text-xs font-medium text-muted-foreground">
                 External Link
               </Label>
               <Input
@@ -465,7 +465,7 @@ export default function EvidenceEditor({
               />
             </div>
             <div>
-              <Label className="text-xs font-medium text-gray-600">
+              <Label className="text-xs font-medium text-muted-foreground">
                 Impact on Confidence
               </Label>
               <Select
@@ -496,21 +496,13 @@ export default function EvidenceEditor({
               </Select>
             </div>
             <div className="md:col-span-3">
-              <Label className="text-xs font-medium text-gray-600">Tags</Label>
-              <EnhancedTagInput
-                tags={formData.tags || []}
-                onAdd={(tag) =>
-                  handleFormDataChange({
-                    ...formData,
-                    tags: [...(formData.tags || []), tag],
-                  })
+              <Label className="text-xs font-medium text-muted-foreground">Tags</Label>
+              <TagTokenInput
+                value={formData.tags || []}
+                onChange={(tags) =>
+                  handleFormDataChange({ ...formData, tags })
                 }
-                onRemove={(tag) =>
-                  handleFormDataChange({
-                    ...formData,
-                    tags: (formData.tags || []).filter((t) => t !== tag),
-                  })
-                }
+                placeholder="Add tags…"
                 className="mt-1"
               />
             </div>
