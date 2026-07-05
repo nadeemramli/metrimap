@@ -29,6 +29,7 @@ import WorkspaceSettingsPage from './features/settings/pages/WorkspaceSettingsPa
 import AccountSettingsPage from './features/settings/pages/AccountSettingsPage';
 import ConnectAgentPage from './features/settings/pages/ConnectAgentPage';
 import EmbedCanvasPage from './features/canvas/pages/EmbedCanvasPage';
+import EmbedEvidencePage from './features/evidence/pages/EmbedEvidencePage';
 import HomePage from './features/projects/pages/HomePage';
 
 // Auth Pages
@@ -84,6 +85,10 @@ export default function App() {
 
                 {/* Public read-only embed (no auth — RLS gates by is_public) */}
                 <Route path="/embed/:canvasId" element={<EmbedCanvasPage />} />
+                <Route
+                  path="/embed/evidence/:evidenceId"
+                  element={<EmbedEvidencePage />}
+                />
 
                 {/* Protected routes */}
                 <Route

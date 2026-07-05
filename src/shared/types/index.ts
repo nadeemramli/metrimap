@@ -192,6 +192,8 @@ export interface EvidenceItem {
   hypothesis?: string;
   summary: string;
   impactOnConfidence?: string;
+  /** Public read-only share (see setEvidencePublic + /embed/evidence/:id). */
+  isPublic?: boolean;
   createdAt?: string;
   createdBy?: string;
   updatedAt?: string;

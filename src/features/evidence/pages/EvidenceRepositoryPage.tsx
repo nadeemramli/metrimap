@@ -47,6 +47,7 @@ import {
   Filter,
   FlaskConical,
   Globe,
+  Lock,
   MoreVertical,
   Plus,
   Search,
@@ -59,8 +60,12 @@ import { Link, useParams } from 'react-router-dom';
 import EvidenceEditor from '../components/EvidenceEditor';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useAppStore } from '@/shared/stores/useAppStore';
-import { createProjectEvidence } from '@/shared/lib/supabase/services/evidence';
+import {
+  createProjectEvidence,
+  setEvidencePublic,
+} from '@/shared/lib/supabase/services/evidence';
 import { updateEvidenceItem } from '@/shared/lib/supabase/services/relationships';
+import { toast } from 'sonner';
 
 const evidenceTypeOptions = [
   { value: 'Experiment', icon: FlaskConical, variant: 'blue' },
@@ -251,6 +256,29 @@ export default function EvidenceRepositoryPage() {
     }
   };
 
+  // Publish an evidence item read-only and copy its public/embed link.
+  const handleShareEvidence = async (evidence: EvidenceItem) => {
+    if (!client) return;
+    try {
+      await setEvidencePublic(evidence.id, true, client);
+      const url = `${window.location.origin}/embed/evidence/${evidence.id}`;
+      await navigator.clipboard.writeText(url);
+      toast.success('Public link copied — anyone with it can view this evidence');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to share evidence');
+    }
+  };
+
+  const handleUnshareEvidence = async (evidence: EvidenceItem) => {
+    if (!client) return;
+    try {
+      await setEvidencePublic(evidence.id, false, client);
+      toast.success('Evidence is now private');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update sharing');
+    }
+  };
+
   const handleViewInCanvas = (e: EvidenceItem) => {
     // Prefer nested canvas route if available
     const canvasId = canvas?.id;
@@ -434,6 +462,18 @@ export default function EvidenceRepositoryPage() {
                             <ExternalLink className="mr-2 h-4 w-4" />
                             Open Full Page
                           </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleShareEvidence(evidence)}
+                        >
+                          <Globe className="mr-2 h-4 w-4" />
+                          Share &amp; copy link
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleUnshareEvidence(evidence)}
+                        >
+                          <Lock className="mr-2 h-4 w-4" />
+                          Make private
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDuplicateEvidence(evidence)}
