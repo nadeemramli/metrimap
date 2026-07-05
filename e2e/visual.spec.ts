@@ -1,5 +1,6 @@
 import { clerk, setupClerkTestingToken } from '@clerk/testing/playwright';
 import { test } from '@playwright/test';
+import { activateOrg } from './canvas.spec';
 
 const EMAIL = process.env.E2E_TEST_EMAIL;
 const PASSWORD = process.env.E2E_TEST_PASSWORD;
@@ -24,6 +25,7 @@ test('capture workspace routes', async ({ page }) => {
     page,
     signInParams: { strategy: 'password', identifier: EMAIL!, password: PASSWORD! },
   });
+  await activateOrg(page);
 
   for (const r of ROUTES) {
     await page.goto(r.path);

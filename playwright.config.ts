@@ -17,10 +17,12 @@ try {
 // (pk_live) are domain-locked to canvasm.app and refuse localhost, and Web
 // Crypto needs a secure context — localhost qualifies, dev.canvasm.app:3000 (http)
 // does not. So point clerkSetup + the app at the dev instance on localhost.
-const E2E_PK = process.env.E2E_CLERK_PUBLISHABLE_KEY;
-const E2E_SK = process.env.E2E_CLERK_SECRET_KEY;
-process.env.CLERK_PUBLISHABLE_KEY = E2E_PK || process.env.VITE_CLERK_PUBLISHABLE_KEY;
-if (E2E_SK) process.env.CLERK_SECRET_KEY = E2E_SK;
+// Use PRODUCTION Clerk (pk_live/sk_live): Supabase trusts its JWTs, and we added
+// https://dev.canvasm.app:3000 to the prod instance's allowed_origins so it loads
+// locally over HTTPS. The app uses its own .env pk_live (no override).
+process.env.CLERK_PUBLISHABLE_KEY = process.env.VITE_CLERK_PUBLISHABLE_KEY;
+// CLERK_SECRET_KEY stays the sk_live loaded from .env above.
+const E2E_PK: string | undefined = undefined;
 
 export default defineConfig({
   testDir: './e2e',
