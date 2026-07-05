@@ -21,6 +21,11 @@ export default defineConfig({
     host: "0.0.0.0"
   },
   build: {
+    // 'hidden' sourcemaps: emit .map files (so React #185 / error_reports stacks
+    // can be decoded to real component + line) WITHOUT a sourceMappingURL comment,
+    // so browsers don't auto-load them and source isn't exposed to users. See the
+    // recurring canvas #185 crash (CVS-23/65) — minified stacks were undecodable.
+    sourcemap: "hidden",
     rollupOptions: {
       output: {
         manualChunks(id) {
