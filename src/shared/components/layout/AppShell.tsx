@@ -9,10 +9,10 @@ import {
   Sparkles,
   Star,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
-import AdvancedSearchModal from '@/features/canvas/components/search/AdvancedSearchModal';
+import QuickSearchCommand from '@/features/canvas/components/search/QuickSearchCommand';
 import { NotificationInbox } from '@/features/notifications/components/NotificationInbox';
 import { useProjectsStore } from '@/lib/stores';
 import { Logo } from '@/shared/components/layout/Logo';
@@ -53,6 +53,33 @@ export default function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Shift+F opens global cross-canvas search (matches the sidebar tooltip).
+  // Ignored while typing in an input/textarea/contenteditable.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.tagName === 'INPUT' ||
+          t.tagName === 'TEXTAREA' ||
+          t.isContentEditable)
+      )
+        return;
+      if (
+        e.shiftKey &&
+        e.key.toLowerCase() === 'f' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const projects = useProjectsStore((s) => s.projects);
   const pinned = (Array.isArray(projects) ? projects : [])
@@ -153,7 +180,7 @@ export default function AppShell() {
         </div>
       </SidebarInset>
 
-      <AdvancedSearchModal
+      <QuickSearchCommand
         isOpen={searchOpen}
         onClose={() => setSearchOpen(false)}
         onResultSelect={(result) => {
