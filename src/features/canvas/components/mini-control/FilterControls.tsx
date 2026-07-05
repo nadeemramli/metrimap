@@ -1,29 +1,20 @@
 import { useCanvasStore } from '@/lib/stores';
-import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/shared/components/ui/dialog';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/shared/components/ui/popover';
 import type { MetricCard as MetricCardType } from '@/shared/types';
+import { cn } from '@/shared/utils';
 import { userCodename } from '@/shared/utils/codename';
-import { Calendar, Filter, RefreshCw, Search } from 'lucide-react';
+import { Filter, RefreshCw, Search } from 'lucide-react';
 import { useState } from 'react';
 
 type CardCategory = MetricCardType['category'];
-
-// Never show a raw Clerk id (`user_…`) as an owner — resolve it to the same
-// stable pseudonymous codename comments use (CVS-33). Real name strings (which
-// don't start with `user_`) pass through unchanged so they aren't hashed away.
-const ownerLabel = (owner: string): string =>
-  /^user_/.test(owner) ? userCodename(owner) : owner;
 
 interface FilterState {
   searchTerm: string;
@@ -42,9 +33,41 @@ const categoryOptions: Array<{ value: CardCategory; label: string }> = [
   { value: 'Metadata', label: 'Metadata' },
 ];
 
+// Never show a raw Clerk id (`user_…`) as an owner — resolve it to the same
+// stable pseudonymous codename comments use (CVS-33). Real name strings (which
+// don't start with `user_`) pass through unchanged so they aren't hashed away.
+const ownerLabel = (owner: string): string =>
+  /^user_/.test(owner) ? userCodename(owner) : owner;
+
+/** Compact chip toggle used for every facet (categories / tags / owners). */
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-md border px-2 py-0.5 text-xs transition-colors',
+        active
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted'
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function FilterControls() {
   const { canvas, dateRange, setDateRange } = useCanvasStore();
-  const [showFilters, setShowFilters] = useState(false);
+  const [open, setOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     searchTerm: '',
     categories: [],
@@ -65,46 +88,26 @@ export default function FilterControls() {
     )
   );
 
-  const handleFilterChange = <K extends keyof FilterState>(
-    key: K,
-    value: FilterState[K]
-  ) => {
+  const set = <K extends keyof FilterState>(key: K, value: FilterState[K]) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
-  };
 
-  const handleCategoryToggle = (category: CardCategory) => {
+  const toggle = <K extends 'categories' | 'tags' | 'owners'>(
+    key: K,
+    value: FilterState[K][number]
+  ) =>
     setFilters((prev) => ({
       ...prev,
-      categories: prev.categories.includes(category)
-        ? prev.categories.filter((c) => c !== category)
-        : [...prev.categories, category],
+      [key]: (prev[key] as string[]).includes(value as string)
+        ? (prev[key] as string[]).filter((v) => v !== value)
+        : [...(prev[key] as string[]), value],
     }));
-  };
 
-  const handleTagToggle = (tag: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      tags: prev.tags.includes(tag)
-        ? prev.tags.filter((t) => t !== tag)
-        : [...prev.tags, tag],
-    }));
-  };
-
-  const handleOwnerToggle = (owner: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      owners: prev.owners.includes(owner)
-        ? prev.owners.filter((o) => o !== owner)
-        : [...prev.owners, owner],
-    }));
-  };
-
-  const handleApplyFilters = () => {
+  const handleApply = () => {
     setDateRange(filters.dateRange.from, filters.dateRange.to);
-    setShowFilters(false);
+    setOpen(false);
   };
 
-  const handleResetFilters = () => {
+  const handleReset = () =>
     setFilters({
       searchTerm: '',
       categories: [],
@@ -118,7 +121,6 @@ export default function FilterControls() {
       owners: [],
       showOnlyConnected: false,
     });
-  };
 
   const activeFilterCount = [
     filters.searchTerm,
@@ -129,172 +131,158 @@ export default function FilterControls() {
   ].filter(Boolean).length;
 
   return (
-    <Dialog open={showFilters} onOpenChange={setShowFilters}>
-      <DialogTrigger asChild>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
         <Button
           variant="ghost"
           size="sm"
-          className="rounded-lg relative"
-          title="Filter & Date"
+          className="relative rounded-lg"
+          title="Filter & date"
         >
           <Filter className="h-4 w-4" />
           {activeFilterCount > 0 && (
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
+            <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
               {activeFilterCount}
-            </div>
+            </span>
           )}
         </Button>
-      </DialogTrigger>
+      </PopoverTrigger>
 
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Filter Canvas</DialogTitle>
-          <DialogDescription>
-            Narrow down visible cards and relationships
-          </DialogDescription>
-        </DialogHeader>
-        {/* existing content remains unchanged */}
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="search">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search title, description, tags"
-                  className="pl-8"
-                  value={filters.searchTerm}
-                  onChange={(e) =>
-                    handleFilterChange('searchTerm', e.target.value)
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Date range</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="date"
-                  value={filters.dateRange.from}
-                  onChange={(e) =>
-                    handleFilterChange('dateRange', {
-                      ...filters.dateRange,
-                      from: e.target.value,
-                    })
-                  }
-                />
-                <span className="text-muted-foreground">to</span>
-                <Input
-                  type="date"
-                  value={filters.dateRange.to}
-                  onChange={(e) =>
-                    handleFilterChange('dateRange', {
-                      ...filters.dateRange,
-                      to: e.target.value,
-                    })
-                  }
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleFilterChange('dateRange', {
-                      from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-                        .toISOString()
-                        .split('T')[0],
-                      to: new Date().toISOString().split('T')[0],
-                    })
-                  }
-                >
-                  <Calendar className="h-4 w-4 mr-2" /> Last 30 days
-                </Button>
-              </div>
-            </div>
+      <PopoverContent align="end" className="w-[340px] p-0">
+        <div className="flex items-center justify-between border-b px-3.5 py-2.5">
+          <span className="text-sm font-medium">Filter canvas</span>
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+
+        <div className="max-h-[60vh] space-y-4 overflow-y-auto px-3.5 py-3">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search title, description, tags"
+              className="h-8 pl-7 text-sm"
+              value={filters.searchTerm}
+              onChange={(e) => set('searchTerm', e.target.value)}
+            />
           </div>
 
-          <div className="space-y-3">
-            <Label>Categories</Label>
-            <div className="flex flex-wrap gap-2">
+          {/* Date range */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Date range</Label>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="date"
+                className="h-8 text-xs"
+                value={filters.dateRange.from}
+                onChange={(e) =>
+                  set('dateRange', { ...filters.dateRange, from: e.target.value })
+                }
+              />
+              <span className="text-xs text-muted-foreground">–</span>
+              <Input
+                type="date"
+                className="h-8 text-xs"
+                value={filters.dateRange.to}
+                onChange={(e) =>
+                  set('dateRange', { ...filters.dateRange, to: e.target.value })
+                }
+              />
+            </div>
+            <button
+              type="button"
+              className="text-xs text-primary hover:underline"
+              onClick={() =>
+                set('dateRange', {
+                  from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+                    .toISOString()
+                    .split('T')[0],
+                  to: new Date().toISOString().split('T')[0],
+                })
+              }
+            >
+              Last 30 days
+            </button>
+          </div>
+
+          {/* Categories */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Categories</Label>
+            <div className="flex flex-wrap gap-1.5">
               {categoryOptions.map((opt) => (
-                <Badge
+                <Chip
                   key={opt.value}
-                  variant={
-                    filters.categories.includes(opt.value)
-                      ? 'default'
-                      : 'secondary'
-                  }
-                  className="cursor-pointer"
-                  onClick={() => handleCategoryToggle(opt.value)}
+                  active={filters.categories.includes(opt.value)}
+                  onClick={() => toggle('categories', opt.value)}
                 >
                   {opt.label}
-                </Badge>
+                </Chip>
               ))}
             </div>
           </div>
 
+          {/* Tags */}
           {availableTags.length > 0 && (
-            <div className="space-y-3">
-              <Label>Tags</Label>
-              <div className="flex flex-wrap gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Tags</Label>
+              <div className="flex flex-wrap gap-1.5">
                 {availableTags.map((tag) => (
-                  <Badge
+                  <Chip
                     key={tag}
-                    variant={
-                      filters.tags.includes(tag) ? 'default' : 'secondary'
-                    }
-                    className="cursor-pointer"
-                    onClick={() => handleTagToggle(tag)}
+                    active={filters.tags.includes(tag)}
+                    onClick={() => toggle('tags', tag)}
                   >
                     {tag}
-                  </Badge>
+                  </Chip>
                 ))}
               </div>
             </div>
           )}
 
+          {/* Owners */}
           {availableOwners.length > 0 && (
-            <div className="space-y-3">
-              <Label>Owners</Label>
-              <div className="flex flex-wrap gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Owners</Label>
+              <div className="flex flex-wrap gap-1.5">
                 {availableOwners.map((owner) => (
-                  <Badge
+                  <Chip
                     key={owner}
-                    variant={
-                      filters.owners.includes(owner) ? 'default' : 'secondary'
-                    }
-                    className="cursor-pointer"
-                    onClick={() => handleOwnerToggle(owner)}
+                    active={filters.owners.includes(owner)}
+                    onClick={() => toggle('owners', owner)}
                   >
                     {ownerLabel(owner)}
-                  </Badge>
+                  </Chip>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="connectedOnly"
-                checked={filters.showOnlyConnected}
-                onCheckedChange={(v) =>
-                  handleFilterChange('showOnlyConnected', Boolean(v))
-                }
-              />
-              <Label htmlFor="connectedOnly">Show only connected nodes</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-                <RefreshCw className="h-4 w-4 mr-2" /> Reset
-              </Button>
-              <Button size="sm" onClick={handleApplyFilters}>
-                Apply
-              </Button>
-            </div>
-          </div>
+          {/* Connected only */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={filters.showOnlyConnected}
+              onCheckedChange={(v) => set('showOnlyConnected', Boolean(v))}
+            />
+            Show only connected nodes
+          </label>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        <div className="flex items-center justify-end gap-2 border-t px-3.5 py-2.5">
+          <Button variant="ghost" size="sm" onClick={handleReset}>
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Reset
+          </Button>
+          <Button size="sm" onClick={handleApply}>
+            Apply
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
