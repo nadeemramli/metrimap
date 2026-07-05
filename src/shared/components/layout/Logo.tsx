@@ -1,3 +1,5 @@
+import { cn } from '@/shared/utils';
+
 type LogoProps = {
   /** Extra classes controlling size/spacing. Height/width sizing works best
    *  since the logos are square (e.g. `h-8 w-8`). */
@@ -20,7 +22,10 @@ type LogoProps = {
  */
 export function Logo({ className, alt = 'Metrimap' }: LogoProps) {
   return (
-    <span className={className}>
+    // inline-block + overflow-hidden so height/width classes always apply and the
+    // SVG never overflows its box, even when wrapped in an inline element (e.g. a
+    // bare <a>) rather than sitting directly in a flex row.
+    <span className={cn('inline-block overflow-hidden', className)}>
       <img
         src="/brand/logo-light.svg"
         alt={alt}
