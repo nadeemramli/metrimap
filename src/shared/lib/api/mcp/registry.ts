@@ -52,7 +52,10 @@ export const TOOLS: McpTool[] = [
     description:
       "List the authenticated user's metric-tree canvases (projects). Returns ids to use in other tools.",
     scope: 'read',
-    inputSchema: z.object({}).strict(),
+    // No `.strict()`: the MCP SDK / claude.ai connector attaches metadata keys to
+    // the arguments of a no-param call; strict validation rejects them. Default
+    // (strip-unknown) tolerates that and still accepts a genuinely empty payload.
+    inputSchema: z.object({}),
     handler: (_a, ctx) => api(ctx).canvases.list(),
   }),
   defineTool({
