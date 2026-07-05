@@ -11,7 +11,14 @@
  * The `tooltip` copy is kept in sync with docs/reference/metric-tree-methodology.md
  * (components vs. influences). It powers the in-app `(!)` InfoHint.
  */
-import { ArrowRight, Layers, Network, TrendingUp, Zap } from 'lucide-react';
+import {
+  ArrowRight,
+  CircleDashed,
+  Layers,
+  Network,
+  TrendingUp,
+  Zap,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ConfidenceLevel, RelationshipType } from '@/shared/types';
 
@@ -123,6 +130,24 @@ export const RELATIONSHIP_TYPE_META: Record<
     showWeightButton: false,
     defaultWeightLabel: '1.0',
   },
+  Exploratory: {
+    value: 'Exploratory',
+    label: 'Exploratory',
+    icon: CircleDashed,
+    description: 'Loose / inferred — not yet validated',
+    tooltip:
+      'A loose, exploratory link: you suspect a relationship but have not yet validated its type, direction, or strength. Firm it up later with evidence and a concrete type (correlation, causal, …).',
+    layer: 'influence',
+    textColor: 'text-amber-700',
+    bgColor: 'bg-amber-50',
+    borderColor: 'border-amber-300',
+    hoverBg: 'hover:bg-amber-100',
+    baseStroke: GRAY,
+    strokeByWeight: false,
+    lineStyle: 'dotted',
+    showWeightButton: false,
+    defaultWeightLabel: '?',
+  },
 };
 
 /** Fallback used when a relationship has an unknown/empty type. */
@@ -150,6 +175,7 @@ export const RELATIONSHIP_TYPE_LIST: RelationshipTypeMeta[] = [
   RELATIONSHIP_TYPE_META.Probabilistic,
   RELATIONSHIP_TYPE_META.Causal,
   RELATIONSHIP_TYPE_META.Compositional,
+  RELATIONSHIP_TYPE_META.Exploratory,
 ];
 
 export function getRelationshipTypeMeta(
@@ -213,6 +239,19 @@ export function getRelationshipEdgeStyle(
   confidence?: ConfidenceLevel | string
 ): RelationshipEdgeStyle {
   const meta = getRelationshipTypeMeta(type);
+
+  // Exploratory links read as loose/uncertain: muted, dashed, dim — clearly not
+  // a validated relationship yet.
+  if (meta.value === 'Exploratory') {
+    return {
+      stroke: EDGE_COLORS.neutral,
+      strokeWidth: 1.75,
+      strokeDasharray: '4,4',
+      opacity: 0.55,
+      tone: 'neutral',
+      loose: true,
+    };
+  }
 
   // Structural types are definitional — not coloured by statistical strength.
   if (!meta.strokeByWeight) {

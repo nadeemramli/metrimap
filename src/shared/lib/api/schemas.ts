@@ -17,6 +17,7 @@ export const RELATIONSHIP_TYPES = [
   'Probabilistic',
   'Causal',
   'Compositional',
+  'Exploratory',
 ] as const;
 
 export const CONFIDENCE_LEVELS = ['High', 'Medium', 'Low'] as const;

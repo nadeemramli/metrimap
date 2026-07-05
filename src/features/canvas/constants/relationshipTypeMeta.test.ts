@@ -60,6 +60,15 @@ describe('getRelationshipEdgeStyle', () => {
     const strong = getRelationshipEdgeStyle('Causal', 90, 'High').strokeWidth;
     expect(strong).toBeGreaterThan(weak);
   });
+
+  it('exploratory links read loose: neutral, dashed, dim — even with a strong weight', () => {
+    const s = getRelationshipEdgeStyle('Exploratory', 90, 'High');
+    expect(s.tone).toBe('neutral');
+    expect(s.stroke).toBe('#9ca3af'); // neutral gray, never strength-coloured
+    expect(s.loose).toBe(true);
+    expect(s.strokeDasharray).toBeTruthy();
+    expect(s.opacity).toBeLessThan(1); // dimmer than a validated link
+  });
 });
 
 describe('getRelationshipStroke (delegates to edge style)', () => {

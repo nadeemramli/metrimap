@@ -33,7 +33,10 @@ export type RelationshipType =
   | 'Deterministic'
   | 'Probabilistic'
   | 'Causal'
-  | 'Compositional';
+  | 'Compositional'
+  // A loose, exploratory link: suspected but not yet validated (type/strength
+  // unknown). Firm it up later with evidence + a concrete type (CVS-165).
+  | 'Exploratory';
 
 export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
 
