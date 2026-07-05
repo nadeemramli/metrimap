@@ -10,6 +10,7 @@ import {
 } from '@/shared/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveClient } from '@/shared/utils/authenticatedClient';
+import { appendRelationshipHistory } from './relationshipHistory';
 import type { EvidenceItem, Relationship } from '../../types';
 import type {
   Database,
@@ -138,6 +139,23 @@ export async function updateRelationship(
   if (error) {
     console.error('Error updating relationship:', error);
     throw error;
+  }
+
+  // Record a strength/confidence/type snapshot for the audit trail + trend.
+  // Best-effort: never fail the update if history can't be written.
+  try {
+    await appendRelationshipHistory(
+      {
+        relationshipId: id,
+        projectId: data.project_id,
+        type: data.type,
+        confidence: data.confidence,
+        weight: data.weight,
+      },
+      client
+    );
+  } catch (historyError) {
+    console.error('Failed to record relationship history:', historyError);
   }
 
   return transformRelationship(data);

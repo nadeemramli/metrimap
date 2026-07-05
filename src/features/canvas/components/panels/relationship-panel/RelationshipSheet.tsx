@@ -64,6 +64,7 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { InfoHint } from '@/shared/components/common/InfoHint';
 import { useRelationshipEvidence, useRelationshipTags } from './hooks';
+import { StrengthTrendCard } from './StrengthTrendCard';
 
 interface RelationshipSheetProps {
   isOpen: boolean;
@@ -123,6 +124,7 @@ export default function RelationshipSheet({
     changelog,
     isLoadingChangelog,
     refetchChangelog,
+    strengthHistory,
   } = useRelationshipEvidence(
     relationshipId,
     canvasId,
@@ -938,6 +940,8 @@ export default function RelationshipSheet({
                     relationship
                   </p>
                 </div>
+
+                <StrengthTrendCard points={strengthHistory} />
 
                 {isLoadingChangelog ? (
                   <div className="text-center py-8 text-gray-500">
