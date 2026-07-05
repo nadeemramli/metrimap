@@ -29,6 +29,7 @@ import type {
 } from '@/shared/types';
 import { MarkerType, type Edge, type Node } from '@xyflow/react';
 import type { LayoutDirection } from '@/shared/utils/autoLayout';
+import { getRelationshipStroke } from '@/features/canvas/constants/relationshipTypeMeta';
 import { normalizeOperatorData } from '@/features/canvas/utils/operatorMigration';
 
 // Convert MetricCard to ReactFlow Node
@@ -80,18 +81,14 @@ export const handlesForDirection = (
   }
 };
 
-// Arrowhead color mirrors DynamicEdge's stroke logic (gray for formulaic/zero,
-// green for positive weight, red for negative).
-const arrowColorForRelationship = (relationship: Relationship): string => {
-  if (
-    relationship.type === 'Deterministic' ||
-    relationship.type === 'Compositional'
-  )
-    return '#6b7280';
-  const w = relationship.weight;
-  if (w === undefined || w === 0) return '#6b7280';
-  return w > 0 ? '#16a34a' : '#dc2626';
-};
+// Arrowhead color mirrors DynamicEdge's stroke logic — the single edge-style
+// source of truth (green positive / red negative / amber weak / gray neutral).
+const arrowColorForRelationship = (relationship: Relationship): string =>
+  getRelationshipStroke(
+    relationship.type,
+    relationship.weight,
+    relationship.confidence
+  );
 
 // Convert Relationship to ReactFlow Edge with DynamicEdge
 export const convertToEdge = (

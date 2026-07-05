@@ -29,6 +29,7 @@ import EnhancedEdgeButton, {
   useEdgeActions,
 } from './shared/EnhancedEdgeButton';
 import {
+  getRelationshipEdgeStyle,
   getRelationshipStroke,
   getRelationshipTypeMeta,
   getRelationshipWeightLabel,
@@ -166,6 +167,12 @@ export default function DynamicEdge({
     relationship.weight
   );
   const confidenceConfig = getConfidenceConfig(relationship.confidence);
+  // CVS-165: the drawn line encodes direction/strength/confidence.
+  const edgeStyle = getRelationshipEdgeStyle(
+    relationship.type,
+    relationship.weight,
+    relationship.confidence
+  );
 
   // Debug logging for edge styling updates - REMOVED to reduce console noise
 
@@ -308,22 +315,16 @@ export default function DynamicEdge({
         markerEnd={markerEnd}
         style={{
           ...style,
-          stroke: typeConfig.stroke,
-          strokeWidth: 2,
-          strokeDasharray:
-            typeConfig.lineStyle === 'dotted' ||
-            typeConfig.lineStyle === 'dotted-smoothstep'
-              ? '5,5'
-              : 'none',
-          opacity: selected || isHovered ? 1 : 0.8,
+          stroke: edgeStyle.stroke,
+          strokeWidth: selected || isHovered ? edgeStyle.strokeWidth + 1 : edgeStyle.strokeWidth,
+          strokeDasharray: edgeStyle.strokeDasharray ?? 'none',
+          // Confidence drives baseline opacity; hover/selected always fully opaque.
+          opacity: selected || isHovered ? 1 : edgeStyle.opacity,
           transition: 'all 0.2s ease-in-out',
           cursor: 'pointer',
-          // Add animation for dotted lines
-          ...(typeConfig.lineStyle === 'dotted' ||
-          typeConfig.lineStyle === 'dotted-smoothstep'
-            ? {
-                animation: 'dash 1s linear infinite',
-              }
+          // Animate dashed lines (loose/exploratory + observed correlation).
+          ...(edgeStyle.strokeDasharray
+            ? { animation: 'dash 1s linear infinite' }
             : {}),
         }}
         onMouseEnter={() => setIsHovered(true)}

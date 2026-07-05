@@ -13,7 +13,7 @@
  */
 import { ArrowRight, Layers, Network, TrendingUp, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { RelationshipType } from '@/shared/types';
+import type { ConfidenceLevel, RelationshipType } from '@/shared/types';
 
 export type RelationshipLayer = 'component' | 'influence';
 
@@ -161,15 +161,125 @@ export function getRelationshipTypeMeta(
   return UNKNOWN_RELATIONSHIP_META;
 }
 
-/** Resolve the stroke color for an edge given its type + weight. */
+// ---------------------------------------------------------------------------
+// Dynamic edge visual intelligence (CVS-165)
+// The drawn line encodes relationship QUALITY: signed strength → colour +
+// direction, magnitude → width, confidence → opacity + "loose" dash. Negative
+// and weak/low-correlation links warn (red / amber) instead of reading like a
+// healthy green link; low-confidence links look loose, not validated.
+// ---------------------------------------------------------------------------
+
+/** Semantic read of a relationship's drawn line, for badges/legends too. */
+export type RelationshipTone =
+  | 'positive' // strong, healthy positive influence (green)
+  | 'negative' // inverse relationship — warns (red)
+  | 'weak' // weak / low correlation — warns (amber)
+  | 'neutral' // unknown / exploratory, no strength yet (gray)
+  | 'structural'; // deterministic / compositional — definitional (gray)
+
+export interface RelationshipEdgeStyle {
+  stroke: string;
+  strokeWidth: number;
+  /** SVG dasharray, or undefined for a solid line. */
+  strokeDasharray: string | undefined;
+  opacity: number;
+  tone: RelationshipTone;
+  /** True when the line should read as loose/exploratory (dashed + dim). */
+  loose: boolean;
+}
+
+// Semantic edge palette (hex — SVG stroke is inline, not a Tailwind class).
+const EDGE_COLORS = {
+  positiveStrong: '#16a34a', // green-600
+  positive: '#22c55e', // green-500
+  negative: '#dc2626', // red-600  — inverse relationships warn
+  weak: '#d97706', // amber-600 — weak / low correlation warns
+  neutral: '#9ca3af', // gray-400 — exploratory / unknown
+  structural: GRAY, // gray-500 — deterministic / compositional
+};
+
+/** |weight| below this reads as a weak/uncertain signal; above STRONG_MIN as strong. */
+const WEAK_MAX = 20;
+const STRONG_MIN = 50;
+
+/**
+ * The full drawn-line style for a relationship edge, derived from signed
+ * strength + confidence + type. Single source of truth for the canvas edge,
+ * the arrowhead colour, and any legend.
+ */
+export function getRelationshipEdgeStyle(
+  type: RelationshipType | string | undefined,
+  weight?: number,
+  confidence?: ConfidenceLevel | string
+): RelationshipEdgeStyle {
+  const meta = getRelationshipTypeMeta(type);
+
+  // Structural types are definitional — not coloured by statistical strength.
+  if (!meta.strokeByWeight) {
+    const dotted =
+      meta.lineStyle === 'dotted' || meta.lineStyle === 'dotted-smoothstep';
+    return {
+      stroke: EDGE_COLORS.structural,
+      strokeWidth: 2,
+      strokeDasharray: dotted ? '6,4' : undefined,
+      opacity: 0.9,
+      tone: 'structural',
+      loose: false,
+    };
+  }
+
+  const conf: ConfidenceLevel =
+    confidence === 'High' || confidence === 'Low' ? confidence : 'Medium';
+  const w = typeof weight === 'number' ? weight : 0;
+  const mag = Math.min(Math.abs(w), 100);
+
+  let tone: RelationshipTone;
+  let stroke: string;
+  if (w === 0) {
+    tone = 'neutral';
+    stroke = EDGE_COLORS.neutral;
+  } else if (w < 0) {
+    tone = 'negative';
+    stroke = EDGE_COLORS.negative;
+  } else if (mag < WEAK_MAX) {
+    tone = 'weak';
+    stroke = EDGE_COLORS.weak;
+  } else {
+    tone = 'positive';
+    stroke = mag >= STRONG_MIN ? EDGE_COLORS.positiveStrong : EDGE_COLORS.positive;
+  }
+
+  // Strength drives width (thicker = stronger); low confidence thins it.
+  const base = 1.5 + (mag / 100) * 2; // 1.5 .. 3.5
+  const strokeWidth = Number(
+    (conf === 'Low' ? Math.max(1.25, base - 0.75) : base).toFixed(2)
+  );
+
+  // Loose read: low confidence or unknown strength; observed (dotted) types
+  // like Probabilistic correlation are dashed regardless.
+  const dottedType =
+    meta.lineStyle === 'dotted' || meta.lineStyle === 'dotted-smoothstep';
+  const loose = conf === 'Low' || tone === 'neutral';
+  const dashed = loose || dottedType;
+  const opacity = conf === 'High' ? 1 : conf === 'Low' ? 0.5 : 0.8;
+
+  return {
+    stroke,
+    strokeWidth,
+    strokeDasharray: dashed ? (conf === 'Low' ? '4,4' : '6,4') : undefined,
+    opacity,
+    tone,
+    loose,
+  };
+}
+
+/** Resolve the stroke color for an edge given its type + weight (+ optional confidence). */
 export function getRelationshipStroke(
   type: RelationshipType | string | undefined,
-  weight?: number
+  weight?: number,
+  confidence?: ConfidenceLevel | string
 ): string {
-  const meta = getRelationshipTypeMeta(type);
-  if (!meta.strokeByWeight) return meta.baseStroke;
-  if (weight === undefined || weight === 0) return GRAY;
-  return weight > 0 ? '#16a34a' : '#dc2626';
+  return getRelationshipEdgeStyle(type, weight, confidence).stroke;
 }
 
 /** Resolve the mid-edge weight button label. */
