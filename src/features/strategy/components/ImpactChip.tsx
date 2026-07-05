@@ -1,10 +1,12 @@
 // Compact impact summary for board tiles + table cells (CVS-170): status pill +
-// target metric + expected delta. Reads a pre-computed ImpactSummary.
+// target metric + expected delta. Reads a pre-computed ImpactSummary. Optionally
+// shows the MEASURED target delta + guardrail health (CVS-176).
 
-import { Target } from 'lucide-react';
+import { AlertTriangle, Target } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import type { ImpactStatus } from '@/features/strategy/impact/types';
 import type { ImpactSummary } from '@/features/strategy/impact/impactContract';
+import type { MeasuredImpact } from '@/features/strategy/impact/measurement';
 
 const IMPACT_STATUS_STYLES: Record<ImpactStatus, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -17,10 +19,11 @@ const IMPACT_STATUS_STYLES: Record<ImpactStatus, string> = {
 
 interface ImpactChipProps {
   summary: ImpactSummary;
+  measured?: MeasuredImpact;
   className?: string;
 }
 
-export function ImpactChip({ summary, className }: ImpactChipProps) {
+export function ImpactChip({ summary, measured, className }: ImpactChipProps) {
   return (
     <span className={cn('flex flex-wrap items-center gap-1.5', className)}>
       <span
@@ -39,10 +42,29 @@ export function ImpactChip({ summary, className }: ImpactChipProps) {
           <span className="italic">no target</span>
         )}
       </span>
-      {summary.deltaText && (
-        <span className="text-[10px] font-medium text-muted-foreground">
-          {summary.deltaText}
+      {measured?.hasData ? (
+        <span
+          className={cn(
+            'flex items-center gap-1 text-[10px] font-medium',
+            measured.met === 'met'
+              ? 'text-emerald-600'
+              : measured.met === 'missed'
+                ? 'text-red-600'
+                : 'text-muted-foreground'
+          )}
+          title={`measured ${measured.deltaText ?? ''} · ${measured.met}`}
+        >
+          {measured.deltaText}
+          {measured.guardrailStatus === 'fail' && (
+            <AlertTriangle className="h-3 w-3 text-red-600" />
+          )}
         </span>
+      ) : (
+        summary.deltaText && (
+          <span className="text-[10px] font-medium text-muted-foreground">
+            {summary.deltaText}
+          </span>
+        )
       )}
     </span>
   );

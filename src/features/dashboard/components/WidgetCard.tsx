@@ -15,6 +15,7 @@ import {
 } from '@/features/dashboard/utils/widgetData';
 import { WidgetImpactBadge } from '@/features/dashboard/components/WidgetImpactBadge';
 import type { WidgetStrategyLink } from '@/features/strategy/impact/widgetLinks';
+import type { MeasuredImpact } from '@/features/strategy/impact/measurement';
 import {
   GripVertical,
   Settings2,
@@ -30,6 +31,7 @@ interface WidgetCardProps {
   onConfigure: (widget: DashboardWidget) => void;
   onRemove: (id: string) => void;
   strategyLinks?: WidgetStrategyLink[];
+  measuredMap?: Record<string, MeasuredImpact>;
   currentPeriod?: string;
   onOpenStrategy?: (nodeId: string) => void;
   onOpenTrace?: (nodeId: string) => void;
@@ -44,6 +46,7 @@ export function WidgetCard({
   onConfigure,
   onRemove,
   strategyLinks,
+  measuredMap,
   currentPeriod,
   onOpenStrategy,
   onOpenTrace,
@@ -63,6 +66,7 @@ export function WidgetCard({
           {strategyLinks && strategyLinks.length > 0 && onOpenStrategy && (
             <WidgetImpactBadge
               links={strategyLinks}
+              measuredMap={measuredMap}
               currentPeriod={currentPeriod ?? new Date().toISOString().slice(0, 7)}
               onOpenStrategy={onOpenStrategy}
               onOpenTrace={onOpenTrace}

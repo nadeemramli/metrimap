@@ -59,6 +59,7 @@ import {
   type ImpactFilter,
   type ImpactSummary,
 } from '@/features/strategy/impact/impactContract';
+import type { MeasuredImpact } from '@/features/strategy/impact/measurement';
 
 const STATUS_OPTIONS: PillOption<WorkflowStatus>[] = WORKFLOW_STATUSES.map(
   (s) => ({ value: s.value, label: s.label, className: WORKFLOW_STATUS_STYLES[s.value] })
@@ -88,6 +89,7 @@ interface StrategyTableProps extends StrategyTableHandlers {
   members: ProjectMember[];
   commentCounts: Record<string, number>;
   impactSummaries: Record<string, ImpactSummary>;
+  measuredMap?: Record<string, MeasuredImpact>;
   canEdit: boolean;
 }
 
@@ -114,6 +116,7 @@ export function StrategyTable({
   members,
   commentCounts,
   impactSummaries,
+  measuredMap,
   canEdit,
   onStatusChange,
   onPriorityChange,
@@ -316,7 +319,7 @@ export function StrategyTable({
                                 className="text-left"
                                 title="Edit impact"
                               >
-                                <ImpactChip summary={impactSummaries[card.id]} />
+                                <ImpactChip summary={impactSummaries[card.id]} measured={measuredMap?.[card.id]} />
                               </button>
                             ) : (
                               <button

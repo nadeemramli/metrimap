@@ -3,6 +3,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { useVisibilityStore } from '@/shared/stores/useVisibilityStore';
 import {
   getMetricValuesByMetricIds,
   listTrackedMetrics,
@@ -21,6 +22,7 @@ import {
   linkedStrategyForWidget,
   type WidgetStrategyLink,
 } from '@/features/strategy/impact/widgetLinks';
+import { measuredByNode } from '@/features/strategy/impact/measurement';
 import { ImpactTraceDialog } from '@/features/strategy/components/ImpactTraceDialog';
 import type {
   ImpactContract,
@@ -56,6 +58,7 @@ import {
   ChartSpline,
   Eye,
   LayoutGrid,
+  Lock,
   Loader2,
   Pencil,
   Plus,
@@ -107,6 +110,23 @@ export default function DashboardPage() {
     () => (storeMatches ? (storeCanvas?.nodes ?? []) : loadedCards),
     [storeMatches, storeCanvas?.nodes, loadedCards]
   );
+
+  // Node-level visibility (CVS-123): a dashboard surfaces only what the viewer
+  // may see. hide_node cards are already RLS-filtered from the project load;
+  // this masks hide_value cards from widgets + the group view, and tells the
+  // owner how many are hidden. Reuses the same resolver as the canvas (CVS-122).
+  const ensureVisibility = useVisibilityStore((s) => s.ensureLoaded);
+  const restrictedSet = useVisibilityStore(
+    (s) => s.restrictedByProject[canvasId ?? '']
+  );
+  useEffect(() => {
+    if (client && canvasId) ensureVisibility(canvasId, client);
+  }, [client, canvasId, ensureVisibility]);
+  const visibleCards: MetricCard[] = useMemo(
+    () => (restrictedSet ? cards.filter((c) => !restrictedSet.has(c.id)) : cards),
+    [cards, restrictedSet]
+  );
+  const restrictedCount = cards.length - visibleCards.length;
   const groups: GroupNode[] = useMemo(
     () =>
       storeMatches && (storeCanvas?.groups?.length ?? 0) > 0
@@ -171,8 +191,12 @@ export default function DashboardPage() {
         (w.config.trackedMetricIds ?? []).forEach((id) => ids.add(id));
       }
     });
+    // Also the metrics referenced by impact contracts, so measured deltas resolve.
+    for (const { links } of impactEntries) {
+      for (const l of links) if (l.refSource === 'tracked' && l.trackedMetricId) ids.add(l.trackedMetricId);
+    }
     return Array.from(ids);
-  }, [widgets]);
+  }, [widgets, impactEntries]);
 
   useEffect(() => {
     if (!client || referencedTrackedIds.length === 0) {
@@ -185,8 +209,8 @@ export default function DashboardPage() {
   }, [client, referencedTrackedIds]);
 
   const sources: WidgetDataSources = useMemo(
-    () => ({ cards, trackedValues, trackedNames }),
-    [cards, trackedValues, trackedNames]
+    () => ({ cards: visibleCards, trackedValues, trackedNames }),
+    [visibleCards, trackedValues, trackedNames]
   );
 
   // Linked Strategy bets per widget (CVS-172). currentPeriod drives review-ready.
@@ -198,6 +222,12 @@ export default function DashboardPage() {
     }
     return map;
   }, [widgets, impactEntries, cards]);
+
+  // Measured deltas per strategy node (CVS-176), for the badge overlay.
+  const measuredMap = useMemo(
+    () => measuredByNode(impactEntries, cards, trackedValues),
+    [impactEntries, cards, trackedValues]
+  );
 
   const openStrategyItem = useMemo(
     () => () => {
@@ -492,8 +522,16 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {restrictedCount > 0 && (
+        <div className="mb-3 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700">
+          <Lock className="h-3.5 w-3.5" />
+          {restrictedCount} restricted metric{restrictedCount === 1 ? '' : 's'}{' '}
+          hidden from this view.
+        </div>
+      )}
+
       {activeGroup ? (
-        <GroupDashboard group={activeGroup} cards={cards} />
+        <GroupDashboard group={activeGroup} cards={visibleCards} />
       ) : widgets.length === 0 ? (
         <Card className="p-10">
           <div className="space-y-3 text-center">
@@ -538,6 +576,7 @@ export default function DashboardPage() {
                 onConfigure={openConfigure}
                 onRemove={handleRemove}
                 strategyLinks={strategyLinksByWidget[w.id]}
+                measuredMap={measuredMap}
                 currentPeriod={currentPeriod}
                 onOpenStrategy={openStrategyItem}
                 onOpenTrace={setTraceNodeId}
