@@ -732,6 +732,98 @@ export type Database = {
           },
         ]
       }
+      connected_accounts: {
+        Row: {
+          id: string
+          created_by: string
+          workspace_id: string | null
+          connector_id: string
+          auth_type: string
+          source_account_id: string | null
+          source_account_label: string | null
+          granted_scopes: string[]
+          status: string
+          status_detail: string | null
+          last_synced_at: string | null
+          last_query_at: string | null
+          revoked_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connector_id: string
+          auth_type: string
+          source_account_id?: string | null
+          source_account_label?: string | null
+          granted_scopes?: string[]
+          status?: string
+          status_detail?: string | null
+          last_synced_at?: string | null
+          last_query_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connector_id?: string
+          auth_type?: string
+          source_account_id?: string | null
+          source_account_label?: string | null
+          granted_scopes?: string[]
+          status?: string
+          status_detail?: string | null
+          last_synced_at?: string | null
+          last_query_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      connected_account_secrets: {
+        Row: {
+          account_id: string
+          access_token: string | null
+          refresh_token: string | null
+          api_key: string | null
+          token_type: string | null
+          expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          access_token?: string | null
+          refresh_token?: string | null
+          api_key?: string | null
+          token_type?: string | null
+          expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          access_token?: string | null
+          refresh_token?: string | null
+          api_key?: string | null
+          token_type?: string | null
+          expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connected_account_secrets_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "connected_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       source_connection_secrets: {
         Row: {
           connection_id: string
