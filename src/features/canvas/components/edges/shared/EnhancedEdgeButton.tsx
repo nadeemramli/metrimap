@@ -1,5 +1,6 @@
 import React from 'react';
 import { EdgeLabelRenderer } from '@xyflow/react';
+import { cn } from '@/shared/utils';
 import { Button } from '@/shared/components/ui/button';
 import {
   Popover,
@@ -19,9 +20,40 @@ import {
   GitBranch,
 } from 'lucide-react';
 import {
+  getRelationshipEdgeStyle,
   getRelationshipTypeMeta,
   getRelationshipWeightLabel,
 } from '@/features/canvas/constants/relationshipTypeMeta';
+
+// Tone → pill classes, matching the drawn line's semantics (CVS-165): a
+// relationship's centre chip reads the same colour as its edge, so a negative or
+// weak link never looks like a healthy green one.
+const TONE_PILL: Record<
+  string,
+  { bg: string; border: string; text: string }
+> = {
+  positive: {
+    bg: 'bg-green-50',
+    border: 'border-green-300',
+    text: 'text-green-700',
+  },
+  negative: { bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700' },
+  weak: {
+    bg: 'bg-amber-50',
+    border: 'border-amber-300',
+    text: 'text-amber-700',
+  },
+  neutral: {
+    bg: 'bg-gray-50',
+    border: 'border-gray-300',
+    text: 'text-gray-600',
+  },
+  structural: {
+    bg: 'bg-slate-50',
+    border: 'border-slate-300',
+    text: 'text-slate-600',
+  },
+};
 
 interface EnhancedEdgeButtonProps {
   // Position
@@ -127,6 +159,17 @@ export default function EnhancedEdgeButton({
   const Icon = customIcon || config.icon;
   const label = customLabel || config.label;
 
+  // Relationship edges: tint the chip by the edge's tone (direction/strength) so
+  // it matches the line. Other edge types keep their own config colours.
+  const relStyle =
+    edgeType === 'relationshipEdge'
+      ? getRelationshipEdgeStyle(relationshipType, weight)
+      : null;
+  const pill = relStyle
+    ? TONE_PILL[relStyle.tone] ?? TONE_PILL.neutral
+    : { bg: config.bgColor, border: config.borderColor, text: config.color };
+  const loose = relStyle?.loose ?? false;
+
   // Actions for the toolbar
   const actions = [
     {
@@ -203,27 +246,27 @@ export default function EnhancedEdgeButton({
         className="nodrag nopan"
       >
         <div className="flex items-center gap-1">
-          {/* Main Edge Button */}
-          <Button
-            variant="outline"
-            size="sm"
+          {/* Centre chip — compact tone-aware score pill (CVS-165). */}
+          <button
+            type="button"
             onClick={handleMainButtonClick}
-            className={`
-              h-10 w-10 p-0 rounded-full shadow-lg transition-all duration-200 border-2
-              ${config.bgColor} ${config.borderColor} ${config.color} ${config.hoverBg}
-              ${selected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-              ${isHovered ? 'scale-110' : 'hover:scale-110'}
-              hover:shadow-xl
-            `}
-            title={`${config.description} - Click to open settings`}
+            title={`${config.description} — click to open settings`}
+            className={cn(
+              'flex items-center gap-1 rounded-full border bg-clip-padding px-2 py-0.5',
+              'shadow-sm backdrop-blur-sm transition-all duration-200',
+              pill.bg,
+              pill.border,
+              pill.text,
+              loose ? 'border-dashed opacity-90' : '',
+              selected ? 'ring-2 ring-blue-500 ring-offset-1' : '',
+              isHovered ? 'scale-110 shadow-md' : 'hover:scale-110'
+            )}
           >
-            <div className="flex flex-col items-center justify-center">
-              <Icon className="h-3 w-3 mb-0.5" />
-              <span className="text-[8px] font-mono font-bold leading-none">
-                {label}
-              </span>
-            </div>
-          </Button>
+            <Icon className="h-3 w-3 shrink-0" />
+            <span className="font-mono text-[10px] font-semibold leading-none">
+              {label}
+            </span>
+          </button>
 
           {/* Toolbar Actions */}
           {showToolbar && (selected || isHovered) && actions.length > 0 && (
