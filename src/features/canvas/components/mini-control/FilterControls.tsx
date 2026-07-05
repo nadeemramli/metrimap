@@ -13,10 +13,17 @@ import {
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import type { MetricCard as MetricCardType } from '@/shared/types';
+import { userCodename } from '@/shared/utils/codename';
 import { Calendar, Filter, RefreshCw, Search } from 'lucide-react';
 import { useState } from 'react';
 
 type CardCategory = MetricCardType['category'];
+
+// Never show a raw Clerk id (`user_…`) as an owner — resolve it to the same
+// stable pseudonymous codename comments use (CVS-33). Real name strings (which
+// don't start with `user_`) pass through unchanged so they aren't hashed away.
+const ownerLabel = (owner: string): string =>
+  /^user_/.test(owner) ? userCodename(owner) : owner;
 
 interface FilterState {
   searchTerm: string;
@@ -259,7 +266,7 @@ export default function FilterControls() {
                     className="cursor-pointer"
                     onClick={() => handleOwnerToggle(owner)}
                   >
-                    {owner}
+                    {ownerLabel(owner)}
                   </Badge>
                 ))}
               </div>
