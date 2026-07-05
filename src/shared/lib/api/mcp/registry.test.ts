@@ -105,6 +105,16 @@ describe('dispatchTool', () => {
     expect(fakeApi.nodes.update).toHaveBeenCalledWith(NODE_A, { title: 'renamed' });
   });
 
+  it('tolerates extra/metadata keys on a no-param tool (connector sends them)', async () => {
+    // Regression: list_canvases used `.strict()`, so the SDK/claude.ai connector
+    // attaching metadata keys to a no-arg call produced invalid_input. Unknown
+    // keys must be stripped, not rejected.
+    await expect(
+      dispatchTool('list_canvases', { _meta: { progressToken: 1 }, foo: 'bar' }, ctx())
+    ).resolves.toEqual(['c1']);
+    expect(fakeApi.canvases.list).toHaveBeenCalled();
+  });
+
   it('throws not_found for an unknown tool', async () => {
     await expect(dispatchTool('nope', {}, ctx())).rejects.toMatchObject({
       name: 'McpToolError',
