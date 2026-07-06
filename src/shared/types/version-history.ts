@@ -85,6 +85,7 @@ export interface VersionHistoryStore {
   error: string | undefined;
   config: VersionHistoryConfig;
   lastSnapshotTime: string | undefined;
+  loadedCanvasId: string | undefined;
 
   // Core operations
   createSnapshot: (
@@ -174,11 +175,13 @@ export interface HistoryStats {
   totalCanvasChanges: number;
 }
 
-// Default configuration
+// Default configuration. Checkpoints are deliberate, game-style saves —
+// time/change-based auto-snapshots stay OFF by default so the timeline is
+// never polluted; only pre-restore backups are created automatically.
 export const DEFAULT_VERSION_HISTORY_CONFIG: VersionHistoryConfig = {
-  autoSnapshotEnabled: true,
+  autoSnapshotEnabled: false,
   autoSnapshotInterval: 30, // 30 minutes
-  maxAutoSnapshots: 20,
+  maxAutoSnapshots: 10,
   maxManualSnapshots: 50,
   retentionDays: 90, // 3 months
   changeThresholds: {

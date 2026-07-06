@@ -39,6 +39,7 @@ export function ChangelogFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Actions</SelectItem>
+          <SelectItem value="checkpoint">Checkpoints</SelectItem>
           <SelectItem value="created">Created</SelectItem>
           <SelectItem value="updated">Updated</SelectItem>
           <SelectItem value="deleted">Deleted</SelectItem>

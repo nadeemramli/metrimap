@@ -19,7 +19,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Eye, Search } from 'lucide-react';
+import { Eye, Flag, Search } from 'lucide-react';
 
 // Extracted utilities and hooks
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
@@ -109,12 +109,14 @@ import OffscreenNodeIndicator from '@/features/canvas/components/wayfinding/Offs
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
 import GroupsPanel from '@/features/canvas/components/left-sidepanel/GroupsPanel';
 import TopCanvasToolbar from '@/features/canvas/components/mini-control/TopCanvasToolbar';
+import VersionHistoryPanel from '@/features/canvas/components/version-history/VersionHistoryPanel';
 import QuickSearchCommand, {
   useQuickSearch,
 } from '@/features/canvas/components/search/QuickSearchCommand';
 import LayoutDropdownButton from '@/features/canvas/components/mini-control/LayoutDropdownButton';
 import FilterControls from '@/features/canvas/components/mini-control/FilterControls';
 import {
+  DrawWheelZoom,
   EraseToolComponent,
   FreehandDrawComponent,
   LassoSelectionComponent,
@@ -171,6 +173,7 @@ function CanvasPageInner() {
   }, [canvasId]);
   // Groups side list + focus mode (grouping redesign).
   const [showGroupsPanel, setShowGroupsPanel] = useState(false);
+  const [showCheckpoints, setShowCheckpoints] = useState(false);
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
   // ELK-routed edge polylines keyed by edge id, produced by the last auto-layout
   // so DynamicEdge can draw the no-overlap orthogonal channel ELK reserved.
@@ -2505,6 +2508,17 @@ function CanvasPageInner() {
                   >
                     <Search />
                   </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="react-flow__controls-button rf-control-tool"
+                      title="Checkpoints — save the canvas like a game"
+                      aria-label="Checkpoints"
+                      onClick={() => setShowCheckpoints(true)}
+                    >
+                      <Flag />
+                    </button>
+                  )}
                 </>
               )}
             </Controls>
@@ -2643,9 +2657,11 @@ function CanvasPageInner() {
               </Panel>
             )}
 
-            {/* React Flow Whiteboard Tools - Only render the active tool */}
+            {/* React Flow Whiteboard Tools - Only render the active tool. Wrapped
+                so scroll-pan / Ctrl+scroll-zoom still work while a tool overlay
+                (which sits on top of React Flow) is capturing pointer events. */}
             {state.toolbarMode === 'draw' && (
-              <>
+              <DrawWheelZoom>
                 {state.whiteboardTool === 'eraser' && (
                   <EraseToolComponent
                     isActive={true}
@@ -2715,7 +2731,7 @@ function CanvasPageInner() {
                     onCommit={handleFreehandCommit}
                   />
                 )}
-              </>
+              </DrawWheelZoom>
             )}
 
             {/* Debug Panels */}
@@ -2815,6 +2831,15 @@ function CanvasPageInner() {
           }
         }}
       />
+
+      {/* Checkpoints — game-style save/load, opened from the Controls flag button. */}
+      {currentCanvasId && (
+        <VersionHistoryPanel
+          canvasId={currentCanvasId}
+          isOpen={showCheckpoints}
+          onClose={() => setShowCheckpoints(false)}
+        />
+      )}
     </div>
   );
 }

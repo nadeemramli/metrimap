@@ -319,6 +319,59 @@ export type Database = {
         }
         Relationships: []
       }
+      canvas_snapshots: {
+        Row: {
+          canvas_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          edges: Json
+          groups: Json
+          id: string
+          metadata: Json
+          nodes: Json
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          canvas_id: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          edges?: Json
+          groups?: Json
+          id?: string
+          metadata?: Json
+          nodes?: Json
+          title: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          canvas_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          edges?: Json
+          groups?: Json
+          id?: string
+          metadata?: Json
+          nodes?: Json
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_snapshots_canvas_id_fkey"
+            columns: ["canvas_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feed_bookmarks: {
         Row: {
           created_at: string

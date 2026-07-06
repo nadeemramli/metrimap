@@ -1,10 +1,6 @@
-// @ts-nocheck
-// TODO(type-debt): pre-existing type errors quarantined when strict type-checking
-// was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
-// this directive — do not add new code here assuming it is type-checked.
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CanvasSnapshot } from '../../types/version-history';
+import type { CanvasSnapshot } from '@/shared/types/version-history';
 import type { Database } from '../types';
 
 // Database type for canvas snapshots

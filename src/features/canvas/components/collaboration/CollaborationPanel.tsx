@@ -933,11 +933,11 @@ function ActivityTab({
 
           <Separator />
 
-          {/* Version history + changelog */}
+          {/* Checkpoints + changelog */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Version history
+                Checkpoints
               </h3>
               {projectId && (
                 <VersionHistoryButton

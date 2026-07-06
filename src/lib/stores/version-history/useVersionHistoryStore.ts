@@ -1,15 +1,32 @@
-// @ts-nocheck
-// TODO(type-debt): pre-existing type errors quarantined when strict type-checking
-// was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
-// this directive — do not add new code here assuming it is type-checked.
-import { useCanvasStore } from '@/features/canvas/stores/useCanvasStore';
+import { useCanvasStore } from '@/features/canvas/stores/canvasStore';
+import { logChangelogEntry } from '@/shared/lib/supabase/services/changelog';
+import {
+  createMetricCard,
+  deleteMetricCard,
+  updateMetricCard,
+} from '@/shared/lib/supabase/services/metric-cards';
+import {
+  createGroup,
+  deleteGroup,
+  updateGroup,
+} from '@/shared/lib/supabase/services/projects';
+import {
+  createRelationship,
+  deleteRelationship,
+  updateRelationship,
+} from '@/shared/lib/supabase/services/relationships';
 import {
   createCanvasSnapshot,
   deleteCanvasSnapshot,
   getCanvasSnapshots,
 } from '@/shared/lib/supabase/services/version-history';
 import { useAppStore } from '@/shared/stores/useAppStore';
-import type { CanvasProject } from '@/shared/types';
+import type {
+  CanvasProject,
+  GroupNode,
+  MetricCard,
+  Relationship,
+} from '@/shared/types';
 import type {
   CanvasSnapshot,
   HistoryStats,
@@ -19,89 +36,183 @@ import type {
   VersionHistoryStore,
 } from '@/shared/types/version-history';
 import { DEFAULT_VERSION_HISTORY_CONFIG } from '@/shared/types/version-history';
+import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
+import { createLogger } from '@/shared/utils/logger';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
+const log = createLogger('checkpoints');
+
+function diffCounts(previous: CanvasSnapshot, canvas: CanvasProject) {
+  const prevNodeIds = new Set(previous.nodes.map((n) => n.id));
+  const currNodeIds = new Set(canvas.nodes.map((n) => n.id));
+  const prevEdgeIds = new Set(previous.edges.map((e) => e.id));
+  const currEdgeIds = new Set(canvas.edges.map((e) => e.id));
+  const prevGroupIds = new Set((previous.groups ?? []).map((g) => g.id));
+  const currGroups = canvas.groups ?? [];
+
+  return {
+    nodesAdded: canvas.nodes.filter((n) => !prevNodeIds.has(n.id)).length,
+    nodesModified: canvas.nodes.filter((n) => {
+      const prev = previous.nodes.find((p) => p.id === n.id);
+      return prev && prev.updatedAt !== n.updatedAt;
+    }).length,
+    nodesDeleted: previous.nodes.filter((n) => !currNodeIds.has(n.id)).length,
+    edgesAdded: canvas.edges.filter((e) => !prevEdgeIds.has(e.id)).length,
+    edgesModified: canvas.edges.filter((e) => {
+      const prev = previous.edges.find((p) => p.id === e.id);
+      return prev && prev.updatedAt !== e.updatedAt;
+    }).length,
+    edgesDeleted: previous.edges.filter((e) => !currEdgeIds.has(e.id)).length,
+    groupsAdded: currGroups.filter((g) => !prevGroupIds.has(g.id)).length,
+    groupsModified: 0,
+    groupsDeleted: (previous.groups ?? []).filter(
+      (g) => !currGroups.some((c) => c.id === g.id)
+    ).length,
+  };
+}
+
+function buildSnapshotMetadata(
+  canvas: CanvasProject,
+  viewport: { x: number; y: number; zoom: number },
+  triggerType: 'manual' | 'auto' | 'milestone',
+  previous?: CanvasSnapshot
+): SnapshotMetadata {
+  const positions = canvas.nodes.map((n) => n.position);
+  const boundingBox =
+    positions.length > 0
+      ? {
+          minX: Math.min(...positions.map((p) => p.x)),
+          maxX: Math.max(...positions.map((p) => p.x)),
+          minY: Math.min(...positions.map((p) => p.y)),
+          maxY: Math.max(...positions.map((p) => p.y)),
+        }
+      : { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+
+  return {
+    triggerType,
+    nodeCount: canvas.nodes.length,
+    edgeCount: canvas.edges.length,
+    groupCount: canvas.groups?.length ?? 0,
+    canvasSize: {
+      totalNodes: canvas.nodes.length,
+      totalEdges: canvas.edges.length,
+      boundingBox,
+    },
+    viewport,
+    ...(previous
+      ? { changesSinceLastSnapshot: diffCounts(previous, canvas) }
+      : {}),
+  };
+}
+
 export const useVersionHistoryStore = create<VersionHistoryStore>()(
   subscribeWithSelector((set, get) => ({
-    // Initial state
     snapshots: [],
     isLoading: false,
     error: undefined,
     config: DEFAULT_VERSION_HISTORY_CONFIG,
     lastSnapshotTime: undefined,
+    loadedCanvasId: undefined,
 
-    // Core operations
     createSnapshot: async (
       canvasId: string,
       title: string,
       description?: string,
       triggerType: 'manual' | 'auto' | 'milestone' = 'manual'
     ): Promise<CanvasSnapshot> => {
-      const state = get();
-      const canvasState = useCanvasStore.getState();
-      const appState = useAppStore.getState();
+      const canvasStore = useCanvasStore.getState();
+      const { user } = useAppStore.getState();
 
-      if (!canvasState.canvas) {
+      if (!canvasStore.canvas || canvasStore.canvas.id !== canvasId) {
         throw new Error('No canvas loaded');
       }
-
-      if (!appState.user) {
+      if (!user) {
         throw new Error('User not authenticated');
+      }
+
+      // Version numbers come from what's already saved for this canvas.
+      if (get().loadedCanvasId !== canvasId) {
+        await get().loadSnapshots(canvasId);
       }
 
       set({ isLoading: true, error: undefined });
 
       try {
-        // Calculate metadata
-        const metadata = state.calculateSnapshotMetadata(
-          canvasState.canvas,
-          triggerType
+        const canvas = canvasStore.canvas;
+        const latest = get().getLatestSnapshot();
+        const metadata = buildSnapshotMetadata(
+          canvas,
+          canvasStore.viewport,
+          triggerType,
+          latest
         );
+        const version =
+          get().snapshots.reduce((max, s) => Math.max(max, s.version), 0) + 1;
 
-        // Create snapshot data
-        const snapshotData: Omit<CanvasSnapshot, 'id' | 'createdAt'> = {
+        log.debug('📸 Saving checkpoint:', { canvasId, title, triggerType });
+
+        const newSnapshot = await createCanvasSnapshot({
           canvasId,
-          version: state.snapshots.length + 1,
+          version,
           title,
           description,
-          nodes: canvasState.canvas.nodes,
-          edges: canvasState.canvas.edges,
-          groups: canvasState.canvas.groups,
+          nodes: canvas.nodes,
+          edges: canvas.edges,
+          groups: canvas.groups ?? [],
           metadata,
-          createdBy: appState.user.id,
-        };
-
-        console.log('📸 Creating canvas snapshot:', {
-          canvasId,
-          title,
-          triggerType,
-          nodeCount: metadata.nodeCount,
-          edgeCount: metadata.edgeCount,
+          createdBy: user.id,
         });
 
-        // Save to database
-        const newSnapshot = await createCanvasSnapshot(snapshotData);
+        // Deliberate checkpoints get a single marker in the changelog — the
+        // curated timeline stays readable while granular edits live in the
+        // activity feed. Best-effort: a failed marker never fails the save.
+        if (triggerType !== 'auto') {
+          try {
+            await logChangelogEntry({
+              timestamp: newSnapshot.createdAt,
+              action: 'checkpoint',
+              target: 'project',
+              targetId: canvasId,
+              targetName: title,
+              description: description?.trim()
+                ? description.trim()
+                : `Checkpoint "${title}" saved (${metadata.nodeCount} nodes, ${metadata.edgeCount} connections)`,
+              userId: user.id,
+              projectId: canvasId,
+              metadata: {
+                snapshotId: newSnapshot.id,
+                version,
+                nodeCount: metadata.nodeCount,
+                edgeCount: metadata.edgeCount,
+              },
+            });
+          } catch (markerError) {
+            console.error(
+              'checkpoint: saved, but failed to write changelog marker',
+              markerError
+            );
+          }
+        }
 
-        // Update local state
         set((state) => ({
-          snapshots: [...state.snapshots, newSnapshot],
+          snapshots: [newSnapshot, ...state.snapshots],
           lastSnapshotTime: newSnapshot.createdAt,
           isLoading: false,
         }));
 
-        // Cleanup old snapshots if needed
-        await state.cleanupOldSnapshots(canvasId);
+        if (triggerType === 'auto') {
+          await get().cleanupOldSnapshots(canvasId);
+        }
 
-        console.log('✅ Canvas snapshot created successfully:', newSnapshot.id);
         return newSnapshot;
       } catch (error) {
-        console.error('❌ Failed to create snapshot:', error);
+        console.error('❌ Failed to save checkpoint:', error);
         set({
           error:
             error instanceof Error
               ? error.message
-              : 'Failed to create snapshot',
+              : 'Failed to save checkpoint',
           isLoading: false,
         });
         throw error;
@@ -110,90 +221,168 @@ export const useVersionHistoryStore = create<VersionHistoryStore>()(
 
     loadSnapshots: async (canvasId: string) => {
       set({ isLoading: true, error: undefined });
-
       try {
-        console.log('🔄 Loading canvas snapshots for:', canvasId);
         const snapshots = await getCanvasSnapshots(canvasId);
-
-        // Sort by version descending (newest first)
-        const sortedSnapshots = snapshots.sort((a, b) => b.version - a.version);
-
+        const sorted = snapshots.sort((a, b) => b.version - a.version);
         set({
-          snapshots: sortedSnapshots,
-          lastSnapshotTime: sortedSnapshots[0]?.createdAt,
+          snapshots: sorted,
+          lastSnapshotTime: sorted[0]?.createdAt,
+          loadedCanvasId: canvasId,
           isLoading: false,
         });
-
-        console.log('✅ Loaded snapshots:', sortedSnapshots.length);
       } catch (error) {
-        console.error('❌ Failed to load snapshots:', error);
+        console.error('❌ Failed to load checkpoints:', error);
         set({
           error:
-            error instanceof Error ? error.message : 'Failed to load snapshots',
+            error instanceof Error
+              ? error.message
+              : 'Failed to load checkpoints',
           isLoading: false,
         });
       }
     },
 
+    // "Load game": persist the checkpoint state back to the database (diffing
+    // against the live canvas), then swap the in-memory canvas. An automatic
+    // backup checkpoint of the current state is saved first, so loading is
+    // always reversible.
     restoreSnapshot: async (snapshotId: string) => {
-      const state = get();
       const canvasStore = useCanvasStore.getState();
+      const { user } = useAppStore.getState();
 
-      const snapshot = state.getSnapshotById(snapshotId);
-      if (!snapshot) {
-        throw new Error('Snapshot not found');
+      const snapshot = get().getSnapshotById(snapshotId);
+      if (!snapshot) throw new Error('Checkpoint not found');
+
+      const canvas = canvasStore.canvas;
+      if (!canvas || canvas.id !== snapshot.canvasId) {
+        throw new Error('Open the canvas before loading one of its checkpoints');
       }
+      if (!user) throw new Error('User not authenticated');
+
+      await get().createSnapshot(
+        canvas.id,
+        `Backup before loading "${snapshot.title}"`,
+        `Saved automatically before loading checkpoint v${snapshot.version}`,
+        'auto'
+      );
 
       set({ isLoading: true, error: undefined });
 
       try {
-        console.log('🔄 Restoring canvas to snapshot:', {
+        log.debug('🔄 Loading checkpoint:', {
           snapshotId,
           version: snapshot.version,
-          title: snapshot.title,
         });
 
-        // Create current state snapshot before restoring (as backup)
-        if (canvasStore.canvas) {
-          await state.createSnapshot(
-            canvasStore.canvas.id,
-            `Auto-backup before restore to v${snapshot.version}`,
-            `Automatic backup created before restoring to snapshot "${snapshot.title}"`,
-            'auto'
-          );
-        }
+        const client = getClientForEnvironment();
+        const currNodeIds = new Set(canvas.nodes.map((n) => n.id));
+        const currEdges = canvas.edges;
+        const currGroups = canvas.groups ?? [];
+        const snapNodeIds = new Set(snapshot.nodes.map((n) => n.id));
+        const snapEdgeIds = new Set(snapshot.edges.map((e) => e.id));
+        const snapGroups = snapshot.groups ?? [];
+        const snapGroupIds = new Set(snapGroups.map((g) => g.id));
 
-        // Restore canvas state
-        const restoredCanvas: CanvasProject = {
-          id: snapshot.canvasId,
-          name: `Canvas (Restored from v${snapshot.version})`,
-          description: `Restored from snapshot: ${snapshot.title}`,
-          tags: [],
-          collaborators: [],
-          nodes: snapshot.nodes,
-          edges: snapshot.edges,
-          groups: snapshot.groups,
-          createdAt: snapshot.createdAt,
+        // 1. Drop edges that don't exist in the checkpoint (before their nodes).
+        await Promise.all(
+          currEdges
+            .filter((e) => !snapEdgeIds.has(e.id))
+            .map((e) => deleteRelationship(e.id, client))
+        );
+
+        // 2. Drop nodes that don't exist in the checkpoint.
+        await Promise.all(
+          canvas.nodes
+            .filter((n) => !snapNodeIds.has(n.id))
+            .map((n) => deleteMetricCard(n.id, client))
+        );
+
+        // 3. Upsert the checkpoint's nodes. Re-created nodes get fresh DB ids,
+        //    so remember the mapping for edges and group membership.
+        const idMap = new Map<string, string>();
+        const restoredNodes: MetricCard[] = await Promise.all(
+          snapshot.nodes.map(async (node) => {
+            if (currNodeIds.has(node.id)) {
+              return updateMetricCard(node.id, node, client);
+            }
+            const created = await createMetricCard(
+              node,
+              canvas.id,
+              user.id,
+              client
+            );
+            idMap.set(node.id, created.id);
+            return created;
+          })
+        );
+        const mapId = (id: string) => idMap.get(id) ?? id;
+
+        // 4. Upsert edges, remapping endpoints of re-created nodes.
+        const currEdgeIds = new Set(currEdges.map((e) => e.id));
+        const restoredEdges: Relationship[] = await Promise.all(
+          snapshot.edges.map((edge) => {
+            const remapped = {
+              ...edge,
+              sourceId: mapId(edge.sourceId),
+              targetId: mapId(edge.targetId),
+            };
+            return currEdgeIds.has(edge.id)
+              ? updateRelationship(edge.id, remapped, client)
+              : createRelationship(remapped, canvas.id, user.id, client);
+          })
+        );
+
+        // 5. Groups keep their ids; remap member node ids.
+        await Promise.all(
+          currGroups
+            .filter((g) => !snapGroupIds.has(g.id))
+            .map((g) => deleteGroup(g.id, client))
+        );
+        const currGroupIds = new Set(currGroups.map((g) => g.id));
+        const restoredGroups: GroupNode[] = await Promise.all(
+          snapGroups.map(async (group) => {
+            const remapped = {
+              ...group,
+              nodeIds: group.nodeIds.map(mapId),
+            };
+            if (currGroupIds.has(group.id)) {
+              await updateGroup(group.id, remapped, client);
+            } else {
+              await createGroup(
+                {
+                  id: group.id,
+                  name: group.name,
+                  nodeIds: remapped.nodeIds,
+                  position: group.position,
+                  size: group.size,
+                  projectId: canvas.id,
+                  createdBy: user.id,
+                },
+                client
+              );
+            }
+            return remapped;
+          })
+        );
+
+        // 6. Swap the live canvas — keep its identity, take the checkpoint's content.
+        canvasStore.loadCanvas({
+          ...canvas,
+          nodes: restoredNodes,
+          edges: restoredEdges,
+          groups: restoredGroups,
           updatedAt: new Date().toISOString(),
-          lastModifiedBy: snapshot.createdBy,
-        };
-
-        // Update canvas store with restored data
-        canvasStore.loadCanvas(restoredCanvas);
+        });
 
         set({ isLoading: false });
-
-        console.log(
-          '✅ Canvas restored successfully to version:',
-          snapshot.version
-        );
+        log.debug('✅ Checkpoint loaded:', snapshot.version);
       } catch (error) {
-        console.error('❌ Failed to restore snapshot:', error);
+        console.error('❌ Failed to load checkpoint:', error);
         set({
           error:
             error instanceof Error
               ? error.message
-              : 'Failed to restore snapshot',
+              : 'Failed to load checkpoint',
           isLoading: false,
         });
         throw error;
@@ -201,31 +390,23 @@ export const useVersionHistoryStore = create<VersionHistoryStore>()(
     },
 
     deleteSnapshot: async (snapshotId: string) => {
-      const state = get();
-      const snapshot = state.getSnapshotById(snapshotId);
-
-      if (!snapshot) {
-        throw new Error('Snapshot not found');
-      }
+      const snapshot = get().getSnapshotById(snapshotId);
+      if (!snapshot) throw new Error('Checkpoint not found');
 
       set({ isLoading: true, error: undefined });
-
       try {
         await deleteCanvasSnapshot(snapshotId);
-
         set((state) => ({
           snapshots: state.snapshots.filter((s) => s.id !== snapshotId),
           isLoading: false,
         }));
-
-        console.log('✅ Snapshot deleted:', snapshotId);
       } catch (error) {
-        console.error('❌ Failed to delete snapshot:', error);
+        console.error('❌ Failed to delete checkpoint:', error);
         set({
           error:
             error instanceof Error
               ? error.message
-              : 'Failed to delete snapshot',
+              : 'Failed to delete checkpoint',
           isLoading: false,
         });
         throw error;
@@ -236,139 +417,112 @@ export const useVersionHistoryStore = create<VersionHistoryStore>()(
       snapshotId1: string,
       snapshotId2: string
     ): Promise<SnapshotComparison> => {
-      const state = get();
-      const snapshot1 = state.getSnapshotById(snapshotId1);
-      const snapshot2 = state.getSnapshotById(snapshotId2);
-
+      const snapshot1 = get().getSnapshotById(snapshotId1);
+      const snapshot2 = get().getSnapshotById(snapshotId2);
       if (!snapshot1 || !snapshot2) {
-        throw new Error('One or both snapshots not found');
+        throw new Error('One or both checkpoints not found');
       }
 
-      return state.calculateSnapshotDifferences(snapshot1, snapshot2);
+      const summary = {
+        nodesChanged: Math.abs(snapshot1.nodes.length - snapshot2.nodes.length),
+        edgesChanged: Math.abs(snapshot1.edges.length - snapshot2.edges.length),
+        groupsChanged: Math.abs(
+          (snapshot1.groups?.length ?? 0) - (snapshot2.groups?.length ?? 0)
+        ),
+        totalChanges: 0,
+      };
+      summary.totalChanges =
+        summary.nodesChanged + summary.edgesChanged + summary.groupsChanged;
+
+      return {
+        snapshot1,
+        snapshot2,
+        differences: {
+          nodes: { added: [], modified: [], deleted: [] },
+          edges: { added: [], modified: [], deleted: [] },
+          groups: { added: [], modified: [], deleted: [] },
+        },
+        summary,
+      };
     },
 
+    // Time/change-based auto-snapshots are intentionally OFF by default —
+    // checkpoints are deliberate saves; auto entries only pollute the timeline.
+    // This hook stays for opt-in use (config.autoSnapshotEnabled).
     checkAutoSnapshot: async (canvasId: string) => {
       const state = get();
-      const canvasState = useCanvasStore.getState();
+      const canvasStore = useCanvasStore.getState();
+      if (!state.config.autoSnapshotEnabled || !canvasStore.canvas) return;
 
-      if (!state.config.autoSnapshotEnabled || !canvasState.canvas) {
-        return;
-      }
-
-      // Check if enough time has elapsed
       if (state.lastSnapshotTime) {
-        const timeSinceLastSnapshot =
-          (Date.now() - new Date(state.lastSnapshotTime).getTime()) /
-          (1000 * 60);
-
-        if (
-          timeSinceLastSnapshot < state.config.changeThresholds.minTimeElapsed
-        ) {
-          return;
-        }
+        const minutesSince =
+          (Date.now() - new Date(state.lastSnapshotTime).getTime()) / 60000;
+        if (minutesSince < state.config.changeThresholds.minTimeElapsed) return;
       }
 
-      // Check if enough changes have occurred
-      const latestSnapshot = state.getLatestSnapshot();
-      if (latestSnapshot) {
-        const changeCount = state.calculateChangesSinceSnapshot(
-          latestSnapshot,
-          canvasState.canvas
+      const latest = state.getLatestSnapshot();
+      if (!latest) return;
+
+      const changes = diffCounts(latest, canvasStore.canvas);
+      const nodesChanged =
+        changes.nodesAdded + changes.nodesModified + changes.nodesDeleted;
+      const edgesChanged =
+        changes.edgesAdded + changes.edgesModified + changes.edgesDeleted;
+      if (
+        nodesChanged >= state.config.changeThresholds.minNodesChanged ||
+        edgesChanged >= state.config.changeThresholds.minEdgesChanged
+      ) {
+        await state.createSnapshot(
+          canvasId,
+          `Auto-save ${new Date().toLocaleString()}`,
+          `Automatic save after ${nodesChanged} node and ${edgesChanged} connection changes`,
+          'auto'
         );
-
-        const hasSignificantChanges =
-          changeCount.nodesChanged >=
-            state.config.changeThresholds.minNodesChanged ||
-          changeCount.edgesChanged >=
-            state.config.changeThresholds.minEdgesChanged;
-
-        if (hasSignificantChanges) {
-          await state.createSnapshot(
-            canvasId,
-            `Auto-snapshot v${state.snapshots.length + 1}`,
-            `Automatic snapshot after ${changeCount.nodesChanged} node changes and ${changeCount.edgesChanged} edge changes`,
-            'auto'
-          );
-        }
       }
     },
 
     updateConfig: (newConfig: Partial<VersionHistoryConfig>) => {
-      set((state) => ({
-        config: { ...state.config, ...newConfig },
-      }));
+      set((state) => ({ config: { ...state.config, ...newConfig } }));
     },
 
-    // Utility functions
-    getSnapshotById: (snapshotId: string) => {
-      const state = get();
-      return state.snapshots.find((s) => s.id === snapshotId);
-    },
+    getSnapshotById: (snapshotId: string) =>
+      get().snapshots.find((s) => s.id === snapshotId),
 
     getLatestSnapshot: () => {
-      const state = get();
-      return state.snapshots[0]; // Sorted newest first
+      // Sorted newest-first by version
+      return get().snapshots[0];
     },
 
     getSnapshotsSince: (date: string) => {
-      const state = get();
-      const sinceDate = new Date(date);
-      return state.snapshots.filter((s) => new Date(s.createdAt) >= sinceDate);
+      const since = new Date(date);
+      return get().snapshots.filter((s) => new Date(s.createdAt) >= since);
     },
 
-    cleanupOldSnapshots: async (canvasId: string) => {
+    // Only automatic backups are ever trimmed. Manual checkpoints are the
+    // user's saves — they are never garbage-collected.
+    cleanupOldSnapshots: async (_canvasId: string) => {
       const state = get();
-      const now = new Date();
-      const retentionDate = new Date(
-        now.getTime() - state.config.retentionDays * 24 * 60 * 60 * 1000
-      );
-
-      // Separate auto and manual snapshots
-      const autoSnapshots = state.snapshots.filter(
-        (s) =>
-          s.metadata.triggerType === 'auto' &&
-          new Date(s.createdAt) < retentionDate
-      );
-      const manualSnapshots = state.snapshots.filter(
-        (s) => s.metadata.triggerType === 'manual'
-      );
-
-      // Delete excess auto snapshots
-      if (autoSnapshots.length > state.config.maxAutoSnapshots) {
-        const excessSnapshots = autoSnapshots.slice(
-          state.config.maxAutoSnapshots
+      const autoSnapshots = state.snapshots
+        .filter((s) => s.metadata.triggerType === 'auto')
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-        for (const snapshot of excessSnapshots) {
-          await state.deleteSnapshot(snapshot.id);
+      const excess = autoSnapshots.slice(state.config.maxAutoSnapshots);
+      for (const snapshot of excess) {
+        try {
+          await deleteCanvasSnapshot(snapshot.id);
+          set((s) => ({
+            snapshots: s.snapshots.filter((x) => x.id !== snapshot.id),
+          }));
+        } catch (error) {
+          console.error('checkpoint: failed to trim auto backup', error);
         }
-      }
-
-      // Delete excess manual snapshots
-      if (manualSnapshots.length > state.config.maxManualSnapshots) {
-        const excessSnapshots = manualSnapshots.slice(
-          state.config.maxManualSnapshots
-        );
-        for (const snapshot of excessSnapshots) {
-          await state.deleteSnapshot(snapshot.id);
-        }
-      }
-
-      // Delete old snapshots beyond retention period
-      const oldSnapshots = state.snapshots.filter(
-        (s) =>
-          new Date(s.createdAt) < retentionDate &&
-          s.metadata.triggerType !== 'milestone' // Keep milestones
-      );
-
-      for (const snapshot of oldSnapshots) {
-        await state.deleteSnapshot(snapshot.id);
       }
     },
 
     getHistoryStats: (): HistoryStats => {
-      const state = get();
-      const snapshots = state.snapshots;
-
+      const snapshots = get().snapshots;
       if (snapshots.length === 0) {
         return {
           totalSnapshots: 0,
@@ -390,37 +544,32 @@ export const useVersionHistoryStore = create<VersionHistoryStore>()(
         { manual: 0, auto: 0, milestone: 0 }
       );
 
-      // Calculate average time between snapshots
       let totalTimeDiff = 0;
       for (let i = 1; i < sortedByDate.length; i++) {
-        const timeDiff =
+        totalTimeDiff +=
           new Date(sortedByDate[i].createdAt).getTime() -
           new Date(sortedByDate[i - 1].createdAt).getTime();
-        totalTimeDiff += timeDiff;
       }
       const averageTimeBetweenSnapshots =
         sortedByDate.length > 1
-          ? totalTimeDiff / (sortedByDate.length - 1) / (1000 * 60 * 60) // hours
+          ? totalTimeDiff / (sortedByDate.length - 1) / 3600000
           : undefined;
 
-      // Calculate total changes
       const totalCanvasChanges = snapshots.reduce((acc, s) => {
-        const changes = s.metadata.changesSinceLastSnapshot;
-        if (changes) {
-          return (
-            acc +
-            changes.nodesAdded +
-            changes.nodesModified +
-            changes.nodesDeleted +
-            changes.edgesAdded +
-            changes.edgesModified +
-            changes.edgesDeleted +
-            changes.groupsAdded +
-            changes.groupsModified +
-            changes.groupsDeleted
-          );
-        }
-        return acc;
+        const c = s.metadata.changesSinceLastSnapshot;
+        if (!c) return acc;
+        return (
+          acc +
+          c.nodesAdded +
+          c.nodesModified +
+          c.nodesDeleted +
+          c.edgesAdded +
+          c.edgesModified +
+          c.edgesDeleted +
+          c.groupsAdded +
+          c.groupsModified +
+          c.groupsDeleted
+        );
       }, 0);
 
       return {
@@ -430,142 +579,6 @@ export const useVersionHistoryStore = create<VersionHistoryStore>()(
         averageTimeBetweenSnapshots,
         snapshotsByType,
         totalCanvasChanges,
-      };
-    },
-
-    // Helper functions (not exposed in interface)
-    calculateSnapshotMetadata: (
-      canvas: CanvasProject,
-      triggerType: 'manual' | 'auto' | 'milestone'
-    ): SnapshotMetadata => {
-      const state = get();
-      const canvasStore = useCanvasStore.getState();
-
-      // Calculate bounding box
-      const positions = canvas.nodes.map((n) => n.position);
-      const boundingBox =
-        positions.length > 0
-          ? {
-              minX: Math.min(...positions.map((p) => p.x)),
-              maxX: Math.max(...positions.map((p) => p.x)),
-              minY: Math.min(...positions.map((p) => p.y)),
-              maxY: Math.max(...positions.map((p) => p.y)),
-            }
-          : { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-
-      const metadata: SnapshotMetadata = {
-        triggerType,
-        nodeCount: canvas.nodes.length,
-        edgeCount: canvas.edges.length,
-        groupCount: canvas.groups.length,
-        canvasSize: {
-          totalNodes: canvas.nodes.length,
-          totalEdges: canvas.edges.length,
-          boundingBox,
-        },
-        viewport: canvasStore.viewport,
-        userAgent: navigator.userAgent,
-      };
-
-      // Calculate changes since last snapshot
-      const latestSnapshot = state.getLatestSnapshot();
-      if (latestSnapshot) {
-        metadata.changesSinceLastSnapshot = state.calculateChangesSinceSnapshot(
-          latestSnapshot,
-          canvas
-        );
-      }
-
-      return metadata;
-    },
-
-    calculateChangesSinceSnapshot: (
-      lastSnapshot: CanvasSnapshot,
-      currentCanvas: CanvasProject
-    ) => {
-      // Simple change calculation based on counts and IDs
-      const lastNodeIds = new Set(lastSnapshot.nodes.map((n) => n.id));
-      const currentNodeIds = new Set(currentCanvas.nodes.map((n) => n.id));
-
-      const nodesAdded = currentCanvas.nodes.filter(
-        (n) => !lastNodeIds.has(n.id)
-      ).length;
-      const nodesDeleted = lastSnapshot.nodes.filter(
-        (n) => !currentNodeIds.has(n.id)
-      ).length;
-      const nodesModified = currentCanvas.nodes.filter((n) => {
-        const lastNode = lastSnapshot.nodes.find((ln) => ln.id === n.id);
-        return lastNode && lastNode.updatedAt !== n.updatedAt;
-      }).length;
-
-      const lastEdgeIds = new Set(lastSnapshot.edges.map((e) => e.id));
-      const currentEdgeIds = new Set(currentCanvas.edges.map((e) => e.id));
-
-      const edgesAdded = currentCanvas.edges.filter(
-        (e) => !lastEdgeIds.has(e.id)
-      ).length;
-      const edgesDeleted = lastSnapshot.edges.filter(
-        (e) => !currentEdgeIds.has(e.id)
-      ).length;
-      const edgesModified = currentCanvas.edges.filter((e) => {
-        const lastEdge = lastSnapshot.edges.find((le) => le.id === e.id);
-        return lastEdge && lastEdge.updatedAt !== e.updatedAt;
-      }).length;
-
-      const lastGroupIds = new Set(lastSnapshot.groups.map((g) => g.id));
-      const currentGroupIds = new Set(currentCanvas.groups.map((g) => g.id));
-
-      const groupsAdded = currentCanvas.groups.filter(
-        (g) => !lastGroupIds.has(g.id)
-      ).length;
-      const groupsDeleted = lastSnapshot.groups.filter(
-        (g) => !currentGroupIds.has(g.id)
-      ).length;
-      const groupsModified = 0; // Groups don't have updatedAt, would need separate tracking
-
-      return {
-        nodesAdded,
-        nodesModified,
-        nodesDeleted,
-        edgesAdded,
-        edgesModified,
-        edgesDeleted,
-        groupsAdded,
-        groupsModified,
-        groupsDeleted,
-        nodesChanged: nodesAdded + nodesModified + nodesDeleted,
-        edgesChanged: edgesAdded + edgesModified + edgesDeleted,
-        groupsChanged: groupsAdded + groupsModified + groupsDeleted,
-      };
-    },
-
-    calculateSnapshotDifferences: (
-      snapshot1: CanvasSnapshot,
-      snapshot2: CanvasSnapshot
-    ): SnapshotComparison => {
-      // Detailed comparison implementation would go here
-      // For now, return a simplified version
-      const summary = {
-        totalChanges: 0,
-        nodesChanged: Math.abs(snapshot1.nodes.length - snapshot2.nodes.length),
-        edgesChanged: Math.abs(snapshot1.edges.length - snapshot2.edges.length),
-        groupsChanged: Math.abs(
-          snapshot1.groups.length - snapshot2.groups.length
-        ),
-      };
-
-      summary.totalChanges =
-        summary.nodesChanged + summary.edgesChanged + summary.groupsChanged;
-
-      return {
-        snapshot1,
-        snapshot2,
-        differences: {
-          nodes: { added: [], modified: [], deleted: [] },
-          edges: { added: [], modified: [], deleted: [] },
-          groups: { added: [], modified: [], deleted: [] },
-        },
-        summary,
       };
     },
   }))

@@ -2,7 +2,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import type { ChangelogEntry } from '@/shared/lib/supabase/services/changelog';
-import { Clock, MoreVertical } from 'lucide-react';
+import { Clock, Flag, MoreVertical } from 'lucide-react';
 
 interface Props {
   filteredChangelog: ChangelogEntry[];
@@ -19,8 +19,10 @@ function getTimeAgo(timestamp: string) {
   return `${days}d ago`;
 }
 
-function getActionIcon(_action: string) {
-  // simple placeholder; real mapping can live in a utils module
+function getActionIcon(action: string) {
+  if (action === 'checkpoint') {
+    return <Flag className="h-4 w-4 text-primary" />;
+  }
   return <span className="inline-block w-2 h-2 rounded-full bg-muted" />;
 }
 
@@ -44,7 +46,12 @@ export function ChangelogTab({ filteredChangelog, isLoading }: Props) {
   return (
     <div className="space-y-4">
       {filteredChangelog.map((entry) => (
-        <Card key={entry.id}>
+        <Card
+          key={entry.id}
+          className={
+            entry.action === 'checkpoint' ? 'border-primary/40' : undefined
+          }
+        >
           <CardContent className="p-4">
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0">{getActionIcon(entry.action)}</div>
