@@ -15,6 +15,10 @@ export type WhiteboardTool =
   | 'eraser'
   | 'lasso'
   | 'rectangle'
+  | 'ellipse'
+  | 'arrow'
+  | 'line'
+  | 'text'
   | 'freehand';
 
 interface WhiteboardToolsPanelProps {

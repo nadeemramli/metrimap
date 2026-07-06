@@ -1,18 +1,36 @@
 import { Button } from '@/shared/components/ui/button';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/shared/components/ui/popover';
+import {
+  Circle,
   Eraser,
   Hand,
   Lasso,
   Layers,
   MapPin,
   MessageSquarePlus,
+  Minus,
   MousePointer,
+  MoveUpRight,
+  Palette,
   PenTool,
   SlidersHorizontal,
   Square,
 } from 'lucide-react';
 import AddNodeButton from './AddNodeButton';
 import { createLogger } from '@/shared/utils/logger';
+
+export interface ShapeStyle {
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+}
+
+// Tools that carry a fill/stroke style, so the toolbar shows the style popover.
+const SHAPE_TOOLS = new Set(['rectangle', 'ellipse', 'arrow', 'line']);
 
 const log = createLogger('canvas');
 
@@ -33,6 +51,8 @@ interface TopCanvasToolbarProps {
   // Whiteboard tools (for draw mode)
   whiteboardTool?: string;
   onSetWhiteboardTool?: (tool: string) => void;
+  shapeStyle?: ShapeStyle;
+  onChangeShapeStyle?: (style: ShapeStyle) => void;
 
   onOpenFilters: () => void;
   onAddEvidence: () => void;
@@ -72,6 +92,9 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
     { id: 'eraser', title: 'Eraser (E)', Icon: Eraser },
     { id: 'lasso', title: 'Lasso Selection (L)', Icon: Lasso },
     { id: 'rectangle', title: 'Rectangle (R)', Icon: Square },
+    { id: 'ellipse', title: 'Ellipse (O)', Icon: Circle },
+    { id: 'arrow', title: 'Arrow (A)', Icon: MoveUpRight },
+    { id: 'line', title: 'Line (N)', Icon: Minus },
     { id: 'freehand', title: 'Freehand Draw (P)', Icon: PenTool },
   ];
 
@@ -109,28 +132,42 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
       {/* Drawing Tools - Show different tools based on mode */}
       {mode === 'draw' ? (
         /* React Flow Whiteboard Tools */
-        whiteboardTools.map((tool) => {
-          const Icon = tool.Icon;
-          const isActive = whiteboardTool === tool.id;
+        <>
+          {whiteboardTools.map((tool) => {
+            const Icon = tool.Icon;
+            const isActive = whiteboardTool === tool.id;
 
-          return (
-            <WithTooltip key={tool.id} label={tool.title}>
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-pressed={isActive}
-                className={getToolButtonClasses(isActive)}
-                title={tool.title}
-                onClick={() => {
-                  log.debug('🎯 Tool clicked:', tool.id);
-                  onSetWhiteboardTool?.(tool.id);
-                }}
-              >
-                <Icon className="w-4 h-4" />
-              </Button>
-            </WithTooltip>
-          );
-        })
+            return (
+              <WithTooltip key={tool.id} label={tool.title}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-pressed={isActive}
+                  className={getToolButtonClasses(isActive)}
+                  title={tool.title}
+                  onClick={() => {
+                    log.debug('🎯 Tool clicked:', tool.id);
+                    onSetWhiteboardTool?.(tool.id);
+                  }}
+                >
+                  <Icon className="w-4 h-4" />
+                </Button>
+              </WithTooltip>
+            );
+          })}
+          {/* Shape style — fill / stroke / width for the next drawn shape. */}
+          {SHAPE_TOOLS.has(whiteboardTool || '') &&
+            props.shapeStyle &&
+            props.onChangeShapeStyle && (
+              <ShapeStylePopover
+                style={props.shapeStyle}
+                onChange={props.onChangeShapeStyle}
+                showFill={
+                  whiteboardTool === 'rectangle' || whiteboardTool === 'ellipse'
+                }
+              />
+            )}
+        </>
       ) : (
         /* Edit Mode - Just selection tool */
         <WithTooltip label="Selection" hotkey="V">
@@ -222,5 +259,108 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
         </div>
       )}
     </div>
+  );
+}
+
+const STROKE_WIDTHS = [1, 2, 4, 6] as const;
+const asHex = (c: string) => (/^#[0-9a-fA-F]{6}$/.test(c) ? c : '#ffffff');
+
+/** Fill / stroke / width control for the next drawn shape. */
+function ShapeStylePopover({
+  style,
+  onChange,
+  showFill,
+}: {
+  style: ShapeStyle;
+  onChange: (style: ShapeStyle) => void;
+  showFill: boolean;
+}) {
+  const hasFill = style.fill !== 'transparent';
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="rounded-lg h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
+          title="Shape style"
+          aria-label="Shape style"
+        >
+          <Palette className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56 space-y-3 p-3">
+        {showFill && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">
+                Fill
+              </span>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground"
+                onClick={() =>
+                  onChange({
+                    ...style,
+                    fill: hasFill ? 'transparent' : '#dbeafe',
+                  })
+                }
+              >
+                {hasFill ? 'No fill' : 'Add fill'}
+              </button>
+            </div>
+            {hasFill && (
+              <input
+                type="color"
+                aria-label="Fill color"
+                value={asHex(style.fill)}
+                onChange={(e) => onChange({ ...style, fill: e.target.value })}
+                className="h-7 w-full cursor-pointer rounded border border-border bg-transparent"
+              />
+            )}
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-muted-foreground">
+            Stroke
+          </span>
+          <input
+            type="color"
+            aria-label="Stroke color"
+            value={asHex(style.stroke)}
+            onChange={(e) => onChange({ ...style, stroke: e.target.value })}
+            className="h-7 w-full cursor-pointer rounded border border-border bg-transparent"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-muted-foreground">
+            Width
+          </span>
+          <div className="flex items-center gap-1.5">
+            {STROKE_WIDTHS.map((w) => (
+              <button
+                key={w}
+                type="button"
+                aria-label={`Stroke width ${w}`}
+                aria-pressed={style.strokeWidth === w}
+                onClick={() => onChange({ ...style, strokeWidth: w })}
+                className={`flex h-7 flex-1 items-center justify-center rounded border transition-colors ${
+                  style.strokeWidth === w
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:bg-accent'
+                }`}
+              >
+                <span
+                  className="rounded-full bg-foreground"
+                  style={{ width: 18, height: Math.max(1, w) }}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

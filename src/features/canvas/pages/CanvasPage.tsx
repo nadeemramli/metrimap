@@ -116,9 +116,10 @@ import {
   EraseToolComponent,
   FreehandDrawComponent,
   LassoSelectionComponent,
-  RectangleToolComponent,
+  ShapeToolComponent,
   type WhiteboardTool,
   type FreehandDrawing,
+  type ShapeDrawing,
 } from '@/features/canvas/components/whiteboard';
 import { generateUUID } from '@/shared/utils/validation';
 import { getViewportCenterPosition } from '@/features/canvas/utils/viewportCenter';
@@ -1158,6 +1159,9 @@ function CanvasPageInner() {
           e: 'eraser',
           l: 'lasso',
           r: 'rectangle',
+          o: 'ellipse',
+          a: 'arrow',
+          n: 'line',
           p: 'freehand',
         };
         const tool = toolByKey[e.key.toLowerCase()];
@@ -1718,6 +1722,44 @@ function CanvasPageInner() {
     [createCanvasNode]
   );
 
+  // Persist a finished shape (rectangle/ellipse/arrow/line) as a whiteboardNode,
+  // with undo/redo. Uses the store's createNode so it renders immediately (and
+  // replaces the old ephemeral Rectangle-via-addNodes path that lost shapes on
+  // reload). Mirrors handleFreehandCommit.
+  const handleShapeCommit = useCallback(async (shape: ShapeDrawing) => {
+    const currentCanvas = useCanvasStore.getState().canvas;
+    if (!currentCanvas?.id) return;
+    const payload = {
+      projectId: currentCanvas.id,
+      nodeType: 'whiteboardNode' as const,
+      title: 'Shape',
+      position: shape.position,
+      data: shape.data,
+      createdBy: useAppStore.getState().user?.id || 'anonymous',
+    };
+    try {
+      const created = await useCanvasNodesStore
+        .getState()
+        .createNode(payload as any);
+      if (created?.id) {
+        let currentId = created.id;
+        useCanvasHistoryStore.getState().push({
+          label: 'Add shape',
+          undo: async () =>
+            useCanvasNodesStore.getState().deleteNode(currentId),
+          redo: async () => {
+            const re = await useCanvasNodesStore
+              .getState()
+              .createNode(payload as any);
+            if (re?.id) currentId = re.id;
+          },
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to persist shape:', error);
+    }
+  }, []);
+
   // Phase B: when data-flow / reference edges are deleted from the canvas, drop
   // them from state.extraEdges and re-persist. Relationship edges (not in
   // extraEdges) are untouched here — they're managed via the Relationship sheet.
@@ -2192,6 +2234,8 @@ function CanvasPageInner() {
                 drawActiveTool={state.drawActiveTool}
                 onSetDrawTool={handleSetDrawTool}
                 whiteboardTool={state.whiteboardTool}
+                shapeStyle={state.whiteboardShapeStyle}
+                onChangeShapeStyle={state.setWhiteboardShapeStyle}
                 onSetWhiteboardTool={(tool: string) => {
                   log.debug('🎨 Whiteboard tool changed to:', tool);
                   // Ensure the tool is a valid WhiteboardTool
@@ -2201,6 +2245,10 @@ function CanvasPageInner() {
                     'eraser',
                     'lasso',
                     'rectangle',
+                    'ellipse',
+                    'arrow',
+                    'line',
+                    'text',
                     'freehand',
                   ] as const;
                   if (validTools.includes(tool as any)) {
@@ -2317,12 +2365,21 @@ function CanvasPageInner() {
                   />
                 )}
 
-                {state.whiteboardTool === 'rectangle' && (
-                  <RectangleToolComponent
+                {(state.whiteboardTool === 'rectangle' ||
+                  state.whiteboardTool === 'ellipse' ||
+                  state.whiteboardTool === 'arrow' ||
+                  state.whiteboardTool === 'line') && (
+                  <ShapeToolComponent
                     isActive={true}
-                    onRectangleCreate={(rectangle) => {
-                      log.debug('✅ Rectangle created:', rectangle);
-                    }}
+                    shape={
+                      state.whiteboardTool as
+                        | 'rectangle'
+                        | 'ellipse'
+                        | 'arrow'
+                        | 'line'
+                    }
+                    style={state.whiteboardShapeStyle}
+                    onCommit={handleShapeCommit}
                   />
                 )}
 

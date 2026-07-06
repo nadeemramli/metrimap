@@ -32,6 +32,13 @@ export function useCanvasPageState() {
   const [whiteboardBrushColor, setWhiteboardBrushColor] =
     useState<string>('#000000');
 
+  // Style applied to the next drawn shape (rectangle/ellipse/arrow/line/text).
+  const [whiteboardShapeStyle, setWhiteboardShapeStyle] = useState<{
+    fill: string;
+    stroke: string;
+    strokeWidth: number;
+  }>({ fill: '#dbeafe', stroke: '#3b82f6', strokeWidth: 2 });
+
   // Whiteboard overlay state
   const [isWhiteboardActive, setIsWhiteboardActive] = useState<boolean>(false);
   const [whiteboardScene, setWhiteboardScene] = useState<any>(null);
@@ -94,6 +101,8 @@ export function useCanvasPageState() {
     setWhiteboardBrushSize,
     whiteboardBrushColor,
     setWhiteboardBrushColor,
+    whiteboardShapeStyle,
+    setWhiteboardShapeStyle,
 
     // whiteboard overlay
     isWhiteboardActive,

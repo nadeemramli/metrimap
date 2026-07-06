@@ -9,6 +9,7 @@ type WhiteboardShape =
   | 'ellipse'
   | 'diamond'
   | 'arrow'
+  | 'line'
   | 'text'
   | 'image'
   | 'circle'
@@ -142,12 +143,45 @@ const WhiteboardNode = memo(({ data, selected }: NodeProps) => {
               strokeWidth={strokeWidth}
             />
           )}
-          {d.shape === 'arrow' && (
-            <g fill="none" stroke={stroke} strokeWidth={strokeWidth}>
-              <line x1="10" y1="70" x2="90" y2="30" />
-              <polygon points="90,30 82,32 85,24" fill={stroke} />
-            </g>
-          )}
+          {(d.shape === 'line' || d.shape === 'arrow') &&
+            (() => {
+              // Endpoints are stored normalized 0..100 by the shape tool so the
+              // drawn direction is preserved. Legacy fallback: a fixed diagonal.
+              const pts =
+                d.points && d.points.length >= 2
+                  ? d.points
+                  : [
+                      { x: 10, y: 70 },
+                      { x: 90, y: 30 },
+                    ];
+              const [p1, p2] = pts;
+              const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+              const head = 9;
+              const spread = Math.PI / 7;
+              const hx1 = p2.x - head * Math.cos(angle - spread);
+              const hy1 = p2.y - head * Math.sin(angle - spread);
+              const hx2 = p2.x - head * Math.cos(angle + spread);
+              const hy2 = p2.y - head * Math.sin(angle + spread);
+              return (
+                <g stroke={stroke} strokeWidth={strokeWidth} fill="none">
+                  <line
+                    x1={p1.x}
+                    y1={p1.y}
+                    x2={p2.x}
+                    y2={p2.y}
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  {d.shape === 'arrow' && (
+                    <polygon
+                      points={`${p2.x},${p2.y} ${hx1},${hy1} ${hx2},${hy2}`}
+                      fill={stroke}
+                      stroke="none"
+                    />
+                  )}
+                </g>
+              );
+            })()}
           {d.shape === 'freehand' && (
             <>
               {/* perfect-freehand stores a closed, variable-width OUTLINE that we
