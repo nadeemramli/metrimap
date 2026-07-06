@@ -1,9 +1,10 @@
 # ADR-008: Canvas State Ownership (React Flow as the view source of truth)
 
-- **Status:** Proposed
+- **Status:** Accepted — **nodes implemented 2026-07-07** (step 3; edges still on `useMemo`)
 - **Date:** 2026-07-05
 - **Deciders:** Nadeem + Claude (builder)
 - **Revisits:** [ADR-007](./ADR-007:%20Adding%20XState.md) (XState for canvas state)
+- **Implementation + runbook:** [React #185 on the canvas](../state-management/react-185-canvas-nodes.md) — what shipped, the invariants that keep it fixed, and a debug checklist if it recurs. Commits `18f1ca8`, `29f9c5f`.
 
 ## Context
 
