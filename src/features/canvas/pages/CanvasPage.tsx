@@ -2132,23 +2132,24 @@ function CanvasPageInner() {
           >
             <Background />
             <Controls>
-              {/* Layout & Filter join the zoom stack in edit mode; Search is
-                  always available. Moved here from the top toolbar. */}
+              {/* Layout, Filter & Search join the zoom stack in edit mode only —
+                  Draw mode keeps just the native zoom/fit/lock controls. Moved
+                  here from the top toolbar. */}
               {state.toolbarMode === 'edit' && (
                 <>
                   <LayoutDropdownButton />
                   <FilterControls />
+                  <button
+                    type="button"
+                    className="react-flow__controls-button rf-control-tool"
+                    title="Search (/)"
+                    aria-label="Search"
+                    onClick={quickSearch.open}
+                  >
+                    <Search />
+                  </button>
                 </>
               )}
-              <button
-                type="button"
-                className="react-flow__controls-button rf-control-tool"
-                title="Search (/)"
-                aria-label="Search"
-                onClick={quickSearch.open}
-              >
-                <Search />
-              </button>
             </Controls>
             <OffscreenNodeIndicator />
             <CanvasCursorsLayer sendCursor={sendCursor} />
