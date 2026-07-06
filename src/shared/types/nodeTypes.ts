@@ -1,7 +1,5 @@
-// @ts-nocheck
-// TODO(type-debt): pre-existing type errors quarantined when strict type-checking
-// was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
-// this directive — do not add new code here assuming it is type-checked.
+import type { MetricValue } from '@/shared/types';
+
 /**
  * Node Type Definitions According to PRD
  * Separating the monolithic MetricCard into distinct node types

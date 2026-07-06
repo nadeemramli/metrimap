@@ -23,6 +23,7 @@ import { Eye } from 'lucide-react';
 // Extracted utilities and hooks
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useNewNodeTypesStore } from '@/features/canvas/stores/useNewNodeTypesStore';
+import { useCanvasNodeSources } from '@/features/canvas/hooks/useCanvasNodeSources';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useAppStore, useCanvasStore } from '@/lib/stores';
 import { useCanvasHeader } from '@/shared/contexts/CanvasHeaderContext';
@@ -601,6 +602,36 @@ function CanvasPageInner() {
 
   const handleClearFocus = useCallback(() => setFocusedGroupId(null), []);
 
+  // "Unlinked" cards: nodes with no typed relationship (never a source or target
+  // of any edge). Surfaced as a computed muted group in GroupsPanel so users can
+  // one-click focus them and wire-or-cull (CVS-76). Memoized so it doesn't add
+  // per-render churn to the fragile canvas render path.
+  const unlinkedNodeIds = useMemo(() => {
+    const allNodes = canvas?.nodes || [];
+    if (allNodes.length === 0) return [] as string[];
+    const connected = new Set<string>();
+    for (const e of canvas?.edges || []) {
+      const s = (e as any).sourceId ?? (e as any).source;
+      const t = (e as any).targetId ?? (e as any).target;
+      if (s) connected.add(s);
+      if (t) connected.add(t);
+    }
+    return allNodes.filter((n) => !connected.has(n.id)).map((n) => n.id);
+  }, [canvas?.nodes, canvas?.edges]);
+
+  const handleFocusUnlinked = useCallback(() => {
+    if (unlinkedNodeIds.length === 0) return;
+    // Select them (highlight + make them actionable) then fit the view to them.
+    useCanvasStore.setState({ selectedNodeIds: unlinkedNodeIds });
+    setTimeout(() => {
+      const ids = new Set(unlinkedNodeIds);
+      const toFit = getNodes().filter((n) => ids.has(n.id));
+      if (toFit.length > 0) {
+        fitView({ nodes: toFit as any, padding: 0.35, duration: 600 });
+      }
+    }, 60);
+  }, [unlinkedNodeIds, getNodes, fitView]);
+
   const handleAddSelectedToGroup = useCallback(
     (groupId: string) => {
       const group = (canvas?.groups || []).find((g) => g.id === groupId);
@@ -692,6 +723,27 @@ function CanvasPageInner() {
     ]
   );
 
+  // Bridge for the per-node toolbar's view/edit/settings actions (CVS-135). Those
+  // live in the decoupled `useNodeToolbarActions` hook, which can't reach this
+  // page-local settings-sheet state — so it dispatches a window CustomEvent and we
+  // open the sheet here (switching to the requested tab when one is given).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { nodeId?: string; tab?: string }
+        | undefined;
+      if (!detail?.nodeId) return;
+      if (detail.tab) {
+        stableHandleSwitchToCard(detail.nodeId, detail.tab);
+      } else {
+        stableHandleOpenSettingsSheet(detail.nodeId);
+      }
+    };
+    window.addEventListener('canvas:open-node-settings', handler);
+    return () =>
+      window.removeEventListener('canvas:open-node-settings', handler);
+  }, [stableHandleOpenSettingsSheet, stableHandleSwitchToCard]);
+
   const stableHandleToggleCollapse = useCallback((groupId: string) => {
     log.debug('📁 Toggle collapse for group:', groupId);
     // Update group collapse state in canvas
@@ -771,14 +823,27 @@ function CanvasPageInner() {
   );
 
   // UNIFIED: Use only canvasNodes from Zustand store, remove state.extraNodes
-  const temporaryExtraNodes = state.extraNodes || [];
+  // Memoize so an empty/unchanged value keeps a STABLE reference — otherwise this
+  // was a fresh `[]` every render, recomputing the whole `nodes` memo each render
+  // and feeding React Flow new node objects continuously (a driver of the
+  // controlled-nodes update loop → React #185). See CVS-23/65.
+  const temporaryExtraNodes = useMemo(
+    () => state.extraNodes || [],
+    [state.extraNodes]
+  );
+
+  // Step 2 (ADR-008 / CVS-230): the store-backed node sources, gathered once in a
+  // reference-stable hook. The `nodes` memo consumes this instead of reading four
+  // stores inline — one selector, fewer churny inputs, and the single place step 3
+  // will swap to React Flow's useNodesState.
+  const nodeSources = useCanvasNodeSources();
 
   // Memoized data conversions
   const nodes = useMemo(() => {
-    const metricCardNodes = canvas?.nodes || [];
-    const evidenceNodes = evidenceList?.filter((e) => e.position) || [];
-    const persistedCanvasNodes = canvasNodes || [];
-    const newNodeTypes = newNodes || [];
+    const metricCardNodes = nodeSources.metricCards;
+    const evidenceNodes = nodeSources.positionedEvidence;
+    const persistedCanvasNodes = nodeSources.canvasNodes;
+    const newNodeTypes = nodeSources.newNodes;
 
     const convertedMetricCardNodes = metricCardNodes.map((card) =>
       convertToNode(
@@ -848,15 +913,12 @@ function CanvasPageInner() {
     return allNodes;
   }, [
     canvasId,
-    canvas?.nodes,
+    nodeSources, // consolidated store-backed node sources (ADR-008 step 2)
     canvas?.groups,
     focusedGroupId,
-    evidenceList,
     updateEvidence,
     deleteEvidence,
-    canvasNodes, // Unified canvas nodes from Zustand store
-    newNodes, // New node types from Zustand store
-    temporaryExtraNodes, // Only temporary fallback nodes
+    temporaryExtraNodes, // Only temporary fallback nodes (XState, transient)
     selectedNodeIds,
     state.isSettingsSheetOpen,
     stableEvents,
@@ -1053,8 +1115,15 @@ function CanvasPageInner() {
     };
     const onKey = (e: KeyboardEvent) => {
       if (isEditable(e.target)) return;
-      // Esc → back to "nothing selected" (CVS-68).
+      // Esc → in Draw mode, break from the active tool back to Select (CVS-107);
+      // in Edit mode, clear the selection (CVS-68).
       if (e.key === 'Escape') {
+        if (state.toolbarMode === 'draw') {
+          if (state.whiteboardTool !== 'select') {
+            state.setWhiteboardTool('select');
+          }
+          return;
+        }
         const s = useCanvasStore.getState();
         if (s.selectedNodeIds.length || s.selectedEdgeIds.length) {
           s.clearSelection();
@@ -1066,6 +1135,29 @@ function CanvasPageInner() {
         e.preventDefault();
         fitView({ padding: 0.2, duration: 800 });
         return;
+      }
+      // Draw-mode single-key tool hotkeys (CVS-107): V/H/E/L/R/P. No modifier held;
+      // typing is already excluded by isEditable above. (T = Text tool → CVS-108.)
+      if (
+        state.toolbarMode === 'draw' &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey
+      ) {
+        const toolByKey: Record<string, WhiteboardTool> = {
+          v: 'select',
+          h: 'hand',
+          e: 'eraser',
+          l: 'lasso',
+          r: 'rectangle',
+          p: 'freehand',
+        };
+        const tool = toolByKey[e.key.toLowerCase()];
+        if (tool) {
+          e.preventDefault();
+          state.setWhiteboardTool(tool);
+          return;
+        }
       }
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
@@ -1085,7 +1177,13 @@ function CanvasPageInner() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [canvasActions, fitView]);
+  }, [
+    canvasActions,
+    fitView,
+    state.toolbarMode,
+    state.whiteboardTool,
+    state.setWhiteboardTool,
+  ]);
 
   // Memoized filter options
   const availableFilterOptions = useMemo(() => {
@@ -1993,13 +2091,10 @@ function CanvasPageInner() {
               state.whiteboardTool === 'select' ||
               state.whiteboardTool === 'hand'
             }
-            panActivationKeyCode={
-              state.toolbarMode === 'edit' ||
-              state.whiteboardTool === 'select' ||
-              state.whiteboardTool === 'hand'
-                ? 'Space'
-                : null
-            }
+            // Space is a hold-to-pan in every mode — including Draw mode with an
+            // active drawing tool (temporary hand; releasing returns to the tool).
+            // Previously null for active draw tools, so Space didn't pan (CVS-107).
+            panActivationKeyCode="Space"
             nodesDraggable={
               canEdit &&
               (state.toolbarMode === 'edit' ||
@@ -2135,6 +2230,8 @@ function CanvasPageInner() {
                       onRename={handleRenameGroup}
                       onRecolor={handleRecolorGroup}
                       onDelete={handleDeleteGroup}
+                      unlinkedCount={unlinkedNodeIds.length}
+                      onFocusUnlinked={handleFocusUnlinked}
                     />
                   )}
                 </div>

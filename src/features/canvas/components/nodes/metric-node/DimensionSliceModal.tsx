@@ -33,7 +33,7 @@ export default function DimensionSliceModal({
   const candidateDimensions = Array.from(
     new Set(
       (parentCard.dimensions ?? [])
-        .map((d: any) => (typeof d === 'string' ? d : d?.name).trim())
+        .map((d: any) => (typeof d === 'string' ? d : (d?.name ?? '')).trim())
         .filter(Boolean)
     )
   ) as string[];

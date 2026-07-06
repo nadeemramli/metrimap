@@ -4,12 +4,6 @@
 // this directive — do not add new code here assuming it is type-checked.
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { Badge } from '@/shared/components/ui/badge';
-import { Button } from '@/shared/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/shared/components/ui/popover';
 import type {
   ConfidenceLevel,
   Relationship,
@@ -23,12 +17,13 @@ import {
   getSmoothStepPath,
   useReactFlow,
 } from '@xyflow/react';
-import { Eye, MoreHorizontal, Settings, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import EnhancedEdgeButton, {
   useEdgeActions,
 } from './shared/EnhancedEdgeButton';
 import {
+  getCausalStatusMeta,
+  getRelationshipEdgeStyle,
   getRelationshipStroke,
   getRelationshipTypeMeta,
   getRelationshipWeightLabel,
@@ -142,7 +137,6 @@ export default function DynamicEdge({
   const { deleteElements } = useReactFlow();
   const confirm = useConfirm();
   const [isHovered, setIsHovered] = useState(false);
-  const [showActions, setShowActions] = useState(false);
 
   const {
     relationship,
@@ -166,6 +160,28 @@ export default function DynamicEdge({
     relationship.weight
   );
   const confidenceConfig = getConfidenceConfig(relationship.confidence);
+  // CVS-165: the drawn line encodes direction/strength/confidence.
+  const baseEdgeStyle = getRelationshipEdgeStyle(
+    relationship.type,
+    relationship.weight,
+    relationship.confidence
+  );
+  // Causal validation state (CVS-264): a refuted causal claim must NOT look like
+  // a healthy one — warn it red + dashed regardless of its weight.
+  const causal =
+    relationship.type === 'Causal'
+      ? getCausalStatusMeta(relationship.causalMetadata?.status)
+      : null;
+  const edgeStyle = causal?.warn
+    ? {
+        ...baseEdgeStyle,
+        stroke: '#dc2626',
+        strokeDasharray: '6,4',
+        opacity: Math.min(baseEdgeStyle.opacity, 0.75),
+        tone: 'negative' as const,
+        loose: true,
+      }
+    : baseEdgeStyle;
 
   // Debug logging for edge styling updates - REMOVED to reduce console noise
 
@@ -266,40 +282,6 @@ export default function DynamicEdge({
     }
   }, [confirm, deleteElements, id]);
 
-  const handleOpenSheet = useCallback(() => {
-    console.log('🔗 handleOpenSheet called for relationship:', relationship.id);
-    console.log('🔗 Sheet open:', isRelationshipSheetOpen);
-    console.log(
-      '🔗 onSwitchToRelationship available:',
-      !!onSwitchToRelationship
-    );
-    console.log(
-      '🔗 onOpenRelationshipSheet available:',
-      !!onOpenRelationshipSheet
-    );
-
-    if (isRelationshipSheetOpen && onSwitchToRelationship) {
-      onSwitchToRelationship(relationship.id);
-      console.log('🔗 Called onSwitchToRelationship with:', relationship.id);
-    } else if (onOpenRelationshipSheet) {
-      onOpenRelationshipSheet(relationship.id);
-      console.log('🔗 Called onOpenRelationshipSheet with:', relationship.id);
-    } else {
-      console.error('❌ No relationship sheet handler defined!');
-    }
-    setShowActions(false);
-  }, [
-    onOpenRelationshipSheet,
-    onSwitchToRelationship,
-    relationship.id,
-    isRelationshipSheetOpen,
-  ]);
-
-  const handleViewEvidence = useCallback(() => {
-    console.log('View evidence for relationship:', relationship.id);
-    setShowActions(false);
-  }, [relationship.id]);
-
   return (
     <>
       {/* Main Edge Path with Relationship Type Styling */}
@@ -308,22 +290,16 @@ export default function DynamicEdge({
         markerEnd={markerEnd}
         style={{
           ...style,
-          stroke: typeConfig.stroke,
-          strokeWidth: 2,
-          strokeDasharray:
-            typeConfig.lineStyle === 'dotted' ||
-            typeConfig.lineStyle === 'dotted-smoothstep'
-              ? '5,5'
-              : 'none',
-          opacity: selected || isHovered ? 1 : 0.8,
+          stroke: edgeStyle.stroke,
+          strokeWidth: selected || isHovered ? edgeStyle.strokeWidth + 1 : edgeStyle.strokeWidth,
+          strokeDasharray: edgeStyle.strokeDasharray ?? 'none',
+          // Confidence drives baseline opacity; hover/selected always fully opaque.
+          opacity: selected || isHovered ? 1 : edgeStyle.opacity,
           transition: 'all 0.2s ease-in-out',
           cursor: 'pointer',
-          // Add animation for dotted lines
-          ...(typeConfig.lineStyle === 'dotted' ||
-          typeConfig.lineStyle === 'dotted-smoothstep'
-            ? {
-                animation: 'dash 1s linear infinite',
-              }
+          // Animate dashed lines (loose/exploratory + observed correlation).
+          ...(edgeStyle.strokeDasharray
+            ? { animation: 'dash 1s linear infinite' }
             : {}),
         }}
         onMouseEnter={() => setIsHovered(true)}
@@ -346,92 +322,55 @@ export default function DynamicEdge({
         onClick={handleEdgeClick} // Make the entire edge clickable
       />
 
-      {/* Edge Label and Actions */}
+      {/* Hover detail — floats ABOVE the centre pill (which owns the actions). */}
       <EdgeLabelRenderer>
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 30}px)`,
             fontSize: 12,
-            pointerEvents: 'all',
+            pointerEvents: 'none',
           }}
           className={cn(
             'transition-all duration-200',
             selected || isHovered ? 'opacity-100' : 'opacity-0'
           )}
         >
-          {/* Relationship Info */}
-          <div className="flex flex-col items-center gap-1">
-            {/* Type and Confidence Badges */}
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 whitespace-nowrap">
+            <Badge
+              variant="outline"
+              className={cn(
+                'bg-card/95 text-xs font-normal backdrop-blur-sm',
+                typeConfig.color
+              )}
+            >
+              <typeConfig.icon className="mr-1 h-3 w-3" />
+              {typeConfig.label}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn(
+                'bg-card/95 text-xs font-normal backdrop-blur-sm',
+                confidenceConfig.badge
+              )}
+            >
+              {relationship.confidence}
+            </Badge>
+            {causal && relationship.causalMetadata?.status && (
               <Badge
                 variant="outline"
-                className={cn('text-xs font-normal', typeConfig.color)}
+                className={cn(
+                  'text-xs font-normal backdrop-blur-sm',
+                  causal.badge
+                )}
               >
-                <typeConfig.icon className="mr-1 h-3 w-3" />
-                {typeConfig.label}
+                {causal.label}
               </Badge>
-              <Badge
-                variant="outline"
-                className={cn('text-xs font-normal', confidenceConfig.badge)}
-              >
-                {relationship.confidence}
-              </Badge>
-            </div>
-
-            {/* Evidence Count */}
+            )}
             {relationship.evidence.length > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {relationship.evidence.length} evidence
               </Badge>
-            )}
-
-            {/* Action Buttons */}
-            {(selected || isHovered) && (
-              <div className="flex items-center gap-1 mt-1">
-                <Popover open={showActions} onOpenChange={setShowActions}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-6 w-6 p-0 bg-card/95 backdrop-blur-sm"
-                    >
-                      <MoreHorizontal className="h-3 w-3" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-1" align="center">
-                    <div className="space-y-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleOpenSheet}
-                        className="w-full justify-start text-xs"
-                      >
-                        <Settings className="mr-2 h-3 w-3" />
-                        Edit Relationship
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleViewEvidence}
-                        className="w-full justify-start text-xs"
-                      >
-                        <Eye className="mr-2 h-3 w-3" />
-                        View Evidence ({relationship.evidence.length})
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleDelete}
-                        className="w-full justify-start text-xs text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-3 w-3" />
-                        Delete
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
             )}
           </div>
         </div>
@@ -449,6 +388,7 @@ export default function DynamicEdge({
           confidence={relationship.confidence}
           selected={selected}
           isHovered={isHovered}
+          warn={!!causal?.warn}
           onOpenSettings={() => {
             if (isRelationshipSheetOpen && onSwitchToRelationship) {
               onSwitchToRelationship(relationship.id);

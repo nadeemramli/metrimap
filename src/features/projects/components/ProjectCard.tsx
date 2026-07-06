@@ -90,62 +90,62 @@ export function ProjectCard({
             >
               <DropdownMenuItem
                 onClick={() => onOpenCanvas(project.id)}
-                className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                className="flex items-center px-3 py-2.5 rounded-md hover:bg-muted transition-colors cursor-pointer text-sm font-medium"
               >
                 <span>Open Canvas</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onDuplicateProject(project.id)}
-                className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                className="flex items-center px-3 py-2.5 rounded-md hover:bg-muted transition-colors cursor-pointer text-sm font-medium"
               >
                 <span>Duplicate</span>
               </DropdownMenuItem>
               {onSaveAsTemplate && (
                 <DropdownMenuItem
                   onClick={() => onSaveAsTemplate(project.id)}
-                  className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                  className="flex items-center px-3 py-2.5 rounded-md hover:bg-muted transition-colors cursor-pointer text-sm font-medium"
                 >
                   <span>Save as Template</span>
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem
                 onClick={() => onToggleStar(project.id)}
-                className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                className="flex items-center px-3 py-2.5 rounded-md hover:bg-muted transition-colors cursor-pointer text-sm font-medium"
               >
                 <span>{project.isStarred ? 'Remove Star' : 'Add Star'}</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1 bg-gray-200" />
+              <DropdownMenuSeparator className="my-1 bg-border" />
               <DropdownMenuItem
                 onClick={() => onProjectSettings(project.id)}
-                className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                className="flex items-center px-3 py-2.5 rounded-md hover:bg-muted transition-colors cursor-pointer text-sm font-medium"
               >
                 <span>Project Settings</span>
               </DropdownMenuItem>
               {isArchived ? (
                 <DropdownMenuItem
                   onClick={() => onRestore(project.id)}
-                  className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                  className="flex items-center px-3 py-2.5 rounded-md hover:bg-muted transition-colors cursor-pointer text-sm font-medium"
                 >
                   <span>Restore from Archive</span>
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem
                   onClick={() => onArchive(project.id)}
-                  className="flex items-center px-3 py-2.5 rounded-md hover:bg-gray-50 transition-colors cursor-pointer text-sm font-medium"
+                  className="flex items-center px-3 py-2.5 rounded-md hover:bg-muted transition-colors cursor-pointer text-sm font-medium"
                 >
                   <span>Archive</span>
                 </DropdownMenuItem>
               )}
               {onMoveToSpace && (
                 <>
-                  <DropdownMenuSeparator className="my-1 bg-gray-200" />
+                  <DropdownMenuSeparator className="my-1 bg-border" />
                   <DropdownMenuLabel className="px-3 text-xs text-muted-foreground">
                     Move to Space
                   </DropdownMenuLabel>
                   {project.spaceId && (
                     <DropdownMenuItem
                       onClick={() => onMoveToSpace(project.id, null)}
-                      className="flex items-center px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer text-sm"
+                      className="flex items-center px-3 py-2 rounded-md hover:bg-muted cursor-pointer text-sm"
                     >
                       <span>Uncategorized</span>
                     </DropdownMenuItem>
@@ -156,17 +156,17 @@ export function ProjectCard({
                       <DropdownMenuItem
                         key={s.id}
                         onClick={() => onMoveToSpace(project.id, s.id)}
-                        className="flex items-center px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer text-sm"
+                        className="flex items-center px-3 py-2 rounded-md hover:bg-muted cursor-pointer text-sm"
                       >
                         <span>{s.name}</span>
                       </DropdownMenuItem>
                     ))}
-                  <DropdownMenuSeparator className="my-1 bg-gray-200" />
+                  <DropdownMenuSeparator className="my-1 bg-border" />
                 </>
               )}
               <DropdownMenuItem
                 onClick={() => onDeleteProject(project.id)}
-                className="flex items-center px-3 py-2.5 rounded-md hover:bg-red-50 transition-colors cursor-pointer text-sm font-medium text-red-600 hover:text-red-700"
+                className="flex items-center px-3 py-2.5 rounded-md hover:bg-destructive/10 transition-colors cursor-pointer text-sm font-medium text-destructive hover:text-destructive"
               >
                 <span>{isArchived ? 'Delete Permanently' : 'Delete Project'}</span>
               </DropdownMenuItem>
@@ -200,15 +200,15 @@ export function ProjectCard({
           {/* Project Stats */}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
-              <BarChart3 className="h-3 w-3 text-blue-500" />
+              <BarChart3 className="h-3 w-3 text-chart-1" />
               {project.nodeCount ?? project.nodes.length} metrics
             </div>
             <div className="flex items-center gap-1">
-              <Network className="h-3 w-3 text-green-500" />
+              <Network className="h-3 w-3 text-chart-2" />
               {project.edgeCount ?? project.edges.length} relationships
             </div>
             <div className="flex items-center gap-1">
-              <Folder className="h-3 w-3 text-purple-500" />
+              <Folder className="h-3 w-3 text-chart-3" />
               {project.groupCount ?? project.groups?.length ?? 0} groups
             </div>
           </div>

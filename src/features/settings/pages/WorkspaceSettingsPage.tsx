@@ -1,7 +1,9 @@
 import { OrganizationProfile } from '@clerk/react-router';
 import { Button } from '@/shared/components/ui/button';
 import { ConnectionsPanel } from '@/features/data/components/ConnectionsPanel';
-import { ArrowLeft, Database, User, Users } from 'lucide-react';
+import { GroupsPanel } from '@/features/settings/components/GroupsPanel';
+import { AccessMatrixPanel } from '@/features/settings/components/AccessMatrixPanel';
+import { ArrowLeft, Database, Grid3x3, ShieldCheck, User, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function Section({
@@ -77,6 +79,24 @@ export default function WorkspaceSettingsPage() {
           <div className="overflow-hidden rounded-md border border-border">
             <OrganizationProfile routing="hash" />
           </div>
+        </Section>
+
+        {/* Groups & departments (node-level visibility audiences) */}
+        <Section
+          icon={ShieldCheck}
+          title="Groups & departments"
+          description="Group members into departments (Finance, Marketing, Exec…). Groups are the audiences that access tags and node visibility are granted to."
+        >
+          <GroupsPanel />
+        </Section>
+
+        {/* Access matrix — audit access tags × groups (who can see what) */}
+        <Section
+          icon={Grid3x3}
+          title="Access matrix"
+          description="Audit who can see what: access tags (rows) × groups (columns). Use “view as group” to preview a department's access."
+        >
+          <AccessMatrixPanel />
         </Section>
       </div>
     </div>

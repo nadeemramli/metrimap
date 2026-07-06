@@ -17,9 +17,18 @@ export const RELATIONSHIP_TYPES = [
   'Probabilistic',
   'Causal',
   'Compositional',
+  'Exploratory',
 ] as const;
 
 export const CONFIDENCE_LEVELS = ['High', 'Medium', 'Low'] as const;
+
+export const EVIDENCE_TYPES = [
+  'Experiment',
+  'Analysis',
+  'Notebook',
+  'External Research',
+  'User Interview',
+] as const;
 
 const zPosition = z.object({ x: z.number(), y: z.number() });
 
@@ -80,6 +89,28 @@ export const CreateRelationshipInput = z.object({
   notes: z.string().max(2000).optional(),
 });
 
+// --- Evidence (attach to a card XOR a relationship) ---
+export const CreateEvidenceInput = z
+  .object({
+    projectId: z.string().uuid(),
+    cardId: z.string().uuid().optional(),
+    relationshipId: z.string().uuid().optional(),
+    title: z.string().min(1).max(200),
+    type: z.enum(EVIDENCE_TYPES),
+    summary: z.string().min(1).max(5000),
+    /** ISO date 'YYYY-MM-DD'; defaults to today. */
+    date: z.string().optional(),
+    owner: z.string().max(200).optional(),
+    hypothesis: z.string().max(2000).optional(),
+    link: z.string().url().max(500).optional(),
+    /** EditorJS notebook JSON (optional; passed through untouched). */
+    content: z.unknown().optional(),
+  })
+  .refine(
+    (v) => (v.cardId ? 1 : 0) + (v.relationshipId ? 1 : 0) === 1,
+    { message: 'Provide exactly one of cardId or relationshipId.' }
+  );
+
 // --- Values (tracked-metric series) ---
 export const MetricValueInput = z.object({
   period: z.string().min(1),
@@ -129,6 +160,7 @@ export type CreateNodeInputT = z.infer<typeof CreateNodeInput>;
 export type CreateTypedNodeInputT = z.infer<typeof CreateTypedNodeInput>;
 export type UpdateNodeInputT = z.infer<typeof UpdateNodeInput>;
 export type CreateRelationshipInputT = z.infer<typeof CreateRelationshipInput>;
+export type CreateEvidenceInputT = z.infer<typeof CreateEvidenceInput>;
 export type PushValuesInputT = z.infer<typeof PushValuesInput>;
 export type LayoutTreeInputT = z.infer<typeof LayoutTreeInput>;
 export type StageSeriesInputT = z.infer<typeof StageSeriesInput>;

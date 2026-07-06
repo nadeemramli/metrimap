@@ -24,6 +24,9 @@ const { fakeApi } = vi.hoisted(() => ({
       delete: vi.fn(async () => undefined),
       list: vi.fn(async () => []),
     },
+    evidence: {
+      create: vi.fn(async () => ({ id: 'ev' })),
+    },
     tree: {
       get: vi.fn(async (pid: string) => ({ projectId: pid, cards: [], relationships: [] })),
       layout: vi.fn(async (pid: string) => ({ projectId: pid, count: 0, positions: [] })),
@@ -41,6 +44,8 @@ vi.mock('../metrimapApi', () => ({ createMetrimapApi: vi.fn(() => fakeApi) }));
 
 import { TOOLS, listTools, dispatchTool } from './registry';
 import { McpToolError } from './errors';
+import { RateLimiter } from './guards';
+import type { AuditSink } from './audit';
 import type { McpAuthContext } from './authContext';
 
 const ctx = (scopes?: ('read' | 'write')[]): McpAuthContext => ({
@@ -66,7 +71,8 @@ describe('registry metadata', () => {
     expect(names).toEqual(
       expect.arrayContaining([
         'list_canvases', 'create_canvas', 'get_tree', 'create_metric',
-        'create_driver_node', 'create_relationship', 'push_values', 'layout_tree',
+        'create_driver_node', 'create_relationship', 'create_evidence',
+        'push_values', 'layout_tree',
         'upload_csv', 'materialize', 'stage_series',
       ])
     );
@@ -99,6 +105,29 @@ describe('dispatchTool', () => {
     expect(fakeApi.nodes.createDriver).toHaveBeenCalledWith({ projectId: PROJECT, title: 'Signups' });
   });
 
+  it('routes create_evidence to evidence.create (card target)', async () => {
+    const input = {
+      projectId: PROJECT,
+      cardId: NODE_A,
+      title: 'Ran an A/B test',
+      type: 'Experiment',
+      summary: 'Variant B lifted conversion',
+    };
+    const out = await dispatchTool('create_evidence', input, ctx(['write']));
+    expect(fakeApi.evidence.create).toHaveBeenCalledWith(input);
+    expect(out).toEqual({ id: 'ev' });
+  });
+
+  it('rejects create_evidence without exactly one target', async () => {
+    await expect(
+      dispatchTool(
+        'create_evidence',
+        { projectId: PROJECT, title: 'x', type: 'Analysis', summary: 'y' },
+        ctx(['write'])
+      )
+    ).rejects.toThrow();
+  });
+
   it('routes layout_tree to tree.layout with direction', async () => {
     await dispatchTool('layout_tree', { projectId: PROJECT, direction: 'LR' }, ctx());
     expect(fakeApi.tree.layout).toHaveBeenCalledWith(PROJECT, 'LR');
@@ -112,6 +141,16 @@ describe('dispatchTool', () => {
   it('splits id + patch for update_node', async () => {
     await dispatchTool('update_node', { id: NODE_A, title: 'renamed' }, ctx());
     expect(fakeApi.nodes.update).toHaveBeenCalledWith(NODE_A, { title: 'renamed' });
+  });
+
+  it('tolerates extra/metadata keys on a no-param tool (connector sends them)', async () => {
+    // Regression: list_canvases used `.strict()`, so the SDK/claude.ai connector
+    // attaching metadata keys to a no-arg call produced invalid_input. Unknown
+    // keys must be stripped, not rejected.
+    await expect(
+      dispatchTool('list_canvases', { _meta: { progressToken: 1 }, foo: 'bar' }, ctx())
+    ).resolves.toEqual(['c1']);
+    expect(fakeApi.canvases.list).toHaveBeenCalled();
   });
 
   it('throws not_found for an unknown tool', async () => {
@@ -149,5 +188,37 @@ describe('dispatchTool', () => {
     expect(err).toBeInstanceOf(McpToolError);
     expect(err.code).toBe('internal');
     expect(err.message).toMatch(/db exploded/);
+  });
+});
+
+describe('dispatchTool guards (CVS-104)', () => {
+  it('rate-limits per user', async () => {
+    const rateLimiter = new RateLimiter(1, 0); // one call, no refill
+    await dispatchTool('list_canvases', {}, ctx(), { rateLimiter });
+    await expect(dispatchTool('list_canvases', {}, ctx(), { rateLimiter })).rejects.toMatchObject({
+      code: 'rate_limited',
+    });
+  });
+
+  it('rejects oversized payloads', async () => {
+    await expect(
+      dispatchTool('create_canvas', { name: 'a-fairly-long-name' }, ctx(), { maxPayloadBytes: 5 })
+    ).rejects.toMatchObject({ code: 'payload_too_large' });
+  });
+
+  it('records an ok audit entry on success', async () => {
+    const audit: AuditSink = { record: vi.fn(async () => {}) };
+    await dispatchTool('create_canvas', { name: 'Tree' }, ctx(), { audit });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u1', tool: 'create_canvas', scope: 'write', outcome: 'ok', errorCode: null })
+    );
+  });
+
+  it('records an error audit entry on invalid input', async () => {
+    const audit: AuditSink = { record: vi.fn(async () => {}) };
+    await dispatchTool('create_canvas', { name: '' }, ctx(), { audit }).catch(() => {});
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ tool: 'create_canvas', outcome: 'error', errorCode: 'invalid_input' })
+    );
   });
 });

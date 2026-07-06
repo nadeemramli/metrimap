@@ -9,9 +9,16 @@ import {
   UpdateRelationshipSchema,
 } from '@/shared/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
+import { appendRelationshipHistory } from './relationshipHistory';
 import type { EvidenceItem, Relationship } from '../../types';
-import { supabase } from '../client';
-import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
+import type {
+  Database,
+  Json,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+} from '../types';
 
 export type RelationshipRow = Tables<'relationships'>;
 export type RelationshipInsert = TablesInsert<'relationships'>;
@@ -33,7 +40,9 @@ function transformRelationship(
     type: rel.type as any,
     confidence: rel.confidence as any,
     weight: rel.weight || undefined,
+    notes: rel.description || undefined,
     evidence: evidence.map(transformEvidenceItem),
+    causalMetadata: (rel.causal_metadata as Relationship['causalMetadata']) ?? undefined,
     createdAt: rel.created_at || new Date().toISOString(),
     updatedAt: rel.updated_at || new Date().toISOString(),
   };
@@ -51,6 +60,7 @@ function transformEvidenceItem(evidence: EvidenceItemRow): EvidenceItem {
     hypothesis: evidence.hypothesis || undefined,
     summary: evidence.summary,
     impactOnConfidence: evidence.impact_on_confidence || undefined,
+    content: (evidence.content as EvidenceItem['content']) ?? undefined,
   };
 }
 
@@ -67,6 +77,7 @@ function transformToInsert(
     type: rel.type,
     confidence: rel.confidence,
     weight: rel.weight,
+    causal_metadata: (rel.causalMetadata ?? null) as Json,
     created_by: userId,
   };
 }
@@ -85,7 +96,11 @@ export async function createRelationship(
     console.error('Validation error creating relationship:', error);
     throw error;
   }
-  const client = authenticatedClient || supabase();
+  // Notes → `description` column, set after validation (see updateRelationship).
+  if (relationship.notes !== undefined) {
+    insertData.description = relationship.notes ?? null;
+  }
+  const client = resolveClient(authenticatedClient);
 
   const { data, error } = await client
     .from('relationships')
@@ -113,14 +128,20 @@ export async function updateRelationship(
   if (updates.confidence !== undefined)
     updateData.confidence = updates.confidence;
   if (updates.weight !== undefined) updateData.weight = updates.weight;
+  if (updates.causalMetadata !== undefined)
+    updateData.causal_metadata = (updates.causalMetadata ?? null) as Json;
 
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   try {
     UpdateRelationshipSchema.parse(updateData as unknown);
   } catch (error) {
     console.error('Validation error updating relationship:', error);
     throw error;
   }
+  // Relationship notes live in the `description` column (the domain model calls
+  // it `notes`). Set it AFTER validation — the generated strict schema doesn't
+  // know this column (stale Prisma mirror) but Postgres accepts it (cf. CVS-34).
+  if (updates.notes !== undefined) updateData.description = updates.notes ?? null;
   const { data, error } = await client
     .from('relationships')
     .update(updateData)
@@ -133,6 +154,23 @@ export async function updateRelationship(
     throw error;
   }
 
+  // Record a strength/confidence/type snapshot for the audit trail + trend.
+  // Best-effort: never fail the update if history can't be written.
+  try {
+    await appendRelationshipHistory(
+      {
+        relationshipId: id,
+        projectId: data.project_id,
+        type: data.type,
+        confidence: data.confidence,
+        weight: data.weight,
+      },
+      client
+    );
+  } catch (historyError) {
+    console.error('Failed to record relationship history:', historyError);
+  }
+
   return transformRelationship(data);
 }
 
@@ -141,7 +179,7 @@ export async function deleteRelationship(
   id: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client.from('relationships').delete().eq('id', id);
 
   if (error) {
@@ -155,7 +193,7 @@ export async function getProjectRelationships(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('relationships')
     .select(
@@ -190,7 +228,6 @@ export async function createEvidenceItem(
     relationship_id: relationshipId,
     title: evidence.title,
     type: evidence.type,
-    date: evidence.date,
     owner_id: evidence.owner || null,
     link: evidence.link,
     hypothesis: evidence.hypothesis,
@@ -204,8 +241,15 @@ export async function createEvidenceItem(
     console.error('Validation error creating evidence item:', error);
     throw error;
   }
+  // `date` (date-only string, schema validates it as datetime) + jsonb `content`
+  // are set AFTER validation — the strict generated schema would reject them but
+  // the Postgres columns accept them directly (CVS-34).
+  insertData.date = evidence.date;
+  if (evidence.content !== undefined) {
+    insertData.content = (evidence.content ?? null) as Json;
+  }
 
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('evidence_items')
     .insert(insertData)
@@ -230,7 +274,6 @@ export async function updateEvidenceItem(
 
   if (updates.title !== undefined) updateData.title = updates.title;
   if (updates.type !== undefined) updateData.type = updates.type;
-  if (updates.date !== undefined) updateData.date = updates.date;
   if (updates.owner !== undefined) updateData.owner_id = updates.owner;
   if (updates.link !== undefined) updateData.link = updates.link;
   if (updates.hypothesis !== undefined)
@@ -239,12 +282,23 @@ export async function updateEvidenceItem(
   if (updates.impactOnConfidence !== undefined)
     updateData.impact_on_confidence = updates.impactOnConfidence;
 
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   try {
     UpdateEvidenceItemSchema.parse(updateData as unknown);
   } catch (error) {
     console.error('Validation error updating evidence item:', error);
     throw error;
+  }
+  // The generated (strict) Zod schema validates `date` as a datetime, but the app
+  // uses date-only strings ("2026-07-04"); and `content` is jsonb the schema
+  // doesn't know. Set both AFTER validation — the Postgres `date`/`jsonb` columns
+  // accept the values directly, and the strict parse would otherwise reject them
+  // (CVS-34 — this is what broke evidence autosave-to-DB).
+  if (updates.date !== undefined) {
+    updateData.date = updates.date;
+  }
+  if (updates.content !== undefined) {
+    updateData.content = (updates.content ?? null) as Json;
   }
   const { data, error } = await client
     .from('evidence_items')
@@ -266,7 +320,7 @@ export async function deleteEvidenceItem(
   id: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client.from('evidence_items').delete().eq('id', id);
 
   if (error) {
@@ -280,7 +334,7 @@ export async function getRelationshipEvidence(
   relationshipId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('evidence_items')
     .select('*')

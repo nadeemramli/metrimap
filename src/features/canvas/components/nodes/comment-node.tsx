@@ -21,10 +21,20 @@ import {
   isDevelopmentMode,
 } from '@/shared/utils/authenticatedClient';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
+import { codenameInitials, userCodename } from '@/shared/utils/codename';
 import { type NodeProps } from '@xyflow/react';
 import { MapPin, MessageSquare } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
+
+// Compact relative timestamp (Figma-style: now / 5m / 3h / 2d).
+function relativeTime(iso: string): string {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return 'now';
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
+}
 
 export type CommentNodeData = {
   title?: string;
@@ -188,62 +198,79 @@ export default function CommentNode({ id, data }: NodeProps) {
         <MapPin className="w-4 h-4" />
       </button>
 
-      <Card className="w-[280px] p-3 shadow-md border rounded-xl bg-white/95">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-muted-foreground" />
+      <Card
+        data-testid="comment-card"
+        className="w-[280px] rounded-xl border bg-card/95 p-3 shadow-md backdrop-blur-sm"
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Comments</span>
+            {comments.length > 0 && (
+              <span
+                data-testid="comment-count"
+                className="text-xs text-muted-foreground"
+              >
+                {comments.length}
+              </span>
+            )}
           </div>
-          {threadId ? (
-            <Badge variant="secondary" className="text-[10px]">
-              Thread
-            </Badge>
-          ) : (
+          {!threadId && (
             <Badge variant="outline" className="text-[10px]">
               New
             </Badge>
           )}
         </div>
 
-        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+        <div className="max-h-44 space-y-3 overflow-y-auto pr-1">
           {comments.map((c) => (
-            <div key={c.id} className="flex items-start gap-2">
-              <Avatar className="w-6 h-6">
-                <AvatarFallback>
-                  {(c.author_id?.[0] || '?').toUpperCase()}
+            <div
+              key={c.id}
+              data-testid="comment-item"
+              className="flex items-start gap-2"
+            >
+              <Avatar className="h-6 w-6 shrink-0">
+                <AvatarFallback className="bg-muted text-[10px] font-medium text-muted-foreground">
+                  {codenameInitials(c.author_id)}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1">
-                <div className="text-[11px] text-muted-foreground">
-                  {c.author_id || 'anon'} •{' '}
-                  {new Date(c.created_at).toLocaleTimeString()}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="truncate text-xs font-medium text-foreground">
+                    {userCodename(c.author_id)}
+                  </span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                    {relativeTime(c.created_at)}
+                  </span>
                 </div>
-                <div className="text-sm leading-snug">{c.content}</div>
+                <div className="whitespace-pre-wrap break-words text-sm leading-snug text-foreground">
+                  {c.content}
+                </div>
               </div>
             </div>
           ))}
           {comments.length === 0 && (
-            <div className="text-xs text-muted-foreground">
-              Be the first to comment…
+            <div className="py-3 text-center text-xs text-muted-foreground">
+              No comments yet — start the thread.
             </div>
           )}
         </div>
 
-        <div className="nodrag mt-2">
+        <div className="nodrag mt-2 border-t pt-2">
           <Textarea
-            placeholder="Add a comment…"
-            className="nodrag min-h-[60px]"
+            placeholder="Reply…"
+            className="nodrag min-h-[52px] resize-none text-sm"
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
-          <div className="flex justify-end mt-2">
+          <div className="mt-1.5 flex justify-end">
             <Button
               size="sm"
               onClick={handleSend}
               disabled={isSending || !content.trim()}
-              className="nodrag"
+              className="nodrag h-7"
             >
-              Send
+              {isSending ? 'Sending…' : 'Comment'}
             </Button>
           </div>
         </div>

@@ -1,5 +1,5 @@
-import { supabase } from '@/shared/lib/supabase/client';
 import type { Tables } from '@/shared/lib/supabase/types';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import {
   CreateProjectCollaboratorSchema,
   UpdateProjectCollaboratorSchema,
@@ -21,7 +21,7 @@ export async function getProjectCollaborators(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<Collaborator[]> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('project_collaborators')
     .select(
@@ -71,7 +71,7 @@ export async function getMyProjectPermission(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<'none' | 'view' | 'comment' | 'edit'> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client.rpc('my_project_permission' as never, {
     pid: projectId,
   } as never);
@@ -88,7 +88,7 @@ export async function addCollaborator(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const perms = permissions ?? permissionsForRole(role);
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
 
   // First, find the user by email
   const { data: userData, error: userError } = await client
@@ -148,7 +148,7 @@ export async function updateCollaborator(
   },
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('project_collaborators')
     .update(
@@ -184,7 +184,7 @@ export async function removeCollaborator(
   collaboratorId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client
     .from('project_collaborators')
     .delete()

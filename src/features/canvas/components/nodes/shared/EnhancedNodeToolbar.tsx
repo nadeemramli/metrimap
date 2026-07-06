@@ -181,7 +181,10 @@ export default function EnhancedNodeToolbar({
 
   return (
     <NodeToolbar className="nodrag" position={position} offset={offset}>
-      <div className="nodrag flex items-center gap-1 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-1">
+      <div
+        data-testid="node-toolbar"
+        className="nodrag flex items-center gap-1 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-1"
+      >
         {/* Core Actions */}
         {visibleCoreActions.map((action, index) => {
           const Icon = action.icon;
@@ -196,6 +199,9 @@ export default function EnhancedNodeToolbar({
               }}
               className={`nodrag h-8 w-8 p-0 hover:scale-110 transition-all duration-200 ${action.className}`}
               title={action.label}
+              data-testid={`node-toolbar-action-${action.label
+                .toLowerCase()
+                .replace(/\s+/g, '-')}`}
             >
               <Icon className="h-3 w-3" />
             </Button>
@@ -257,6 +263,7 @@ export default function EnhancedNodeToolbar({
             }}
             className={`nodrag h-8 w-8 p-0 hover:scale-110 transition-all duration-200 ${deleteAction.className}`}
             title={deleteAction.label}
+            data-testid="node-toolbar-action-delete"
           >
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -268,25 +275,44 @@ export default function EnhancedNodeToolbar({
 
 // Helper hook for common node toolbar actions
 export function useNodeToolbarActions(nodeId: string, nodeType: string) {
+  // view / edit / settings open the node's settings-and-detail sheet. That sheet
+  // lives in page-local CanvasPage state, so this decoupled hook bridges to it via
+  // a window CustomEvent CanvasPage listens for — no per-node JSX plumbing (CVS-135,
+  // follow-up to CVS-67). settings requests the "settings" tab; view/edit open the
+  // sheet as-is (it contains both).
+  const openSettingsSheet = React.useCallback(
+    (tab?: string) => {
+      window.dispatchEvent(
+        new CustomEvent('canvas:open-node-settings', {
+          detail: { nodeId, tab },
+        })
+      );
+    },
+    [nodeId]
+  );
+
   const handleView = React.useCallback(() => {
-    console.log(`👁️ View ${nodeType} node:`, nodeId);
-    // Implement view logic
-  }, [nodeId, nodeType]);
+    openSettingsSheet();
+  }, [openSettingsSheet]);
 
   const handleEdit = React.useCallback(() => {
-    console.log(`✏️ Edit ${nodeType} node:`, nodeId);
-    // Implement edit logic
-  }, [nodeId, nodeType]);
+    openSettingsSheet();
+  }, [openSettingsSheet]);
 
   const handleSettings = React.useCallback(() => {
-    console.log(`⚙️ Settings for ${nodeType} node:`, nodeId);
-    // This will be connected to the settings sheets
-  }, [nodeId, nodeType]);
+    openSettingsSheet('settings');
+  }, [openSettingsSheet]);
 
   const handleCopy = React.useCallback(() => {
-    console.log(`📋 Copy ${nodeType} node:`, nodeId);
-    // Implement copy logic
-  }, [nodeId, nodeType]);
+    // Duplicate through the store (offset copy) — the same action used elsewhere on
+    // the canvas; it persists via the canvas autosave. Was a console.log stub.
+    try {
+      useCanvasStore.getState().duplicateNode(nodeId);
+    } catch (e) {
+      console.error('Toolbar duplicate failed:', e);
+      toast.error('Failed to duplicate');
+    }
+  }, [nodeId]);
 
   const handleDelete = React.useCallback(() => {
     // The per-node toolbar delete was a no-op stub (CVS-61). Wire it to the real

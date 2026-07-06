@@ -1,0 +1,24 @@
+{
+  "name": "metrimap-mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Runnable Node MCP server for Metrimap — Streamable HTTP transport over the shared tool registry (src/shared/lib/api/mcp).",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "tsx server.ts",
+    "dev": "tsx watch server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@clerk/backend": "^3.10.0",
+    "@clerk/mcp-tools": "^0.5.0",
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.0"
+  }
+}

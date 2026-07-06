@@ -6,18 +6,92 @@ Guidance for AI coding agents (Claude Code, Cursor, Codex, Devin, Copilot, etc.)
 
 ## Agent operating protocol (read first)
 
-Work is driven by Linear (team **CVS**), organized as **Initiatives → Projects → Issues**. Do not invent work.
+Work is driven by Linear (team **CVS** / "Canvasm"), organized as **Initiatives → Projects → Issues**, executed in **lanes** (see **Lane operating model**). Do not invent work.
 
-1. **Start from Linear.** Pick the next issue from the active Initiative → Project by priority and unblocked status (respect `blockedBy`). Read the issue in full incl. comments — many carry a **"## Deep analysis"** (current code, `file:line`) and a **"## Decision (locked)"** comment. Honor locked decisions.
-2. **Branch per issue** using the Linear `gitBranchName`. During the multi-agent build do **NOT** commit to `main` directly (this supersedes the direct-to-`main` note in Branching).
+1. **Start from Linear, pick by lane.** Work a single lane at a time (a `lane:<slug>` label or an explicit issue list — **not** a whole broad Project). Within the lane, take the next `Todo` issue by priority and unblocked status (respect `blockedBy`). Read the issue in full incl. comments — many carry a **"## Deep analysis"** (current code, `file:line`) and a **"## Decision (locked)"** comment. Honor locked decisions.
+2. **Move the issue to `In Progress`** and **branch per issue** using the Linear `gitBranchName`. During the multi-agent build do **NOT** commit to `main` directly (this supersedes the direct-to-`main` note in Branching).
 3. **Implement** to the acceptance criteria + locked decisions. Reuse `src/shared/components/ui` (shadcn) before adding deps. Schema changes → migration + `npm run prisma:types` + update `types.ts`.
 4. **Verify:** `npm run type-check`, `npm run lint`, `npm run test` (+ `npm run test:rls` if RLS). Never bypass Husky.
 5. **Open a PR** referencing the issue (keep `CVS-XX` in the branch/PR).
-6. **Move the feature issue to In Review** (never straight to Done).
-7. **Create a manual-test SUB-ISSUE** — child of the feature issue, title `Manual test: <feature>`, in the **Manual Test** project, labelled `manual-test`, and **assigned to the owner** (`m.nadeemramli@gmail.com`) so it lands in his Todo. Body: link to parent + PR, preconditions, and numbered test cases derived from each acceptance criterion (steps → expected → pass/fail). A feature is **Done** only after the owner passes the manual test and the change is merged/released.
+6. **Queue the manual test** — for every resolved **runtime** issue, create or update a Manual Test issue (see **Manual-test gate** for the exact fields). Only skip this for explicitly non-runtime issues (docs, config, spikes) that carry an accepted decision.
+7. **Move the feature issue to `Waiting for Manual Test`** (never straight to `Done`). Agents do **not** mark runtime feature/bug/improvement issues `Done` themselves — the owner's passing manual test does that.
 8. **Capture durable learning** in the product Obsidian vault (see **Docs policy**), not repo docs.
 
-Roles: **Builder** (agents / Nadeem) implement; the **owner** (`m.nadeemramli@gmail.com`) manually tests the queued sub-issues in the **Manual Test** project. Full loop: vault note *"3.a Workflow Architecture"*.
+Roles: **Builder** (agents / Nadeem) implement; the **owner** (`m.nadeemramli@gmail.com`) manually tests the queued issues in the **Manual Test** project and accepts or rejects. Full loop: vault note *"3.a Workflow Architecture"*.
+
+### Status workflow (Canvasm team)
+
+`In Review` is **renamed** to `Waiting for Manual Test`, and a new `Needs Fix` status is added. The full set and their meanings:
+
+| Status | Type | Meaning |
+| --- | --- | --- |
+| `Triage` | triage | Raw intake / shaping. Not ready until clarified — automated intake lands here, never Todo/In Progress. |
+| `Backlog` | backlog | Valid but parked for later. |
+| `Todo` | unstarted | Ready for an agent to pick up. |
+| `In Progress` | started | An agent is actively building or fixing. |
+| `Waiting for Manual Test` | started | Agent finished implementation (or a spike); the owner needs to verify/accept. **This is the agent-complete gate, not "done".** |
+| `Needs Fix` | started | Manual test failed; the agent should pick it back up. |
+| `Done` | completed | Manual test passed, or a non-runtime spike decision was accepted. |
+
+> **Linear settings step (one-time, owner only — cannot be done via API/MCP):** in **Settings → Teams → Canvasm → Workflow**, rename `In Review` → `Waiting for Manual Test` and add a started-type status `Needs Fix`. Renaming preserves history, so issues currently in `In Review` carry over automatically.
+
+### Manual-test gate
+
+Every resolved **runtime** issue must have a Manual Test issue before it moves to `Waiting for Manual Test`:
+
+- **project:** `Manual Test`
+- **assignee:** Nadeem (`m.nadeemramli@gmail.com`)
+- **label:** `manual-test`
+- **status:** `Todo` (so it lands in the owner's Todo)
+- **linked/parented** to the feature issue (child sub-issue titled `Manual test: <feature>`)
+- **body:** link to parent + PR, setup/preconditions, numbered steps → expected result → pass/fail, plus **reload/persistence** checks and **regression** checks.
+
+The gate loop:
+
+1. Agent finishes work → parent issue → `Waiting for Manual Test`, manual-test issue in owner's `Todo`.
+2. Owner **passes** → parent issue → `Done`, manual-test issue → `Done`.
+3. Owner **fails** → parent issue → `Needs Fix`; owner comments the repro on the manual-test issue or the parent.
+4. Agent fixes the failure → parent issue back to `Waiting for Manual Test` (repeat).
+
+## Lane operating model
+
+Projects are too broad to act as execution units. One agent works one **lane** at a time.
+
+- **Projects** = durable product areas (e.g. Canvas engine, Access & visibility, MCP/API, Strategy Impact). They outlive any single agent.
+- **Lanes** = short-lived execution slices for one agent, usually **3–8 tightly related issues**. A lane may span or subset a Project.
+- **Label lanes** with `lane:<slug>` whenever a Project is too broad to pick from directly. Agents pick issues by **lane label or an explicit issue-ID list**, never by treating a whole broad Project as one lane.
+- Every lane declares: an **owner/agent**, a **clear scope**, a **list of Linear issue IDs**, known **blockers**, and required **manual-test coverage**.
+
+Example lanes:
+
+- `lane:manual-test-closeout` — clean up issues already waiting for the owner; verify their manual tests exist.
+- `lane:infra-workers` — shared infra / VPS / queues / workers.
+- `lane:canonical-schema-foundation` — schema package, manifest registry, runtime foundations.
+- `lane:canvas-stability` — React #185 / canvas state migration only.
+- `lane:ui-modernization` — card / sheet / comment / filter UI modernization.
+- `lane:access-visibility` — groups / access tags / RLS / dashboard visibility.
+- `lane:mcp-api` — API / MCP / data ingest.
+- `lane:strategy-impact` — impact contracts, trace, dashboard badges, measurement, review.
+
+### Example lane-agent prompt
+
+```
+You are the agent for lane `lane:access-visibility` on Linear team Canvasm.
+Scope: groups, access tags, RLS, and dashboard visibility. Issues: CVS-118, CVS-119,
+CVS-120, CVS-121, CVS-122, CVS-123 (respect blockedBy; skip anything not in Todo).
+
+For each issue, in order:
+1. Move it to In Progress and branch with its Linear gitBranchName (keep CVS-XX in the name).
+2. Implement to the acceptance criteria and any locked decisions in the comments.
+3. Verify: npm run type-check, npm run lint, npm run test (+ test:rls for RLS changes).
+4. Open a PR referencing the issue.
+5. Create a Manual Test issue in the Manual Test project — assignee Nadeem, label manual-test,
+   status Todo, parented to the feature issue — with setup, numbered steps → expected,
+   pass/fail, reload/persistence, and regression checks.
+6. Move the feature issue to Waiting for Manual Test (never Done).
+If the owner marks any issue Needs Fix, fix it and return it to Waiting for Manual Test.
+Do not commit to main; one PR per issue, merged one at a time.
+```
 
 ## Docs policy
 
@@ -56,16 +130,29 @@ npm run type-check   # TypeScript check only
 npm run lint         # ESLint (flat config: eslint.config.js)
 npm run test         # Vitest (jsdom unit/component tests)
 npm run test:rls     # RLS policy tests (tsx src/tests/run-rls-tests.ts)
+npm run screenshots  # Playwright e2e / visual-verification (signed-in, real canvas)
 npm run prisma:types # prisma db pull + generate (regenerate types/Zod from DB)
 npx supabase <cmd>   # Always use npx for the Supabase CLI
 ```
+
+**E2E / visual verification (Playwright + Clerk).** `npm run screenshots` drives the
+real app signed in as a test user (over HTTPS at `dev.canvasm.app:3000`, prod Clerk)
+and captures screenshots into `e2e/screenshots/`. Specs live in `e2e/*.spec.ts` with
+shared helpers in `e2e/helpers.ts` (`signIn`/`openFirstCanvas`/…). Needs local setup
+(`.env` `E2E_*`/Clerk keys, hosts entry, a temporary Clerk `allowed_origins` entry).
+For UI/canvas lanes, run it before handoff and add specs for new surfaces. Full guide:
+`docs/testing/e2e-visual-verification.md` (repo) + the owner's vault note
+*"E2E Visual Verification"* (authoritative runbook). Automated-test issues in the
+`Manual Test` project carry the `automated-test` label — they turn owner-run visual
+checks into Playwright coverage; move them to `Waiting for Manual Test`, don't
+add manual-test children unless you change runtime behavior.
 
 ### Git hooks (Husky)
 
 A single Husky **`pre-commit`** hook gates quality on every commit (there is no CI yet — this is the safety net). Don't bypass it without reason. It runs, in order:
 
-1. `lint-staged` — ESLint on just the files the commit touches. Because it's staged-scoped, the repo's pre-existing lint debt in untouched files won't block you (tracked in **CVS-64**) — but new/edited files must be lint-clean.
-2. `npm run type-check` — whole-repo `tsc` (fast, currently clean).
+1. `npm run lint` — full-repo ESLint, **0 errors enforced** (CVS-64 cleared the pre-existing error debt, so any new error anywhere blocks the commit; warnings don't block).
+2. `npm run type-check` — whole-repo `tsc`.
 3. `vitest run` — the full Vitest suite (jsdom, no browser — Storybook/Chromium was removed, so tests are fast).
 
 ## Branching
@@ -93,7 +180,6 @@ src/
   lib/
     machines/           # canvasMachine.ts (XState)
     workers/            # compute.worker.ts + Comlink worker manager
-    services/           # typed-canvas, typed-operations, typed-projects
     prisma/             # schema.prisma + generated Zod schemas
     editorjs-config.ts
   tests/                # RLS + XState integration tests

@@ -1,0 +1,28 @@
+# Runs on the VPS at /opt/metrimap/mcp-server/deploy. Builds the server from the
+# repo root (context ../..) and fronts it with Caddy for automatic HTTPS.
+services:
+  mcp:
+    build:
+      context: ../..
+      dockerfile: mcp-server/Dockerfile
+    env_file: .env # SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_JWT_SECRET / CLERK_SECRET_KEY / CLERK_PUBLISHABLE_KEY / MCP_PUBLIC_URL
+    restart: unless-stopped
+    expose:
+      - "8787"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - mcp
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

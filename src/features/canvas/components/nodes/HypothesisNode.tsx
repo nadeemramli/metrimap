@@ -19,7 +19,9 @@ import {
   Target,
 } from 'lucide-react';
 import { memo, useState } from 'react';
-import { useNodeToolbarActions } from './shared/EnhancedNodeToolbar';
+import EnhancedNodeToolbar, {
+  useNodeToolbarActions,
+} from './shared/EnhancedNodeToolbar';
 
 interface HypothesisNodeData {
   node: HypothesisNodeType;
@@ -60,7 +62,7 @@ const HypothesisNode = memo(
         case 'Seller Solution':
           return 'bg-indigo-100 text-indigo-800 border-indigo-200';
         default:
-          return 'bg-gray-100 text-gray-800 border-gray-200';
+          return 'bg-muted text-foreground border-border';
       }
     };
 
@@ -73,18 +75,18 @@ const HypothesisNode = memo(
         case 'Low':
           return 'border-red-200 text-red-700 bg-red-50';
         default:
-          return 'border-gray-200 text-gray-700 bg-gray-50';
+          return 'border-border text-foreground bg-muted';
       }
     };
 
     return (
       <div
         className={cn(
-          'relative bg-white rounded-lg border-2 shadow-sm transition-all duration-200 cursor-pointer',
+          'relative bg-card rounded-lg border-2 shadow-sm transition-all duration-200 cursor-pointer',
           'min-w-[280px] max-w-[320px]',
           isSelected
             ? 'border-purple-500 shadow-lg ring-2 ring-purple-200'
-            : 'border-gray-200 hover:border-gray-300',
+            : 'border-border hover:border-border',
           isHovered &&
             !isSelected &&
             'shadow-md transform scale-[1.02] border-purple-300',
@@ -166,19 +168,19 @@ const HypothesisNode = memo(
               {node.testable && (
                 <CheckSquare className="w-3 h-3 text-green-600" />
               )}
-              <GripVertical className="w-4 h-4 text-gray-400 cursor-move" />
+              <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
             </div>
           </div>
         </div>
 
         {/* Content */}
         <div className="p-3">
-          <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
+          <h3 className="font-semibold text-foreground text-sm mb-1 line-clamp-2">
             {node.title}
           </h3>
 
           {node.description && (
-            <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+            <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
               {node.description}
             </p>
           )}
@@ -208,18 +210,18 @@ const HypothesisNode = memo(
             <div className="mb-2">
               <div className="flex items-center gap-2 mb-1">
                 <AlertTriangle className="w-3 h-3 text-amber-500" />
-                <span className="text-xs font-medium text-gray-700">
+                <span className="text-xs font-medium text-foreground">
                   Assumptions
                 </span>
               </div>
               <div className="space-y-1">
                 {node.assumptions.slice(0, 2).map((assumption, index) => (
-                  <div key={index} className="text-xs text-gray-600 pl-5">
+                  <div key={index} className="text-xs text-muted-foreground pl-5">
                     • {assumption}
                   </div>
                 ))}
                 {node.assumptions.length > 2 && (
-                  <div className="text-xs text-gray-500 pl-5">
+                  <div className="text-xs text-muted-foreground pl-5">
                     +{node.assumptions.length - 2} more
                   </div>
                 )}
@@ -232,18 +234,18 @@ const HypothesisNode = memo(
             <div className="mb-2">
               <div className="flex items-center gap-2 mb-1">
                 <Target className="w-3 h-3 text-green-500" />
-                <span className="text-xs font-medium text-gray-700">
+                <span className="text-xs font-medium text-foreground">
                   Success Criteria
                 </span>
               </div>
               <div className="space-y-1">
                 {node.successCriteria.slice(0, 2).map((criteria, index) => (
-                  <div key={index} className="text-xs text-gray-600 pl-5">
+                  <div key={index} className="text-xs text-muted-foreground pl-5">
                     • {criteria}
                   </div>
                 ))}
                 {node.successCriteria.length > 2 && (
-                  <div className="text-xs text-gray-500 pl-5">
+                  <div className="text-xs text-muted-foreground pl-5">
                     +{node.successCriteria.length - 2} more
                   </div>
                 )}
@@ -273,8 +275,8 @@ const HypothesisNode = memo(
         </div>
 
         {/* Footer */}
-        <div className="px-3 py-2 bg-gray-50 rounded-b-lg border-t border-gray-100">
-          <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="px-3 py-2 bg-muted rounded-b-lg border-t border-gray-100">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Hypothesis Node</span>
             <span className="font-mono">{node.id.slice(0, 8)}</span>
           </div>

@@ -16,11 +16,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Edge, Node } from '@xyflow/react';
 import type { Database } from '@/shared/lib/supabase/types';
-import type { MetricCard, MetricValue, Relationship } from '@/shared/types';
+import type { EvidenceItem, MetricCard, MetricValue, Relationship } from '@/shared/types';
 import { applyAutoLayout, type LayoutDirection } from '@/shared/utils/autoLayout';
 
 import {
   CreateCanvasInput,
+  CreateEvidenceInput,
   CreateNodeInput,
   CreateRelationshipInput,
   CreateTypedNodeInput,
@@ -46,10 +47,12 @@ import {
   updateMetricCardPosition,
 } from '@/shared/lib/supabase/services/metric-cards';
 import {
+  createEvidenceItem,
   createRelationship,
   deleteRelationship,
   getProjectRelationships,
 } from '@/shared/lib/supabase/services/relationships';
+import { createCardEvidence } from '@/shared/lib/supabase/services/evidence';
 import { writeMetricValues } from '@/shared/lib/supabase/services/trackedMetrics';
 import { createIngest } from './ingest';
 
@@ -179,6 +182,29 @@ export function createMetrimapApi(client: Client, userId: string) {
       },
       delete: (id: string) => deleteRelationship(id, client),
       list: (projectId: string) => getProjectRelationships(projectId, client),
+    },
+
+    // Attach evidence to a card XOR a relationship (RLS-scoped, created_by = user).
+    evidence: {
+      create: (input: unknown) => {
+        const v = CreateEvidenceInput.parse(input);
+        const item: EvidenceItem = {
+          id: newId(),
+          title: v.title,
+          type: v.type,
+          date: v.date ?? nowIso().slice(0, 10),
+          owner: v.owner ?? userId,
+          hypothesis: v.hypothesis,
+          link: v.link,
+          summary: v.summary,
+          content: v.content as EvidenceItem['content'],
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+        };
+        return v.cardId
+          ? createCardEvidence(item, v.cardId, v.projectId, userId, client)
+          : createEvidenceItem(item, v.relationshipId as string, userId, client);
+      },
     },
 
     // get_tree: full structure so agents extend rather than duplicate.

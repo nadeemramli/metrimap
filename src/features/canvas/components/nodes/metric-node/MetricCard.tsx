@@ -41,6 +41,8 @@ import {
   getMetricCardTags,
   removeTagsFromMetricCard,
 } from '@/shared/lib/supabase/services/tags';
+import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { useVisibilityStore } from '@/shared/stores/useVisibilityStore';
 import type {
   CardCategory,
   MetricCard as MetricCardType,
@@ -58,6 +60,7 @@ import {
   GripVertical,
   Layers,
   Link,
+  Lock,
   MessageSquare,
   Minimize2,
   Minus,
@@ -265,23 +268,37 @@ export default function MetricCard({ data, selected }: NodeProps) {
     data as unknown as MetricCardNodeData;
   const [isExpanded] = useState(true);
 
+  // Node-level visibility (CVS-122): show a lock + mask the value on nodes
+  // restricted for this viewer. Client pairing for hide_value; hide_node rows
+  // are already filtered by RLS (CVS-121), so this never leaks vs the wall.
+  const visClient = useClerkSupabase();
+  const ensureVisibility = useVisibilityStore((s) => s.ensureLoaded);
+  const restrictedSet = useVisibilityStore(
+    (s) => s.restrictedByProject[card.projectId]
+  );
+  const isRestricted = !!restrictedSet?.has(card.id);
+  useEffect(() => {
+    if (visClient && card.projectId) ensureVisibility(card.projectId, visClient);
+  }, [visClient, card.projectId, ensureVisibility]);
+
   // Last-edited-by attribution (server-stamped updated_by).
   const editedByName = useUserName(card.updatedBy);
 
   // Alert state (monitored / breached) — evaluated against the LIVE latest
   // value, independent of any time-travel view.
   const alertRules = useAlertRulesStore((s) => s.rulesByCard[card.id]);
-  const latestValue = Array.isArray(card.data)
-    ? card.data[card.data.length - 1]
-    : undefined;
+  const latestValue =
+    isRestricted || !Array.isArray(card.data)
+      ? undefined
+      : card.data[card.data.length - 1];
   const alertState = alertStateFor(alertRules, latestValue);
 
   // Time-travel: what the card DISPLAYS reflects the canvas "as of" period.
   const asOfPeriod = useTimeTravelStore((s) => s.asOfPeriod);
   const comparePeriod = useTimeTravelStore((s) => s.comparePeriod);
-  const viewedData = seriesAsOf(card.data, asOfPeriod);
+  const viewedData = isRestricted ? [] : seriesAsOf(card.data, asOfPeriod);
   const timeTravelDelta =
-    card.category === 'Data/Metric' && comparePeriod
+    !isRestricted && card.category === 'Data/Metric' && comparePeriod
       ? deltaBetween(card.data, asOfPeriod, comparePeriod)
       : null;
 
@@ -884,7 +901,13 @@ export default function MetricCard({ data, selected }: NodeProps) {
                 }}
               />
             ) : (
-              <h3 className="nodrag font-semibold text-card-foreground text-sm leading-tight flex-1">
+              <h3 className="nodrag font-semibold text-card-foreground text-sm leading-tight flex-1 flex items-center gap-1">
+                {isRestricted && (
+                  <Lock
+                    className="h-3 w-3 shrink-0 text-amber-600"
+                    aria-label="Restricted"
+                  />
+                )}
                 {card.title}
               </h3>
             )}
@@ -976,7 +999,13 @@ export default function MetricCard({ data, selected }: NodeProps) {
           )}
           {viewedData.length === 0 ? (
             <div className="nodrag text-xs text-muted-foreground/70">
-              No data as of {asOfPeriod}
+              {isRestricted ? (
+                <span className="inline-flex items-center gap-1 text-amber-600">
+                  <Lock className="h-3 w-3" /> Restricted
+                </span>
+              ) : (
+                <>No data as of {asOfPeriod}</>
+              )}
             </div>
           ) : (
           <div className="nodrag space-y-2">

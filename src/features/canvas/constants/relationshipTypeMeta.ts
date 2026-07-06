@@ -11,9 +11,20 @@
  * The `tooltip` copy is kept in sync with docs/reference/metric-tree-methodology.md
  * (components vs. influences). It powers the in-app `(!)` InfoHint.
  */
-import { ArrowRight, Layers, Network, TrendingUp, Zap } from 'lucide-react';
+import {
+  ArrowRight,
+  CircleDashed,
+  Layers,
+  Network,
+  TrendingUp,
+  Zap,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { RelationshipType } from '@/shared/types';
+import type {
+  CausalStatus,
+  ConfidenceLevel,
+  RelationshipType,
+} from '@/shared/types';
 
 export type RelationshipLayer = 'component' | 'influence';
 
@@ -123,6 +134,24 @@ export const RELATIONSHIP_TYPE_META: Record<
     showWeightButton: false,
     defaultWeightLabel: '1.0',
   },
+  Exploratory: {
+    value: 'Exploratory',
+    label: 'Exploratory',
+    icon: CircleDashed,
+    description: 'Loose / inferred — not yet validated',
+    tooltip:
+      'A loose, exploratory link: you suspect a relationship but have not yet validated its type, direction, or strength. Firm it up later with evidence and a concrete type (correlation, causal, …).',
+    layer: 'influence',
+    textColor: 'text-amber-700',
+    bgColor: 'bg-amber-50',
+    borderColor: 'border-amber-300',
+    hoverBg: 'hover:bg-amber-100',
+    baseStroke: GRAY,
+    strokeByWeight: false,
+    lineStyle: 'dotted',
+    showWeightButton: false,
+    defaultWeightLabel: '?',
+  },
 };
 
 /** Fallback used when a relationship has an unknown/empty type. */
@@ -150,6 +179,7 @@ export const RELATIONSHIP_TYPE_LIST: RelationshipTypeMeta[] = [
   RELATIONSHIP_TYPE_META.Probabilistic,
   RELATIONSHIP_TYPE_META.Causal,
   RELATIONSHIP_TYPE_META.Compositional,
+  RELATIONSHIP_TYPE_META.Exploratory,
 ];
 
 export function getRelationshipTypeMeta(
@@ -161,15 +191,138 @@ export function getRelationshipTypeMeta(
   return UNKNOWN_RELATIONSHIP_META;
 }
 
-/** Resolve the stroke color for an edge given its type + weight. */
+// ---------------------------------------------------------------------------
+// Dynamic edge visual intelligence (CVS-165)
+// The drawn line encodes relationship QUALITY: signed strength → colour +
+// direction, magnitude → width, confidence → opacity + "loose" dash. Negative
+// and weak/low-correlation links warn (red / amber) instead of reading like a
+// healthy green link; low-confidence links look loose, not validated.
+// ---------------------------------------------------------------------------
+
+/** Semantic read of a relationship's drawn line, for badges/legends too. */
+export type RelationshipTone =
+  | 'positive' // strong, healthy positive influence (green)
+  | 'negative' // inverse relationship — warns (red)
+  | 'weak' // weak / low correlation — warns (amber)
+  | 'neutral' // unknown / exploratory, no strength yet (gray)
+  | 'structural'; // deterministic / compositional — definitional (gray)
+
+export interface RelationshipEdgeStyle {
+  stroke: string;
+  strokeWidth: number;
+  /** SVG dasharray, or undefined for a solid line. */
+  strokeDasharray: string | undefined;
+  opacity: number;
+  tone: RelationshipTone;
+  /** True when the line should read as loose/exploratory (dashed + dim). */
+  loose: boolean;
+}
+
+// Semantic edge palette (hex — SVG stroke is inline, not a Tailwind class).
+const EDGE_COLORS = {
+  positiveStrong: '#16a34a', // green-600
+  positive: '#22c55e', // green-500
+  negative: '#dc2626', // red-600  — inverse relationships warn
+  weak: '#d97706', // amber-600 — weak / low correlation warns
+  neutral: '#9ca3af', // gray-400 — exploratory / unknown
+  structural: GRAY, // gray-500 — deterministic / compositional
+};
+
+/** |weight| below this reads as a weak/uncertain signal; above STRONG_MIN as strong. */
+const WEAK_MAX = 20;
+const STRONG_MIN = 50;
+
+/**
+ * The full drawn-line style for a relationship edge, derived from signed
+ * strength + confidence + type. Single source of truth for the canvas edge,
+ * the arrowhead colour, and any legend.
+ */
+export function getRelationshipEdgeStyle(
+  type: RelationshipType | string | undefined,
+  weight?: number,
+  confidence?: ConfidenceLevel | string
+): RelationshipEdgeStyle {
+  const meta = getRelationshipTypeMeta(type);
+
+  // Exploratory links read as loose/uncertain: muted, dashed, dim — clearly not
+  // a validated relationship yet.
+  if (meta.value === 'Exploratory') {
+    return {
+      stroke: EDGE_COLORS.neutral,
+      strokeWidth: 1.75,
+      strokeDasharray: '4,4',
+      opacity: 0.55,
+      tone: 'neutral',
+      loose: true,
+    };
+  }
+
+  // Structural types are definitional — not coloured by statistical strength.
+  if (!meta.strokeByWeight) {
+    const dotted =
+      meta.lineStyle === 'dotted' || meta.lineStyle === 'dotted-smoothstep';
+    return {
+      stroke: EDGE_COLORS.structural,
+      strokeWidth: 2,
+      strokeDasharray: dotted ? '6,4' : undefined,
+      opacity: 0.9,
+      tone: 'structural',
+      loose: false,
+    };
+  }
+
+  const conf: ConfidenceLevel =
+    confidence === 'High' || confidence === 'Low' ? confidence : 'Medium';
+  const w = typeof weight === 'number' ? weight : 0;
+  const mag = Math.min(Math.abs(w), 100);
+
+  let tone: RelationshipTone;
+  let stroke: string;
+  if (w === 0) {
+    tone = 'neutral';
+    stroke = EDGE_COLORS.neutral;
+  } else if (w < 0) {
+    tone = 'negative';
+    stroke = EDGE_COLORS.negative;
+  } else if (mag < WEAK_MAX) {
+    tone = 'weak';
+    stroke = EDGE_COLORS.weak;
+  } else {
+    tone = 'positive';
+    stroke = mag >= STRONG_MIN ? EDGE_COLORS.positiveStrong : EDGE_COLORS.positive;
+  }
+
+  // Strength drives width (thicker = stronger); low confidence thins it.
+  const base = 1.5 + (mag / 100) * 2; // 1.5 .. 3.5
+  const strokeWidth = Number(
+    (conf === 'Low' ? Math.max(1.25, base - 0.75) : base).toFixed(2)
+  );
+
+  // Loose read: low confidence or unknown strength; observed (dotted) types
+  // like Probabilistic correlation are dashed regardless.
+  const dottedType =
+    meta.lineStyle === 'dotted' || meta.lineStyle === 'dotted-smoothstep';
+  const loose = conf === 'Low' || tone === 'neutral';
+  const dashed = loose || dottedType;
+  const opacity = conf === 'High' ? 1 : conf === 'Low' ? 0.5 : 0.8;
+
+  return {
+    stroke,
+    strokeWidth,
+    strokeDasharray: dashed ? (conf === 'Low' ? '4,4' : '6,4') : undefined,
+    opacity,
+    tone,
+    loose,
+  };
+}
+
+/** Resolve the stroke color for an edge given its type + weight (+ optional confidence). */
 export function getRelationshipStroke(
   type: RelationshipType | string | undefined,
-  weight?: number
+  weight?: number,
+  confidence?: ConfidenceLevel | string
 ): string {
-  const meta = getRelationshipTypeMeta(type);
-  if (!meta.strokeByWeight) return meta.baseStroke;
-  if (weight === undefined || weight === 0) return GRAY;
-  return weight > 0 ? '#16a34a' : '#dc2626';
+  return getRelationshipEdgeStyle(type, weight, confidence).stroke;
 }
 
 /** Resolve the mid-edge weight button label. */
@@ -181,3 +334,69 @@ export function getRelationshipWeightLabel(
   // Truthy check matches prior edge behavior (weight 0 falls back to default).
   return weight ? `${weight}` : meta.defaultWeightLabel;
 }
+
+// --- Causal validation state (CVS-165 / CVS-264) --------------------------
+
+export interface CausalStatusMeta {
+  status: CausalStatus;
+  label: string;
+  tone: RelationshipTone;
+  /** Hex colour for a status dot/badge. */
+  color: string;
+  /** Tailwind classes for a small status badge. */
+  badge: string;
+  /** True when this status should visually WARN (a refuted causal claim). */
+  warn: boolean;
+}
+
+const CAUSAL_STATUS_META: Record<CausalStatus, CausalStatusMeta> = {
+  validated: {
+    status: 'validated',
+    label: 'Validated',
+    tone: 'positive',
+    color: EDGE_COLORS.positiveStrong,
+    badge: 'bg-green-50 text-green-700 border-green-300',
+    warn: false,
+  },
+  refuted: {
+    status: 'refuted',
+    label: 'Refuted',
+    tone: 'negative',
+    color: EDGE_COLORS.negative,
+    badge: 'bg-red-50 text-red-700 border-red-300',
+    warn: true,
+  },
+  validating: {
+    status: 'validating',
+    label: 'Validating',
+    tone: 'weak',
+    color: EDGE_COLORS.weak,
+    badge: 'bg-amber-50 text-amber-700 border-amber-300',
+    warn: false,
+  },
+  unvalidated: {
+    status: 'unvalidated',
+    label: 'Unvalidated',
+    tone: 'neutral',
+    color: EDGE_COLORS.neutral,
+    badge: 'bg-gray-50 text-gray-600 border-gray-300',
+    warn: false,
+  },
+};
+
+/** Visual meta for a causal relationship's validation status (defaults to unvalidated). */
+export function getCausalStatusMeta(
+  status?: CausalStatus | string
+): CausalStatusMeta {
+  return (
+    CAUSAL_STATUS_META[status as CausalStatus] ??
+    CAUSAL_STATUS_META.unvalidated
+  );
+}
+
+export const CAUSAL_STATUS_LIST: CausalStatusMeta[] = [
+  CAUSAL_STATUS_META.unvalidated,
+  CAUSAL_STATUS_META.validating,
+  CAUSAL_STATUS_META.validated,
+  CAUSAL_STATUS_META.refuted,
+];

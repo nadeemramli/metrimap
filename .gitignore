@@ -47,3 +47,9 @@ skills-lock.json
 
 # Supabase CLI local link state
 supabase/.temp/
+
+# Playwright visual verification (CVS-156 fallout — self-verify UI)
+/test-results/
+/playwright-report/
+/e2e/screenshots/
+/e2e/certs/

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 
 // Persistent "saved" primitive for the update feed. item_key is the feed item's
 // composite id ('c:<id>' changelog, 'n:<id>' notification). RLS scopes rows to
@@ -9,7 +9,7 @@ import { supabase } from '../client';
 export async function listFeedBookmarks(
   client?: SupabaseClient
 ): Promise<string[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c.from('feed_bookmarks').select('item_key');
   if (error) throw new Error(error.message);
   return (data ?? []).map((r: { item_key: string }) => r.item_key);
@@ -19,7 +19,7 @@ export async function addFeedBookmark(
   itemKey: string,
   client?: SupabaseClient
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   // Ignore duplicate-PK conflicts so re-bookmarking is a no-op.
   const { error } = await c
     .from('feed_bookmarks')
@@ -31,7 +31,7 @@ export async function removeFeedBookmark(
   itemKey: string,
   client?: SupabaseClient
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c
     .from('feed_bookmarks')
     .delete()

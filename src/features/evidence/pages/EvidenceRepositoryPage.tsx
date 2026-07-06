@@ -47,6 +47,7 @@ import {
   Filter,
   FlaskConical,
   Globe,
+  Lock,
   MoreVertical,
   Plus,
   Search,
@@ -57,6 +58,14 @@ import {
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import EvidenceEditor from '../components/EvidenceEditor';
+import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { useAppStore } from '@/shared/stores/useAppStore';
+import {
+  createProjectEvidence,
+  setEvidencePublic,
+} from '@/shared/lib/supabase/services/evidence';
+import { updateEvidenceItem } from '@/shared/lib/supabase/services/relationships';
+import { toast } from 'sonner';
 
 const evidenceTypeOptions = [
   { value: 'Experiment', icon: FlaskConical, variant: 'blue' },
@@ -66,9 +75,25 @@ const evidenceTypeOptions = [
   { value: 'User Interview', icon: Users, variant: 'pink' },
 ] as const;
 
+// Card preview: first real text from the notebook content, falling back to the
+// summary — so the card reflects what's actually written in the notebook.
+function contentPreview(ev: EvidenceItem): string {
+  const blocks = (ev.content as any)?.blocks;
+  if (Array.isArray(blocks)) {
+    for (const b of blocks) {
+      const raw = b?.data?.text ?? b?.data?.items?.[0] ?? '';
+      const text = String(raw).replace(/<[^>]+>/g, '').trim();
+      if (text) return text;
+    }
+  }
+  return ev.summary || '';
+}
+
 export default function EvidenceRepositoryPage() {
   const { canvasId } = useParams();
   const isCanvasScoped = Boolean(canvasId);
+  const client = useClerkSupabase();
+  const { user } = useAppStore();
   const { canvas } = useCanvasStore();
   const confirm = useConfirm();
   const {
@@ -158,16 +183,38 @@ export default function EvidenceRepositoryPage() {
     setIsEditorOpen(true);
   };
 
-  const handleSaveEvidence = (
+  const handleSaveEvidence = async (
     evidence: EvidenceItem,
     options?: { autoSave?: boolean }
   ) => {
     if (selectedEvidence) {
-      // Update existing evidence
+      // Update existing evidence (store + DB)
       updateEvidence(selectedEvidence.id, evidence);
+      if (client) {
+        try {
+          await updateEvidenceItem(selectedEvidence.id, evidence, client);
+        } catch (e) {
+          console.error('Failed to persist evidence edit to DB', e);
+        }
+      }
     } else {
-      // Create new evidence
-      addEvidence(evidence);
+      // Create new evidence — persist to the DB (project-scoped) when we have a
+      // canvas/project context, so it's DB-backed rather than store-only and
+      // resolvable by id across surfaces (CVS-34 slice 3).
+      let created = evidence;
+      if (canvasId && client && user?.id) {
+        try {
+          created = await createProjectEvidence(
+            evidence,
+            canvasId,
+            user.id,
+            client
+          );
+        } catch (e) {
+          console.error('Failed to create evidence in DB; storing locally', e);
+        }
+      }
+      addEvidence(created);
     }
 
     // Only close dialog on manual save, not auto-save
@@ -206,6 +253,29 @@ export default function EvidenceRepositoryPage() {
     if (duplicate) {
       setSelectedEvidence(duplicate);
       setIsEditorOpen(true);
+    }
+  };
+
+  // Publish an evidence item read-only and copy its public/embed link.
+  const handleShareEvidence = async (evidence: EvidenceItem) => {
+    if (!client) return;
+    try {
+      await setEvidencePublic(evidence.id, true, client);
+      const url = `${window.location.origin}/embed/evidence/${evidence.id}`;
+      await navigator.clipboard.writeText(url);
+      toast.success('Public link copied — anyone with it can view this evidence');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to share evidence');
+    }
+  };
+
+  const handleUnshareEvidence = async (evidence: EvidenceItem) => {
+    if (!client) return;
+    try {
+      await setEvidencePublic(evidence.id, false, client);
+      toast.success('Evidence is now private');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update sharing');
     }
   };
 
@@ -394,6 +464,18 @@ export default function EvidenceRepositoryPage() {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          onClick={() => handleShareEvidence(evidence)}
+                        >
+                          <Globe className="mr-2 h-4 w-4" />
+                          Share &amp; copy link
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleUnshareEvidence(evidence)}
+                        >
+                          <Lock className="mr-2 h-4 w-4" />
+                          Make private
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => handleDuplicateEvidence(evidence)}
                         >
                           <Copy className="mr-2 h-4 w-4" />
@@ -432,7 +514,7 @@ export default function EvidenceRepositoryPage() {
                   </div>
                   <CardTitle className="text-lg">{evidence.title}</CardTitle>
                   <CardDescription className="line-clamp-2">
-                    {evidence.summary}
+                    {contentPreview(evidence)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">

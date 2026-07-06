@@ -3,7 +3,7 @@
 // = all rows for a project_id. See the dashboard_widgets migration.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { Database, Json } from '../types';
 import type {
   DashboardWidget,
@@ -41,7 +41,7 @@ export async function listWidgets(
   projectId: string,
   client?: Client
 ): Promise<DashboardWidget[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('dashboard_widgets')
     .select(COLS)
@@ -64,7 +64,7 @@ export async function createWidget(
   input: CreateWidgetInput,
   client?: Client
 ): Promise<DashboardWidget> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('dashboard_widgets')
     .insert({
@@ -92,7 +92,7 @@ export async function updateWidget(
   }>,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.widgetType !== undefined) row.widget_type = patch.widgetType;
@@ -112,7 +112,7 @@ export async function updateLayouts(
   client?: Client
 ): Promise<void> {
   if (!positions.length) return;
-  const c = client || supabase();
+  const c = resolveClient(client);
   await Promise.all(
     positions.map(({ id, layout }) =>
       c
@@ -127,7 +127,7 @@ export async function deleteWidget(
   id: string,
   client?: Client
 ): Promise<void> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { error } = await c.from('dashboard_widgets').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }

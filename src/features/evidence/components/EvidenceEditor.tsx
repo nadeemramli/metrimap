@@ -3,7 +3,7 @@ import {
   validateAndMigrateEditorData,
 } from '@/lib/editorjs-config';
 import { Button } from '@/shared/components/ui/button';
-import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
+import { TagTokenInput } from '@/features/canvas/components/primitives';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import {
@@ -14,6 +14,16 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { useAppStore } from '@/shared/stores/useAppStore';
+import { useCanvasStore } from '@/lib/stores';
+
+// Predefined "impact on confidence" levels (dropdown instead of free text).
+const IMPACT_OPTIONS = [
+  'Strongly supports',
+  'Supports',
+  'Neutral / inconclusive',
+  'Weakens',
+  'Strongly weakens',
+];
 import type { EvidenceItem } from '@/shared/types';
 import EditorJS from '@editorjs/editorjs';
 import {
@@ -75,6 +85,11 @@ export default function EvidenceEditor({
   onToggleFullscreen,
 }: EvidenceEditorProps) {
   const { user } = useAppStore();
+  const canvas = useCanvasStore((s) => s.canvas);
+  // Hypothesis nodes on this canvas — the Hypothesis field links to one of these.
+  const hypothesisNodes = ((canvas?.nodes ?? []) as any[]).filter(
+    (n) => n.category === 'Ideas/Hypothesis'
+  );
   const editorRef = useRef<EditorJS | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -91,6 +106,26 @@ export default function EvidenceEditor({
     impactOnConfidence: evidence?.impactOnConfidence || '',
     tags: evidence?.tags || [],
   });
+
+  // useState only runs once, so when the dialog is reused for a different (or
+  // existing) evidence, the form kept its original empty values → blank dialog.
+  // Re-sync from `evidence` whenever the dialog opens or a different item loads.
+  // Owner auto-populates with the creator's name for brand-new evidence.
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData({
+      id: evidence?.id || `evidence_${Date.now()}`,
+      title: evidence?.title || '',
+      type: evidence?.type || 'Analysis',
+      date: evidence?.date || new Date().toISOString().split('T')[0],
+      owner: evidence?.owner || user?.name || '',
+      link: evidence?.link || '',
+      hypothesis: evidence?.hypothesis || '',
+      impactOnConfidence: evidence?.impactOnConfidence || '',
+      tags: evidence?.tags || [],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, evidence?.id]);
 
   const autoSave = useCallback(
     debounce(async (content: any, metadata: Partial<EvidenceItem>) => {
@@ -137,9 +172,17 @@ export default function EvidenceEditor({
       try {
         const content = await editorRef.current!.save();
         autoSave(content, formData);
-      } catch {}
+      } catch {
+        /* EditorJS save can race during unmount — safe to ignore */
+      }
     }, 100);
   }, [autoSave, formData]);
+
+  // Route onChange through a ref so it isn't a dependency of the init effect.
+  // Depending on it (and on evidence?.content) destroyed + re-created the editor
+  // on every autosave → repeated "Editor ready", lost text, duplicate editor.
+  const handleEditorChangeRef = useRef(handleEditorChange);
+  handleEditorChangeRef.current = handleEditorChange;
 
   const handleFormDataChange = useCallback(
     (newFormData: Partial<EvidenceItem>) => {
@@ -165,7 +208,7 @@ export default function EvidenceEditor({
           placeholder:
             "Start writing your evidence notebook... Press '/' for commands",
           minHeight: 300,
-          onChange: handleEditorChange,
+          onChange: () => handleEditorChangeRef.current?.(),
           onReady: () =>
             toast.success('📝 Editor ready!', {
               duration: 1500,
@@ -191,7 +234,7 @@ export default function EvidenceEditor({
           },
           placeholder: "Start writing... Press '/' for the full command menu",
           minHeight: 300,
-          onChange: handleEditorChange,
+          onChange: () => handleEditorChangeRef.current?.(),
         });
         editorRef.current = fallback;
       }
@@ -200,11 +243,16 @@ export default function EvidenceEditor({
       if (editorRef.current) {
         try {
           editorRef.current.destroy();
-        } catch {}
+        } catch {
+          /* EditorJS save/teardown can race during unmount — safe to ignore */
+        }
         editorRef.current = null;
       }
     };
-  }, [isOpen, evidence?.content, handleEditorChange]);
+    // Re-init only when the dialog opens or a DIFFERENT evidence loads (id) —
+    // never on content/handler changes (those come from the editor itself and
+    // caused the destroy→re-init loop / duplicate editor). onChange uses a ref.
+  }, [isOpen, evidence?.id]);
 
   const handleSave = async () => {
     if (!editorRef.current) return;
@@ -254,12 +302,12 @@ export default function EvidenceEditor({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div
-        className={`w-full h-[90vh] bg-white rounded-lg shadow-xl flex flex-col ${isFullscreen ? 'max-w-[95vw]' : 'max-w-6xl'} transition-all duration-300`}
+        className={`w-full h-[90vh] bg-card text-card-foreground rounded-lg shadow-xl flex flex-col ${isFullscreen ? 'max-w-[95vw]' : 'max-w-6xl'} transition-all duration-300`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-4">
-            <div className={`p-2 rounded-lg bg-gray-50`}>
+            <div className={`p-2 rounded-lg bg-muted`}>
               <TypeIcon className="h-5 w-5" />
             </div>
             <div className="flex-1">
@@ -271,7 +319,7 @@ export default function EvidenceEditor({
                 placeholder="Evidence title"
                 className="text-2xl font-bold border-none p-0 focus:ring-0"
               />
-              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
                   <Input
@@ -339,14 +387,14 @@ export default function EvidenceEditor({
             </Button>
             <div className="flex items-center gap-2">
               {isAutoSaving && (
-                <div className="flex items-center gap-1 text-xs text-blue-600">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <div className="flex items-center gap-1 text-xs text-primary">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                   <span>Auto-saving</span>
                 </div>
               )}
               {lastSaved && !isAutoSaving && (
-                <div className="flex items-center gap-1 text-xs text-green-600">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="flex items-center gap-1 text-xs text-success">
+                  <div className="w-2 h-2 bg-success rounded-full"></div>
                   <span>Saved</span>
                 </div>
               )}
@@ -363,29 +411,48 @@ export default function EvidenceEditor({
 
         {/* Metadata */}
         <div
-          className={`px-6 py-4 border-b bg-gray-50 ${isFullscreen ? 'py-2' : 'py-4'}`}
+          className={`px-6 py-4 border-b bg-muted ${isFullscreen ? 'py-2' : 'py-4'}`}
         >
           <div
             className={`grid gap-4 ${isFullscreen ? 'grid-cols-1 md:grid-cols-6' : 'grid-cols-1 md:grid-cols-3'}`}
           >
             <div>
-              <Label className="text-xs font-medium text-gray-600">
+              <Label className="text-xs font-medium text-muted-foreground">
                 Hypothesis
               </Label>
-              <Input
-                value={formData.hypothesis}
-                onChange={(e) =>
-                  handleFormDataChange({
-                    ...formData,
-                    hypothesis: e.target.value,
-                  })
+              <Select
+                value={formData.hypothesis || ''}
+                onValueChange={(value) =>
+                  handleFormDataChange({ ...formData, hypothesis: value })
                 }
-                placeholder="What hypothesis is being tested?"
-                className="mt-1"
-              />
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Link a hypothesis node" />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.hypothesis &&
+                    !hypothesisNodes.some(
+                      (n) => n.title === formData.hypothesis
+                    ) && (
+                      <SelectItem value={formData.hypothesis}>
+                        {formData.hypothesis}
+                      </SelectItem>
+                    )}
+                  {hypothesisNodes.map((n) => (
+                    <SelectItem key={n.id} value={n.title}>
+                      {n.title}
+                    </SelectItem>
+                  ))}
+                  {hypothesisNodes.length === 0 && !formData.hypothesis && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      No hypothesis nodes on this canvas yet.
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <Label className="text-xs font-medium text-gray-600">
+              <Label className="text-xs font-medium text-muted-foreground">
                 External Link
               </Label>
               <Input
@@ -398,37 +465,44 @@ export default function EvidenceEditor({
               />
             </div>
             <div>
-              <Label className="text-xs font-medium text-gray-600">
+              <Label className="text-xs font-medium text-muted-foreground">
                 Impact on Confidence
               </Label>
-              <Input
-                value={formData.impactOnConfidence}
-                onChange={(e) =>
+              <Select
+                value={formData.impactOnConfidence || ''}
+                onValueChange={(value) =>
                   handleFormDataChange({
                     ...formData,
-                    impactOnConfidence: e.target.value,
+                    impactOnConfidence: value,
                   })
                 }
-                placeholder="How does this affect confidence?"
-                className="mt-1"
-              />
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select impact…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.impactOnConfidence &&
+                    !IMPACT_OPTIONS.includes(formData.impactOnConfidence) && (
+                      <SelectItem value={formData.impactOnConfidence}>
+                        {formData.impactOnConfidence}
+                      </SelectItem>
+                    )}
+                  {IMPACT_OPTIONS.map((o) => (
+                    <SelectItem key={o} value={o}>
+                      {o}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="md:col-span-3">
-              <Label className="text-xs font-medium text-gray-600">Tags</Label>
-              <EnhancedTagInput
-                tags={formData.tags || []}
-                onAdd={(tag) =>
-                  handleFormDataChange({
-                    ...formData,
-                    tags: [...(formData.tags || []), tag],
-                  })
+              <Label className="text-xs font-medium text-muted-foreground">Tags</Label>
+              <TagTokenInput
+                value={formData.tags || []}
+                onChange={(tags) =>
+                  handleFormDataChange({ ...formData, tags })
                 }
-                onRemove={(tag) =>
-                  handleFormDataChange({
-                    ...formData,
-                    tags: (formData.tags || []).filter((t) => t !== tag),
-                  })
-                }
+                placeholder="Add tags…"
                 className="mt-1"
               />
             </div>

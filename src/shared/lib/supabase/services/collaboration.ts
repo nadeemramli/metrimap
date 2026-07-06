@@ -12,7 +12,7 @@ import {
   UpdateNotificationSchema,
 } from '@/shared/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 
 export type CommentThreadRow = Tables<'comment_threads'>;
@@ -35,7 +35,7 @@ export async function createCommentThread(
   params: CreateThreadParams,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const insert: CommentThreadInsert = {
     project_id: params.projectId,
     source: params.source,
@@ -66,7 +66,7 @@ export async function listCommentThreads(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('comment_threads')
     .select('*')
@@ -85,7 +85,7 @@ export async function updateCommentThread(
   updates: Partial<Pick<CommentThreadRow, 'is_resolved' | 'context'>>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const patch = {
     is_resolved: updates.is_resolved ?? undefined,
     context: (updates.context as any) ?? undefined,
@@ -115,7 +115,7 @@ export async function deleteCommentThread(
   threadId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client
     .from('comment_threads')
     .delete()
@@ -137,7 +137,7 @@ export async function createComment(
   params: CreateCommentParams,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const insert: CommentInsert = {
     thread_id: params.threadId,
     author_id: params.authorId ?? null,
@@ -167,7 +167,7 @@ export async function listComments(
   threadId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('comments')
     .select('*')
@@ -186,7 +186,7 @@ export async function updateComment(
   updates: Partial<Pick<CommentRow, 'content' | 'resolved'>>,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const patch: CommentUpdate = {
     content: updates.content ?? undefined,
     resolved: updates.resolved ?? undefined,
@@ -217,7 +217,7 @@ export async function deleteComment(
   commentId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client.from('comments').delete().eq('id', commentId);
 
   if (error) {
@@ -231,7 +231,7 @@ export async function addMention(
   mentionedUserId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const payload = {
     comment_id: commentId,
     mentioned_user_id: mentionedUserId,
@@ -259,7 +259,7 @@ export async function listMentionsForUser(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('comment_mentions')
     .select('*')
@@ -285,7 +285,7 @@ export async function createNotification(
   params: CreateNotificationParams,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const payload = {
     user_id: params.userId,
     type: params.type,
@@ -324,7 +324,7 @@ export async function notifyCardAssigned(
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<void> {
   if (!userIds || userIds.length === 0) return;
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client.rpc('notify_card_assigned' as never, {
     p_card_id: cardId,
     p_user_ids: userIds,
@@ -348,7 +348,7 @@ export async function listNotifications(
   options?: NotificationFilter,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   let query = client
     .from('notifications')
     .select('*')
@@ -381,7 +381,7 @@ export async function getUnreadNotificationCount(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<number> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { count, error } = await client
     .from('notifications')
     .select('id', { count: 'exact', head: true })
@@ -398,7 +398,7 @@ export async function markAllNotificationsRead(
   userId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<void> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { error } = await client
     .from('notifications')
     .update({ read: true })
@@ -415,7 +415,7 @@ export async function markNotificationRead(
   read: boolean = true,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const patch = { read } as const;
   try {
     UpdateNotificationSchema.parse(patch as unknown);
@@ -447,7 +447,7 @@ export async function getCommentCountsByCard(
   projectId: string,
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<Record<string, number>> {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
 
   const threads = await listCommentThreads(projectId, client);
   const threadToCard: Record<string, string> = {};

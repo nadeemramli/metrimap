@@ -3,22 +3,26 @@ import QuickSearchCommand, {
   useQuickSearch,
 } from '@/features/canvas/components/search/QuickSearchCommand';
 import { useAppStore, useProjectsStore } from '@/lib/stores';
-import FeedbackButton from '@/shared/components/common/feedback/FeedbackButton';
-import { OrganizationSwitcher, useOrganization } from '@clerk/react-router';
+import { useOrganization } from '@clerk/react-router';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useProjectsRealtime } from '../hooks/useProjectsRealtime';
-import { NotificationInbox } from '@/features/notifications/components/NotificationInbox';
 import { TemplatePicker } from '../components/TemplatePicker';
 import { toast } from 'sonner';
-import { Activity, Database } from 'lucide-react';
-import { UserMenu } from '@/shared/components/layout/UserMenu';
-import { Logo } from '@/shared/components/layout/Logo';
 import {
   createShortcut,
   useKeyboardShortcuts,
 } from '@/shared/hooks/useKeyboardShortcuts';
+import { LayoutTemplate, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
+import { Button } from '@/shared/components/ui/button';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/shared/components/ui/tabs';
 
 // Custom hooks and components
 import { useProjectActions } from '@/shared/hooks/useProjectActions';
@@ -37,7 +41,18 @@ type ViewMode = 'grid' | 'list';
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const isDevelopment = import.meta.env.DEV;
+
+  // Explore / Operate home modes (CVS-156). The rail deep-links here via ?view;
+  // Operate (the user's own canvases) is the default, Explore holds examples.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = searchParams.get('view') === 'explore' ? 'explore' : 'operate';
+  const setView = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === 'operate') next.delete('view');
+    else next.set('view', v);
+    setSearchParams(next, { replace: true });
+  };
+
   const {
     projects,
     initializeProjects,
@@ -147,91 +162,70 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 w-full">
-        <div className="px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Logo className="h-8 w-8 shrink-0 rounded-md overflow-hidden transition-all duration-300 hover:scale-105 cursor-pointer" />
-              {/* Workspace switcher (Clerk org = workspace). Orgs-only model:
-                  personal account hidden; ProtectedRoute keeps an org active. */}
-              <OrganizationSwitcher
-                hidePersonal
-                afterCreateOrganizationUrl="/"
-                afterSelectOrganizationUrl="/"
-                afterLeaveOrganizationUrl="/"
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate('/catalog')}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <Database className="h-4 w-4" />
-                Metric Catalog
-              </button>
-              <button
-                onClick={() => navigate('/feed')}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Activity className="h-4 w-4" />
-                Activity
-              </button>
-              <NotificationInbox />
-              {isDevelopment && <FeedbackButton variant="outline" size="sm" />}
-              <UserMenu />
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="bg-background">
       {/* Main Content */}
       <div className="px-8 py-8 max-w-19/20 mx-auto">
-        {/* Examples — demoted to a slim entry; collapsed by default once the
-            user has their own canvases so their work stays above the fold. */}
-        <ShowcaseSection
-          onOpenCanvas={handleOpenCanvas}
-          defaultCollapsed={safeProjects.length > 0}
-        />
+        <Tabs value={view} onValueChange={setView} className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="operate">Operate</TabsTrigger>
+            <TabsTrigger value="explore">Explore</TabsTrigger>
+          </TabsList>
 
-        {/* One consolidated control bar: space · filter · search · sort · view · New */}
-        <HomeControlBar
-          spaces={spaces}
-          spaceFilter={spaceFilter}
-          onSpaceFilter={setSpaceFilter}
-          onSpaceCreate={createSpace}
-          onSpaceUpdate={updateSpace}
-          onSpaceDelete={deleteSpace}
-          viewFilter={viewFilter}
-          onViewFilter={setViewFilter}
-          counts={counts}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          sortBy={sortBy}
-          onSortByChange={setSortBy}
-          sortOrder={sortOrder}
-          onSortOrderChange={setSortOrder}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          selectedTags={selectedTags}
-          allTags={allTags}
-          onToggleTag={toggleTag}
-          onClearTags={() => setSelectedTags([])}
-          isCreatingCanvas={isCreatingCanvas}
-          onCreateCanvas={handleCreateCanvas}
-          onNewFromTemplate={() => setTemplatePickerOpen(true)}
-        />
+          {/* Operate — the user's own canvases (their durable work). */}
+          <TabsContent value="operate" className="mt-0">
+            {/* One consolidated control bar: space · filter · search · sort · view · New */}
+            <HomeControlBar
+              spaces={spaces}
+              spaceFilter={spaceFilter}
+              onSpaceFilter={setSpaceFilter}
+              onSpaceCreate={createSpace}
+              onSpaceUpdate={updateSpace}
+              onSpaceDelete={deleteSpace}
+              viewFilter={viewFilter}
+              onViewFilter={setViewFilter}
+              counts={counts}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              sortBy={sortBy}
+              onSortByChange={setSortBy}
+              sortOrder={sortOrder}
+              onSortOrderChange={setSortOrder}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              selectedTags={selectedTags}
+              allTags={allTags}
+              onToggleTag={toggleTag}
+              onClearTags={() => setSelectedTags([])}
+              isCreatingCanvas={isCreatingCanvas}
+              onCreateCanvas={handleCreateCanvas}
+              onNewFromTemplate={() => setTemplatePickerOpen(true)}
+            />
 
-        {/* Single project list (driven by the control bar) */}
-        <div className="mt-0">
-          {filteredProjects.length > 0 ? (
-            viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProjects.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
+            {/* Single project list (driven by the control bar) */}
+            <div className="mt-0">
+              {filteredProjects.length > 0 ? (
+                viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredProjects.map((project) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        onOpenCanvas={handleOpenCanvas}
+                        onDuplicateProject={handleDuplicateProject}
+                        onToggleStar={toggleStar}
+                        onDeleteProject={handleDeleteProject}
+                        onProjectSettings={handleProjectSettings}
+                        onArchive={archiveProject}
+                        onRestore={restoreProject}
+                        spaces={spaces}
+                        onMoveToSpace={moveProjectToSpace}
+                        onSaveAsTemplate={handleSaveAsTemplate}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <ProjectTable
+                    projects={filteredProjects}
                     onOpenCanvas={handleOpenCanvas}
                     onDuplicateProject={handleDuplicateProject}
                     onToggleStar={toggleStar}
@@ -243,39 +237,49 @@ export default function HomePage() {
                     onMoveToSpace={moveProjectToSpace}
                     onSaveAsTemplate={handleSaveAsTemplate}
                   />
-                ))}
-              </div>
-            ) : (
-              <ProjectTable
-                projects={filteredProjects}
-                onOpenCanvas={handleOpenCanvas}
-                onDuplicateProject={handleDuplicateProject}
-                onToggleStar={toggleStar}
-                onDeleteProject={handleDeleteProject}
-                onProjectSettings={handleProjectSettings}
-                onArchive={archiveProject}
-                onRestore={restoreProject}
-                spaces={spaces}
-                onMoveToSpace={moveProjectToSpace}
-                onSaveAsTemplate={handleSaveAsTemplate}
-              />
-            )
-          ) : (
-            <EmptyState
-              type={
-                safeProjects.length === 0
-                  ? 'no-projects'
-                  : viewFilter === 'starred'
-                    ? 'no-starred'
-                    : viewFilter === 'recent'
-                      ? 'no-recent'
-                      : 'no-results'
-              }
-              onCreateCanvas={handleCreateCanvas}
-              isCreatingCanvas={isCreatingCanvas}
+                )
+              ) : (
+                <EmptyState
+                  type={
+                    safeProjects.length === 0
+                      ? 'no-projects'
+                      : viewFilter === 'starred'
+                        ? 'no-starred'
+                        : viewFilter === 'recent'
+                          ? 'no-recent'
+                          : 'no-results'
+                  }
+                  onCreateCanvas={handleCreateCanvas}
+                  isCreatingCanvas={isCreatingCanvas}
+                />
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Explore — examples + starting points for learning the pattern. */}
+          <TabsContent value="explore" className="mt-0 space-y-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={() => handleCreateCanvas()}
+                disabled={isCreatingCanvas}
+              >
+                <Plus className="h-4 w-4" />
+                New canvas
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setTemplatePickerOpen(true)}
+              >
+                <LayoutTemplate className="h-4 w-4" />
+                Start from a template
+              </Button>
+            </div>
+            <ShowcaseSection
+              onOpenCanvas={handleOpenCanvas}
+              defaultCollapsed={false}
             />
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Quick Search */}

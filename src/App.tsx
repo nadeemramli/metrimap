@@ -27,14 +27,28 @@ import CatalogPage from './features/catalog/pages/CatalogPage';
 import FeedPage from './features/notifications/pages/FeedPage';
 import WorkspaceSettingsPage from './features/settings/pages/WorkspaceSettingsPage';
 import AccountSettingsPage from './features/settings/pages/AccountSettingsPage';
+import ConnectAgentPage from './features/settings/pages/ConnectAgentPage';
 import EmbedCanvasPage from './features/canvas/pages/EmbedCanvasPage';
+import EmbedEvidencePage from './features/evidence/pages/EmbedEvidencePage';
 import HomePage from './features/projects/pages/HomePage';
+import AppShell from './shared/components/layout/AppShell';
 
 // Auth Pages
 import SignInPage from './features/auth/pages/SignInPage';
 
-// Create a client
-const queryClient = new QueryClient();
+// Server-state defaults (CVS-70): keep data cached across navigations so revisits are
+// instant (stale-while-revalidate) instead of refetching from a spinner. Client/UI state
+// stays in Zustand — this only governs TanStack Query's server cache.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000, // 30s: treat data as fresh, serve from cache without refetch
+      gcTime: 5 * 60_000, // keep unused cache 5min for instant back-navigation
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 export default function App() {
   return (
@@ -83,15 +97,9 @@ export default function App() {
 
                 {/* Public read-only embed (no auth — RLS gates by is_public) */}
                 <Route path="/embed/:canvasId" element={<EmbedCanvasPage />} />
-
-                {/* Protected routes */}
                 <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <HomePage />
-                    </ProtectedRoute>
-                  }
+                  path="/embed/evidence/:evidenceId"
+                  element={<EmbedEvidencePage />}
                 />
 
                 {/* Debug route - always accessible */}
@@ -114,55 +122,35 @@ export default function App() {
                   }
                 />
 
-                {/* Evidence Repository */}
+                {/* Workspace routes — wrapped in the app-shell rail (CVS-156) */}
                 <Route
-                  path="/evidence"
                   element={
                     <ProtectedRoute>
-                      <EvidenceRepositoryPage />
+                      <AppShell />
                     </ProtectedRoute>
                   }
-                />
-                <Route
-                  path="/evidence/:evidenceId"
-                  element={
-                    <ProtectedRoute>
-                      <EvidencePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog"
-                  element={
-                    <ProtectedRoute>
-                      <CatalogPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/feed"
-                  element={
-                    <ProtectedRoute>
-                      <FeedPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <AccountSettingsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings/workspace"
-                  element={
-                    <ProtectedRoute>
-                      <WorkspaceSettingsPage />
-                    </ProtectedRoute>
-                  }
-                />
+                >
+                  <Route path="/" element={<HomePage />} />
+                  <Route
+                    path="/evidence"
+                    element={<EvidenceRepositoryPage />}
+                  />
+                  <Route
+                    path="/evidence/:evidenceId"
+                    element={<EvidencePage />}
+                  />
+                  <Route path="/catalog" element={<CatalogPage />} />
+                  <Route path="/feed" element={<FeedPage />} />
+                  <Route path="/settings" element={<AccountSettingsPage />} />
+                  <Route
+                    path="/settings/workspace"
+                    element={<WorkspaceSettingsPage />}
+                  />
+                  <Route
+                    path="/settings/connect"
+                    element={<ConnectAgentPage />}
+                  />
+                </Route>
 
                 {/* Canvas routes - With sidebar layout */}
                 <Route

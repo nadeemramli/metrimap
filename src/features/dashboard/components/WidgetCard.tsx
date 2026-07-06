@@ -13,6 +13,9 @@ import {
   resolveWidget,
   type WidgetDataSources,
 } from '@/features/dashboard/utils/widgetData';
+import { WidgetImpactBadge } from '@/features/dashboard/components/WidgetImpactBadge';
+import type { WidgetStrategyLink } from '@/features/strategy/impact/widgetLinks';
+import type { MeasuredImpact } from '@/features/strategy/impact/measurement';
 import {
   GripVertical,
   Settings2,
@@ -27,6 +30,11 @@ interface WidgetCardProps {
   editMode: boolean;
   onConfigure: (widget: DashboardWidget) => void;
   onRemove: (id: string) => void;
+  strategyLinks?: WidgetStrategyLink[];
+  measuredMap?: Record<string, MeasuredImpact>;
+  currentPeriod?: string;
+  onOpenStrategy?: (nodeId: string) => void;
+  onOpenTrace?: (nodeId: string) => void;
 }
 
 const CHART_TYPES: ChartType[] = ['line', 'area', 'bar', 'pie'];
@@ -37,6 +45,11 @@ export function WidgetCard({
   editMode,
   onConfigure,
   onRemove,
+  strategyLinks,
+  measuredMap,
+  currentPeriod,
+  onOpenStrategy,
+  onOpenTrace,
 }: WidgetCardProps) {
   const isChart = (CHART_TYPES as string[]).includes(widget.widget_type);
 
@@ -49,8 +62,18 @@ export function WidgetCard({
           )}
           <span className="truncate">{widget.title || 'Untitled'}</span>
         </CardTitle>
-        {editMode && (
-          <div className="flex shrink-0 items-center gap-0.5">
+        <div className="flex shrink-0 items-center gap-1">
+          {strategyLinks && strategyLinks.length > 0 && onOpenStrategy && (
+            <WidgetImpactBadge
+              links={strategyLinks}
+              measuredMap={measuredMap}
+              currentPeriod={currentPeriod ?? new Date().toISOString().slice(0, 7)}
+              onOpenStrategy={onOpenStrategy}
+              onOpenTrace={onOpenTrace}
+            />
+          )}
+          {editMode && (
+            <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
               size="sm"
@@ -69,8 +92,9 @@ export function WidgetCard({
             >
               <Trash2 className="h-3.5 w-3.5 text-destructive" />
             </Button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto pb-3">
         <WidgetBody widget={widget} sources={sources} isChart={isChart} />

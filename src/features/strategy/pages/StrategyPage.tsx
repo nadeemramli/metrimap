@@ -28,7 +28,22 @@ import type { PriorityLevel } from '@/features/canvas/utils/workflow';
 import { resolveGroupMembers } from '@/features/dashboard/utils/groupDashboard';
 import { StrategyBoard } from '@/features/strategy/components/StrategyBoard';
 import { StrategyTable } from '@/features/strategy/components/StrategyTable';
+import { StrategyTree } from '@/features/strategy/components/StrategyTree';
 import { CardCommentSheet } from '@/features/strategy/components/CardCommentSheet';
+import { StrategyImpactSheet } from '@/features/strategy/components/StrategyImpactSheet';
+import { ImpactTraceDialog } from '@/features/strategy/components/ImpactTraceDialog';
+import { listContractsWithLinksForProject } from '@/shared/lib/supabase/services/strategyImpact';
+import { getMetricValuesByMetricIds } from '@/shared/lib/supabase/services/trackedMetrics';
+import {
+  summarizeImpact,
+  type ImpactSummary,
+} from '@/features/strategy/impact/impactContract';
+import { measuredByNode } from '@/features/strategy/impact/measurement';
+import type {
+  ImpactContract,
+  MetricLink,
+} from '@/features/strategy/impact/types';
+import type { MetricValue } from '@/shared/types';
 import { ValueJourneyStrip } from '@/features/strategy/components/ValueJourneyStrip';
 import { TaskPanel } from '@/features/canvas/components/panels/task-panel/TaskPanel';
 import {
@@ -37,7 +52,7 @@ import {
 } from '@/features/strategy/utils/groupStrategy';
 import { buildValueJourney } from '@/features/strategy/utils/valueJourney';
 import { cn } from '@/shared/utils';
-import { Loader2, Plus, SquareKanban, Table as TableIcon } from 'lucide-react';
+import { Loader2, Plus, SquareKanban, Table as TableIcon, Target } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -47,7 +62,7 @@ import { toast } from 'sonner';
 // (Monday.com-style) views over the same work cards.
 
 const ALL_VIEW = '__all__';
-type ViewMode = 'board' | 'table';
+type ViewMode = 'board' | 'table' | 'tree';
 
 export default function StrategyPage() {
   const { canvasId } = useParams();
@@ -79,6 +94,12 @@ export default function StrategyPage() {
 
   const [settingsCardId, setSettingsCardId] = useState<string | null>(null);
   const [commentCardId, setCommentCardId] = useState<string | null>(null);
+  const [impactCardId, setImpactCardId] = useState<string | null>(null);
+  const [traceCardId, setTraceCardId] = useState<string | null>(null);
+  const [impactEntries, setImpactEntries] = useState<
+    Array<{ contract: ImpactContract; links: MetricLink[] }>
+  >([]);
+  const [impactReload, setImpactReload] = useState(0);
 
   // Prefer the live in-canvas store when it matches this canvas (fresher,
   // holds unsaved edits); otherwise fall back to what we loaded from the DB.
@@ -155,6 +176,57 @@ export default function StrategyPage() {
   useEffect(() => {
     refreshCommentCounts();
   }, [refreshCommentCounts]);
+
+  // Impact contracts for this canvas → keyed summaries for board/table columns.
+  useEffect(() => {
+    if (!client || !canvasId) return;
+    listContractsWithLinksForProject(canvasId, client)
+      .then(setImpactEntries)
+      .catch(() => setImpactEntries([]));
+  }, [client, canvasId, impactReload]);
+
+  const impactSummaries = useMemo(() => {
+    const map: Record<string, ImpactSummary> = {};
+    for (const { contract, links } of impactEntries) {
+      map[contract.strategyNodeId] = summarizeImpact(contract, links, cards);
+    }
+    return map;
+  }, [impactEntries, cards]);
+
+  const impactByNode = useMemo(() => {
+    const map: Record<string, { contract: ImpactContract; links: MetricLink[] }> = {};
+    for (const e of impactEntries) map[e.contract.strategyNodeId] = e;
+    return map;
+  }, [impactEntries]);
+
+  // Measured deltas (CVS-176): load tracked-metric snapshots referenced by any
+  // contract, then evaluate each bet for a compact measured summary.
+  const [impactTrackedValues, setImpactTrackedValues] = useState<
+    Record<string, MetricValue[]>
+  >({});
+  const impactTrackedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const { links } of impactEntries) {
+      for (const l of links) if (l.refSource === 'tracked' && l.trackedMetricId) ids.add(l.trackedMetricId);
+    }
+    return Array.from(ids).sort();
+  }, [impactEntries]);
+  const impactTrackedKey = impactTrackedIds.join(',');
+  useEffect(() => {
+    if (!client || impactTrackedIds.length === 0) {
+      setImpactTrackedValues({});
+      return;
+    }
+    getMetricValuesByMetricIds(impactTrackedIds, client)
+      .then(setImpactTrackedValues)
+      .catch(() => setImpactTrackedValues({}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, impactTrackedKey]);
+
+  const measuredMap = useMemo(
+    () => measuredByNode(impactEntries, cards, impactTrackedValues),
+    [impactEntries, cards, impactTrackedValues]
+  );
 
   // Members carry avatars too — merge so a just-assigned person resolves before
   // the batched user fetch returns.
@@ -418,11 +490,20 @@ export default function StrategyPage() {
           <Button
             variant={viewMode === 'table' ? 'default' : 'ghost'}
             size="sm"
-            className="h-8 gap-1.5 rounded-l-none"
+            className="h-8 gap-1.5 rounded-none"
             onClick={() => setViewMode('table')}
           >
             <TableIcon className="h-3.5 w-3.5" />
             Table
+          </Button>
+          <Button
+            variant={viewMode === 'tree' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 gap-1.5 rounded-l-none"
+            onClick={() => setViewMode('tree')}
+          >
+            <Target className="h-3.5 w-3.5" />
+            Tree
           </Button>
         </div>
       </div>
@@ -435,7 +516,22 @@ export default function StrategyPage() {
       </div>
 
       {viewMode === 'board' ? (
-        <StrategyBoard board={board} onStatusChange={handleStatusChange} />
+        <StrategyBoard
+          board={board}
+          onStatusChange={handleStatusChange}
+          onCardClick={setSettingsCardId}
+          impactSummaries={impactSummaries}
+          measuredMap={measuredMap}
+        />
+      ) : viewMode === 'tree' ? (
+        <StrategyTree
+          cards={scopedCards}
+          groups={groups}
+          relationships={edges}
+          impactByNode={impactByNode}
+          onOpenImpact={setImpactCardId}
+          onOpenTrace={setTraceCardId}
+        />
       ) : (
         <StrategyTable
           board={board}
@@ -443,6 +539,8 @@ export default function StrategyPage() {
           userMap={userMap}
           members={members}
           commentCounts={commentCounts}
+          impactSummaries={impactSummaries}
+          measuredMap={measuredMap}
           canEdit={canEdit}
           onStatusChange={handleStatusChange}
           onPriorityChange={handlePriorityChange}
@@ -450,6 +548,7 @@ export default function StrategyPage() {
           onDueDateChange={handleDueDateChange}
           onOpenCard={setSettingsCardId}
           onOpenComments={setCommentCardId}
+          onOpenImpact={setImpactCardId}
           onCreateItem={handleCreateItem}
           onDeleteCard={handleDeleteCard}
         />
@@ -474,6 +573,28 @@ export default function StrategyPage() {
         open={Boolean(commentCardId)}
         onOpenChange={(open) => !open && setCommentCardId(null)}
         onClosed={refreshCommentCounts}
+      />
+      <StrategyImpactSheet
+        cardId={impactCardId}
+        cardTitle={cards.find((c) => c.id === impactCardId)?.title}
+        projectId={canvasId}
+        cards={cards}
+        relationships={edges}
+        canEdit={canEdit}
+        open={Boolean(impactCardId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setImpactCardId(null);
+            setImpactReload((n) => n + 1);
+          }
+        }}
+        onOpenTrace={setTraceCardId}
+      />
+      <ImpactTraceDialog
+        nodeId={traceCardId}
+        projectId={canvasId}
+        open={Boolean(traceCardId)}
+        onOpenChange={(open) => !open && setTraceCardId(null)}
       />
     </div>
   );

@@ -33,7 +33,10 @@ export type RelationshipType =
   | 'Deterministic'
   | 'Probabilistic'
   | 'Causal'
-  | 'Compositional';
+  | 'Compositional'
+  // A loose, exploratory link: suspected but not yet validated (type/strength
+  // unknown). Firm it up later with evidence + a concrete type (CVS-165).
+  | 'Exploratory';
 
 export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
 
@@ -158,12 +161,33 @@ export interface Relationship {
   evidence: EvidenceItem[];
   notes?: string;
 
+  // Causal validation (only meaningful for type === 'Causal'): the checklist +
+  // its validated/refuted status, persisted so it surfaces on the edge (CVS-165).
+  causalMetadata?: CausalMetadata;
+
   // History for influence drift analysis
   history?: RelationshipHistoryEntry[];
 
   // Metadata
   createdAt: string;
   updatedAt: string;
+}
+
+export type CausalStatus =
+  | 'unvalidated'
+  | 'validating'
+  | 'validated'
+  | 'refuted';
+
+export interface CausalChecklistItem {
+  id: string;
+  checked: boolean;
+  notes?: string;
+}
+
+export interface CausalMetadata {
+  status: CausalStatus;
+  checklist: CausalChecklistItem[];
 }
 
 export interface RelationshipHistoryEntry {
@@ -192,6 +216,8 @@ export interface EvidenceItem {
   hypothesis?: string;
   summary: string;
   impactOnConfidence?: string;
+  /** Public read-only share (see setEvidencePublic + /embed/evidence/:id). */
+  isPublic?: boolean;
   createdAt?: string;
   createdBy?: string;
   updatedAt?: string;

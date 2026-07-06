@@ -470,6 +470,68 @@ export type Database = {
         }
         Relationships: []
       }
+      group_members: {
+        Row: {
+          added_at: string
+          added_by: string
+          group_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string
+          group_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string
+          group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_groups: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       metric_values: {
         Row: {
           change_percent: number | null
@@ -510,6 +572,145 @@ export type Database = {
             columns: ["tracked_metric_id"]
             isOneToOne: false
             referencedRelation: "tracked_metrics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_impact_contracts: {
+        Row: {
+          baseline_end: string | null
+          baseline_is_manual: boolean
+          baseline_start: string | null
+          confidence: string | null
+          created_at: string
+          created_by: string
+          expected_delta_unit: string | null
+          expected_delta_value: number | null
+          expected_direction: string | null
+          id: string
+          impact_status: string
+          measure_end: string | null
+          measure_start: string | null
+          owner_label: string | null
+          project_id: string | null
+          result_note: string | null
+          strategy_node_id: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          baseline_end?: string | null
+          baseline_is_manual?: boolean
+          baseline_start?: string | null
+          confidence?: string | null
+          created_at?: string
+          created_by?: string
+          expected_delta_unit?: string | null
+          expected_delta_value?: number | null
+          expected_direction?: string | null
+          id?: string
+          impact_status?: string
+          measure_end?: string | null
+          measure_start?: string | null
+          owner_label?: string | null
+          project_id?: string | null
+          result_note?: string | null
+          strategy_node_id: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          baseline_end?: string | null
+          baseline_is_manual?: boolean
+          baseline_start?: string | null
+          confidence?: string | null
+          created_at?: string
+          created_by?: string
+          expected_delta_unit?: string | null
+          expected_delta_value?: number | null
+          expected_direction?: string | null
+          id?: string
+          impact_status?: string
+          measure_end?: string | null
+          measure_start?: string | null
+          owner_label?: string | null
+          project_id?: string | null
+          result_note?: string | null
+          strategy_node_id?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_impact_contracts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_impact_contracts_strategy_node_id_fkey"
+            columns: ["strategy_node_id"]
+            isOneToOne: true
+            referencedRelation: "metric_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_metric_links: {
+        Row: {
+          card_id: string | null
+          contract_id: string
+          created_at: string
+          created_by: string
+          id: string
+          ref_source: string
+          role: string
+          tracked_metric_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          card_id?: string | null
+          contract_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          ref_source: string
+          role: string
+          tracked_metric_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          card_id?: string | null
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          ref_source?: string
+          role?: string
+          tracked_metric_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_metric_links_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "strategy_impact_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_metric_links_tracked_metric_id_fkey"
+            columns: ["tracked_metric_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_metrics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_metric_links_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "metric_cards"
             referencedColumns: ["id"]
           },
         ]
@@ -602,6 +803,184 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      connector_runs: {
+        Row: {
+          id: string
+          created_by: string
+          workspace_id: string | null
+          connected_account_id: string | null
+          connector_id: string
+          stream: string | null
+          event: string
+          status: string
+          sync_mode: string | null
+          pages: number
+          fetched: number
+          accepted: number
+          skipped: number
+          rejected: number
+          materialized: number
+          cursor: string | null
+          error_class: string | null
+          error_message: string | null
+          resumable: boolean
+          duration_ms: number | null
+          started_at: string | null
+          finished_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connected_account_id?: string | null
+          connector_id: string
+          stream?: string | null
+          event: string
+          status?: string
+          sync_mode?: string | null
+          pages?: number
+          fetched?: number
+          accepted?: number
+          skipped?: number
+          rejected?: number
+          materialized?: number
+          cursor?: string | null
+          error_class?: string | null
+          error_message?: string | null
+          resumable?: boolean
+          duration_ms?: number | null
+          started_at?: string | null
+          finished_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connected_account_id?: string | null
+          connector_id?: string
+          stream?: string | null
+          event?: string
+          status?: string
+          sync_mode?: string | null
+          pages?: number
+          fetched?: number
+          accepted?: number
+          skipped?: number
+          rejected?: number
+          materialized?: number
+          cursor?: string | null
+          error_class?: string | null
+          error_message?: string | null
+          resumable?: boolean
+          duration_ms?: number | null
+          started_at?: string | null
+          finished_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connector_runs_connected_account_id_fkey"
+            columns: ["connected_account_id"]
+            isOneToOne: false
+            referencedRelation: "connected_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      connected_accounts: {
+        Row: {
+          id: string
+          created_by: string
+          workspace_id: string | null
+          connector_id: string
+          auth_type: string
+          source_account_id: string | null
+          source_account_label: string | null
+          granted_scopes: string[]
+          status: string
+          status_detail: string | null
+          last_synced_at: string | null
+          last_query_at: string | null
+          revoked_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connector_id: string
+          auth_type: string
+          source_account_id?: string | null
+          source_account_label?: string | null
+          granted_scopes?: string[]
+          status?: string
+          status_detail?: string | null
+          last_synced_at?: string | null
+          last_query_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connector_id?: string
+          auth_type?: string
+          source_account_id?: string | null
+          source_account_label?: string | null
+          granted_scopes?: string[]
+          status?: string
+          status_detail?: string | null
+          last_synced_at?: string | null
+          last_query_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      connected_account_secrets: {
+        Row: {
+          account_id: string
+          access_token: string | null
+          refresh_token: string | null
+          api_key: string | null
+          token_type: string | null
+          expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          access_token?: string | null
+          refresh_token?: string | null
+          api_key?: string | null
+          token_type?: string | null
+          expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          access_token?: string | null
+          refresh_token?: string | null
+          api_key?: string | null
+          token_type?: string | null
+          expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connected_account_secrets_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "connected_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -872,12 +1251,14 @@ export type Database = {
       evidence_items: {
         Row: {
           card_id: string | null
+          content: Json | null
           created_at: string | null
           created_by: string
           date: string
           hypothesis: string | null
           id: string
           impact_on_confidence: string | null
+          is_public: boolean
           link: string | null
           owner_id: string | null
           project_id: string | null
@@ -889,12 +1270,14 @@ export type Database = {
         }
         Insert: {
           card_id?: string | null
+          content?: Json | null
           created_at?: string | null
           created_by: string
           date: string
           hypothesis?: string | null
           id?: string
           impact_on_confidence?: string | null
+          is_public?: boolean
           link?: string | null
           owner_id?: string | null
           project_id?: string | null
@@ -906,12 +1289,14 @@ export type Database = {
         }
         Update: {
           card_id?: string | null
+          content?: Json | null
           created_at?: string | null
           created_by?: string
           date?: string
           hypothesis?: string | null
           id?: string
           impact_on_confidence?: string | null
+          is_public?: boolean
           link?: string | null
           owner_id?: string | null
           project_id?: string | null
@@ -1105,6 +1490,39 @@ export type Database = {
           }
         ]
       }
+      mcp_audit_log: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_code: string | null
+          id: string
+          outcome: string
+          scope: string | null
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          outcome: string
+          scope?: string | null
+          tool_name: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          outcome?: string
+          scope?: string | null
+          tool_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       metric_card_tags: {
         Row: {
           id: string
@@ -1252,6 +1670,54 @@ export type Database = {
           },
         ]
       }
+      relationship_history: {
+        Row: {
+          changed_by: string
+          confidence: string | null
+          created_at: string
+          id: string
+          project_id: string | null
+          relationship_id: string
+          type: string | null
+          weight: number | null
+        }
+        Insert: {
+          changed_by?: string
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          relationship_id: string
+          type?: string | null
+          weight?: number | null
+        }
+        Update: {
+          changed_by?: string
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          relationship_id?: string
+          type?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relationship_history_relationship_id_fkey"
+            columns: ["relationship_id"]
+            isOneToOne: false
+            referencedRelation: "relationships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relationship_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       relationships: {
         Row: {
           id: string
@@ -1260,6 +1726,7 @@ export type Database = {
           type: string
           confidence: string
           weight: number | null
+          causal_metadata: Json | null
           description: string | null
           project_id: string
           created_at: string | null
@@ -1274,6 +1741,7 @@ export type Database = {
           type: string
           confidence: string
           weight?: number | null
+          causal_metadata?: Json | null
           description?: string | null
           project_id: string
           created_at?: string | null
@@ -1288,6 +1756,7 @@ export type Database = {
           type?: string
           confidence?: string
           weight?: number | null
+          causal_metadata?: Json | null
           description?: string | null
           project_id?: string
           created_at?: string | null
@@ -1369,6 +1838,66 @@ export type Database = {
           }
         ]
       }
+      tag_audiences: {
+        Row: {
+          group_id: string
+          tag_id: string
+        }
+        Insert: {
+          group_id: string
+          tag_id: string
+        }
+        Update: {
+          group_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tag_audiences_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tag_audiences_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_access_grants: {
+        Row: {
+          group_id: string
+          metric_card_id: string
+        }
+        Insert: {
+          group_id: string
+          metric_card_id: string
+        }
+        Update: {
+          group_id?: string
+          metric_card_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_access_grants_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_access_grants_metric_card_id_fkey"
+            columns: ["metric_card_id"]
+            isOneToOne: false
+            referencedRelation: "metric_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           id: string
@@ -1379,6 +1908,8 @@ export type Database = {
           created_by: string
           created_at: string | null
           updated_at: string | null
+          is_access: boolean
+          redaction_mode: string
         }
         Insert: {
           id?: string
@@ -1389,6 +1920,8 @@ export type Database = {
           created_by: string
           created_at?: string | null
           updated_at?: string | null
+          is_access?: boolean
+          redaction_mode?: string
         }
         Update: {
           id?: string
@@ -1399,6 +1932,8 @@ export type Database = {
           created_by?: string
           created_at?: string | null
           updated_at?: string | null
+          is_access?: boolean
+          redaction_mode?: string
         }
         Relationships: [
           {
@@ -1449,7 +1984,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      my_groups: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+      node_visible_to_me: {
+        Args: { card_id: string }
+        Returns: boolean
+      }
+      my_restricted_cards: {
+        Args: { pid: string }
+        Returns: string[]
+      }
+      cards_restricted_for_groups: {
+        Args: { pid: string; group_ids: string[] }
+        Returns: string[]
+      }
     }
     Enums: {
       [_ in never]: never

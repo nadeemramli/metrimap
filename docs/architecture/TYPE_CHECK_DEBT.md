@@ -28,7 +28,13 @@ It now runs **`tsc -b --noEmit`**, which actually checks the app. Turning that o
 - `lib/workers/compute.worker.ts` (2)
 - `features/canvas/components/CanvasDebugPanels.tsx`, `features/canvas/components/CanvasModals.tsx`, `features/canvas/components/panels/chart-panel/chart-builder.tsx`, `shared/lib/supabase/services/relationships.ts`, `shared/lib/supabase/services/version-history.ts` (1 each)
 
-## Quarantined files (37 files, 219 errors)
+## Quarantined files
+
+> Being discharged incrementally (CVS-72). ✅ Done: the 3 canvas stores
+> (`useEdgeStore`/`useNodeStore`/`useGroupStore`), `nodeTypes.ts`,
+> `edgeConnectionHandler.ts`, and the dead `lib/services/typed-*` cluster
+> (deleted — see below). The table lists what remains; counts drift as files
+> change — re-measure by stripping the directives.
 
 Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 
@@ -55,13 +61,7 @@ Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 | `features/canvas/components/settings/cards/ImportExportCard.tsx` | 1 | TS2339(1) |
 | `features/canvas/pages/CanvasPage.tsx` | 5 | TS6133(4) TS2322(1) |
 | `features/canvas/stores/useCanvasStore.ts` | 3 | TS2349(3) |
-| `features/canvas/stores/useEdgeStore.ts` | 1 | TS2322(1) |
-| `features/canvas/stores/useGroupStore.ts` | 2 | TS6133(1) TS2322(1) |
 | `features/canvas/stores/useNewNodeTypesStore.ts` | 7 | TS2353(4) TS6133(1) TS2352(1) TS2345(1) |
-| `features/canvas/stores/useNodeStore.ts` | 2 | TS2322(2) |
-| `lib/services/typed-canvas.ts` | 3 | TS2322(3) |
-| `lib/services/typed-operations.ts` | 23 | TS2345(20) TS2740(1) TS2352(1) TS2322(1) |
-| `lib/services/typed-projects.ts` | 3 | TS2345(1) TS2304(1) TS1484(1) |
 | `lib/stores/version-history/useVersionHistoryStore.ts` | 5 | TS2339(4) TS6133(1) |
 | `lib/workers/compute.worker.ts` | 8 | TS7006(6) TS2307(2) |
 | `shared/components/ui/chart.tsx` | 1 | TS2344(1) |
@@ -69,11 +69,9 @@ Paths are relative to `src/`. The "Codes" column shows `TSxxxx(count)`.
 | `shared/lib/supabase/services/newNodeTypes.ts` | 9 | TS2339(5) TS2353(4) |
 | `shared/lib/supabase/services/relationships.ts` | 1 | TS2307(1) |
 | `shared/lib/supabase/services/version-history.ts` | 19 | TS2769(13) TS2339(5) TS2307(1) |
-| `shared/types/nodeTypes.ts` | 2 | TS2304(2) |
-| `shared/utils/edgeConnectionHandler.ts` | 3 | TS6133(2) TS2339(1) |
 
 ## Notes
 
-- The Prisma/Zod **type-debt is concentrated in the validation/service layer** (`typed-operations.ts`, `collaboration.ts`, `version-history.ts`). Much of it stems from the generated Zod types being loose (now `// @ts-nocheck`-stamped), so these may partly resolve once the validation types are tightened by hand.
+- The Prisma/Zod **type-debt is concentrated in the validation/service layer** (`collaboration.ts`, `version-history.ts`). Much of it stems from the generated Zod types being loose (now `// @ts-nocheck`-stamped), so these may partly resolve once the validation types are tightened by hand. (The dead `lib/services/typed-*` cluster — the worst offender at 23 errors — was deleted, not fixed.)
 - `src/tests/xstate-react-integration.test.tsx` was **fixed, not quarantined** (its errors were two wrong import paths + unused vars).
 - Error-code cheat sheet: `TS6133` unused · `TS7006` implicit any · `TS2307` module not found · `TS2339` property missing · `TS2345`/`TS2322` not assignable · `TS2769` no overload matches · `TS2344` type-arg constraint · `TS2678` switch-case type mismatch.

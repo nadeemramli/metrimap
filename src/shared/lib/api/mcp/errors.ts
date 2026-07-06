@@ -5,6 +5,8 @@ export type McpErrorCode =
   | 'unauthenticated'
   | 'forbidden'
   | 'not_found'
+  | 'rate_limited'
+  | 'payload_too_large'
   | 'internal';
 
 export class McpToolError extends Error {

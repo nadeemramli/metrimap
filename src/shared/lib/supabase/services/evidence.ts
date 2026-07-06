@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
-import type { Database, Tables } from '../types';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
+import type { Database, Json, Tables } from '../types';
 import type { EvidenceItem } from '@/shared/types';
 
 // Card-scoped evidence (task/action nodes). Relationship evidence lives in
@@ -21,7 +21,27 @@ function rowToEvidence(row: Tables<'evidence_items'>): EvidenceItem {
     hypothesis: row.hypothesis || undefined,
     summary: row.summary,
     impactOnConfidence: row.impact_on_confidence || undefined,
+    isPublic: row.is_public ?? false,
+    content: (row.content as EvidenceItem['content']) ?? undefined,
   };
+}
+
+/**
+ * Toggle an evidence item's public read-only share. When on, anyone with the
+ * link can view it at /embed/evidence/:id (RLS: is_public disjunct). Writes stay
+ * project-access gated, so only editors can flip this.
+ */
+export async function setEvidencePublic(
+  id: string,
+  isPublic: boolean,
+  client?: Client
+): Promise<void> {
+  const c = resolveClient(client);
+  const { error } = await c
+    .from('evidence_items')
+    .update({ is_public: isPublic })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
 }
 
 /** Evidence attached to a metric card, newest first. */
@@ -29,7 +49,7 @@ export async function getCardEvidence(
   cardId: string,
   client?: Client
 ): Promise<EvidenceItem[]> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('evidence_items')
     .select('*')
@@ -37,6 +57,21 @@ export async function getCardEvidence(
     .order('date', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map(rowToEvidence);
+}
+
+/** A single evidence item by id (any scope), or null — the notebook's DB source. */
+export async function getEvidenceItemById(
+  id: string,
+  client?: Client
+): Promise<EvidenceItem | null> {
+  const c = resolveClient(client);
+  const { data, error } = await c
+    .from('evidence_items')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? rowToEvidence(data) : null;
 }
 
 /** Create an evidence item attached to a card. */
@@ -47,7 +82,7 @@ export async function createCardEvidence(
   userId: string,
   client?: Client
 ): Promise<EvidenceItem> {
-  const c = client || supabase();
+  const c = resolveClient(client);
   const { data, error } = await c
     .from('evidence_items')
     .insert({
@@ -61,6 +96,37 @@ export async function createCardEvidence(
       hypothesis: evidence.hypothesis ?? null,
       summary: evidence.summary,
       impact_on_confidence: evidence.impactOnConfidence ?? null,
+      content: (evidence.content ?? null) as Json,
+      created_by: userId,
+    })
+    .select('*')
+    .single();
+  if (error) throw new Error(error.message);
+  return rowToEvidence(data);
+}
+
+/** Create a general project-scoped evidence item (no card / relationship). Used
+ *  by the Evidence Repository "New Evidence" so it's DB-backed, not store-only. */
+export async function createProjectEvidence(
+  evidence: EvidenceItem,
+  projectId: string,
+  userId: string,
+  client?: Client
+): Promise<EvidenceItem> {
+  const c = resolveClient(client);
+  const { data, error } = await c
+    .from('evidence_items')
+    .insert({
+      project_id: projectId,
+      title: evidence.title,
+      type: evidence.type,
+      date: evidence.date,
+      owner_id: evidence.owner || null,
+      link: evidence.link ?? null,
+      hypothesis: evidence.hypothesis ?? null,
+      summary: evidence.summary || evidence.title,
+      impact_on_confidence: evidence.impactOnConfidence ?? null,
+      content: (evidence.content ?? null) as Json,
       created_by: userId,
     })
     .select('*')

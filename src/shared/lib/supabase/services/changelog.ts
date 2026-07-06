@@ -1,6 +1,6 @@
 import { CreateChangelogSchema } from '@/shared/lib/validation/zod';
+import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '../client';
 import type { Database, Tables, TablesInsert } from '../types';
 
 export type ChangelogRow = Tables<'changelog'>;
@@ -62,7 +62,7 @@ export async function logChangelogEntry(
     console.error('Validation error creating changelog entry:', e);
     throw e;
   }
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
 
   const { data, error } = await client
     .from('changelog')
@@ -84,7 +84,7 @@ export async function getChangelogForTarget(
   target: string = 'relationship',
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('changelog')
     .select('*')
@@ -106,7 +106,7 @@ export async function getProjectChangelog(
   limit?: number,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   let query = client
     .from('changelog')
     .select('*')
@@ -133,7 +133,7 @@ export async function getWorkspaceChangelog(
   limit: number = 100,
   authenticatedClient?: SupabaseClient<Database>
 ) {
-  const client = authenticatedClient || supabase();
+  const client = resolveClient(authenticatedClient);
   const { data, error } = await client
     .from('changelog')
     .select('*')

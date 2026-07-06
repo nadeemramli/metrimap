@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { createMetrimapApi } from '../metrimapApi';
 import {
   CreateCanvasInput,
+  CreateEvidenceInput,
   CreateRelationshipInput,
   CreateTypedNodeInput,
   LayoutTreeInput,
@@ -18,6 +19,8 @@ import {
 } from '../schemas';
 import type { McpAuthContext, McpScope } from './authContext';
 import { McpToolError } from './errors';
+import type { AuditSink } from './audit';
+import { enforcePayloadSize, enforceRateLimit, type RateLimiter } from './guards';
 
 export interface McpTool {
   name: string;
@@ -53,7 +56,10 @@ export const TOOLS: McpTool[] = [
     description:
       "List the authenticated user's metric-tree canvases (projects). Returns ids to use in other tools.",
     scope: 'read',
-    inputSchema: z.object({}).strict(),
+    // No `.strict()`: the MCP SDK / claude.ai connector attaches metadata keys to
+    // the arguments of a no-param call; strict validation rejects them. Default
+    // (strip-unknown) tolerates that and still accepts a genuinely empty payload.
+    inputSchema: z.object({}),
     handler: (_a, ctx) => api(ctx).canvases.list(),
   }),
   defineTool({
@@ -177,6 +183,16 @@ export const TOOLS: McpTool[] = [
     inputSchema: idInput,
     handler: (a, ctx) => api(ctx).relationships.delete(a.id),
   }),
+  // --- Write: evidence ---
+  defineTool({
+    name: 'create_evidence',
+    title: 'Create evidence',
+    description:
+      'Attach an evidence item to a card or a relationship. Provide projectId, exactly one of cardId or relationshipId, plus title, type (Experiment / Analysis / Notebook / External Research / User Interview) and summary. Optional: date, owner, hypothesis, link, content (EditorJS JSON). Returns the evidence id.',
+    scope: 'write',
+    inputSchema: CreateEvidenceInput,
+    handler: (a, ctx) => api(ctx).evidence.create(a),
+  }),
   // --- Write: values ---
   defineTool({
     name: 'push_values',
@@ -239,16 +255,34 @@ export function listTools() {
   }));
 }
 
+/** Abuse controls + audit, injected by the transport (CVS-104). All optional so
+ *  dispatch stays pure/testable; the deployed server always supplies them. */
+export interface DispatchGuards {
+  rateLimiter?: RateLimiter;
+  maxPayloadBytes?: number;
+  audit?: AuditSink;
+}
+
 /**
- * Validate + run one tool call under the caller's auth context. Throws
- * McpToolError (structured) for unknown tool / bad scope / invalid input /
- * downstream failure — the transport maps these to MCP error responses.
+ * Validate + run one tool call under the caller's auth context, with optional
+ * abuse controls + audit. Throws McpToolError (structured) for payload-too-large
+ * / rate-limited / unknown tool / bad scope / invalid input / downstream failure
+ * — the transport maps these to MCP error responses. Failures are clean (a
+ * rejected call writes nothing), so a tree is never partially corrupted.
  */
 export async function dispatchTool(
   name: string,
   rawArgs: unknown,
-  ctx: McpAuthContext
+  ctx: McpAuthContext,
+  guards: DispatchGuards = {}
 ): Promise<unknown> {
+  const start = Date.now();
+
+  // Transport-level guards (before we touch a tool): cap payload, then rate-limit
+  // per acting user.
+  if (guards.maxPayloadBytes !== undefined) enforcePayloadSize(rawArgs, guards.maxPayloadBytes);
+  if (guards.rateLimiter) enforceRateLimit(guards.rateLimiter, ctx.userId);
+
   const tool = BY_NAME.get(name);
   if (!tool) throw new McpToolError('not_found', `Unknown tool: ${name}`);
 
@@ -256,10 +290,27 @@ export async function dispatchTool(
     throw new McpToolError('forbidden', `Tool "${name}" requires the write scope`);
   }
 
+  const audit = (outcome: 'ok' | 'error', errorCode: string | null) => {
+    if (!guards.audit) return;
+    void guards.audit
+      .record({
+        userId: ctx.userId,
+        tool: name,
+        scope: tool.scope,
+        outcome,
+        errorCode,
+        durationMs: Date.now() - start,
+      })
+      .catch(() => {
+        /* audit is best-effort — never fail a call because logging failed */
+      });
+  };
+
   let args: unknown;
   try {
     args = tool.inputSchema.parse(rawArgs ?? {});
   } catch (e) {
+    audit('error', 'invalid_input');
     throw new McpToolError(
       'invalid_input',
       `Invalid input for "${name}"`,
@@ -268,9 +319,15 @@ export async function dispatchTool(
   }
 
   try {
-    return await tool.handler(args, ctx);
+    const result = await tool.handler(args, ctx);
+    audit('ok', null);
+    return result;
   } catch (e) {
-    if (e instanceof McpToolError) throw e;
+    if (e instanceof McpToolError) {
+      audit('error', e.code);
+      throw e;
+    }
+    audit('error', 'internal');
     throw new McpToolError('internal', e instanceof Error ? e.message : String(e));
   }
 }

@@ -16,12 +16,13 @@ CVS). See the **Docs policy** in [`../AGENTS.md`](../AGENTS.md).
 - **[database/](database/)** — Prisma + Zod, Supabase client singleton, RLS solution + testing, [security advisors triage](database/SECURITY_ADVISORS.md)
 - **[environment/](environment/)** — environment setup + secrets guide
 - **[state-management/](state-management/)** — XState patterns
+- **[testing/](testing/)** — [E2E / visual-verification harness (Playwright + Clerk)](testing/e2e-visual-verification.md)
 - **features/ (infra only)** — [system-health-intake](features/system-health-intake.md),
   [linear-setup](features/linear-setup.md), [linear-initiatives](features/linear-initiatives.md),
   [userback-customer-requests](features/userback-customer-requests.md),
   [security-scanning](features/security-scanning.md),
   [programmatic-api](features/programmatic-api.md),
-  [mcp-server](features/mcp-server.md),
+  [mcp-server](features/mcp-server.md), [mcp-connect](features/mcp-connect.md),
   [metrics-api](features/metrics-api.md)
 
 Anything product-facing (feature narratives, changelogs, methodology, PRD) belongs

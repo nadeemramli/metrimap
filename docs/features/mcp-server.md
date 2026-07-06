@@ -29,18 +29,77 @@ Transport-agnostic and unit-tested (no server/DB needed):
   `unauthenticated` / `forbidden` / `not_found` / `internal`). `listTools()` feeds
   `tools/list`.
 - **`authContext.ts`** — the **auth seam**: `McpAuthContext { userId, client, scopes }`
-  and the `AuthContextResolver` type that **CVS-99** implements (OAuth token
-  exchange / API-key lookup → a Clerk-authenticated, RLS-scoped client). Until
-  then `unimplementedAuthResolver` refuses calls. The service-role key is never
-  used.
+  and the `AuthContextResolver` type. Service-role key is never used.
+- **`auth/` (CVS-99)** — the **API-key resolver**: `createApiKeyAuthResolver` reads
+  `Authorization: Bearer <key>` (or `x-api-key`), hashes it (SHA-256, same as
+  `apiKeys.ts`), resolves the owner via the `mcp_resolve_api_key` SECURITY DEFINER
+  RPC (anon-callable, exact-hash match, bumps `last_used_at`), then **mints a
+  short-lived Supabase JWT** (`mintSupabaseJwt`, HS256 with the Supabase JWT
+  secret) whose `sub`/`o.id` claims make every DB call run under that user's RLS.
+  Works for Codex/CLI and claude.ai via a static token. **OAuth "Connect"
+  sign-in is the follow-up** (see below).
 - **`errors.ts`** — the structured error codes.
 
 Tools wired (finalized in **CVS-101**): `list_canvases`, `get_tree`, `list_nodes`,
 `list_relationships`, `create_canvas`, `update_canvas`, `delete_canvas`,
 `create_metric`, `create_value`, `create_action`, `create_driver_node`,
 `update_node`, `delete_node`, `create_relationship`, `delete_relationship`,
-`push_values`, `layout_tree` (Dagre auto-layout so pushed trees render sensibly),
-and data ingest — `stage_series`, `upload_csv`, `materialize` (CVS-102).
+`create_evidence`, `push_values`, `layout_tree` (Dagre auto-layout so pushed
+trees render sensibly), and data ingest — `stage_series`, `upload_csv`,
+`materialize` (CVS-102).
+
+### `create_evidence` (CVS-251)
+
+Attaches an evidence item to a **card** or a **relationship** (RLS-scoped,
+`created_by` = the authed user). Input: `projectId`, exactly one of `cardId` /
+`relationshipId`, plus `title`, `type` (`Experiment` / `Analysis` / `Notebook` /
+`External Research` / `User Interview`) and `summary`; optional `date`, `owner`,
+`hypothesis`, `link`, `content` (EditorJS JSON). Returns the evidence id. Backed
+by `metrimapApi.evidence.create` → `createCardEvidence` / `createEvidenceItem`.
+
+> **Lane ownership / coordination.** `create_evidence` is owned by the
+> **relationship + evidence lane** (CVS-251), not the integrations/MCP lane, to
+> keep the evidence surface consistent with the app's evidence services and the
+> public-share work (CVS-248). It is an additive change to the shared registry +
+> API + schemas — the integrations agent should **not** add a duplicate evidence
+> tool. Any further evidence MCP surface (update/delete/list evidence) should be
+> coordinated on CVS-251. The deployed server (`mcp.canvasm.app`) picks it up on
+> the next redeploy of `mcp-server/`.
+
+## Security & abuse controls (CVS-104)
+
+Injected into `dispatchTool(name, args, ctx, guards)` so they stay transport-
+agnostic and unit-tested; the deployed server always supplies them:
+
+- **RLS everywhere** — every tool runs through `createMetrimapApi(client, userId)`;
+  the client is the caller's Clerk-scoped client, so no cross-tenant access and
+  the service-role key is never used.
+- **Scopes** — tools declare `read`/`write`; `dispatchTool` rejects a `write` tool
+  when the connection lacks the `write` scope (`forbidden`). Per-key scopes come
+  from CVS-89.
+- **Rate limiting** — `RateLimiter` (token bucket) keyed by user → `rate_limited`.
+  In-memory per instance; a multi-instance deploy should back it with
+  Postgres/Redis.
+- **Payload caps** — `enforcePayloadSize` (default 2 MB, above the 1 MB CSV Zod
+  cap) → `payload_too_large`; per-tool Zod schemas cap the rest.
+- **Audit log** — `supabaseAuditSink` writes every call (who/what/when/outcome/
+  duration) to `public.mcp_audit_log` (RLS-scoped, append-only), best-effort so
+  logging never fails a call.
+- **Safe failure** — a rejected call (bad scope/input/rate/size) runs no handler,
+  so a tree is never partially corrupted; downstream errors surface as structured
+  `McpToolError`s.
+
+Wire them in the adapter:
+
+```ts
+import { RateLimiter, supabaseAuditSink, DEFAULT_MAX_PAYLOAD_BYTES } from '@/shared/lib/api/mcp';
+const rateLimiter = new RateLimiter(120, 2); // 120 burst, 2/s sustained per user
+// per request, after resolving ctx:
+const guards = { rateLimiter, maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES, audit: supabaseAuditSink(ctx.client) };
+await dispatchTool(t.name, args, ctx, guards);
+```
+
+Remaining before public exposure: a **load/security review** (AC) once deployed.
 
 ## Transport + deploy — the remaining work (owner decision)
 
@@ -59,7 +118,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { listTools, dispatchTool, McpToolError } from '@/shared/lib/api/mcp';
 
-const resolveAuth = /* CVS-99 AuthContextResolver */;
+// CVS-99 API-key resolver (needs SUPABASE_JWT_SECRET at deploy):
+import { createApiKeyAuthResolver, supabaseApiKeyLookup } from '@/shared/lib/api/mcp';
+import { createClient } from '@supabase/supabase-js';
+const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const resolveAuth = createApiKeyAuthResolver({
+  jwtSecret: SUPABASE_JWT_SECRET, supabaseUrl: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY,
+  lookupKey: supabaseApiKeyLookup(anon),
+});
 
 export async function handler(req, res) {
   const server = new McpServer({ name: 'metrimap', version: '0.1.0' });
@@ -67,7 +133,8 @@ export async function handler(req, res) {
     server.registerTool(t.name, { title: t.title, description: t.description, inputSchema: t.inputSchema },
       async (args) => {
         const ctx = await resolveAuth(req);                 // per-request, RLS-scoped
-        try { return { content: [{ type: 'text', text: JSON.stringify(await dispatchTool(t.name, args, ctx)) }] }; }
+        const guards = { rateLimiter, maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES, audit: supabaseAuditSink(ctx.client) };
+        try { return { content: [{ type: 'text', text: JSON.stringify(await dispatchTool(t.name, args, ctx, guards)) }] }; }
         catch (e) { const code = e instanceof McpToolError ? e.code : 'internal';
           return { isError: true, content: [{ type: 'text', text: `${code}: ${(e as Error).message}` }] }; }
       });
@@ -84,6 +151,49 @@ Plus a `GET /health` returning `{ ok: true, version }`.
 Reachable at `https://mcp.canvasm.app/mcp`, addable via
 `claude mcp add --transport http metrimap https://mcp.canvasm.app/mcp` and the
 claude.ai connector. Add request logging + a `mcp_audit_log` (CVS-104).
+
+## OAuth "Connect" — shipped
+
+The claude.ai / Claude Desktop connectors authenticate via **OAuth only** (no
+static-key field), so "paste the URL and sign in" needs OAuth. **Clerk is the
+OAuth 2.1 authorization server** (it supports MCP + Dynamic Client Registration);
+this server is the **OAuth resource server**. We host no authorization server —
+Clerk handles sign-in, DCR, `/authorize`, `/token`, and PKCE.
+
+What this server does (`mcp-server/server.ts` + `mcp-server/clerkAuth.ts`):
+- Serves **RFC 9728 Protected Resource Metadata** at
+  `GET /.well-known/oauth-protected-resource` (via `@clerk/mcp-tools`), pointing
+  `authorization_servers` at the Clerk instance (`clerk.canvasm.app`).
+- Returns **`401` + `WWW-Authenticate: Bearer resource_metadata="…"`** for any
+  `/mcp` request without a valid credential — this is what makes a connector
+  start the OAuth handshake. (Gating `initialize`/`tools/list` is intentional and
+  required; CLI/API-key clients always send the header, so they're unaffected.)
+- Verifies the incoming Clerk OAuth access token with `@clerk/backend`
+  (`authenticateRequest`, `acceptsToken: 'oauth_token'`) → the Clerk user id →
+  the same `mintSupabaseJwt` seam → RLS-scoped client. Identical downstream shape
+  to the API-key path; a **composite resolver** routes `mk_live_…` keys to the
+  API-key path and everything else to OAuth.
+
+**v1 = personal scope.** The minted JWT carries only `sub` (the Clerk user id),
+no `o.id`. RLS is additive (`created_by = requesting_user_id()` is always an OR
+branch), so an OAuth user sees/edits every canvas **they created**. Workspace-
+shared canvases (needing `requesting_org_id()`) are a v2 follow-up (a
+default-workspace resolver would pass `orgId` into `mintSupabaseJwt`). The API-key
+path keeps full workspace scope because the key row carries `workspace_id`.
+
+**Clerk Dashboard prerequisites:** create a production **secret key**, enable
+**Dynamic Client Registration** (OAuth applications), configure scopes
+(`profile`, `email`), and confirm the FAPI domain `clerk.canvasm.app`.
+
+## Deploy secrets (CVS-99)
+
+Server env (never client):
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY` (public), **`SUPABASE_JWT_SECRET`**
+  (Supabase → Project Settings → API → JWT Secret) to sign the per-user tokens.
+- **`CLERK_SECRET_KEY`** + **`CLERK_PUBLISHABLE_KEY`** for the OAuth path (verify
+  Clerk tokens + build the resource metadata).
+- Optional **`MCP_PUBLIC_URL`** (default `https://mcp.canvasm.app`) — the OAuth
+  resource id / metadata origin.
 
 ## Status vs acceptance criteria
 - [x] Tool registry wired to the API layer; structured errors — **done + tested**.

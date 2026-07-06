@@ -1,21 +1,32 @@
 import { useCanvasStore } from '@/lib/stores';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { useVisibilityStore } from '@/shared/stores/useVisibilityStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/shared/queries/keys';
 import {
-  getMetricValuesByMetricIds,
-  listTrackedMetrics,
-} from '@/shared/lib/supabase/services/trackedMetrics';
+  useDashboardData,
+  useTrackedMetricValues,
+} from '@/features/dashboard/hooks/useDashboardData';
 import {
   createWidget,
   deleteWidget,
-  listWidgets,
   updateLayouts,
   updateWidget,
 } from '@/shared/lib/supabase/services/dashboards';
-import { getProjectById } from '@/shared/lib/supabase/services/projects';
-import { getCanvasNodesByProject } from '@/shared/lib/supabase/services/canvasNodes';
+import {
+  linkedStrategyForWidget,
+  type WidgetStrategyLink,
+} from '@/features/strategy/impact/widgetLinks';
+import { measuredByNode } from '@/features/strategy/impact/measurement';
+import { ImpactTraceDialog } from '@/features/strategy/components/ImpactTraceDialog';
+import type {
+  ImpactContract,
+  MetricLink,
+} from '@/features/strategy/impact/types';
 import type {
   CanvasNode,
   GroupNode,
@@ -46,13 +57,13 @@ import {
   ChartSpline,
   Eye,
   LayoutGrid,
-  Loader2,
+  Lock,
   Pencil,
   Plus,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -63,25 +74,48 @@ const ROW_HEIGHT = 40;
 
 const CUSTOM_VIEW = '__custom__';
 
+// Stable empty defaults so derived useMemos don't churn on every render while the query
+// resolves (a fresh `[]`/`{}` each render would defeat memoization).
+const EMPTY_NAMES: Record<string, string> = {};
+const EMPTY_CARDS: MetricCard[] = [];
+const EMPTY_GROUPS: GroupNode[] = [];
+const EMPTY_NODES: CanvasNode[] = [];
+const EMPTY_IMPACT: Array<{ contract: ImpactContract; links: MetricLink[] }> = [];
+const EMPTY_VALUES: Record<string, MetricValue[]> = {};
+
 export default function DashboardPage() {
   const { canvasId } = useParams();
+  const navigate = useNavigate();
   const client = useClerkSupabase();
   const storeCanvas = useCanvasStore((s) => s.canvas);
+  const queryClient = useQueryClient();
 
-  const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
-  const [trackedNames, setTrackedNames] = useState<Record<string, string>>({});
-  const [trackedValues, setTrackedValues] = useState<
-    Record<string, MetricValue[]>
-  >({});
+  // Server state via TanStack Query (CVS-70): cached + stale-while-revalidate, so
+  // revisiting the dashboard is instant instead of refetching behind a spinner.
+  const { data: dashboardData, isLoading } = useDashboardData(canvasId);
+  const trackedNames = dashboardData?.trackedNames ?? EMPTY_NAMES;
   // Persisted nodes + groups for this canvas (drives the group dashboards).
-  const [loadedCards, setLoadedCards] = useState<MetricCard[]>([]);
-  const [loadedGroups, setLoadedGroups] = useState<GroupNode[]>([]);
-  const [chartNodes, setChartNodes] = useState<CanvasNode[]>([]);
-  const [loading, setLoading] = useState(true);
+  const loadedCards = dashboardData?.cards ?? EMPTY_CARDS;
+  const loadedGroups = dashboardData?.groups ?? EMPTY_GROUPS;
+  const chartNodes = dashboardData?.chartNodes ?? EMPTY_NODES;
+  const impactEntries = dashboardData?.impactEntries ?? EMPTY_IMPACT;
+
+  // Widgets stay in local state so drag/resize/create/remove feel instant; seeded from the
+  // query and re-seeded whenever a mutation invalidates and the bundle refetches.
+  const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
+  useEffect(() => {
+    if (dashboardData) setWidgets(dashboardData.widgets);
+  }, [dashboardData]);
+
+  const invalidateDashboard = () => {
+    if (canvasId) void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.data(canvasId) });
+  };
+
   const [editMode, setEditMode] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardWidget | null>(null);
   const [view, setView] = useState<string>(CUSTOM_VIEW);
+  const [traceNodeId, setTraceNodeId] = useState<string | null>(null);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,6 +126,23 @@ export default function DashboardPage() {
     () => (storeMatches ? (storeCanvas?.nodes ?? []) : loadedCards),
     [storeMatches, storeCanvas?.nodes, loadedCards]
   );
+
+  // Node-level visibility (CVS-123): a dashboard surfaces only what the viewer
+  // may see. hide_node cards are already RLS-filtered from the project load;
+  // this masks hide_value cards from widgets + the group view, and tells the
+  // owner how many are hidden. Reuses the same resolver as the canvas (CVS-122).
+  const ensureVisibility = useVisibilityStore((s) => s.ensureLoaded);
+  const restrictedSet = useVisibilityStore(
+    (s) => s.restrictedByProject[canvasId ?? '']
+  );
+  useEffect(() => {
+    if (client && canvasId) ensureVisibility(canvasId, client);
+  }, [client, canvasId, ensureVisibility]);
+  const visibleCards: MetricCard[] = useMemo(
+    () => (restrictedSet ? cards.filter((c) => !restrictedSet.has(c.id)) : cards),
+    [cards, restrictedSet]
+  );
+  const restrictedCount = cards.length - visibleCards.length;
   const groups: GroupNode[] = useMemo(
     () =>
       storeMatches && (storeCanvas?.groups?.length ?? 0) > 0
@@ -99,37 +150,6 @@ export default function DashboardPage() {
         : loadedGroups,
     [storeMatches, storeCanvas?.groups, loadedGroups]
   );
-
-  // Load widgets + the catalog (names) + the project (nodes/groups) for this canvas.
-  useEffect(() => {
-    if (!client || !canvasId) return;
-    setLoading(true);
-    Promise.all([
-      listWidgets(canvasId, client),
-      listTrackedMetrics(client),
-      getProjectById(canvasId, client).catch(() => null),
-      getCanvasNodesByProject(canvasId, client).catch(
-        () => [] as CanvasNode[]
-      ),
-    ])
-      .then(([w, metrics, project, nodes]) => {
-        setWidgets(w);
-        setTrackedNames(
-          Object.fromEntries(metrics.map((m) => [m.id, m.name]))
-        );
-        setLoadedCards(project?.nodes ?? []);
-        setLoadedGroups(project?.groups ?? []);
-        setChartNodes(nodes.filter((n) => n.nodeType === 'chartNode'));
-      })
-      .catch(() => {
-        setWidgets([]);
-        setTrackedNames({});
-        setLoadedCards([]);
-        setLoadedGroups([]);
-        setChartNodes([]);
-      })
-      .finally(() => setLoading(false));
-  }, [client, canvasId]);
 
   // Default to the first group's dashboard when groups exist, else Custom.
   useEffect(() => {
@@ -153,22 +173,41 @@ export default function DashboardPage() {
         (w.config.trackedMetricIds ?? []).forEach((id) => ids.add(id));
       }
     });
-    return Array.from(ids);
-  }, [widgets]);
-
-  useEffect(() => {
-    if (!client || referencedTrackedIds.length === 0) {
-      setTrackedValues({});
-      return;
+    // Also the metrics referenced by impact contracts, so measured deltas resolve.
+    for (const { links } of impactEntries) {
+      for (const l of links) if (l.refSource === 'tracked' && l.trackedMetricId) ids.add(l.trackedMetricId);
     }
-    getMetricValuesByMetricIds(referencedTrackedIds, client)
-      .then(setTrackedValues)
-      .catch(() => setTrackedValues({}));
-  }, [client, referencedTrackedIds]);
+    return Array.from(ids);
+  }, [widgets, impactEntries]);
+
+  const { data: trackedValues = EMPTY_VALUES } = useTrackedMetricValues(referencedTrackedIds);
 
   const sources: WidgetDataSources = useMemo(
-    () => ({ cards, trackedValues, trackedNames }),
-    [cards, trackedValues, trackedNames]
+    () => ({ cards: visibleCards, trackedValues, trackedNames }),
+    [visibleCards, trackedValues, trackedNames]
+  );
+
+  // Linked Strategy bets per widget (CVS-172). currentPeriod drives review-ready.
+  const currentPeriod = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const strategyLinksByWidget = useMemo(() => {
+    const map: Record<string, WidgetStrategyLink[]> = {};
+    for (const w of widgets) {
+      map[w.id] = linkedStrategyForWidget(w, impactEntries, cards);
+    }
+    return map;
+  }, [widgets, impactEntries, cards]);
+
+  // Measured deltas per strategy node (CVS-176), for the badge overlay.
+  const measuredMap = useMemo(
+    () => measuredByNode(impactEntries, cards, trackedValues),
+    [impactEntries, cards, trackedValues]
+  );
+
+  const openStrategyItem = useMemo(
+    () => () => {
+      if (canvasId) navigate(`/canvas/${canvasId}/strategy`);
+    },
+    [canvasId, navigate]
   );
 
   const trackedOptions: MetricOption[] = useMemo(
@@ -278,6 +317,7 @@ export default function DashboardPage() {
         );
         setWidgets((prev) => [...prev, created]);
       }
+      invalidateDashboard();
     } catch {
       toast.error('Failed to save widget');
     }
@@ -289,6 +329,7 @@ export default function DashboardPage() {
     setWidgets((w) => w.filter((x) => x.id !== id));
     try {
       await deleteWidget(id, client);
+      invalidateDashboard();
     } catch {
       setWidgets(prev);
       toast.error('Failed to remove widget');
@@ -309,6 +350,7 @@ export default function DashboardPage() {
         client
       );
       setWidgets((prev) => [...prev, created]);
+      invalidateDashboard();
       toast.success('Chart added to dashboard');
     } catch {
       toast.error('Failed to import chart');
@@ -374,10 +416,12 @@ export default function DashboardPage() {
     deps: [editMode, isCustom, chartNodes, widgets],
   });
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-xl" />
+        ))}
       </div>
     );
   }
@@ -457,8 +501,16 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {restrictedCount > 0 && (
+        <div className="mb-3 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700">
+          <Lock className="h-3.5 w-3.5" />
+          {restrictedCount} restricted metric{restrictedCount === 1 ? '' : 's'}{' '}
+          hidden from this view.
+        </div>
+      )}
+
       {activeGroup ? (
-        <GroupDashboard group={activeGroup} cards={cards} />
+        <GroupDashboard group={activeGroup} cards={visibleCards} />
       ) : widgets.length === 0 ? (
         <Card className="p-10">
           <div className="space-y-3 text-center">
@@ -502,6 +554,11 @@ export default function DashboardPage() {
                 editMode={editMode}
                 onConfigure={openConfigure}
                 onRemove={handleRemove}
+                strategyLinks={strategyLinksByWidget[w.id]}
+                measuredMap={measuredMap}
+                currentPeriod={currentPeriod}
+                onOpenStrategy={openStrategyItem}
+                onOpenTrace={setTraceNodeId}
               />
             </div>
           ))}
@@ -515,6 +572,13 @@ export default function DashboardPage() {
         trackedOptions={trackedOptions}
         cardOptions={cardOptions}
         onSave={handleSave}
+      />
+
+      <ImpactTraceDialog
+        nodeId={traceNodeId}
+        projectId={canvasId}
+        open={Boolean(traceNodeId)}
+        onOpenChange={(o) => !o && setTraceNodeId(null)}
       />
     </div>
   );
