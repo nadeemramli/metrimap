@@ -2446,9 +2446,10 @@ function CanvasPageInner() {
             <OffscreenNodeIndicator />
             <CanvasCursorsLayer sendCursor={sendCursor} />
 
-            {/* Read-only / comment-only banner for restricted collaborators. */}
+            {/* Read-only / comment-only banner for restricted collaborators.
+                Offset below the now-centered top toolbar so they don't overlap. */}
             {!permission.loading && !canEdit && (
-              <Panel position="top-center">
+              <Panel position="top-center" style={{ marginTop: 56 }}>
                 <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 shadow-sm">
                   <Eye className="h-3.5 w-3.5" />
                   {permission.canComment
@@ -2458,9 +2459,9 @@ function CanvasPageInner() {
               </Panel>
             )}
 
-            {/* Top toolbar — anchored top-right (CVS-32) */}
+            {/* Top toolbar — anchored top-center of the canvas */}
             <Panel
-              position="top-right"
+              position="top-center"
               className="pointer-events-auto"
               style={{ zIndex: 1010 }}
             >
@@ -2537,10 +2538,10 @@ function CanvasPageInner() {
               </Panel>
             )}
 
-            {/* Groups fly-out — toggled from the consolidated toolbar; offset
-                below the now top-right toolbar so they don't overlap (CVS-32) */}
+            {/* Groups fly-out — toggled from the toolbar. Sits at the top-right
+                (the toolbar moved to top-center, so no offset needed). */}
             {state.toolbarMode === 'edit' && showGroupsPanel && (
-              <Panel position="top-right" style={{ marginTop: 72 }}>
+              <Panel position="top-right">
                 <div className="flex flex-col items-end gap-2">
                   {showGroupsPanel && (
                     <GroupsPanel
