@@ -1,9 +1,7 @@
 import { OrganizationSwitcher } from '@clerk/react-router';
 import {
   Activity,
-  Compass,
   Database,
-  Gauge,
   Home,
   Search,
   Sparkles,
@@ -33,12 +31,10 @@ import {
   SidebarTrigger,
 } from '@/shared/components/ui/sidebar';
 
-// Primary workspace navigation. Explore/Operate deep-link into the home tabs
-// (the tab reader lands in the CVS-156 follow-up); the rest are real routes.
+// Primary workspace navigation. Operate/Explore live on the home page's own
+// tab pill (and at the canvas level), so the rail keeps a single Home entry.
 const NAV = [
   { label: 'Home', icon: Home, to: '/', match: (p: string) => p === '/' },
-  { label: 'Explore', icon: Compass, to: '/?view=explore' },
-  { label: 'Operate', icon: Gauge, to: '/?view=operate' },
   { label: 'Data', icon: Database, to: '/catalog' },
   { label: 'Activity', icon: Activity, to: '/feed' },
   { label: 'Agent', icon: Sparkles, to: '/settings/connect' },
