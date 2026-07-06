@@ -2431,16 +2431,15 @@ function CanvasPageInner() {
                   ? [1, 2]
                   : false // Draw mode with an active drawing tool
             }
-            panOnScroll={
-              state.toolbarMode === 'edit' ||
-              state.whiteboardTool === 'select' ||
-              state.whiteboardTool === 'hand'
-            }
-            zoomOnScroll={
-              state.toolbarMode === 'edit' ||
-              state.whiteboardTool === 'select' ||
-              state.whiteboardTool === 'hand'
-            }
+            // Scroll pans, Ctrl/⌘+scroll (and pinch) zooms — in EVERY mode,
+            // including Draw with an active drawing tool. React Flow binds its
+            // wheel/zoom listener to `.react-flow__renderer` and the drawing
+            // overlays render inside it, so the wheel bubbles up and RF handles
+            // it (and preventDefault's the browser's page-zoom). When these were
+            // false for active draw tools, RF ignored the wheel and Ctrl+scroll
+            // fell through to the browser as a page zoom.
+            panOnScroll={true}
+            zoomOnScroll={true}
             // Space is a hold-to-pan in every mode — including Draw mode with an
             // active drawing tool (temporary hand; releasing returns to the tool).
             // Previously null for active draw tools, so Space didn't pan (CVS-107).
