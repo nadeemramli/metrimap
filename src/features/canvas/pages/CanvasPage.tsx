@@ -146,6 +146,18 @@ const log = createLogger('canvas');
 // React Flow now (ADR-008 step 3), so converters must never stamp `selected`.
 const EMPTY_SELECTION: string[] = [];
 
+// Proper-case default titles for freshly added canvas nodes — match the card
+// design pattern (was `type.replace('Node','')`, which rendered "source"/"chart").
+const NODE_TYPE_TITLES: Record<string, string> = {
+  sourceNode: 'Source',
+  chartNode: 'Chart',
+  operatorNode: 'Operator',
+  commentNode: 'Comment',
+  whiteboardNode: 'Whiteboard',
+};
+const defaultNodeTitle = (type: string) =>
+  NODE_TYPE_TITLES[type] ?? type.replace('Node', '');
+
 function CanvasPageInner() {
   const { canvasId } = useParams();
   const supabaseClient = useClerkSupabase();
@@ -2375,7 +2387,7 @@ function CanvasPageInner() {
         const created = await createCanvasNode({
           projectId: currentCanvas.id,
           nodeType: type,
-          title: type === 'commentNode' ? 'Comment' : type.replace('Node', ''),
+          title: defaultNodeTitle(type),
           position: basePosition,
           data: nodeData,
           createdBy: useAppStore.getState().user?.id || 'anonymous',
@@ -2388,8 +2400,7 @@ function CanvasPageInner() {
           const payload = {
             projectId: currentCanvas.id,
             nodeType: type,
-            title:
-              type === 'commentNode' ? 'Comment' : type.replace('Node', ''),
+            title: defaultNodeTitle(type),
             position: basePosition,
             data: nodeData,
             createdBy: useAppStore.getState().user?.id || 'anonymous',

@@ -1,6 +1,7 @@
 'use client';
 
 import { resolveChartSeries } from '@/features/canvas/utils/chartData';
+import { displayNodeTitle } from '@/features/canvas/utils/nodeTitle';
 import { useCanvasStore } from '@/lib/stores';
 import { Button } from '@/shared/components/ui/button';
 import { MetricChart, type ChartType } from '@/shared/components/charts/MetricChart';
@@ -55,7 +56,7 @@ const TYPE_ICON: Record<ChartType, React.ComponentType<{ className?: string }>> 
 const ChartNodeInner = memo(({ id, data, selected }: NodeProps) => {
   const nodeData = (data || {}) as ChartNodeData;
   const chartType: ChartType = nodeData.chartType ?? 'area';
-  const title = nodeData.title ?? 'Chart';
+  const title = displayNodeTitle(nodeData.title, 'Chart');
   const showLegend = nodeData.showLegend ?? true;
   const seriesCardIds = useMemo(
     () => nodeData.seriesCardIds ?? [],

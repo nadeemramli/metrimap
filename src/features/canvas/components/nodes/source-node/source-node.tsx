@@ -6,6 +6,7 @@ import {
   NodeCardShell,
 } from '@/features/canvas/components/primitives';
 import type { SourceNodeData } from '@/features/canvas/utils/sourceResolver';
+import { displayNodeTitle } from '@/features/canvas/utils/nodeTitle';
 import { type NodeProps } from '@xyflow/react';
 import { FourSideHandles } from '../FourSideHandles';
 import {
@@ -71,7 +72,7 @@ export const SourceNode = memo(({ id, data, selected }: NodeProps) => {
     <>
       <NodeCardShell
         icon={ORIGIN_ICON[origin] ?? Database}
-        title={d.title || 'Data Source'}
+        title={displayNodeTitle(d.title, 'Data Source')}
         typeLabel={<span className="capitalize">{origin}</span>}
         width={288}
         selected={!!selected}
