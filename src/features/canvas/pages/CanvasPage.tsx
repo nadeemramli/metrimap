@@ -1174,6 +1174,11 @@ function CanvasPageInner() {
       else if (k === 'd') {
         e.preventDefault();
         canvasActions.duplicateSelection();
+      } else if (k === 'g') {
+        // Ctrl/Cmd+G groups the current selection; add Shift to ungroup.
+        e.preventDefault();
+        if (e.shiftKey) events.handleUngroupSelectedGroups();
+        else events.handleGroupSelectedNodes();
       } else if (k === 'z') {
         e.preventDefault();
         if (e.shiftKey) canvasActions.redo();
@@ -1191,6 +1196,8 @@ function CanvasPageInner() {
     state.toolbarMode,
     state.whiteboardTool,
     state.setWhiteboardTool,
+    events.handleGroupSelectedNodes,
+    events.handleUngroupSelectedGroups,
   ]);
 
   // Memoized filter options
