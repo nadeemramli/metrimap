@@ -35,5 +35,25 @@ test('strategy toolbar + journey rail toggle', async ({ page }) => {
       path: 'e2e/screenshots/strategy-journey-open.png',
       fullPage: true,
     });
+    await journeyButton.click(); // collapse again for the table capture
   }
+
+  // Table view: distinct header band + sortable columns (hover arrow, click
+  // cycles asc → desc → off).
+  await page.getByRole('button', { name: 'Table' }).click();
+  await page.waitForTimeout(600);
+  const itemHead = page
+    .getByRole('button', { name: 'Item', exact: true })
+    .first();
+  await itemHead.hover(); // arrow ghosts in on hover
+  await page.screenshot({
+    path: 'e2e/screenshots/strategy-table-hover.png',
+    fullPage: true,
+  });
+  await itemHead.click(); // sorted asc — arrow locked in
+  await page.waitForTimeout(300);
+  await page.screenshot({
+    path: 'e2e/screenshots/strategy-table-sorted.png',
+    fullPage: true,
+  });
 });

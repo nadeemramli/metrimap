@@ -34,6 +34,7 @@ import type { GroupNode, MetricCard, WorkflowStatus } from '@/shared/types';
 import type { UserLite } from '@/shared/lib/supabase/services/users';
 import { cn } from '@/shared/utils';
 import {
+  ArrowUp,
   ChevronDown,
   ChevronRight,
   FlaskConical,
@@ -93,6 +94,55 @@ interface StrategyTableProps extends StrategyTableHandlers {
   canEdit: boolean;
 }
 
+// Column sorting (within each status section). Cycles asc → desc → off.
+type SortKey = 'title' | 'type' | 'group' | 'due' | 'priority';
+type SortState = { key: SortKey; dir: 'asc' | 'desc' } | null;
+
+// Monday-style header cell: quiet label on a muted band; the sort arrow ghosts
+// in on hover and locks in (flipping for desc) once the column is sorted.
+function SortableHead({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  className,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: SortState;
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) {
+  const active = sort?.key === sortKey;
+  return (
+    <TableHead
+      className={cn('p-0', className)}
+      aria-sort={
+        active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined
+      }
+    >
+      <button
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          'group/head flex h-9 w-full items-center gap-1 px-2 text-xs font-medium transition-colors hover:bg-muted hover:text-foreground',
+          active ? 'text-foreground' : 'text-muted-foreground'
+        )}
+        title={`Sort by ${label.toLowerCase()}`}
+      >
+        {label}
+        <ArrowUp
+          className={cn(
+            'h-3 w-3 transition-all duration-150',
+            active
+              ? cn('opacity-100', sort.dir === 'desc' && 'rotate-180')
+              : 'opacity-0 group-hover/head:opacity-40'
+          )}
+        />
+      </button>
+    </TableHead>
+  );
+}
+
 function TypeCell({ card }: { card: MetricCard }) {
   const isHypothesis = card.category === 'Ideas/Hypothesis';
   const Icon = isHypothesis ? FlaskConical : Hammer;
@@ -131,6 +181,7 @@ export function StrategyTable({
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [impactFilter, setImpactFilter] = useState<ImpactFilter>('all');
+  const [sort, setSort] = useState<SortState>(null);
   // 'YYYY-MM' — drives the "review ready" filter (window ended while measuring).
   const currentPeriod = useMemo(() => new Date().toISOString().slice(0, 7), []);
 
@@ -151,6 +202,48 @@ export function StrategyTable({
 
   const toggle = (status: string) =>
     setCollapsed((prev) => ({ ...prev, [status]: !prev[status] }));
+
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) =>
+      prev?.key !== key
+        ? { key, dir: 'asc' }
+        : prev.dir === 'asc'
+          ? { key, dir: 'desc' }
+          : null
+    );
+
+  // Missing values (no group, no due date, no priority) always sort last.
+  const sortRows = (rows: MetricCard[]): MetricCard[] => {
+    if (!sort) return rows;
+    const dirMul = sort.dir === 'asc' ? 1 : -1;
+    const val = (c: MetricCard): string | number | undefined => {
+      switch (sort.key) {
+        case 'title':
+          return (c.title || '').toLowerCase();
+        case 'type':
+          return (
+            c.subCategory ||
+            (c.category === 'Ideas/Hypothesis' ? 'hypothesis' : 'action')
+          ).toLowerCase();
+        case 'group':
+          return cardGroups[c.id]?.[0]?.name.toLowerCase();
+        case 'due':
+          return c.workflow?.dueDate;
+        case 'priority': {
+          const p = c.workflow?.priority;
+          return p ? PRIORITY_LEVELS.indexOf(p) : undefined;
+        }
+      }
+    };
+    return [...rows].sort((a, b) => {
+      const va = val(a);
+      const vb = val(b);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return (va < vb ? -1 : va > vb ? 1 : 0) * dirMul;
+    });
+  };
 
   return (
     <div className="space-y-3">
@@ -206,11 +299,17 @@ export function StrategyTable({
       </div>
 
       {board.columns.map((column) => {
-        const rows = column.cards
-          .filter(matches)
-          .filter((c) =>
-            matchesImpactFilter(impactFilter, impactSummaries[c.id], currentPeriod)
-          );
+        const rows = sortRows(
+          column.cards
+            .filter(matches)
+            .filter((c) =>
+              matchesImpactFilter(
+                impactFilter,
+                impactSummaries[c.id],
+                currentPeriod
+              )
+            )
+        );
         if ((query || impactFilter !== 'all') && rows.length === 0) return null;
         const isCollapsed = collapsed[column.status];
 
@@ -242,18 +341,56 @@ export function StrategyTable({
               <div className="overflow-x-auto border-t">
                 <Table>
                   <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="min-w-[240px]">Item</TableHead>
+                    {/* A distinct header band (vs body rows): muted background,
+                        quiet small labels, sortable columns with hover arrows. */}
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <SortableHead
+                        label="Item"
+                        sortKey="title"
+                        sort={sort}
+                        onSort={toggleSort}
+                        className="min-w-[240px]"
+                      />
                       <TableHead className="w-16 text-center">
-                        <MessageSquare className="mx-auto h-3.5 w-3.5" />
+                        <MessageSquare className="mx-auto h-3.5 w-3.5 text-muted-foreground" />
                       </TableHead>
-                      <TableHead className="w-36">Type</TableHead>
-                      <TableHead className="w-40">Group</TableHead>
-                      <TableHead className="w-48">Impact</TableHead>
-                      <TableHead className="w-28">People</TableHead>
-                      <TableHead className="w-28">Due</TableHead>
-                      <TableHead className="w-32">Status</TableHead>
-                      <TableHead className="w-28">Priority</TableHead>
+                      <SortableHead
+                        label="Type"
+                        sortKey="type"
+                        sort={sort}
+                        onSort={toggleSort}
+                        className="w-36"
+                      />
+                      <SortableHead
+                        label="Group"
+                        sortKey="group"
+                        sort={sort}
+                        onSort={toggleSort}
+                        className="w-40"
+                      />
+                      <TableHead className="w-48 text-xs font-medium text-muted-foreground">
+                        Impact
+                      </TableHead>
+                      <TableHead className="w-28 text-xs font-medium text-muted-foreground">
+                        People
+                      </TableHead>
+                      <SortableHead
+                        label="Due"
+                        sortKey="due"
+                        sort={sort}
+                        onSort={toggleSort}
+                        className="w-28"
+                      />
+                      <TableHead className="w-32 text-xs font-medium text-muted-foreground">
+                        Status
+                      </TableHead>
+                      <SortableHead
+                        label="Priority"
+                        sortKey="priority"
+                        sort={sort}
+                        onSort={toggleSort}
+                        className="w-28"
+                      />
                       <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
