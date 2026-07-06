@@ -4,7 +4,7 @@ import {
   ERROR_BOUNDARY_TEXT,
   NO_CREDS,
   collectConsoleErrors,
-  openExampleCanvas,
+  openFirstCanvas,
   shot,
   signIn,
 } from './helpers';
@@ -31,16 +31,28 @@ test('CVS-23/65 dragging nodes does not trip React #185', async ({ page }) => {
   const console_ = collectConsoleErrors(page);
 
   await signIn(page);
-  // A populated example canvas (real metric cards) — guarantees draggable nodes.
-  const onCanvas = await openExampleCanvas(page, 'SaaS');
-  test.skip(!onCanvas, 'Could not open the SaaS example canvas');
+  // The user's OWN first canvas — editable, so nodes actually drag (example
+  // canvases are public/read-only → nodesDraggable=false → no real drag).
+  const onCanvas = await openFirstCanvas(page);
+  test.skip(!onCanvas, 'No canvas available on this account to open');
 
-  const node = page.locator('.react-flow__node-metricCard').first();
-  await expect(node, 'canvas rendered at least one metric card').toBeVisible({ timeout: 20_000 });
+  const node = page.locator('.react-flow__node').first();
+  const hasNode = await node.isVisible({ timeout: 15_000 }).catch(() => false);
+  test.skip(!hasNode, 'First canvas has no draggable nodes to exercise');
 
-  // Move a node several times, back and forth — the exact interaction that
-  // used to re-arm the derive↔control loop.
-  for (let i = 0; i < 5; i++) {
+  // Movement must still work now React Flow (not the per-frame store write)
+  // drives it: drag once and assert the node actually moved.
+  const before = await node.boundingBox();
+  if (before) await dragBy(page, before, 160, 110);
+  const after = await node.boundingBox();
+  if (before && after) {
+    const moved = Math.abs(after.x - before.x) + Math.abs(after.y - before.y);
+    expect(moved, 'node visibly moved after drag').toBeGreaterThan(40);
+  }
+
+  // Move it several more times, back and forth — the interaction that used to
+  // re-arm the derive↔control loop.
+  for (let i = 0; i < 4; i++) {
     const box = await node.boundingBox();
     if (!box) break;
     const dir = i % 2 === 0 ? 1 : -1;

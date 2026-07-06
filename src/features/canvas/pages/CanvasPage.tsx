@@ -1407,12 +1407,11 @@ function CanvasPageInner() {
     draggingIds.current = new Set(Object.keys(snap));
   }, []);
 
-  const handleSelectionDrag = useCallback(
-    (_: any, dragNodes: any[]) => {
-      for (const n of dragNodes) applyNodePosition(n.type, n.id, n.position);
-    },
-    [applyNodePosition]
-  );
+  // React Flow moves the selected nodes visually via onNodesChange now
+  // (useNodesState). Positions are persisted once on drag-stop — no per-frame
+  // store writes (they were redundant churn, and per-frame Supabase writes for
+  // canvas nodes on top).
+  const handleSelectionDrag = useCallback(() => {}, []);
 
   const handleSelectionDragStop = useCallback(
     (_: any, dragNodes: any[]) => {
@@ -1427,47 +1426,12 @@ function CanvasPageInner() {
 
   const handleNodeDrag = useCallback(
     (_: any, node: any) => {
-      // Surface nodes the dragged node overlaps as drop-target highlights.
+      // React Flow owns node movement now (onNodesChange → rfNodes); we only
+      // surface drop-target highlights here. The final position persists on
+      // drag-stop — no per-frame store/Supabase writes (the old churn driver).
       highlightIntersections(node);
-      if (node?.id && node?.position) {
-        if (node.type === 'metricCard') {
-          useCanvasStore.getState().updateNodePosition(node.id, node.position);
-        } else if (node.type === 'evidenceNode') {
-          updateEvidencePosition(node.id, node.position);
-        } else if (
-          [
-            'sourceNode',
-            'chartNode',
-            'operatorNode',
-            'commentNode',
-            'whiteboardNode',
-          ].includes(node.type)
-        ) {
-          // Persisted canvas nodes live in useCanvasNodesStore.
-          updateCanvasNodePosition(node.id, node.position);
-        } else if (
-          ['valueNode', 'actionNode', 'hypothesisNode', 'metricNode'].includes(
-            node.type
-          )
-        ) {
-          // PRD node types live in useNewNodeTypesStore.
-          updateNewNode(node.id, { position: node.position });
-        } else {
-          const current = state.extraNodes || [];
-          const next = current.map((n: any) =>
-            n.id === node.id ? { ...n, position: node.position } : n
-          );
-          state.setExtraNodes(next);
-        }
-      }
     },
-    [
-      state,
-      updateEvidencePosition,
-      updateCanvasNodePosition,
-      updateNewNode,
-      highlightIntersections,
-    ]
+    [highlightIntersections]
   );
 
   const handleNodeDragStop = useCallback(
