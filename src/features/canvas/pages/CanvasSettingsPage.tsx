@@ -314,6 +314,7 @@ export default function CanvasSettingsPage() {
         {/* Changelog Tab */}
         <TabsContent value="changelog" className="space-y-4">
           <ChangelogTab
+            canvasId={currentProject.id}
             filteredChangelog={filteredChangelog}
             isLoading={isLoadingChangelog}
           />

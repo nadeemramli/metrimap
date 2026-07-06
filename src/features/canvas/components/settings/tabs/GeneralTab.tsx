@@ -1,3 +1,4 @@
+import { Section } from '@/features/canvas/components/settings/Section';
 import { useCanvasStore } from '@/lib/stores';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
@@ -36,46 +37,6 @@ interface Props {
   collaborators?: Collaborator[];
   isLoadingCollaborators?: boolean;
   onDuplicate?: () => Promise<void> | void;
-}
-
-// Same section idiom as Workspace/Account settings — bordered card, icon +
-// title row, optional description, optional right-aligned action.
-function Section({
-  icon: Icon,
-  title,
-  description,
-  action,
-  destructive = false,
-  children,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description?: string;
-  action?: React.ReactNode;
-  destructive?: boolean;
-  children?: React.ReactNode;
-}) {
-  return (
-    <section
-      className={`rounded-lg border bg-card p-5 ${
-        destructive ? 'border-destructive/40' : 'border-border'
-      }`}
-    >
-      <div className="mb-4 flex items-center gap-2">
-        <Icon
-          className={`h-4 w-4 ${destructive ? 'text-destructive' : 'text-primary'}`}
-        />
-        <h2 className="text-base font-semibold">{title}</h2>
-        {action && <div className="ml-auto">{action}</div>}
-      </div>
-      {description && (
-        <p className="-mt-3 mb-4 text-sm text-muted-foreground">
-          {description}
-        </p>
-      )}
-      {children}
-    </section>
-  );
 }
 
 function memberInitials(name: string) {
