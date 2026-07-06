@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useCanvasPanelStore } from '../stores/useCanvasPanelStore';
 import type { WhiteboardTool } from '../components/whiteboard';
 
 // Canvas page state hook - minimal implementation to satisfy current CanvasPage needs
@@ -49,20 +50,63 @@ export function useCanvasPageState() {
   const [extraNodes, setExtraNodes] = useState<any[]>([]);
   const [extraEdges, setExtraEdges] = useState<any[]>([]);
 
-  // Sheets state
-  const [isSettingsSheetOpen, setIsSettingsSheetOpen] =
-    useState<boolean>(false);
-  const [isRelationshipSheetOpen, setIsRelationshipSheetOpen] =
-    useState<boolean>(false);
-  const [settingsCardId, setSettingsCardId] = useState<string | undefined>(
-    undefined
-  );
-  const [relationshipSheetId, setRelationshipSheetId] = useState<
-    string | undefined
-  >(undefined);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<
-    string | undefined
-  >(undefined);
+  // Sheets state — adapter over the docked-panel store. The public shape is
+  // unchanged (CanvasPage call sites keep working), but the truth lives in
+  // useCanvasPanelStore so all right-dock panels are mutually exclusive.
+  const rightPanel = useCanvasPanelStore((s) => s.rightPanel);
+  const isSettingsSheetOpen = rightPanel?.kind === 'cardSettings';
+  const settingsCardId = isSettingsSheetOpen ? rightPanel.cardId : undefined;
+  const settingsInitialTab = isSettingsSheetOpen
+    ? rightPanel.initialTab
+    : undefined;
+  const isRelationshipSheetOpen = rightPanel?.kind === 'relationship';
+  const relationshipSheetId = isRelationshipSheetOpen
+    ? rightPanel.relationshipId
+    : undefined;
+
+  // Callers open first, then set the id/tab (synchronous zustand updates make
+  // the sequence safe). Setting an id while a different panel kind is open is
+  // ignored — the panel is opened by its own "open" setter.
+  const setIsSettingsSheetOpen = useCallback((open: boolean) => {
+    const s = useCanvasPanelStore.getState();
+    if (open) {
+      const cur = s.rightPanel;
+      s.openRight(
+        cur?.kind === 'cardSettings' ? cur : { kind: 'cardSettings' }
+      );
+    } else if (s.rightPanel?.kind === 'cardSettings') {
+      s.closeRight();
+    }
+  }, []);
+  const setSettingsCardId = useCallback((cardId?: string) => {
+    const s = useCanvasPanelStore.getState();
+    if (s.rightPanel?.kind === 'cardSettings') {
+      s.openRight({ ...s.rightPanel, cardId });
+    }
+  }, []);
+  const setSettingsInitialTab = useCallback((initialTab?: string) => {
+    const s = useCanvasPanelStore.getState();
+    if (s.rightPanel?.kind === 'cardSettings') {
+      s.openRight({ ...s.rightPanel, initialTab });
+    }
+  }, []);
+  const setIsRelationshipSheetOpen = useCallback((open: boolean) => {
+    const s = useCanvasPanelStore.getState();
+    if (open) {
+      const cur = s.rightPanel;
+      s.openRight(
+        cur?.kind === 'relationship' ? cur : { kind: 'relationship' }
+      );
+    } else if (s.rightPanel?.kind === 'relationship') {
+      s.closeRight();
+    }
+  }, []);
+  const setRelationshipSheetId = useCallback((relationshipId?: string) => {
+    const s = useCanvasPanelStore.getState();
+    if (s.rightPanel?.kind === 'relationship') {
+      s.openRight({ ...s.rightPanel, relationshipId });
+    }
+  }, []);
 
   // Help and modals state
   const [showShortcutsHelp, setShowShortcutsHelp] = useState<boolean>(false);

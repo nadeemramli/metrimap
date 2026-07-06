@@ -16,14 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import { Separator } from '@/shared/components/ui/separator';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/shared/components/ui/sheet';
+import { DockPanel } from '@/features/canvas/components/dock';
 import {
   Tabs,
   TabsContent,
@@ -89,7 +82,7 @@ function CardSettingsSheetComponent({
 }: CardSettingsSheetProps): React.ReactElement {
   // NOTE: no early `if (!isOpen) return` here — that ran before the hooks below
   // and violated the Rules of Hooks (hooks must run in the same order every
-  // render). The <Sheet open={isOpen}> at the bottom already gates rendering.
+  // render). The <DockPanel open={isOpen}> at the bottom already gates rendering.
 
   const { getNodeById, persistNodeUpdate, persistNodeDelete } =
     useCanvasStore();
@@ -362,95 +355,81 @@ function CardSettingsSheetComponent({
   // };
 
   return (
-    <Sheet
+    <DockPanel
       open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
+      onClose={onClose}
+      width="lg"
+      padded={false}
+      eyebrow={
+        <span className="inline-flex items-center gap-1">
+          <Settings className="h-3 w-3" />
+          <span>{formData.category || 'Category'}</span>
+          <ChevronRight className="h-3 w-3" />
+          <span>{formData.subCategory || 'Sub-category'}</span>
+        </span>
+      }
+      title={
+        <InlineEditableField
+          value={formData.title || ''}
+          onSave={(value) => handleFieldChange('title', value)}
+          isEditing={isEditingTitle}
+          onEditingChange={setIsEditingTitle}
+          placeholder="Enter card title"
+          className="text-base font-semibold"
+        />
+      }
+      headerExtra={
+        <div className="space-y-2">
+          <InlineEditableField
+            value={formData.description || ''}
+            onSave={(value) => handleFieldChange('description', value)}
+            isEditing={isEditingDescription}
+            onEditingChange={setIsEditingDescription}
+            multiline
+            placeholder="Enter card description"
+            className="text-sm text-muted-foreground font-medium"
+          />
+
+          {/* Semantic layer: catalog status / promote */}
+          <div>
+            {isCatalogued ? (
+              <div className="flex items-center gap-2">
+                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                  ✓ In Metric Catalog
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  disabled={catalogBusy || !catalogClient}
+                  onClick={handleDetachMetric}
+                  title="Fork an independent copy that no longer follows the catalogued metric"
+                >
+                  {catalogBusy ? 'Detaching…' : 'Detach'}
+                </Button>
+              </div>
+            ) : cardHasData ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 text-xs"
+                disabled={catalogBusy || !catalogClient}
+                onClick={handleCatalogMetric}
+              >
+                {catalogBusy ? 'Cataloging…' : 'Catalog this metric'}
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground/70">
+                Add data (or wire a source) to catalog this metric
+              </span>
+            )}
+          </div>
+        </div>
+      }
     >
       {card ? (
-        <SheetContent className="w-[650px] sm:max-w-[650px] overflow-y-auto bg-background border-border">
-          <SheetHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <SheetTitle className="sr-only">
-                  Card Settings - {formData.title || 'Metric Card'}
-                </SheetTitle>
-                <SheetDescription className="sr-only">
-                  Configure properties, data, and settings for this metric card
-                </SheetDescription>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Settings className="h-4 w-4" />
-                    <span>{formData.category || 'Category'}</span>
-                    <ChevronRight className="h-4 w-4" />
-                    <span>{formData.subCategory || 'Sub-category'}</span>
-                  </div>
-
-                  <InlineEditableField
-                    value={formData.title || ''}
-                    onSave={(value) => handleFieldChange('title', value)}
-                    isEditing={isEditingTitle}
-                    onEditingChange={setIsEditingTitle}
-                    placeholder="Enter card title"
-                    className="text-xl font-semibold"
-                  />
-
-                  <InlineEditableField
-                    value={formData.description || ''}
-                    onSave={(value) => handleFieldChange('description', value)}
-                    isEditing={isEditingDescription}
-                    onEditingChange={setIsEditingDescription}
-                    multiline
-                    placeholder="Enter card description"
-                    className="text-sm text-muted-foreground font-medium"
-                  />
-
-                  {/* Semantic layer: catalog status / promote */}
-                  <div className="pt-1">
-                    {isCatalogued ? (
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                          ✓ In Metric Catalog
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                          disabled={catalogBusy || !catalogClient}
-                          onClick={handleDetachMetric}
-                          title="Fork an independent copy that no longer follows the catalogued metric"
-                        >
-                          {catalogBusy ? 'Detaching…' : 'Detach'}
-                        </Button>
-                      </div>
-                    ) : cardHasData ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 gap-1 text-xs"
-                        disabled={catalogBusy || !catalogClient}
-                        onClick={handleCatalogMetric}
-                      >
-                        {catalogBusy ? 'Cataloging…' : 'Catalog this metric'}
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-muted-foreground/70">
-                        Add data (or wire a source) to catalog this metric
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SheetHeader>
-
-          <div className="mt-2 px-6 pb-6">
-            <Separator className="mb-6" />
-
-            <Tabs
+        <div className="px-4 py-4">
+          <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
               className="w-full"
@@ -1225,14 +1204,11 @@ function CardSettingsSheetComponent({
                 />
               </TabsContent>
             </Tabs>
-          </div>
-        </SheetContent>
+        </div>
       ) : (
-        <SheetContent className="w-[650px] sm:max-w-[650px] overflow-y-auto bg-background border-border">
-          <div className="flex items-center justify-center h-32">
-            <p className="text-muted-foreground">No card selected</p>
-          </div>
-        </SheetContent>
+        <div className="flex items-center justify-center h-32">
+          <p className="text-muted-foreground">No card selected</p>
+        </div>
       )}
 
       {/* Evidence Dialog */}
@@ -1248,7 +1224,7 @@ function CardSettingsSheetComponent({
             : 'Add new evidence to support this metric card'
         }
       />
-    </Sheet>
+    </DockPanel>
   );
 }
 

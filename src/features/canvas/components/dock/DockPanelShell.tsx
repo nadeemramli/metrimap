@@ -12,6 +12,8 @@ export interface DockPanelShellProps {
   eyebrow?: ReactNode;
   /** Right-aligned header controls (status pill, export menu, …). */
   headerActions?: ReactNode;
+  /** Extra header content below the title row (editable description, badges, …). */
+  headerExtra?: ReactNode;
   /** Optional tab bar rendered under the header. */
   tabs?: ReactNode;
   /** Sticky footer — save/cancel never scroll off-screen. */
@@ -49,6 +51,7 @@ export function DockPanelShell({
   subtitle,
   eyebrow,
   headerActions,
+  headerExtra,
   tabs,
   footer,
   onClose,
@@ -114,6 +117,7 @@ export function DockPanelShell({
             )}
           </div>
         </div>
+        {headerExtra && <div className="mt-1.5">{headerExtra}</div>}
         {tabs && <div className="mt-3">{tabs}</div>}
       </div>
 

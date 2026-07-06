@@ -1,16 +1,12 @@
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from '@/shared/components/ui/sheet';
+import { DockPanel } from '@/features/canvas/components/dock';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { cn } from '@/shared/utils';
 import * as React from 'react';
 
 // Shared right-side detail-panel shell for node-type-specific panels
-// (task, value, …). Owns the Sheet, width, scroll, and an editable
-// title/description header. Each panel supplies its own body + optional footer.
+// (task, value, …). Docks below the top bar (DockPanel) and owns the
+// editable title/description header. Each panel supplies its own body +
+// optional footer.
 
 interface NodePanelShellProps {
   open: boolean;
@@ -101,39 +97,33 @@ export function NodePanelShell({
   footer,
 }: NodePanelShellProps) {
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex w-[640px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]"
-      >
-        <SheetTitle className="sr-only">{title || 'Details'}</SheetTitle>
-        <SheetDescription className="sr-only">
-          Node details panel
-        </SheetDescription>
-
-        <div className="border-b px-5 pb-4 pt-5">
-          {eyebrow && <div className="mb-1.5">{eyebrow}</div>}
-          <EditableText
-            value={title}
-            placeholder="Untitled"
-            readOnly={readOnly}
-            onCommit={onTitleChange}
-            className="text-xl font-semibold"
-          />
-          <EditableText
-            value={description ?? ''}
-            placeholder="Add a description…"
-            readOnly={readOnly}
-            multiline
-            onCommit={onDescriptionChange}
-            className="mt-1 text-sm text-muted-foreground"
-          />
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
-
-        {footer && <div className="border-t px-5 py-3">{footer}</div>}
-      </SheetContent>
-    </Sheet>
+    <DockPanel
+      open={open}
+      onClose={() => onOpenChange(false)}
+      width="lg"
+      eyebrow={eyebrow}
+      title={
+        <EditableText
+          value={title}
+          placeholder="Untitled"
+          readOnly={readOnly}
+          onCommit={onTitleChange}
+          className="-mx-2 text-base font-semibold"
+        />
+      }
+      headerExtra={
+        <EditableText
+          value={description ?? ''}
+          placeholder="Add a description…"
+          readOnly={readOnly}
+          multiline
+          onCommit={onDescriptionChange}
+          className="-mx-2 text-sm text-muted-foreground"
+        />
+      }
+      footer={footer}
+    >
+      {children}
+    </DockPanel>
   );
 }

@@ -8,8 +8,8 @@ export type CollabTab = 'people' | 'comments' | 'activity';
  */
 export type RightPanel =
   | { kind: 'collaboration'; tab: CollabTab }
-  | { kind: 'cardSettings'; cardId: string; initialTab?: string }
-  | { kind: 'relationship'; relationshipId: string }
+  | { kind: 'cardSettings'; cardId?: string; initialTab?: string }
+  | { kind: 'relationship'; relationshipId?: string }
   | { kind: 'sourceConfig'; nodeId: string }
   | { kind: 'chartSettings'; nodeId: string }
   | { kind: 'groupEdit'; groupId: string };
