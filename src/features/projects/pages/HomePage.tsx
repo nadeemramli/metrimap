@@ -12,11 +12,10 @@ import {
   createShortcut,
   useKeyboardShortcuts,
 } from '@/shared/hooks/useKeyboardShortcuts';
-import { LayoutTemplate, Plus } from 'lucide-react';
+import { LayoutTemplate, Loader2, Plus, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { Button } from '@/shared/components/ui/button';
 import {
   Tabs,
   TabsContent,
@@ -256,28 +255,56 @@ export default function HomePage() {
             </div>
           </TabsContent>
 
-          {/* Explore — examples + starting points for learning the pattern. */}
-          <TabsContent value="explore" className="mt-0 space-y-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={() => handleCreateCanvas()}
-                disabled={isCreatingCanvas}
-              >
-                <Plus className="h-4 w-4" />
-                New canvas
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setTemplatePickerOpen(true)}
-              >
-                <LayoutTemplate className="h-4 w-4" />
-                Start from a template
-              </Button>
-            </div>
-            <ShowcaseSection
-              onOpenCanvas={handleOpenCanvas}
-              defaultCollapsed={false}
-            />
+          {/* Explore — start something new + learn the pattern from examples. */}
+          <TabsContent value="explore" className="mt-0 space-y-8">
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">Start a new tree</h2>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-2xl">
+                <button
+                  onClick={() => handleCreateCanvas()}
+                  disabled={isCreatingCanvas}
+                  className="group flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    {isCreatingCanvas ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Plus className="h-5 w-5" />
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">
+                      Blank canvas
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                      Start from an empty tree and build it your way.
+                    </span>
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setTemplatePickerOpen(true)}
+                  className="group flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <LayoutTemplate className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">
+                      From a template
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                      Adapt a pre-built structure to your business.
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </section>
+
+            <ShowcaseSection onOpenCanvas={handleOpenCanvas} />
           </TabsContent>
         </Tabs>
       </div>
