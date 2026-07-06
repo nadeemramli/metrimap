@@ -67,10 +67,15 @@ import { toast } from 'sonner';
 import { CommentComposer } from './CommentComposer';
 import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
 
+type CollaborationTab = 'people' | 'comments' | 'activity';
+
 interface CollaborationPanelProps {
   projectId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Active section — lets the header buttons open the panel to People/Comments/Activity. */
+  activeTab?: CollaborationTab;
+  onTabChange?: (tab: CollaborationTab) => void;
   /** Live presence roster (who's in the canvas right now). */
   presence?: PresenceUser[];
   /** Label of the sub-page the user is on — scopes new comments + filtering. */
@@ -95,10 +100,19 @@ export function CollaborationPanel({
   projectId,
   open,
   onOpenChange,
+  activeTab,
+  onTabChange,
   presence = [],
   currentPage,
 }: CollaborationPanelProps) {
   const user = useAppStore((s) => s.user);
+
+  // Controlled by the header buttons when provided; falls back to local state so
+  // the panel still works standalone. In-panel tab clicks flow back to the parent.
+  const [internalTab, setInternalTab] =
+    React.useState<CollaborationTab>('comments');
+  const tab = activeTab ?? internalTab;
+  const setTab = onTabChange ?? setInternalTab;
   const { members, isLoading: membersLoading, reload: reloadMembers } =
     useProjectMembers(projectId, open, presence);
 
@@ -122,7 +136,11 @@ export function CollaborationPanel({
           </SheetTitle>
         </SheetHeader>
 
-        <Tabs defaultValue="comments" className="flex-1 flex flex-col min-h-0">
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as CollaborationTab)}
+          className="flex-1 flex flex-col min-h-0"
+        >
           <TabsList className="grid grid-cols-3 mx-4 mt-3">
             <TabsTrigger value="people">People</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>

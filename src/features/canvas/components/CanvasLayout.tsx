@@ -11,6 +11,7 @@ import { cn } from '@/shared/utils';
 import { useUser } from '@clerk/react-router';
 import { useMemo } from 'react';
 import {
+  Activity,
   ArrowLeft,
   BarChart3,
   Database,
@@ -18,6 +19,7 @@ import {
   Grid3X3,
   Home,
   Keyboard,
+  MessageSquare,
   Settings,
   SquareKanban,
   Users,
@@ -74,6 +76,14 @@ export default function CanvasLayout() {
   const { getProjectById } = useProjectsStore();
   const { headerInfo } = useCanvasHeader();
   const [isCollabOpen, setIsCollabOpen] = useState(false);
+  const [collabTab, setCollabTab] = useState<
+    'people' | 'comments' | 'activity'
+  >('comments');
+  // Open the collaboration panel directly to one of its sections.
+  const openCollab = (tab: 'people' | 'comments' | 'activity') => {
+    setCollabTab(tab);
+    setIsCollabOpen(true);
+  };
 
   const project = canvasId ? getProjectById(canvasId) : null;
 
@@ -255,18 +265,37 @@ export default function CanvasLayout() {
             {/* Live presence — who else is in this canvas */}
             <PresenceAvatars roster={roster} />
 
-            {/* Unified collaboration entry point (comments, mentions, members,
-                share link). Replaces the old split Collaborate + Share buttons. */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1.5 px-3 rounded-md"
-              onClick={() => setIsCollabOpen(true)}
-              title="Collaborate"
-            >
-              <Users className="h-3.5 w-3.5" />
-              Collaborate
-            </Button>
+            {/* Collaboration entry points — People / Comments / Activity, each
+                opening the shared panel to its section (share link lives inside). */}
+            <div className="inline-flex items-center rounded-md border border-border bg-background p-0.5">
+              {(
+                [
+                  { tab: 'people', Icon: Users, label: 'People' },
+                  { tab: 'comments', Icon: MessageSquare, label: 'Comments' },
+                  { tab: 'activity', Icon: Activity, label: 'Activity' },
+                ] as const
+              ).map(({ tab, Icon, label }) => {
+                const active = isCollabOpen && collabTab === tab;
+                return (
+                  <Button
+                    key={tab}
+                    variant="ghost"
+                    size="sm"
+                    className={`h-6 w-7 rounded-[5px] p-0 transition-colors ${
+                      active
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    onClick={() => openCollab(tab)}
+                    title={label}
+                    aria-label={label}
+                    aria-pressed={active}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </Button>
+                );
+              })}
+            </div>
 
             {/* Auto-save indicator (canvas page only) */}
             {headerInfo?.autoSaveStatus && <AutoSaveIndicator />}
@@ -287,6 +316,8 @@ export default function CanvasLayout() {
         projectId={canvasId}
         open={isCollabOpen}
         onOpenChange={setIsCollabOpen}
+        activeTab={collabTab}
+        onTabChange={setCollabTab}
         presence={roster}
         currentPage={pageLabel}
       />
