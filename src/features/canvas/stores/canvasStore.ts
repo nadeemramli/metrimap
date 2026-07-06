@@ -114,7 +114,7 @@ interface CanvasStoreState extends CanvasState {
   ) => void;
 
   // Selection-based grouping
-  groupSelectedNodes: (nodeIds: string[]) => Promise<string>;
+  groupSelectedNodes: (nodeIds: string[], name?: string) => Promise<string>;
   ungroupSelectedGroups: (groupIds: string[]) => Promise<void>;
 
   // Auto-save functionality
@@ -1276,7 +1276,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       })),
 
     // Selection-based grouping
-    groupSelectedNodes: async (nodeIds: string[]) => {
+    groupSelectedNodes: async (nodeIds: string[], name?: string) => {
       log.debug('🎯 groupSelectedNodes called with:', nodeIds);
 
       if (nodeIds.length < 2) {
@@ -1328,7 +1328,8 @@ export const useCanvasStore = create<CanvasStoreState>()(
         });
 
         const groupId = generateUUID();
-        const groupName = `Group ${state.canvas.groups.length + 1}`;
+        const groupName =
+          name?.trim() || `Group ${state.canvas.groups.length + 1}`;
 
         const newGroup: GroupNode = {
           id: groupId,

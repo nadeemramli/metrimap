@@ -104,6 +104,7 @@ import CanvasModals from '@/features/canvas/components/layout/CanvasModals';
 
 // Core components
 import SelectionPanel from '@/features/canvas/components/grouping/SelectionPanel';
+import GroupNameDialog from '@/features/canvas/components/grouping/GroupNameDialog';
 import OffscreenNodeIndicator from '@/features/canvas/components/wayfinding/OffscreenNodeIndicator';
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
 import GroupsPanel from '@/features/canvas/components/left-sidepanel/GroupsPanel';
@@ -631,6 +632,54 @@ function CanvasPageInner() {
   );
 
   const handleClearFocus = useCallback(() => setFocusedGroupId(null), []);
+
+  // ── Group creation flow: name dialog → create → open panel → focus ──
+  // All three entry points (Ctrl+G, SelectionPanel, GroupsPanel) route here so
+  // the user always names the group and immediately SEES what got grouped.
+  const [groupDialog, setGroupDialog] = useState<{
+    defaultName: string;
+    count: number;
+  } | null>(null);
+
+  const requestGroupSelection = useCallback(() => {
+    const { selectedNodeIds, canvas: c } = useCanvasStore.getState();
+    if (!selectedNodeIds || selectedNodeIds.length < 2) {
+      toast.error('Select at least 2 cards to group');
+      return;
+    }
+    setGroupDialog({
+      defaultName: `Group ${(c?.groups?.length ?? 0) + 1}`,
+      count: selectedNodeIds.length,
+    });
+  }, []);
+
+  const handleGroupNameConfirm = useCallback(
+    async (name: string) => {
+      setGroupDialog(null);
+      const { selectedNodeIds, groupSelectedNodes } = useCanvasStore.getState();
+      const ids = selectedNodeIds || [];
+      if (ids.length < 2) return;
+      try {
+        const groupId = await groupSelectedNodes(ids, name);
+        // Make the result unmistakable: open the Groups panel with the new
+        // group focused, dim everything else, and fit-view the members.
+        setShowGroupsPanel(true);
+        setFocusedGroupId(groupId);
+        const memberIds = new Set(ids);
+        setTimeout(() => {
+          const toFit = getNodes().filter((n: any) => memberIds.has(n.id));
+          if (toFit.length > 0) {
+            fitView({ nodes: toFit as any, padding: 0.35, duration: 600 });
+          }
+        }, 60);
+        toast.success(`Grouped ${ids.length} cards into “${name}”`);
+      } catch (err) {
+        console.error('Group failed', err);
+        toast.error('Could not group selected cards');
+      }
+    },
+    [getNodes, fitView]
+  );
 
   // "Unlinked" cards: nodes with no typed relationship (never a source or target
   // of any edge). Surfaced as a computed muted group in GroupsPanel so users can
@@ -1265,10 +1314,11 @@ function CanvasPageInner() {
         e.preventDefault();
         canvasActions.duplicateSelection();
       } else if (k === 'g') {
-        // Ctrl/Cmd+G groups the current selection; add Shift to ungroup.
+        // Ctrl/Cmd+G groups the current selection (via the name dialog);
+        // add Shift to ungroup.
         e.preventDefault();
         if (e.shiftKey) events.handleUngroupSelectedGroups();
-        else events.handleGroupSelectedNodes();
+        else requestGroupSelection();
       } else if (k === 'z') {
         e.preventDefault();
         if (e.shiftKey) canvasActions.redo();
@@ -1286,7 +1336,7 @@ function CanvasPageInner() {
     state.toolbarMode,
     state.whiteboardTool,
     state.setWhiteboardTool,
-    events.handleGroupSelectedNodes,
+    requestGroupSelection,
     events.handleUngroupSelectedGroups,
   ]);
 
@@ -2550,7 +2600,7 @@ function CanvasPageInner() {
                       focusedGroupId={focusedGroupId}
                       onFocus={handleFocusGroup}
                       onClearFocus={handleClearFocus}
-                      onCreateFromSelection={events.handleGroupSelectedNodes}
+                      onCreateFromSelection={requestGroupSelection}
                       onAddSelected={handleAddSelectedToGroup}
                       onRemoveSelected={handleRemoveSelectedFromGroup}
                       onRename={handleRenameGroup}
@@ -2570,7 +2620,7 @@ function CanvasPageInner() {
                 <SelectionPanel
                   selectedNodeIds={selectedNodeIds}
                   selectedGroupIds={state.selectedGroupIds}
-                  onGroupNodes={events.handleGroupSelectedNodes}
+                  onGroupNodes={requestGroupSelection}
                   onUngroupNodes={events.handleUngroupSelectedGroups}
                   onDeleteNodes={() => void canvasActions.deleteSelection()}
                   onDuplicateNodes={canvasActions.duplicateSelection}
@@ -2718,6 +2768,15 @@ function CanvasPageInner() {
           }}
         />
       )}
+
+      {/* Name-the-group dialog — Ctrl+G / Group buttons route here. */}
+      <GroupNameDialog
+        open={!!groupDialog}
+        defaultName={groupDialog?.defaultName ?? ''}
+        count={groupDialog?.count ?? 0}
+        onConfirm={handleGroupNameConfirm}
+        onCancel={() => setGroupDialog(null)}
+      />
 
       {/* Quick Search — opened from the bottom-left Controls search button. */}
       <QuickSearchCommand
