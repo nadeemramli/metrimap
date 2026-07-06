@@ -29,6 +29,10 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
   timeout: 90_000,
   fullyParallel: false,
+  // One worker: every spec signs in the SAME shared E2E Clerk user, so running
+  // files in parallel causes intermittent session conflicts (a different spec
+  // flakes each run). Sequential is deterministic here.
+  workers: 1,
   reporter: 'list',
   use: {
     baseURL: 'https://dev.canvasm.app:3000',

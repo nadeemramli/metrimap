@@ -255,6 +255,9 @@ export default function EnhancedEdgeButton({
             type="button"
             onClick={handleMainButtonClick}
             title={`${config.description} — click to open settings`}
+            data-testid="edge-score-pill"
+            data-tone={effectiveTone}
+            data-loose={loose ? 'true' : 'false'}
             className={cn(
               'flex items-center gap-1 rounded-full border bg-clip-padding px-2 py-0.5',
               'shadow-sm backdrop-blur-sm transition-all duration-200',

@@ -181,7 +181,10 @@ export default function EnhancedNodeToolbar({
 
   return (
     <NodeToolbar className="nodrag" position={position} offset={offset}>
-      <div className="nodrag flex items-center gap-1 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-1">
+      <div
+        data-testid="node-toolbar"
+        className="nodrag flex items-center gap-1 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-1"
+      >
         {/* Core Actions */}
         {visibleCoreActions.map((action, index) => {
           const Icon = action.icon;
@@ -196,6 +199,9 @@ export default function EnhancedNodeToolbar({
               }}
               className={`nodrag h-8 w-8 p-0 hover:scale-110 transition-all duration-200 ${action.className}`}
               title={action.label}
+              data-testid={`node-toolbar-action-${action.label
+                .toLowerCase()
+                .replace(/\s+/g, '-')}`}
             >
               <Icon className="h-3 w-3" />
             </Button>
@@ -257,6 +263,7 @@ export default function EnhancedNodeToolbar({
             }}
             className={`nodrag h-8 w-8 p-0 hover:scale-110 transition-all duration-200 ${deleteAction.className}`}
             title={deleteAction.label}
+            data-testid="node-toolbar-action-delete"
           >
             <Trash2 className="h-3 w-3" />
           </Button>
