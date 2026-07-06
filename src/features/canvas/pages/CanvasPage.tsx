@@ -123,6 +123,7 @@ import {
   type ShapeDrawing,
 } from '@/features/canvas/components/whiteboard';
 import { generateUUID } from '@/shared/utils/validation';
+import { uploadCanvasImage } from '@/shared/lib/supabase/services/canvasImages';
 import { getViewportCenterPosition } from '@/features/canvas/utils/viewportCenter';
 
 // Auto-save and realtime hooks
@@ -1847,6 +1848,100 @@ function CanvasPageInner() {
       await handleTextCreate(ed.flow, value, ed.fontSize, ed.color);
     }
   }, [textEditor, handleTextCreate]);
+
+  // Paste Picture (both Edit and Draw modes): an image on the clipboard is
+  // uploaded to Storage and dropped as a whiteboardNode {shape:'image'} at the
+  // viewport centre. Non-image pastes are ignored here (the Ctrl+V node
+  // clipboard keydown handles those); pastes into a text field are left alone.
+  const handlePasteImage = useCallback(
+    async (blob: Blob) => {
+      const currentCanvas = useCanvasStore.getState().canvas;
+      if (!currentCanvas?.id) return;
+      const objectUrl = URL.createObjectURL(blob);
+      const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+        const img = new Image();
+        img.onload = () =>
+          resolve({ w: img.naturalWidth, h: img.naturalHeight });
+        img.onerror = () => resolve({ w: 320, h: 240 });
+        img.src = objectUrl;
+      });
+      URL.revokeObjectURL(objectUrl);
+
+      const maxDim = 600;
+      const scale = Math.min(1, maxDim / Math.max(dims.w, dims.h) || 1);
+      const width = Math.max(1, Math.round(dims.w * scale)) || 320;
+      const height = Math.max(1, Math.round(dims.h * scale)) || 240;
+
+      const toastId = toast.loading('Uploading image…');
+      try {
+        const url = await uploadCanvasImage(currentCanvas.id, blob);
+        const center = screenToFlowPosition({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+        });
+        const payload = {
+          projectId: currentCanvas.id,
+          nodeType: 'whiteboardNode' as const,
+          title: 'Image',
+          position: { x: center.x - width / 2, y: center.y - height / 2 },
+          data: { shape: 'image', imageSrc: url, width, height },
+          createdBy: useAppStore.getState().user?.id || 'anonymous',
+        };
+        const created = await useCanvasNodesStore
+          .getState()
+          .createNode(payload as any);
+        if (created?.id) {
+          let currentId = created.id;
+          useCanvasHistoryStore.getState().push({
+            label: 'Paste image',
+            undo: async () =>
+              useCanvasNodesStore.getState().deleteNode(currentId),
+            redo: async () => {
+              const re = await useCanvasNodesStore
+                .getState()
+                .createNode(payload as any);
+              if (re?.id) currentId = re.id;
+            },
+          });
+        }
+        toast.success('Image added', { id: toastId });
+      } catch (error) {
+        console.error('❌ Failed to paste image:', error);
+        toast.error('Could not upload the image', { id: toastId });
+      }
+    },
+    [screenToFlowPosition]
+  );
+
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (!canEdit) return;
+      // Let pastes into a text field (incl. the inline text editor) behave.
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.tagName === 'INPUT' ||
+          t.tagName === 'TEXTAREA' ||
+          t.isContentEditable)
+      )
+        return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            void handlePasteImage(file);
+          }
+          return;
+        }
+      }
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [canEdit, handlePasteImage]);
 
   // Phase B: when data-flow / reference edges are deleted from the canvas, drop
   // them from state.extraEdges and re-persist. Relationship edges (not in
