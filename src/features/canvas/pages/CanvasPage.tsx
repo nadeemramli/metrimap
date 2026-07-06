@@ -11,6 +11,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   SelectionMode,
+  useNodesState,
   useReactFlow,
   type Connection,
   type NodeChange,
@@ -134,6 +135,10 @@ import { useUser } from '@clerk/react-router';
 import { createLogger } from '@/shared/utils/logger';
 
 const log = createLogger('canvas');
+
+// Stable empty selection passed to the node converters — selection is owned by
+// React Flow now (ADR-008 step 3), so converters must never stamp `selected`.
+const EMPTY_SELECTION: string[] = [];
 
 function CanvasPageInner() {
   const { canvasId } = useParams();
@@ -864,95 +869,159 @@ function CanvasPageInner() {
   const nodeSources = useCanvasNodeSources();
 
   // Memoized data conversions
-  const nodes = useMemo(() => {
-    const metricCardNodes = nodeSources.metricCards;
-    const evidenceNodes = nodeSources.positionedEvidence;
-    const persistedCanvasNodes = nodeSources.canvasNodes;
-    const newNodeTypes = nodeSources.newNodes;
+  // ── ADR-008 step 3 (CVS-23/65): React Flow OWNS node view-state via
+  // useNodesState. Stores feed it ONE-WAY through the reconcile effect below;
+  // React Flow's own change events (select / drag / dimensions) update rfNodes
+  // and never re-derive the array — this breaks the derive↔control loop that
+  // caused React #185. Identity is kept stable per source object (`__src`) plus
+  // a build-context key (`__ctx`) so an unchanged node keeps its EXACT object
+  // reference and React Flow never re-measures it.
+  const focusedMembers = useMemo(() => {
+    if (!focusedGroupId) return null;
+    const fg = (canvas?.groups || []).find((g) => g.id === focusedGroupId);
+    return new Set(fg?.nodeIds || []);
+  }, [focusedGroupId, canvas?.groups]);
 
-    const convertedMetricCardNodes = metricCardNodes.map((card) =>
-      convertToNode(
-        card,
-        stableEvents.handleOpenSettingsSheet,
-        () => log.debug('Node clicked:', card.id),
-        stableEvents.handleSwitchToCard,
-        state.isSettingsSheetOpen,
-        selectedNodeIds
-      )
-    );
+  // Global inputs (besides the source object) that affect a built node. When
+  // this changes, every node rebuilds — rare, deliberate UI events only.
+  const nodeCtxKey = `${state.isSettingsSheetOpen}|${focusedGroupId ?? ''}`;
 
-    // Convert persisted canvas nodes to ReactFlow nodes
-    const convertedPersistedCanvasNodes = persistedCanvasNodes.map(
-      (canvasNode) => convertToCanvasNode(canvasNode, selectedNodeIds)
-    );
-
-    // Convert new node types to ReactFlow nodes
-    const convertedNewNodeTypes = newNodeTypes.map((node) => ({
-      id: node.id,
-      type: node.type,
-      position: node.position,
-      data: { node },
-      selected: selectedNodeIds.includes(node.id),
-      selectable: true,
-      draggable: true,
-    }));
-
-    const convertedEvidenceNodes = evidenceNodes.map((evidence) =>
-      convertToEvidenceNode(
-        evidence,
-        updateEvidence,
-        deleteEvidence,
-        selectedNodeIds
-      )
-    );
-
-    // Grouping redesign: the on-canvas group frame is gone. Group data still
-    // lives in canvas.groups (used by the Groups side panel + dashboard scope);
-    // it just no longer renders as a rectangle node here.
-    const allNodes = [
-      ...convertedMetricCardNodes,
-      ...convertedEvidenceNodes,
-      ...convertedPersistedCanvasNodes,
-      ...convertedNewNodeTypes,
-      // Only include temporary nodes if they exist (for immediate UI feedback)
-      ...(temporaryExtraNodes.length > 0 ? temporaryExtraNodes : []),
-    ];
-
-    // Focus mode: dim every node that isn't a member of the focused group to
-    // faint context (members stay bright). Edges are dimmed in the edges memo.
-    if (focusedGroupId) {
-      const fg = (canvas?.groups || []).find((g) => g.id === focusedGroupId);
-      const members = new Set(fg?.nodeIds || []);
-      return allNodes.map((n) =>
-        members.has(n.id)
-          ? n
-          : {
-              ...n,
-              className: [(n as any).className, 'rf-node-dimmed']
-                .filter(Boolean)
-                .join(' '),
-            }
-      );
+  // Desired nodes as {id, src, build}. `src` is the SOURCE store object — stable
+  // until the store mutates it — which is exactly what keeps RF node identity
+  // stable across renders. `selected` is intentionally NOT stamped (RF owns it).
+  const desiredItems = useMemo(() => {
+    const dim = (id: string, node: any) =>
+      focusedMembers && !focusedMembers.has(id)
+        ? {
+            ...node,
+            className: [node.className, 'rf-node-dimmed']
+              .filter(Boolean)
+              .join(' '),
+          }
+        : node;
+    const items: Array<{ id: string; src: any; build: () => any }> = [];
+    for (const card of nodeSources.metricCards) {
+      items.push({
+        id: card.id,
+        src: card,
+        build: () =>
+          dim(
+            card.id,
+            convertToNode(
+              card,
+              stableEvents.handleOpenSettingsSheet,
+              () => {},
+              stableEvents.handleSwitchToCard,
+              state.isSettingsSheetOpen,
+              EMPTY_SELECTION
+            )
+          ),
+      });
     }
-
-    return allNodes;
+    for (const evidence of nodeSources.positionedEvidence) {
+      items.push({
+        id: evidence.id,
+        src: evidence,
+        build: () =>
+          dim(
+            evidence.id,
+            convertToEvidenceNode(
+              evidence,
+              updateEvidence,
+              deleteEvidence,
+              EMPTY_SELECTION
+            )
+          ),
+      });
+    }
+    for (const canvasNode of nodeSources.canvasNodes) {
+      items.push({
+        id: canvasNode.id,
+        src: canvasNode,
+        build: () => dim(canvasNode.id, convertToCanvasNode(canvasNode, EMPTY_SELECTION)),
+      });
+    }
+    for (const node of nodeSources.newNodes) {
+      items.push({
+        id: node.id,
+        src: node,
+        build: () =>
+          dim(node.id, {
+            id: node.id,
+            type: node.type,
+            position: node.position,
+            data: { node },
+            selectable: true,
+            draggable: true,
+          }),
+      });
+    }
+    // Transient optimistic-UI fallback nodes (draw-add before store round-trip).
+    for (const tn of temporaryExtraNodes) {
+      items.push({ id: tn.id, src: tn, build: () => tn });
+    }
+    return items;
   }, [
-    canvasId,
-    nodeSources, // consolidated store-backed node sources (ADR-008 step 2)
-    canvas?.groups,
-    focusedGroupId,
-    updateEvidence,
-    deleteEvidence,
-    temporaryExtraNodes, // Only temporary fallback nodes (XState, transient)
-    selectedNodeIds,
+    nodeSources,
+    temporaryExtraNodes,
+    focusedMembers,
     state.isSettingsSheetOpen,
     stableEvents,
+    updateEvidence,
+    deleteEvidence,
   ]);
+
+  const [rfNodes, setRfNodes] = useNodesState([]);
+
+  // Ids currently being dragged — reconcile leaves these untouched so store
+  // writes (incl. the per-frame drag write, until Phase 4) never snap them.
+  const draggingIds = useRef<Set<string>>(new Set());
+
+  // ONE-WAY store → RF reconcile (merge by id). Preserve RF-owned view fields
+  // (selected / dragging / measured / dimensions) from the current node and
+  // rebuild data+position from the source only when the source object or ctx
+  // changed. Return the SAME object when nothing changed so RF never re-measures
+  // — this identity stability is what actually kills the #185 loop.
+  useEffect(() => {
+    setRfNodes((prev) => {
+      const prevById = new Map(prev.map((n) => [n.id, n]));
+      const nextIds = new Set<string>();
+      let changed = prev.length !== desiredItems.length;
+      const next = desiredItems.map(({ id, src, build }) => {
+        nextIds.add(id);
+        const p = prevById.get(id) as any;
+        if (p && draggingIds.current.has(id)) return p; // don't touch mid-drag
+        if (p && p.__src === src && p.__ctx === nodeCtxKey) return p; // unchanged
+        changed = true;
+        const built: any = build();
+        built.__src = src;
+        built.__ctx = nodeCtxKey;
+        if (p) {
+          // Preserve React Flow-owned view state across a rebuild.
+          built.selected = p.selected;
+          built.dragging = p.dragging;
+          built.measured = p.measured;
+          if (p.width != null) built.width = p.width;
+          if (p.height != null) built.height = p.height;
+          if (p.positionAbsolute) built.positionAbsolute = p.positionAbsolute;
+        }
+        return built;
+      });
+      if (!changed) {
+        for (const p of prev)
+          if (!nextIds.has(p.id)) {
+            changed = true;
+            break;
+          }
+      }
+      return changed ? next : prev;
+    });
+  }, [desiredItems, nodeCtxKey, setRfNodes]);
 
   // Keep the latest composed nodes reachable from the once-per-canvas reconcile
   // effect below without making it re-run on every node change (e.g. drag).
-  const latestNodesRef = useRef(nodes);
-  latestNodesRef.current = nodes;
+  const latestNodesRef = useRef(rfNodes);
+  latestNodesRef.current = rfNodes;
 
   // One-time per canvas: flag warehouse source nodes whose connection has been
   // removed as stale, so the canvas shows a "disconnected" badge proactively.
@@ -1278,6 +1347,9 @@ function CanvasPageInner() {
         }
       }
       dragStart.current = snap;
+      // Reconcile must not overwrite these while they're being dragged.
+      draggingIds.current = new Set(Object.keys(snap));
+      draggingIds.current.add(node.id);
     },
     [getNodes]
   );
@@ -1332,6 +1404,7 @@ function CanvasPageInner() {
     for (const n of dragNodes)
       snap[n.id] = { type: n.type as string, position: { ...n.position } };
     dragStart.current = snap;
+    draggingIds.current = new Set(Object.keys(snap));
   }, []);
 
   const handleSelectionDrag = useCallback(
@@ -1344,6 +1417,7 @@ function CanvasPageInner() {
   const handleSelectionDragStop = useCallback(
     (_: any, dragNodes: any[]) => {
       for (const n of dragNodes) applyNodePosition(n.type, n.id, n.position);
+      draggingIds.current.clear();
       // A bulk move invalidates ELK-routed channels; drop them all.
       setRoutedEdgePoints({});
       recordMoveUndo();
@@ -1398,6 +1472,8 @@ function CanvasPageInner() {
 
   const handleNodeDragStop = useCallback(
     (_: any, node: any) => {
+      // Reconcile may resume owning these nodes now the drag is done.
+      draggingIds.current.clear();
       // Clear any drop-target highlights from the drag.
       clearIntersections();
       // A moved node invalidates the ELK-routed channels of its incident edges —
@@ -1614,8 +1690,8 @@ function CanvasPageInner() {
 
   // Block invalid drags (wrong node types or cycle-forming) visually before drop.
   const isValidConnection = useCallback(
-    (connection: Connection) => canConnect(connection, nodes, existingEdges),
-    [nodes, existingEdges]
+    (connection: Connection) => canConnect(connection, getNodes(), existingEdges),
+    [getNodes, existingEdges]
   );
 
   // Let the realtime layer apply remote data-flow/reference edge changes into
@@ -1639,7 +1715,7 @@ function CanvasPageInner() {
 
       // Use enhanced connection handler
       const result = handleNodeConnection(connection, {
-        nodes,
+        nodes: getNodes(),
         existingEdges,
         onCreateRelationship: async (relationshipData) => {
           try {
@@ -1699,7 +1775,7 @@ function CanvasPageInner() {
         toast.error(`Connection failed: ${result.error}`);
       }
     },
-    [nodes, existingEdges, state, persistDataFlowEdges, bindOperatorInput]
+    [getNodes, existingEdges, state, persistDataFlowEdges, bindOperatorInput]
   );
 
   // Persist a finished freehand stroke as a whiteboardNode (replaces the old
@@ -2029,18 +2105,18 @@ function CanvasPageInner() {
   );
 
   // Apply generic node changes for extra nodes (selection/resize etc.)
-  // UNIFIED: Only handle temporary extra nodes, persisted nodes are handled by their stores
+  // React Flow owns the node array now (ADR-008 step 3): apply ALL of its change
+  // events (select / drag position / dimensions) into rfNodes. `remove` is left
+  // to onNodesDelete → store delete → reconcile, so RF and the store can't race
+  // (applying remove here could let reconcile re-add the node before the async
+  // store delete lands). Store position writes stay in the drag-stop handlers.
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      if (
-        !Array.isArray(temporaryExtraNodes) ||
-        temporaryExtraNodes.length === 0
-      )
-        return;
-      const updated = applyNodeChanges(changes, temporaryExtraNodes as any);
-      state.setExtraNodes(updated as any);
+      const applied = changes.filter((c) => c.type !== 'remove');
+      if (applied.length === 0) return;
+      setRfNodes((nds) => applyNodeChanges(applied, nds));
     },
-    [temporaryExtraNodes, state]
+    [setRfNodes]
   );
 
   // Handle draw tool changes - update state and call the whiteboard API
@@ -2249,7 +2325,7 @@ function CanvasPageInner() {
               state.reactFlowRef.current = ref;
               viewportSync.setReactFlowRef(ref);
             }}
-            nodes={nodes}
+            nodes={rfNodes}
             edges={edges}
             nodeTypes={nodeTypes as any}
             edgeTypes={edgeTypes}
