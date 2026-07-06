@@ -52,7 +52,15 @@ import {
 } from '@/features/strategy/utils/groupStrategy';
 import { buildValueJourney } from '@/features/strategy/utils/valueJourney';
 import { cn } from '@/shared/utils';
-import { Loader2, Plus, SquareKanban, Table as TableIcon, Target } from 'lucide-react';
+import {
+  ChevronDown,
+  Loader2,
+  Plus,
+  SquareKanban,
+  Table as TableIcon,
+  Target,
+  Waypoints,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -63,6 +71,9 @@ import { toast } from 'sonner';
 
 const ALL_VIEW = '__all__';
 type ViewMode = 'board' | 'table' | 'tree';
+
+// The value-journey rail is opt-in chrome — remember the choice per browser.
+const JOURNEY_OPEN_KEY = 'metrimap-strategy-journey-open';
 
 export default function StrategyPage() {
   const { canvasId } = useParams();
@@ -80,6 +91,23 @@ export default function StrategyPage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<string>(ALL_VIEW);
   const [viewMode, setViewMode] = useState<ViewMode>('board');
+  const [journeyOpen, setJourneyOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(JOURNEY_OPEN_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleJourney = () =>
+    setJourneyOpen((open) => {
+      try {
+        localStorage.setItem(JOURNEY_OPEN_KEY, open ? '0' : '1');
+      } catch {
+        /* ignore */
+      }
+      return !open;
+    });
 
   // Optimistic patches (status/priority/assignees/dueDate) kept on success —
   // they mirror the DB; reverted on failure. Session-created cards + deletes.
@@ -436,15 +464,8 @@ export default function StrategyPage() {
 
   return (
     <div className="p-4">
-      {journey.length > 0 ? (
-        <ValueJourneyStrip steps={journey} />
-      ) : (
-        <p className="mb-4 text-xs text-muted-foreground">
-          Add Core/Value nodes on the canvas to map your journey here.
-        </p>
-      )}
-
-      {/* Group pills + Board/Table toggle */}
+      {/* Single toolbar: group scope left; counts, journey toggle, and view
+          switcher right. The journey rail is opt-in and renders below. */}
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
         <button
           onClick={() => setView(ALL_VIEW)}
@@ -477,43 +498,67 @@ export default function StrategyPage() {
           </button>
         ))}
 
-        <div className="ml-auto flex items-center rounded-md border shadow-sm">
-          <Button
-            variant={viewMode === 'board' ? 'default' : 'ghost'}
-            size="sm"
-            className="h-8 gap-1.5 rounded-r-none"
-            onClick={() => setViewMode('board')}
-          >
-            <SquareKanban className="h-3.5 w-3.5" />
-            Board
-          </Button>
-          <Button
-            variant={viewMode === 'table' ? 'default' : 'ghost'}
-            size="sm"
-            className="h-8 gap-1.5 rounded-none"
-            onClick={() => setViewMode('table')}
-          >
-            <TableIcon className="h-3.5 w-3.5" />
-            Table
-          </Button>
-          <Button
-            variant={viewMode === 'tree' ? 'default' : 'ghost'}
-            size="sm"
-            className="h-8 gap-1.5 rounded-l-none"
-            onClick={() => setViewMode('tree')}
-          >
-            <Target className="h-3.5 w-3.5" />
-            Tree
-          </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="hidden text-xs text-muted-foreground lg:block">
+            {board.counts.actions} action
+            {board.counts.actions === 1 ? '' : 's'} ·{' '}
+            {board.counts.hypotheses} hypothes
+            {board.counts.hypotheses === 1 ? 'is' : 'es'} ·{' '}
+            {board.counts.done} done
+          </span>
+          {journey.length > 0 && (
+            <Button
+              variant={journeyOpen ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={toggleJourney}
+              aria-expanded={journeyOpen}
+            >
+              <Waypoints className="h-3.5 w-3.5" />
+              Journey
+              <ChevronDown
+                className={cn(
+                  'h-3 w-3 text-muted-foreground transition-transform',
+                  journeyOpen && 'rotate-180'
+                )}
+              />
+            </Button>
+          )}
+          <div className="flex items-center rounded-md border shadow-sm">
+            <Button
+              variant={viewMode === 'board' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 gap-1.5 rounded-r-none"
+              onClick={() => setViewMode('board')}
+            >
+              <SquareKanban className="h-3.5 w-3.5" />
+              Board
+            </Button>
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 gap-1.5 rounded-none"
+              onClick={() => setViewMode('table')}
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              Table
+            </Button>
+            <Button
+              variant={viewMode === 'tree' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 gap-1.5 rounded-l-none"
+              onClick={() => setViewMode('tree')}
+            >
+              <Target className="h-3.5 w-3.5" />
+              Tree
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="mb-4 text-sm text-muted-foreground">
-        {board.counts.actions} action{board.counts.actions === 1 ? '' : 's'} ·{' '}
-        {board.counts.hypotheses} hypothes
-        {board.counts.hypotheses === 1 ? 'is' : 'es'} · {board.counts.done}{' '}
-        done
-      </div>
+      {journeyOpen && journey.length > 0 && (
+        <ValueJourneyStrip steps={journey} />
+      )}
 
       {viewMode === 'board' ? (
         <StrategyBoard
