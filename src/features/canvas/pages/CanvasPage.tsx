@@ -175,6 +175,10 @@ function CanvasPageInner() {
   const [showGroupsPanel, setShowGroupsPanel] = useState(false);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
+  // Holding Space temporarily pans the canvas (React Flow's panActivationKeyCode).
+  // In Draw mode the tool overlays sit on top and would eat the pointer, so we
+  // drop them while Space is held to let the grab-pan through.
+  const [spaceHeld, setSpaceHeld] = useState(false);
   // ELK-routed edge polylines keyed by edge id, produced by the last auto-layout
   // so DynamicEdge can draw the no-overlap orthogonal channel ELK reserved.
   const [routedEdgePoints, setRoutedEdgePoints] = useState<
@@ -1280,13 +1284,11 @@ function CanvasPageInner() {
       // Esc → in Draw mode, break from the active tool back to Select (CVS-107);
       // in Edit mode, clear the selection (CVS-68).
       if (e.key === 'Escape') {
-        if (state.toolbarMode === 'draw') {
-          if (state.whiteboardTool !== 'select') {
-            state.setWhiteboardTool('select');
-          }
-          return;
-        }
         const s = useCanvasStore.getState();
+        if (state.toolbarMode === 'draw' && state.whiteboardTool !== 'select') {
+          // Break from the active drawing tool back to Select (CVS-107).
+          state.setWhiteboardTool('select');
+        }
         if (s.selectedNodeIds.length || s.selectedEdgeIds.length) {
           s.clearSelection();
         }
@@ -1358,6 +1360,36 @@ function CanvasPageInner() {
     requestGroupSelection,
     events.handleUngroupSelectedGroups,
   ]);
+
+  // Track Space held → drop Draw-mode tool overlays so React Flow's Space
+  // grab-pan (panActivationKeyCode) can pan under an active drawing tool.
+  useEffect(() => {
+    const isTyping = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      return (
+        !!el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.isContentEditable)
+      );
+    };
+    const down = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !isTyping(e.target)) setSpaceHeld(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.code === 'Space') setSpaceHeld(false);
+    };
+    // Releasing focus (alt-tab) can swallow keyup — never leave it stuck on.
+    const reset = () => setSpaceHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', reset);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', reset);
+    };
+  }, []);
 
   // Memoized filter options
   const availableFilterOptions = useMemo(() => {
@@ -2436,19 +2468,29 @@ function CanvasPageInner() {
             // and pan is on middle/right mouse or by holding Space — unless the
             // Hand tool is active, where left-drag pans.
             onSelectionChange={handleSelectionChange}
+            // Left-drag marquee whenever the Select tool is active — in Edit
+            // OR in Draw mode. (React Flow auto-disables this while panning.)
             selectionOnDrag={
-              state.toolbarMode === 'edit' && state.navigationTool !== 'hand'
+              (state.toolbarMode === 'edit' &&
+                state.navigationTool !== 'hand') ||
+              (state.toolbarMode === 'draw' &&
+                state.whiteboardTool === 'select')
             }
             selectionMode={SelectionMode.Partial}
+            // Hand tool (Edit or Draw): left-drag pans. Select tool: middle/right
+            // pan so left stays free for the marquee. Active drawing tool: no
+            // pane drag (the overlay draws; Space still grab-pans via the key).
             panOnDrag={
-              state.toolbarMode === 'edit'
-                ? state.navigationTool === 'hand'
-                  ? true // Hand tool: left-drag pans
-                  : [1, 2] // Select tool: middle/right pan; left-drag selects
-                : state.whiteboardTool === 'select' ||
-                    state.whiteboardTool === 'hand'
+              (state.toolbarMode === 'edit' &&
+                state.navigationTool === 'hand') ||
+              (state.toolbarMode === 'draw' && state.whiteboardTool === 'hand')
+                ? true
+                : (state.toolbarMode === 'edit' &&
+                      state.navigationTool !== 'hand') ||
+                    (state.toolbarMode === 'draw' &&
+                      state.whiteboardTool === 'select')
                   ? [1, 2]
-                  : false // Draw mode with an active drawing tool
+                  : false
             }
             // Scroll pans, Ctrl/⌘+scroll (and pinch) zooms — in EVERY mode,
             // including Draw with an active drawing tool. React Flow binds its
@@ -2660,7 +2702,7 @@ function CanvasPageInner() {
             {/* React Flow Whiteboard Tools - Only render the active tool. Wrapped
                 so scroll-pan / Ctrl+scroll-zoom still work while a tool overlay
                 (which sits on top of React Flow) is capturing pointer events. */}
-            {state.toolbarMode === 'draw' && (
+            {state.toolbarMode === 'draw' && !spaceHeld && (
               <DrawWheelZoom>
                 {state.whiteboardTool === 'eraser' && (
                   <EraseToolComponent
