@@ -17,8 +17,9 @@ import {
   Settings2,
   Sparkles,
 } from 'lucide-react';
-import { memo, useState } from 'react';
+import { memo, useCallback } from 'react';
 import { useOpenConfigOnDoubleClick } from '@/features/canvas/hooks/useOpenConfigOnDoubleClick';
+import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
 import { SourceConfigSheet } from './source-config-sheet';
 
 const ORIGIN_ICON: Record<string, React.ElementType> = {
@@ -41,7 +42,23 @@ const DragPill = () => (
 
 export const SourceNode = memo(({ id, data, selected }: NodeProps) => {
   const d = (data || {}) as SourceNodeData;
-  const [showConfig, setShowConfig] = useState(false);
+  // Open state lives in the shared panel store so the config panel is
+  // mutually exclusive with every other right-dock panel.
+  const showConfig = useCanvasPanelStore(
+    (s) => s.rightPanel?.kind === 'sourceConfig' && s.rightPanel.nodeId === id
+  );
+  const setShowConfig = useCallback(
+    (open: boolean) => {
+      const s = useCanvasPanelStore.getState();
+      if (open) s.openRight({ kind: 'sourceConfig', nodeId: id });
+      else if (
+        s.rightPanel?.kind === 'sourceConfig' &&
+        s.rightPanel.nodeId === id
+      )
+        s.closeRight();
+    },
+    [id]
+  );
   useOpenConfigOnDoubleClick(id, () => setShowConfig(true));
 
   // Origin label: new `config.origin`, else legacy `sourceType`, else unconfigured.

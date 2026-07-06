@@ -15,13 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/shared/components/ui/sheet';
+import { DockPanel } from '@/features/canvas/components/dock';
 import {
   Tabs,
   TabsList,
@@ -202,23 +196,36 @@ export function SourceConfigSheet({
     setGenOpts((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[640px] sm:max-w-[640px] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            {data.title || 'Data Source'}
-          </SheetTitle>
-          <SheetDescription>
-            Build a metric series, then feed it to{' '}
-            {downstreamCount > 0
-              ? `${downstreamCount} wired downstream node${downstreamCount === 1 ? '' : 's'}`
-              : 'downstream cards (wire this node to a card first)'}
-            .
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="mt-4 space-y-4">
+    <DockPanel
+      open={open}
+      onClose={() => onOpenChange(false)}
+      width="lg"
+      icon={<Database />}
+      eyebrow="Data source"
+      title={data.title || 'Data Source'}
+      subtitle={
+        <>
+          Build a metric series, then feed it to{' '}
+          {downstreamCount > 0
+            ? `${downstreamCount} wired downstream node${downstreamCount === 1 ? '' : 's'}`
+            : 'downstream cards (wire this node to a card first)'}
+          .
+        </>
+      }
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={busy || !series}>
+            {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Plus className="h-4 w-4 mr-1" />
+            Save &amp; feed downstream
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
           <Tabs value={origin} onValueChange={(v) => setOrigin(v as SourceOrigin)}>
             <TabsList className="w-full">
               <TabsTrigger value="warehouse" className="flex-1">
@@ -425,28 +432,17 @@ export function SourceConfigSheet({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2 border-t">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={busy || !series}>
-              {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              <Plus className="h-4 w-4 mr-1" />
-              Save &amp; feed downstream
-            </Button>
-          </div>
-        </div>
+      </div>
 
-        {/* Warehouse query builder (reused) */}
-        <WarehouseSourceDialog
-          open={showWarehouseDialog}
-          onOpenChange={setShowWarehouseDialog}
-          onApply={(resolved, meta) => {
-            setSeries(resolved);
-            setWarehouse(meta);
-          }}
-        />
-      </SheetContent>
-    </Sheet>
+      {/* Warehouse query builder (reused) */}
+      <WarehouseSourceDialog
+        open={showWarehouseDialog}
+        onOpenChange={setShowWarehouseDialog}
+        onApply={(resolved, meta) => {
+          setSeries(resolved);
+          setWarehouse(meta);
+        }}
+      />
+    </DockPanel>
   );
 }

@@ -22,13 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/shared/components/ui/sheet';
+import { DockPanel } from '@/features/canvas/components/dock';
 import { Switch } from '@/shared/components/ui/switch';
 import type { MetricCard } from '@/shared/types';
 import {
@@ -135,16 +129,14 @@ export function ChartNodeSettings({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[400px] sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Chart settings</SheetTitle>
-          <SheetDescription>
-            Choose a chart type and which metrics to plot.
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="space-y-6 px-4 pb-6">
+    <DockPanel
+      open={open}
+      onClose={() => onOpenChange(false)}
+      width="md"
+      title="Chart settings"
+      subtitle="Choose a chart type and which metrics to plot."
+    >
+      <div className="space-y-6">
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="chart-title">Title</Label>
@@ -258,9 +250,8 @@ export function ChartNodeSettings({
               stay bound to the same cards.
             </p>
           </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </DockPanel>
   );
 }
 

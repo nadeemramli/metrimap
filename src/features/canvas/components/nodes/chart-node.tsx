@@ -19,7 +19,8 @@ import {
   PieChartIcon,
   Settings2,
 } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo } from 'react';
+import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
 import { useOpenConfigOnDoubleClick } from '@/features/canvas/hooks/useOpenConfigOnDoubleClick';
 import { ChartNodeSettings } from './chart-node-settings';
 
@@ -61,7 +62,23 @@ const ChartNodeInner = memo(({ id, data, selected }: NodeProps) => {
     [nodeData.seriesCardIds]
   );
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Open state lives in the shared panel store so chart settings are
+  // mutually exclusive with every other right-dock panel.
+  const settingsOpen = useCanvasPanelStore(
+    (s) => s.rightPanel?.kind === 'chartSettings' && s.rightPanel.nodeId === id
+  );
+  const setSettingsOpen = useCallback(
+    (open: boolean) => {
+      const s = useCanvasPanelStore.getState();
+      if (open) s.openRight({ kind: 'chartSettings', nodeId: id });
+      else if (
+        s.rightPanel?.kind === 'chartSettings' &&
+        s.rightPanel.nodeId === id
+      )
+        s.closeRight();
+    },
+    [id]
+  );
   useOpenConfigOnDoubleClick(id, () => setSettingsOpen(true));
 
   // Live metric cards — re-renders when an operator sim updates a plotted card.
