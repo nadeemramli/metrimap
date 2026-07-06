@@ -10,7 +10,7 @@ import type { Mapper } from './types';
 
 export const MAPPERS: Record<string, Mapper> = {
   'stripe:payment_intents': mapStripePayment,
-  'ga4:page_report': mapGa4PageMetric,
+  'ga4:page_metrics': mapGa4PageMetric, // stream name matches the CVS-140 GA4 manifest
   'ga4:events': mapGa4Event,
   'woocommerce:orders': mapWooOrder,
   'shopify:orders': mapShopifyOrder,
