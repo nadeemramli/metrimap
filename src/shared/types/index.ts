@@ -104,6 +104,10 @@ export interface MetricCard {
   // Position on canvas
   position: { x: number; y: number };
 
+  // Paint order on canvas (Layers panel). null/undefined = legacy row;
+  // resolved by createdAt order until the first explicit reorder persists it.
+  zIndex?: number | null;
+
   // React Flow subflow support
   parentId?: string; // ID of the group this node belongs to
 
@@ -347,6 +351,8 @@ export interface CanvasNode {
   nodeType: CanvasNodeType;
   title?: string;
   position: { x: number; y: number };
+  /** Paint order on canvas (Layers panel); null/undefined = createdAt order. */
+  zIndex?: number | null;
   data: Record<string, any>;
   createdAt: string;
   updatedAt: string;

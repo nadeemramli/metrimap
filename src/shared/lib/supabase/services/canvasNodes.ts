@@ -9,6 +9,7 @@ interface CanvasNodeRow {
   title: string | null;
   position_x: number;
   position_y: number;
+  z_index?: number | null;
   data: any;
   created_at: string;
   updated_at: string;
@@ -24,6 +25,7 @@ function rowToCanvasNode(row: CanvasNodeRow): CanvasNode {
     nodeType: row.node_type as CanvasNodeType,
     title: row.title || undefined,
     position: { x: row.position_x, y: row.position_y },
+    zIndex: row.z_index ?? null,
     data: row.data || {},
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -40,6 +42,7 @@ function canvasNodeToRow(node: Omit<CanvasNode, 'id' | 'createdAt' | 'updatedAt'
     title: node.title || null,
     position_x: node.position.x,
     position_y: node.position.y,
+    z_index: node.zIndex ?? null,
     data: node.data,
     created_by: node.createdBy,
   };
@@ -94,20 +97,24 @@ export async function getCanvasNodesByProject(
  */
 export async function updateCanvasNode(
   nodeId: string,
-  updates: Partial<Pick<CanvasNode, 'title' | 'position' | 'data'>>,
+  updates: Partial<Pick<CanvasNode, 'title' | 'position' | 'data' | 'zIndex'>>,
   client: SupabaseClient
 ): Promise<CanvasNode> {
   const updateData: Partial<CanvasNodeRow> = {};
-  
+
   if (updates.title !== undefined) {
     updateData.title = updates.title || null;
   }
-  
+
   if (updates.position) {
     updateData.position_x = updates.position.x;
     updateData.position_y = updates.position.y;
   }
-  
+
+  if (updates.zIndex !== undefined) {
+    updateData.z_index = updates.zIndex;
+  }
+
   if (updates.data !== undefined) {
     updateData.data = updates.data;
   }

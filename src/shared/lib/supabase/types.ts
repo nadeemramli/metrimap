@@ -825,6 +825,7 @@ export type Database = {
           project_id: string
           title: string | null
           updated_at: string
+          z_index: number | null
         }
         Insert: {
           created_at?: string
@@ -837,6 +838,7 @@ export type Database = {
           project_id: string
           title?: string | null
           updated_at?: string
+          z_index?: number | null
         }
         Update: {
           created_at?: string
@@ -849,6 +851,7 @@ export type Database = {
           project_id?: string
           title?: string | null
           updated_at?: string
+          z_index?: number | null
         }
         Relationships: [
           {
@@ -1465,6 +1468,7 @@ export type Database = {
       owner_id: string | null
       status: string | null
       workflow: Json
+      z_index: number | null
       project_id: string
       created_at: string | null
       updated_at: string | null
@@ -1489,6 +1493,7 @@ export type Database = {
       owner_id?: string | null
       status?: string | null
       workflow?: Json
+      z_index?: number | null
       project_id: string
       created_at?: string | null
       updated_at?: string | null
@@ -1513,6 +1518,7 @@ export type Database = {
       owner_id?: string | null
       status?: string | null
       workflow?: Json
+      z_index?: number | null
       project_id?: string
       created_at?: string | null
       updated_at?: string | null

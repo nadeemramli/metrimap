@@ -34,6 +34,7 @@ function transformMetricCard(card: MetricCardRow): MetricCard {
     causalFactors: (card.causal_factors || []) as any,
     dimensions: (card.dimensions || []) as any,
     position: { x: card.position_x, y: card.position_y },
+    zIndex: (card as { z_index?: number | null }).z_index ?? null,
     data: card.data as any,
     sourceType: card.source_type as any,
     trackedMetricId: (card as any).tracked_metric_id ?? null,
@@ -62,6 +63,7 @@ function transformToInsert(
     sub_category: card.subCategory,
     position_x: card.position.x,
     position_y: card.position.y,
+    z_index: card.zIndex ?? null,
     data: card.data as any,
     source_type: card.sourceType,
     formula: card.formula,
@@ -88,6 +90,8 @@ function buildUpdateData(updates: Partial<MetricCard>): MetricCardUpdate {
     updateData.position_x = updates.position.x;
     updateData.position_y = updates.position.y;
   }
+
+  setIfDefined(updateData, 'z_index', updates.zIndex);
 
   setIfDefined(updateData, 'data', updates.data as any);
   setIfDefined(updateData, 'source_type', updates.sourceType);

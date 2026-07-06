@@ -58,6 +58,7 @@ import {
 } from '@/shared/utils/authenticatedClient';
 import { runPipeline } from '@/features/canvas/utils/runSimulation';
 import { normalizeOperatorData } from '@/features/canvas/utils/operatorMigration';
+import { resolveZ } from '@/features/canvas/utils/zOrder';
 import {
   addInput,
   deriveInputsFromEdges,
@@ -971,21 +972,42 @@ function CanvasPageInner() {
               .join(' '),
           }
         : node;
+    // Paint order across ALL sources: persisted z_index wins, legacy items
+    // resolve by createdAt (see utils/zOrder). Stamped onto RF node.zIndex.
+    const effectiveZ = resolveZ(
+      [
+        ...nodeSources.metricCards,
+        ...nodeSources.positionedEvidence,
+        ...nodeSources.canvasNodes,
+        ...nodeSources.newNodes,
+      ].map((s: any) => ({
+        id: s.id,
+        zIndex: s.zIndex ?? null,
+        createdAt: s.createdAt,
+      }))
+    );
+    const withZ = (id: string, node: any) => {
+      const z = effectiveZ.get(id);
+      return z === undefined ? node : { ...node, zIndex: z };
+    };
     const items: Array<{ id: string; src: any; build: () => any }> = [];
     for (const card of nodeSources.metricCards) {
       items.push({
         id: card.id,
         src: card,
         build: () =>
-          dim(
+          withZ(
             card.id,
-            convertToNode(
-              card,
-              stableEvents.handleOpenSettingsSheet,
-              () => {},
-              stableEvents.handleSwitchToCard,
-              state.isSettingsSheetOpen,
-              EMPTY_SELECTION
+            dim(
+              card.id,
+              convertToNode(
+                card,
+                stableEvents.handleOpenSettingsSheet,
+                () => {},
+                stableEvents.handleSwitchToCard,
+                state.isSettingsSheetOpen,
+                EMPTY_SELECTION
+              )
             )
           ),
       });
@@ -995,13 +1017,16 @@ function CanvasPageInner() {
         id: evidence.id,
         src: evidence,
         build: () =>
-          dim(
+          withZ(
             evidence.id,
-            convertToEvidenceNode(
-              evidence,
-              updateEvidence,
-              deleteEvidence,
-              EMPTY_SELECTION
+            dim(
+              evidence.id,
+              convertToEvidenceNode(
+                evidence,
+                updateEvidence,
+                deleteEvidence,
+                EMPTY_SELECTION
+              )
             )
           ),
       });
@@ -1010,7 +1035,11 @@ function CanvasPageInner() {
       items.push({
         id: canvasNode.id,
         src: canvasNode,
-        build: () => dim(canvasNode.id, convertToCanvasNode(canvasNode, EMPTY_SELECTION)),
+        build: () =>
+          withZ(
+            canvasNode.id,
+            dim(canvasNode.id, convertToCanvasNode(canvasNode, EMPTY_SELECTION))
+          ),
       });
     }
     for (const node of nodeSources.newNodes) {
@@ -1018,14 +1047,17 @@ function CanvasPageInner() {
         id: node.id,
         src: node,
         build: () =>
-          dim(node.id, {
-            id: node.id,
-            type: node.type,
-            position: node.position,
-            data: { node },
-            selectable: true,
-            draggable: true,
-          }),
+          withZ(
+            node.id,
+            dim(node.id, {
+              id: node.id,
+              type: node.type,
+              position: node.position,
+              data: { node },
+              selectable: true,
+              draggable: true,
+            })
+          ),
       });
     }
     // Transient optimistic-UI fallback nodes (draw-add before store round-trip).
