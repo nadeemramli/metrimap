@@ -9,6 +9,12 @@ import type { PresenceUser } from '@/shared/hooks/usePresence';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { Input } from '@/shared/components/ui/input';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import {
@@ -57,6 +63,10 @@ import {
   Check,
   CheckCircle2,
   Code2,
+  Download,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
   Link2,
   MessageSquare,
   Trash2,
@@ -120,6 +130,12 @@ export function CollaborationPanel({
   // or real name (CVS-33). The People list keeps real names (intentional).
   const authorName = (id: string | null) => userCodename(id);
 
+  // Trigger a canvas export — CanvasPage (inside the ReactFlowProvider) runs it.
+  const emitExport = (format: 'png' | 'pdf' | 'csv') =>
+    window.dispatchEvent(
+      new CustomEvent('canvas:export', { detail: { format } })
+    );
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
       <SheetContent
@@ -130,10 +146,37 @@ export function CollaborationPanel({
         onPointerDownOutside={(e) => e.preventDefault()}
       >
         <SheetHeader className="border-b">
-          <SheetTitle className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Collaboration
-          </SheetTitle>
+          <div className="flex items-center justify-between gap-2 pr-8">
+            <SheetTitle className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Collaboration
+            </SheetTitle>
+            {/* Export the canvas — moved here from the top toolbar. The panel is
+                outside the ReactFlowProvider, so this dispatches a window event
+                that CanvasPage runs (see useCanvasExport). */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 gap-1.5">
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => emitExport('png')}>
+                  <FileImage className="mr-2 h-4 w-4" />
+                  PNG image
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => emitExport('pdf')}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  PDF document
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => emitExport('csv')}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  CSV (metric data)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </SheetHeader>
 
         <Tabs

@@ -51,7 +51,7 @@ import { TimeTravelControl } from '@/features/canvas/components/TimeTravelContro
 import { useTimeTravelStore } from '@/features/canvas/stores/useTimeTravelStore';
 import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
 import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetricPicker';
-import { CanvasExportMenu } from '@/features/canvas/components/export/CanvasExportMenu';
+import { useCanvasExport } from '@/features/canvas/components/export/useCanvasExport';
 import {
   getAuthenticatedClient,
   whenAuthenticatedClientReady,
@@ -514,6 +514,22 @@ function CanvasPageInner() {
   // Cross-canvas quick search — opened from the bottom-left Controls (moved out
   // of the top toolbar). Was previously mounted but never openable.
   const quickSearch = useQuickSearch();
+
+  // Canvas export (PNG/PDF/CSV) lives in the Collaboration panel now, which is
+  // outside this ReactFlowProvider — it dispatches `canvas:export` and we run it
+  // here where the live nodes + viewport are available.
+  const { exportAs } = useCanvasExport();
+  useEffect(() => {
+    const onExport = (e: Event) => {
+      const format = (e as CustomEvent).detail?.format;
+      if (format === 'png' || format === 'pdf' || format === 'csv') {
+        exportAs(format);
+      }
+    };
+    window.addEventListener('canvas:export', onExport as EventListener);
+    return () =>
+      window.removeEventListener('canvas:export', onExport as EventListener);
+  }, [exportAs]);
 
   // Inline text editor for the Text tool (create) and double-click (re-edit).
   // id present → editing an existing whiteboard text node; absent → creating.
@@ -2560,7 +2576,6 @@ function CanvasPageInner() {
                 groupsActive={showGroupsPanel}
                 onToggleOperators={() => setShowOperatorPanel((v) => !v)}
                 operatorsActive={showOperatorPanel}
-                exportSlot={<CanvasExportMenu />}
               />
             </Panel>
 
