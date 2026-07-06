@@ -24,13 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
+import { DockPanel } from '@/features/canvas/components/dock';
 import { Separator } from '@/shared/components/ui/separator';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/shared/components/ui/sheet';
 import { Switch } from '@/shared/components/ui/switch';
 import {
   Tabs,
@@ -137,80 +132,73 @@ export function CollaborationPanel({
     );
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
-      <SheetContent
-        side="right"
-        className="w-[440px] sm:max-w-md p-0 gap-0"
-        // Keep the panel open while the user works on the canvas.
-        onInteractOutside={(e) => e.preventDefault()}
-        onPointerDownOutside={(e) => e.preventDefault()}
+    <DockPanel
+      open={open}
+      onClose={() => onOpenChange(false)}
+      width="md"
+      icon={<MessageSquare />}
+      title="Collaboration"
+      scrollBody={false}
+      padded={false}
+      headerActions={
+        // Export the canvas — moved here from the top toolbar. The panel is
+        // outside the ReactFlowProvider, so this dispatches a window event
+        // that CanvasPage runs (see useCanvasExport).
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 gap-1.5">
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => emitExport('png')}>
+              <FileImage className="mr-2 h-4 w-4" />
+              PNG image
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => emitExport('pdf')}>
+              <FileText className="mr-2 h-4 w-4" />
+              PDF document
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => emitExport('csv')}>
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              CSV (metric data)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      }
+    >
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as CollaborationTab)}
+        className="flex-1 flex flex-col min-h-0"
       >
-        <SheetHeader className="border-b">
-          <div className="flex items-center justify-between gap-2 pr-8">
-            <SheetTitle className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Collaboration
-            </SheetTitle>
-            {/* Export the canvas — moved here from the top toolbar. The panel is
-                outside the ReactFlowProvider, so this dispatches a window event
-                that CanvasPage runs (see useCanvasExport). */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1.5">
-                  <Download className="h-3.5 w-3.5" />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => emitExport('png')}>
-                  <FileImage className="mr-2 h-4 w-4" />
-                  PNG image
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => emitExport('pdf')}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  PDF document
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => emitExport('csv')}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  CSV (metric data)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </SheetHeader>
+        <TabsList className="grid grid-cols-3 mx-4 mt-3">
+          <TabsTrigger value="people">People</TabsTrigger>
+          <TabsTrigger value="comments">Comments</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
 
-        <Tabs
-          value={tab}
-          onValueChange={(v) => setTab(v as CollaborationTab)}
-          className="flex-1 flex flex-col min-h-0"
-        >
-          <TabsList className="grid grid-cols-3 mx-4 mt-3">
-            <TabsTrigger value="people">People</TabsTrigger>
-            <TabsTrigger value="comments">Comments</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
+        <PeopleTab
+          projectId={projectId}
+          members={members}
+          membersLoading={membersLoading}
+          reloadMembers={reloadMembers}
+          presence={presence}
+        />
 
-          <PeopleTab
-            projectId={projectId}
-            members={members}
-            membersLoading={membersLoading}
-            reloadMembers={reloadMembers}
-            presence={presence}
-          />
+        <CommentsTab
+          projectId={projectId}
+          open={open}
+          members={members}
+          userId={user?.id}
+          authorName={authorName}
+          currentPage={currentPage}
+        />
 
-          <CommentsTab
-            projectId={projectId}
-            open={open}
-            members={members}
-            userId={user?.id}
-            authorName={authorName}
-            currentPage={currentPage}
-          />
-
-          <ActivityTab projectId={projectId} open={open} userId={user?.id} />
-        </Tabs>
-      </SheetContent>
-    </Sheet>
+        <ActivityTab projectId={projectId} open={open} userId={user?.id} />
+      </Tabs>
+    </DockPanel>
   );
 }
 

@@ -1,6 +1,14 @@
 import AutoSaveIndicator from '@/features/canvas/components/header/AutoSaveIndicator';
 import CanvasModeToggle from '@/features/canvas/components/header/CanvasModeToggle';
 import CanvasTitleEditor from '@/features/canvas/components/header/CanvasTitleEditor';
+import {
+  LeftDockHost,
+  RightDockHost,
+} from '@/features/canvas/components/dock';
+import {
+  useCanvasPanelStore,
+  type CollabTab,
+} from '@/features/canvas/stores/useCanvasPanelStore';
 import { useProjectsStore } from '@/lib/stores';
 import { PresenceAvatars } from '@/shared/components/PresenceAvatars';
 import { UserMenu } from '@/shared/components/layout/UserMenu';
@@ -24,7 +32,7 @@ import {
   SquareKanban,
   Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CollaborationPanel } from './collaboration/CollaborationPanel';
 
@@ -75,15 +83,20 @@ export default function CanvasLayout() {
   const navigate = useNavigate();
   const { getProjectById } = useProjectsStore();
   const { headerInfo } = useCanvasHeader();
-  const [isCollabOpen, setIsCollabOpen] = useState(false);
-  const [collabTab, setCollabTab] = useState<
-    'people' | 'comments' | 'activity'
-  >('comments');
+
+  // Docked-panel state — one right panel at a time, shared with CanvasPage.
+  const rightPanel = useCanvasPanelStore((s) => s.rightPanel);
+  const openRight = useCanvasPanelStore((s) => s.openRight);
+  const closeRight = useCanvasPanelStore((s) => s.closeRight);
+  const resetPanels = useCanvasPanelStore((s) => s.reset);
+  const isCollabOpen = rightPanel?.kind === 'collaboration';
+  const collabTab: CollabTab = isCollabOpen ? rightPanel.tab : 'comments';
   // Open the collaboration panel directly to one of its sections.
-  const openCollab = (tab: 'people' | 'comments' | 'activity') => {
-    setCollabTab(tab);
-    setIsCollabOpen(true);
-  };
+  const openCollab = (tab: CollabTab) =>
+    openRight({ kind: 'collaboration', tab });
+
+  // Close any open panels when switching canvases or leaving canvas routes.
+  useEffect(() => resetPanels, [canvasId, resetPanels]);
 
   const project = canvasId ? getProjectById(canvasId) : null;
 
@@ -310,19 +323,27 @@ export default function CanvasLayout() {
           </div>
         </div>
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-auto">
-          <Outlet />
+        {/* Page Content + dock slots — panels dock below the top bar and the
+            page shrinks to make room (never overlapped, Figma-style). */}
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          <LeftDockHost />
+          <div className="flex-1 overflow-auto min-w-0">
+            <Outlet />
+          </div>
+          <RightDockHost />
         </div>
       </div>
 
-      {/* Right-side collaboration panel (non-modal: canvas stays interactive) */}
+      {/* Right-side collaboration panel (docked, non-modal: canvas stays interactive) */}
       <CollaborationPanel
         projectId={canvasId}
         open={isCollabOpen}
-        onOpenChange={setIsCollabOpen}
+        onOpenChange={(open) => {
+          if (open) openCollab(collabTab);
+          else closeRight();
+        }}
         activeTab={collabTab}
-        onTabChange={setCollabTab}
+        onTabChange={openCollab}
         presence={roster}
         currentPage={pageLabel}
       />
