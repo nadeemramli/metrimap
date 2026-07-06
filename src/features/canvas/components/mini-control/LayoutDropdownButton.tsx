@@ -5,7 +5,6 @@
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
-import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -239,21 +238,17 @@ export default function LayoutDropdownButton() {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            'rounded-lg transition-colors',
-            hasActiveLayout
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-              : 'hover:bg-accent hover:text-accent-foreground'
-          )}
+        <button
+          type="button"
+          className="react-flow__controls-button rf-control-tool"
           title="Layout"
+          aria-label="Layout"
+          style={{ color: hasActiveLayout ? 'var(--primary)' : undefined }}
         >
-          <LayoutGrid className="w-4 h-4" />
-        </Button>
+          <LayoutGrid />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="start">
+      <DropdownMenuContent className="w-56" side="top" align="start">
         <DropdownMenuLabel>Auto Layout</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {AUTO_LAYOUT_ALGORITHMS.map((direction) => {

@@ -8,13 +8,10 @@ import {
   MessageSquarePlus,
   MousePointer,
   PenTool,
-  Search,
   SlidersHorizontal,
   Square,
 } from 'lucide-react';
 import AddNodeButton from './AddNodeButton';
-import FilterControls from './FilterControls';
-import LayoutDropdownButton from './LayoutDropdownButton';
 import { createLogger } from '@/shared/utils/logger';
 
 const log = createLogger('canvas');
@@ -38,7 +35,6 @@ interface TopCanvasToolbarProps {
   onSetWhiteboardTool?: (tool: string) => void;
 
   onOpenFilters: () => void;
-  onOpenSearch?: () => void;
   onAddEvidence: () => void;
   onApplyLayout: () => void;
   currentLayoutDirection?: string;
@@ -186,9 +182,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
               <MessageSquarePlus className="h-4 w-4" />
             </Button>
           </WithTooltip>
-          {/* Layout dropdown */}
-          <LayoutDropdownButton />
-          <FilterControls />
+          {/* Layout, Filter & Search moved to the bottom-left Controls (CVS UI). */}
           {/* Organize: groups + tools (operators) + export — folded in from the
               old scattered top-right panel so the canvas has one toolbar (CVS-31) */}
           {(props.onToggleGroups || props.onToggleOperators || props.exportSlot) && (
@@ -227,21 +221,6 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
           )}
         </div>
       )}
-
-      {/* Search - Available in both modes */}
-      <div className="flex items-center gap-1">
-        <WithTooltip label="Search" hotkey="/">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={props.onOpenSearch}
-            title="Search"
-            className="rounded-lg"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-        </WithTooltip>
-      </div>
     </div>
   );
 }

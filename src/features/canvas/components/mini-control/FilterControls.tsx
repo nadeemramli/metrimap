@@ -134,13 +134,13 @@ export default function FilterControls() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="relative rounded-lg"
+        <button
+          type="button"
+          className="react-flow__controls-button rf-control-tool"
           title="Filter & date"
+          aria-label="Filter & date"
         >
-          <Filter className="h-4 w-4" />
+          <Filter />
           {activeFilterCount > 0 && (
             <span
               data-testid="filter-active-count"
@@ -149,10 +149,10 @@ export default function FilterControls() {
               {activeFilterCount}
             </span>
           )}
-        </Button>
+        </button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-[340px] p-0">
+      <PopoverContent side="top" align="start" className="w-[340px] p-0">
         <div className="flex items-center justify-between border-b px-3.5 py-2.5">
           <span className="text-sm font-medium">Filter canvas</span>
           {activeFilterCount > 0 && (

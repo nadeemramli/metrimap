@@ -18,7 +18,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Eye } from 'lucide-react';
+import { Eye, Search } from 'lucide-react';
 
 // Extracted utilities and hooks
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
@@ -107,7 +107,11 @@ import OffscreenNodeIndicator from '@/features/canvas/components/wayfinding/Offs
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
 import GroupsPanel from '@/features/canvas/components/left-sidepanel/GroupsPanel';
 import TopCanvasToolbar from '@/features/canvas/components/mini-control/TopCanvasToolbar';
-import QuickSearchCommand from '@/features/canvas/components/search/QuickSearchCommand';
+import QuickSearchCommand, {
+  useQuickSearch,
+} from '@/features/canvas/components/search/QuickSearchCommand';
+import LayoutDropdownButton from '@/features/canvas/components/mini-control/LayoutDropdownButton';
+import FilterControls from '@/features/canvas/components/mini-control/FilterControls';
 import {
   EraseToolComponent,
   FreehandDrawComponent,
@@ -496,6 +500,10 @@ function CanvasPageInner() {
     fitView,
     screenToFlowPosition,
   } = useReactFlow() as any;
+
+  // Cross-canvas quick search — opened from the bottom-left Controls (moved out
+  // of the top toolbar). Was previously mounted but never openable.
+  const quickSearch = useQuickSearch();
 
   // CVS-38 — drop-target highlight while dragging a node over others.
   const {
@@ -2123,7 +2131,25 @@ function CanvasPageInner() {
             }
           >
             <Background />
-            <Controls />
+            <Controls>
+              {/* Layout & Filter join the zoom stack in edit mode; Search is
+                  always available. Moved here from the top toolbar. */}
+              {state.toolbarMode === 'edit' && (
+                <>
+                  <LayoutDropdownButton />
+                  <FilterControls />
+                </>
+              )}
+              <button
+                type="button"
+                className="react-flow__controls-button rf-control-tool"
+                title="Search (/)"
+                aria-label="Search"
+                onClick={quickSearch.open}
+              >
+                <Search />
+              </button>
+            </Controls>
             <OffscreenNodeIndicator />
             <CanvasCursorsLayer sendCursor={sendCursor} />
 
@@ -2334,11 +2360,28 @@ function CanvasPageInner() {
         onCloseRelationshipSheet={events.handleCloseRelationshipSheet}
       />
 
-      {/* Quick Search */}
+      {/* Quick Search — opened from the bottom-left Controls search button. */}
       <QuickSearchCommand
-        isOpen={false}
-        onClose={() => {}}
-        onResultSelect={() => {}}
+        isOpen={quickSearch.isOpen}
+        onClose={quickSearch.close}
+        onResultSelect={(result) => {
+          quickSearch.close();
+          // Relationships resolve to edges, not nodes — nothing to center on.
+          if (result.type === 'relationship') return;
+          try {
+            setNodes((nds: any[]) =>
+              nds.map((n) => ({ ...n, selected: n.id === result.id }))
+            );
+            fitView({
+              nodes: [{ id: result.id }],
+              duration: 600,
+              maxZoom: 1.2,
+              padding: 0.4,
+            });
+          } catch (e) {
+            console.warn('Failed to focus search result', e);
+          }
+        }}
       />
     </div>
   );

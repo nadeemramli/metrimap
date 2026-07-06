@@ -256,6 +256,19 @@
 .react-flow__controls-button svg {
   fill: currentColor;
 }
+/* Our injected control tools (Layout / Filter / Search) live in the same
+   bottom-left Controls stack. They use stroke-based lucide icons, so undo RF's
+   force-fill and let them breathe a little larger than RF's 12px glyphs. The
+   compound selector outranks RF's `.react-flow__controls-button svg` on
+   specificity, so it wins regardless of stylesheet order. */
+.react-flow__controls-button.rf-control-tool {
+  position: relative;
+}
+.react-flow__controls-button.rf-control-tool svg {
+  fill: none;
+  max-width: 16px;
+  max-height: 16px;
+}
 
 /* ================================================================
    DIALOG / MODAL / OVERLAY OPACITY + Z-INDEX
