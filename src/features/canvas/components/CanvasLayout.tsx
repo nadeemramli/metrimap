@@ -218,6 +218,14 @@ export default function CanvasLayout() {
               );
             })}
         </div>
+
+        {/* Profile — moved out of the top bar to the bottom of the rail, below
+            the Settings gear, so the header's right side stays clean. */}
+        <div className="flex justify-center px-1.5 pb-2">
+          {/* Opens to the right (into the canvas) — the rail hugs the viewport
+              edge, so the default left-aligned menu would clip off-screen. */}
+          <UserMenu side="right" align="end" />
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -299,9 +307,6 @@ export default function CanvasLayout() {
 
             {/* Auto-save indicator (canvas page only) */}
             {headerInfo?.autoSaveStatus && <AutoSaveIndicator />}
-
-            {/* User menu at the far right of the header */}
-            <UserMenu />
           </div>
         </div>
 

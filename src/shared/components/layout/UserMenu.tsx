@@ -26,7 +26,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
 import { useAppStore } from "@/lib/stores";
 
-export function UserMenu() {
+export function UserMenu({
+  side = "bottom",
+  align = "end",
+}: {
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+} = {}) {
   const { user: clerkUser } = useUser();
   const devUser = useAppStore((s) => s.user);
   const isDev = import.meta.env.DEV;
@@ -71,7 +77,12 @@ export function UserMenu() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64" align="end" forceMount>
+      <DropdownMenuContent
+        className="w-64"
+        side={side}
+        align={align}
+        forceMount
+      >
         <DropdownMenuLabel className="font-normal">
           <div className="flex items-center justify-start gap-3">
             <div className="flex flex-col space-y-1 leading-none">
