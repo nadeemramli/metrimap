@@ -244,6 +244,81 @@ export type Database = {
         }
         Relationships: []
       }
+      import_batches: {
+        Row: {
+          columns: Json | null
+          created_at: string
+          error: string | null
+          expires_at: string
+          filename: string | null
+          id: string
+          kind: string
+          mapping: Json | null
+          materialized_count: number
+          project_id: string | null
+          row_count: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          columns?: Json | null
+          created_at?: string
+          error?: string | null
+          expires_at?: string
+          filename?: string | null
+          id?: string
+          kind?: string
+          mapping?: Json | null
+          materialized_count?: number
+          project_id?: string | null
+          row_count?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          columns?: Json | null
+          created_at?: string
+          error?: string | null
+          expires_at?: string
+          filename?: string | null
+          id?: string
+          kind?: string
+          mapping?: Json | null
+          materialized_count?: number
+          project_id?: string | null
+          row_count?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      import_rows: {
+        Row: {
+          batch_id: string
+          created_at: string
+          data: Json
+          id: string
+          row_index: number
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          data: Json
+          id?: string
+          row_index: number
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          row_index?: number
+        }
+        Relationships: []
+      }
       feed_bookmarks: {
         Row: {
           created_at: string

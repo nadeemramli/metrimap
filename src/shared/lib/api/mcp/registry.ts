@@ -12,7 +12,10 @@ import {
   CreateRelationshipInput,
   CreateTypedNodeInput,
   LayoutTreeInput,
+  MaterializeInput,
   PushValuesInput,
+  StageSeriesInput,
+  UploadCsvInput,
 } from '../schemas';
 import type { McpAuthContext, McpScope } from './authContext';
 import { McpToolError } from './errors';
@@ -208,6 +211,34 @@ export const TOOLS: McpTool[] = [
     scope: 'write',
     inputSchema: LayoutTreeInput,
     handler: (a, ctx) => api(ctx).tree.layout(a.projectId, a.direction),
+  }),
+  // --- Data ingest (stage → materialize) ---
+  defineTool({
+    name: 'stage_series',
+    title: 'Stage a value series',
+    description:
+      'Stage a structured value series (period/value rows) into TTL staging. Returns a batchId to pass to materialize.',
+    scope: 'write',
+    inputSchema: StageSeriesInput,
+    handler: (a, ctx) => api(ctx).ingest.stageSeries(a),
+  }),
+  defineTool({
+    name: 'upload_csv',
+    title: 'Upload CSV',
+    description:
+      'Stage raw CSV text into TTL staging. Returns a batchId + the parsed column names; then call materialize with a column mapping.',
+    scope: 'write',
+    inputSchema: UploadCsvInput,
+    handler: (a, ctx) => api(ctx).ingest.uploadCsv(a),
+  }),
+  defineTool({
+    name: 'materialize',
+    title: 'Materialize staged data onto a card',
+    description:
+      "Map a staged batch onto a metric card and materialize its series — the card's data (which the canvas visualizes) plus, if the card is catalogued, the shared metric_values store. For CSV batches provide mapping.periodColumn + mapping.valueColumn. Returns an ingest report (materialized / skipped / errors).",
+    scope: 'write',
+    inputSchema: MaterializeInput,
+    handler: (a, ctx) => api(ctx).ingest.materialize(a),
   }),
 ];
 

@@ -45,7 +45,8 @@ Tools wired (finalized in **CVS-101**): `list_canvases`, `get_tree`, `list_nodes
 `create_metric`, `create_value`, `create_action`, `create_driver_node`,
 `update_node`, `delete_node`, `create_relationship`, `delete_relationship`,
 `create_evidence`, `push_values`, `layout_tree` (Dagre auto-layout so pushed
-trees render sensibly).
+trees render sensibly), and data ingest — `stage_series`, `upload_csv`,
+`materialize` (CVS-102).
 
 ### `create_evidence` (CVS-251)
 
