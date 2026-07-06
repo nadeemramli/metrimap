@@ -3,15 +3,8 @@ import { useCanvasStore } from '@/lib/stores';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { Badge } from '@/shared/components/ui/badge';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/shared/components/ui/breadcrumb';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -44,7 +37,6 @@ import {
   Edit,
   ExternalLink,
   FileText,
-  Filter,
   FlaskConical,
   Globe,
   Lock,
@@ -318,11 +310,11 @@ export default function EvidenceRepositoryPage() {
     actions: (
       <>
         <Badge variant="outline" className="text-xs">
-          {allEvidence.length} Items
+          {allEvidence.length} items
         </Badge>
         <Button onClick={handleCreateEvidence} size="sm" className="h-7 gap-1.5">
           <Plus className="h-3.5 w-3.5" />
-          New Evidence
+          New evidence
         </Button>
       </>
     ),
@@ -330,106 +322,70 @@ export default function EvidenceRepositoryPage() {
   });
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/">Home</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          {isCanvasScoped && canvas?.name && (
-            <>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link to={`/canvas/${canvasId}`}>{canvas.name}</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-            </>
-          )}
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Evidence</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
-      {/* Header — only for the top-level /evidence route (no shared top bar).
-          Canvas-scoped mounts surface title/actions via usePageHeader above. */}
+    <div className="p-6 space-y-5">
+      {/* Top-level /evidence has no shared top bar, so render the page header
+          here (canvas-scoped mounts surface it via usePageHeader above). No
+          breadcrumb — the app rail already owns navigation. */}
       {!isCanvasScoped && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">Evidence Repository</h1>
-              <p className="text-muted-foreground mt-1">
-                Centralized management of all evidence across your canvases
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="text-sm">
-              {allEvidence.length} Evidence Items
-            </Badge>
-            <Button onClick={handleCreateEvidence} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Evidence
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          title="Evidence"
+          description="Findings, experiments, and research backing your metrics and relationships."
+          actions={
+            <>
+              <Badge variant="outline" className="text-xs">
+                {allEvidence.length} items
+              </Badge>
+              <Button
+                onClick={handleCreateEvidence}
+                size="sm"
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                New evidence
+              </Button>
+            </>
+          }
+        />
       )}
 
-      {/* Filters and Search */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filters & Search
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search evidence by title, summary, or owner..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {evidenceTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.value}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedOwner} onValueChange={setSelectedOwner}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by owner" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Owners</SelectItem>
-                {uniqueOwners.map((owner) => (
-                  <SelectItem key={owner} value={owner}>
-                    {owner}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Lean filter toolbar — search + type + owner (no Card chrome). */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative sm:max-w-sm sm:flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by title, summary, or owner…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={selectedType} onValueChange={setSelectedType}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {evidenceTypeOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.value}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedOwner} onValueChange={setSelectedOwner}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="All owners" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All owners</SelectItem>
+            {uniqueOwners.map((owner) => (
+              <SelectItem key={owner} value={owner}>
+                {owner}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Evidence Grid */}
       {filteredEvidence.length > 0 ? (
