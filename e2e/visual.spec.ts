@@ -7,6 +7,7 @@ const ROUTES = [
   { path: '/?view=explore', name: 'home-explore' },
   { path: '/catalog', name: 'catalog' },
   { path: '/feed', name: 'feed' },
+  { path: '/settings/connect', name: 'connect-agent' },
 ];
 
 test('capture workspace routes', async ({ page }) => {

@@ -5,15 +5,8 @@ import {
   listApiKeys,
   type ApiKey,
 } from '@/shared/lib/supabase/services/apiKeys';
-import {
-  ArrowLeft,
-  Bot,
-  Copy,
-  KeyRound,
-  Link2,
-  Plug,
-  Terminal,
-} from 'lucide-react';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
+import { Bot, Copy, KeyRound, Link2, Plug, Terminal } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -122,33 +115,23 @@ export default function ConnectAgentPage() {
     .pop();
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-3 px-6 py-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Home
-          </Button>
-          <h1 className="text-xl font-bold">Connect your agent</h1>
+    <div className="mx-auto max-w-3xl px-6 py-10">
+      <PageHeader
+        title="Connect your agent"
+        description="Point your own agent (Claude Cowork/Code, Codex) at Metrimap's MCP server so it can build & populate your metric trees. Every call runs under your account (RLS-scoped) — your key is never shared."
+        actions={
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="ml-auto"
             onClick={() => navigate('/settings')}
           >
             <KeyRound className="mr-1 h-4 w-4" />
             Manage keys
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="mx-auto max-w-3xl space-y-5 px-6 py-6">
-        <p className="text-sm text-muted-foreground">
-          Point your own agent (Claude Cowork/Code, Codex) at Metrimap's MCP
-          server so it can build & populate your metric trees. Every call runs
-          under your account (RLS-scoped) — your key is never shared.
-        </p>
-
+      <div className="mt-8 space-y-5">
         {/* MCP endpoint */}
         <Section
           icon={Link2}

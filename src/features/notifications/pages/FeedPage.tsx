@@ -1,5 +1,4 @@
 import { useAppStore } from '@/lib/stores';
-import { Button } from '@/shared/components/ui/button';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import {
   listNotifications,
@@ -15,8 +14,8 @@ import {
   removeFeedBookmark,
 } from '@/shared/lib/supabase/services/feedBookmarks';
 import { cn } from '@/shared/utils';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import {
-  ArrowLeft,
   AtSign,
   Bookmark,
   Loader2,
@@ -178,21 +177,18 @@ export default function FeedPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-3 px-6 py-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Home
-          </Button>
-          <h1 className="text-xl font-bold">Activity</h1>
-          {busy && (
+    <div className="mx-auto max-w-3xl px-6 py-10">
+      <PageHeader
+        title="Activity"
+        description="Mentions, comments, and system events across your workspace, newest first."
+        actions={
+          busy ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
-      <div className="mx-auto max-w-3xl px-6 py-6">
+      <div className="mt-8">
         <div className="mb-5 flex gap-2">
           {TABS.map((t) => (
             <button
