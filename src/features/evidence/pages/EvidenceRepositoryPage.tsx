@@ -304,21 +304,12 @@ export default function EvidenceRepositoryPage() {
 
   // Feed the shared canvas top bar when canvas-scoped; the top-level /evidence
   // mount has no provider so this no-ops and we keep the in-page title below.
+  // The shared top bar stays clean and consistent across pages: title +
+  // description only. The count + New-evidence action live in the in-page
+  // toolbar row below (both mounts).
   usePageHeader({
     title: 'Evidence',
     description: 'Evidence used across this canvas and its relationships',
-    actions: (
-      <>
-        <Badge variant="outline" className="text-xs">
-          {allEvidence.length} items
-        </Badge>
-        <Button onClick={handleCreateEvidence} size="sm" className="h-7 gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          New evidence
-        </Button>
-      </>
-    ),
-    deps: [allEvidence.length],
   });
 
   return (
@@ -330,25 +321,12 @@ export default function EvidenceRepositoryPage() {
         <PageHeader
           title="Evidence"
           description="Findings, experiments, and research backing your metrics and relationships."
-          actions={
-            <>
-              <Badge variant="outline" className="text-xs">
-                {allEvidence.length} items
-              </Badge>
-              <Button
-                onClick={handleCreateEvidence}
-                size="sm"
-                className="gap-1.5"
-              >
-                <Plus className="h-4 w-4" />
-                New evidence
-              </Button>
-            </>
-          }
         />
       )}
 
-      {/* Lean filter toolbar — search + type + owner (no Card chrome). */}
+      {/* Toolbar row: search + filters left, count + New evidence right.
+          Page actions live HERE (both mounts) so the shared top bar stays
+          clean and consistent across pages. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative sm:max-w-sm sm:flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -385,6 +363,15 @@ export default function EvidenceRepositoryPage() {
             ))}
           </SelectContent>
         </Select>
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {allEvidence.length} items
+          </span>
+          <Button onClick={handleCreateEvidence} size="sm" className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            New evidence
+          </Button>
+        </div>
       </div>
 
       {/* Evidence Grid */}

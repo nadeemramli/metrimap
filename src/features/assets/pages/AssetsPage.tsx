@@ -60,6 +60,7 @@ import {
   BookMarked,
   Edit,
   FileText,
+  MoreHorizontal,
   MoreVertical,
   Network,
   Plus,
@@ -731,61 +732,63 @@ export default function AssetsPage() {
     { id: 'charts' as const, label: 'Charts', count: null },
   ];
 
+  // The shared top bar stays clean and consistent across pages: title +
+  // description only. Page actions live in the in-page toolbar row below.
   usePageHeader({
     title: 'Assets',
     description: 'Metrics, relationships, and templates',
-    actions: (
-      <>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7"
-          onClick={handleOpenTagManagement}
-        >
-          <Tag className="h-3.5 w-3.5 mr-1.5" />
-          Manage Tags
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7"
-          onClick={handleExport}
-        >
-          <Download className="h-3.5 w-3.5 mr-1.5" />
-          Export
-        </Button>
-        <Button
-          size="sm"
-          className="h-7"
-          onClick={() => setIsAddAssetOpen(true)}
-        >
-          <Plus className="h-3.5 w-3.5 mr-1.5" />
-          Add Asset
-        </Button>
-      </>
-    ),
   });
 
   return (
     <div className="p-6 space-y-4">
-      {/* Tabs — primary navigation. Counts live in the labels, so no stat tiles. */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as TabType)}
-        className="w-full"
-      >
-        <TabsList className="bg-muted rounded-lg p-[3px] shadow-sm w-fit h-auto">
-          {tabs.map((tab) => (
-            <TabsTrigger
-              key={tab.id}
-              value={tab.id}
-              className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
-            >
-              {tab.count === null ? tab.label : `${tab.label} (${tab.count})`}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {/* Toolbar row: tabs (primary navigation) left, page actions right. */}
+      <div className="flex items-center justify-between gap-3">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as TabType)}
+        >
+          <TabsList className="bg-muted rounded-lg p-[3px] shadow-sm w-fit h-auto">
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+              >
+                {tab.count === null ? tab.label : `${tab.label} (${tab.count})`}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" onClick={() => setIsAddAssetOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            Add asset
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="More actions"
+                aria-label="More actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={handleOpenTagManagement}>
+                <Tag className="h-3.5 w-3.5 mr-2" />
+                Manage tags
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExport}>
+                <Download className="h-3.5 w-3.5 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
       {/* Data hub tab (Connections / Tracked Metrics / Events) */}
       {activeTab === 'data' && <AssetsDataTab />}

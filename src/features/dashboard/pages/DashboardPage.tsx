@@ -359,61 +359,11 @@ export default function DashboardPage() {
 
   const isCustom = view === CUSTOM_VIEW;
 
+  // The shared top bar stays clean and consistent across pages: title +
+  // description only. Custom-view actions live on the view-selector row below.
   usePageHeader({
     title: 'Dashboard',
     description: 'Operational metrics for this canvas',
-    actions: isCustom ? (
-      <>
-        {editMode && chartNodes.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 gap-1.5">
-                <ChartSpline className="h-3.5 w-3.5" />
-                Import chart
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {chartNodes.map((node) => {
-                const data = (node.data ?? {}) as { title?: string };
-                return (
-                  <DropdownMenuItem
-                    key={node.id}
-                    onSelect={() => void handleImportChart(node)}
-                  >
-                    {data.title || node.title || 'Chart'}
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        {editMode && (
-          <Button size="sm" className="h-7 gap-1.5" onClick={openAdd}>
-            <Plus className="h-3.5 w-3.5" />
-            Add widget
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 gap-1.5"
-          onClick={() => setEditMode((e) => !e)}
-        >
-          {editMode ? (
-            <>
-              <Eye className="h-3.5 w-3.5" />
-              Done
-            </>
-          ) : (
-            <>
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </>
-          )}
-        </Button>
-      </>
-    ) : null,
-    deps: [editMode, isCustom, chartNodes, widgets],
   });
 
   if (isLoading) {
@@ -499,6 +449,59 @@ export default function DashboardPage() {
           <LayoutGrid className="h-3.5 w-3.5" />
           Custom
         </button>
+
+        {/* Custom-view actions — kept on this row (not the shared top bar). */}
+        {isCustom && (
+          <div className="ml-auto flex items-center gap-1.5">
+            {editMode && chartNodes.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 gap-1.5">
+                    <ChartSpline className="h-3.5 w-3.5" />
+                    Import chart
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {chartNodes.map((node) => {
+                    const data = (node.data ?? {}) as { title?: string };
+                    return (
+                      <DropdownMenuItem
+                        key={node.id}
+                        onSelect={() => void handleImportChart(node)}
+                      >
+                        {data.title || node.title || 'Chart'}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {editMode && (
+              <Button size="sm" className="h-7 gap-1.5" onClick={openAdd}>
+                <Plus className="h-3.5 w-3.5" />
+                Add widget
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5"
+              onClick={() => setEditMode((e) => !e)}
+            >
+              {editMode ? (
+                <>
+                  <Eye className="h-3.5 w-3.5" />
+                  Done
+                </>
+              ) : (
+                <>
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       {restrictedCount > 0 && (
