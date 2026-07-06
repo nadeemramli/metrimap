@@ -117,6 +117,7 @@ import {
   FreehandDrawComponent,
   LassoSelectionComponent,
   ShapeToolComponent,
+  TextToolComponent,
   type WhiteboardTool,
   type FreehandDrawing,
   type ShapeDrawing,
@@ -500,11 +501,25 @@ function CanvasPageInner() {
     setNodes,
     fitView,
     screenToFlowPosition,
+    flowToScreenPosition,
   } = useReactFlow() as any;
 
   // Cross-canvas quick search — opened from the bottom-left Controls (moved out
   // of the top toolbar). Was previously mounted but never openable.
   const quickSearch = useQuickSearch();
+
+  // Inline text editor for the Text tool (create) and double-click (re-edit).
+  // id present → editing an existing whiteboard text node; absent → creating.
+  const [textEditor, setTextEditor] = useState<{
+    id?: string;
+    data?: any;
+    screenX: number;
+    screenY: number;
+    flow: { x: number; y: number };
+    value: string;
+    fontSize: number;
+    color: string;
+  } | null>(null);
 
   // CVS-38 — drop-target highlight while dragging a node over others.
   const {
@@ -1162,6 +1177,7 @@ function CanvasPageInner() {
           o: 'ellipse',
           a: 'arrow',
           n: 'line',
+          t: 'text',
           p: 'freehand',
         };
         const tool = toolByKey[e.key.toLowerCase()];
@@ -1760,6 +1776,78 @@ function CanvasPageInner() {
     }
   }, []);
 
+  // Persist a new text box as a whiteboardNode {shape:'text'} with undo/redo.
+  const handleTextCreate = useCallback(
+    async (
+      flow: { x: number; y: number },
+      text: string,
+      fontSize: number,
+      color: string
+    ) => {
+      const currentCanvas = useCanvasStore.getState().canvas;
+      if (!currentCanvas?.id) return;
+      const width = Math.max(120, text.length * fontSize * 0.62);
+      const height = fontSize * 1.5 + 16;
+      const payload = {
+        projectId: currentCanvas.id,
+        nodeType: 'whiteboardNode' as const,
+        title: 'Text',
+        position: flow,
+        data: { shape: 'text', text, fontSize, stroke: color, width, height },
+        createdBy: useAppStore.getState().user?.id || 'anonymous',
+      };
+      try {
+        const created = await useCanvasNodesStore
+          .getState()
+          .createNode(payload as any);
+        if (created?.id) {
+          let currentId = created.id;
+          useCanvasHistoryStore.getState().push({
+            label: 'Add text',
+            undo: async () =>
+              useCanvasNodesStore.getState().deleteNode(currentId),
+            redo: async () => {
+              const re = await useCanvasNodesStore
+                .getState()
+                .createNode(payload as any);
+              if (re?.id) currentId = re.id;
+            },
+          });
+        }
+      } catch (error) {
+        console.error('❌ Failed to persist text:', error);
+      }
+    },
+    []
+  );
+
+  // Commit the inline text editor: create a new text node or update an existing
+  // one (empty text cancels). Closes the editor either way.
+  const commitTextEditor = useCallback(async () => {
+    const ed = textEditor;
+    setTextEditor(null);
+    if (!ed) return;
+    const value = ed.value.trim();
+    if (ed.id) {
+      // Edit existing — empty text leaves it unchanged.
+      if (!value || value === (ed.data?.text ?? '')) return;
+      const prevData = ed.data;
+      const nextData = { ...prevData, text: value };
+      await useCanvasNodesStore
+        .getState()
+        .updateNode(ed.id, { data: nextData });
+      useCanvasHistoryStore.getState().push({
+        label: 'Edit text',
+        undo: async () =>
+          useCanvasNodesStore.getState().updateNode(ed.id!, { data: prevData }),
+        redo: async () =>
+          useCanvasNodesStore.getState().updateNode(ed.id!, { data: nextData }),
+      });
+    } else if (value) {
+      await handleTextCreate(ed.flow, value, ed.fontSize, ed.color);
+    }
+  }, [textEditor, handleTextCreate]);
+
   // Phase B: when data-flow / reference edges are deleted from the canvas, drop
   // them from state.extraEdges and re-persist. Relationship edges (not in
   // extraEdges) are untouched here — they're managed via the Relationship sheet.
@@ -2106,9 +2194,29 @@ function CanvasPageInner() {
                     detail: { id: node.id },
                   })
                 );
+              } else if (
+                node.type === 'whiteboardNode' &&
+                (node.data as any)?.shape === 'text'
+              ) {
+                // Re-edit a text box inline at its on-screen position.
+                const d = node.data as any;
+                const screen = flowToScreenPosition({
+                  x: node.position.x,
+                  y: node.position.y,
+                });
+                setTextEditor({
+                  id: node.id,
+                  data: d,
+                  screenX: screen.x,
+                  screenY: screen.y,
+                  flow: node.position,
+                  value: d.text || '',
+                  fontSize: d.fontSize || 16,
+                  color: d.stroke || '#111827',
+                });
               }
-              // operator / whiteboard / comment / group: handled inline / by
-              // selection — no generic sheet.
+              // operator / other whiteboard shapes / comment / group: handled
+              // inline / by selection — no generic sheet.
             }}
             onEdgeDoubleClick={(_, edge) => {
               log.debug('🔗 Edge double-clicked:', edge.id);
@@ -2383,6 +2491,22 @@ function CanvasPageInner() {
                   />
                 )}
 
+                {state.whiteboardTool === 'text' && (
+                  <TextToolComponent
+                    isActive={!textEditor}
+                    onPlace={({ screenX, screenY, flow }) =>
+                      setTextEditor({
+                        screenX,
+                        screenY,
+                        flow,
+                        value: '',
+                        fontSize: 16,
+                        color: state.whiteboardShapeStyle.stroke,
+                      })
+                    }
+                  />
+                )}
+
                 {state.whiteboardTool === 'freehand' && (
                   <FreehandDrawComponent
                     isActive={true}
@@ -2424,6 +2548,40 @@ function CanvasPageInner() {
         onCloseSettingsSheet={events.handleCloseSettingsSheet}
         onCloseRelationshipSheet={events.handleCloseRelationshipSheet}
       />
+
+      {/* Inline text editor — shared by the Text tool (create) and double-click
+          (re-edit). Fixed at the target's on-screen position. */}
+      {textEditor && (
+        <textarea
+          autoFocus
+          value={textEditor.value}
+          onChange={(e) =>
+            setTextEditor((prev) =>
+              prev ? { ...prev, value: e.target.value } : prev
+            )
+          }
+          onBlur={commitTextEditor}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setTextEditor(null);
+            } else if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              commitTextEditor();
+            }
+          }}
+          placeholder="Type text…"
+          className="fixed z-[1100] resize-none rounded-md border border-primary bg-background px-2 py-1 shadow-lg outline-none"
+          style={{
+            left: textEditor.screenX,
+            top: textEditor.screenY,
+            minWidth: 140,
+            minHeight: 36,
+            fontSize: textEditor.fontSize,
+            color: textEditor.color,
+          }}
+        />
+      )}
 
       {/* Quick Search — opened from the bottom-left Controls search button. */}
       <QuickSearchCommand

@@ -19,6 +19,7 @@ import {
   PenTool,
   SlidersHorizontal,
   Square,
+  Type,
 } from 'lucide-react';
 import AddNodeButton from './AddNodeButton';
 import { createLogger } from '@/shared/utils/logger';
@@ -29,8 +30,9 @@ export interface ShapeStyle {
   strokeWidth: number;
 }
 
-// Tools that carry a fill/stroke style, so the toolbar shows the style popover.
-const SHAPE_TOOLS = new Set(['rectangle', 'ellipse', 'arrow', 'line']);
+// Tools that carry a stroke/fill style, so the toolbar shows the style popover
+// (text reuses `stroke` as its colour; fill is hidden for it).
+const SHAPE_TOOLS = new Set(['rectangle', 'ellipse', 'arrow', 'line', 'text']);
 
 const log = createLogger('canvas');
 
@@ -95,6 +97,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
     { id: 'ellipse', title: 'Ellipse (O)', Icon: Circle },
     { id: 'arrow', title: 'Arrow (A)', Icon: MoveUpRight },
     { id: 'line', title: 'Line (N)', Icon: Minus },
+    { id: 'text', title: 'Text (T)', Icon: Type },
     { id: 'freehand', title: 'Freehand Draw (P)', Icon: PenTool },
   ];
 
