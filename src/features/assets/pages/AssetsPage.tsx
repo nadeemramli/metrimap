@@ -12,12 +12,7 @@ import { promoteCardToTrackedMetric } from '@/shared/lib/supabase/services/track
 import { useSearchParams } from 'react-router-dom';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui/card';
+import { Card, CardContent } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   Dialog,
@@ -57,7 +52,6 @@ import {
 import { toast } from 'sonner';
 import {
   AlertTriangle,
-  BarChart3,
   Calendar,
   CheckCircle,
   CheckSquare,
@@ -773,60 +767,24 @@ export default function AssetsPage() {
   });
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Metrics</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Across {metricCategories.length} categories
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Relationships</CardTitle>
-            <Network className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{relationships.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {
-                relationships.filter(
-                  (r: Relationship) => r.confidence === 'High'
-                ).length
-              }{' '}
-              high confidence
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs */}
+    <div className="p-6 space-y-4">
+      {/* Tabs — primary navigation. Counts live in the labels, so no stat tiles. */}
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as TabType)}
         className="w-full"
       >
-        <div className="mb-6">
-          <TabsList className="bg-muted rounded-lg p-[3px] shadow-sm w-fit h-auto">
-            {tabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
-              >
-                {tab.count === null ? tab.label : `${tab.label} (${tab.count})`}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+        <TabsList className="bg-muted rounded-lg p-[3px] shadow-sm w-fit h-auto">
+          {tabs.map((tab) => (
+            <TabsTrigger
+              key={tab.id}
+              value={tab.id}
+              className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+            >
+              {tab.count === null ? tab.label : `${tab.label} (${tab.count})`}
+            </TabsTrigger>
+          ))}
+        </TabsList>
       </Tabs>
 
       {/* Data hub tab (Connections / Tracked Metrics / Events) */}
