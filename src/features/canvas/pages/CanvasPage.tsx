@@ -108,7 +108,9 @@ import SelectionPanel from '@/features/canvas/components/grouping/SelectionPanel
 import GroupNameDialog from '@/features/canvas/components/grouping/GroupNameDialog';
 import OffscreenNodeIndicator from '@/features/canvas/components/wayfinding/OffscreenNodeIndicator';
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
-import GroupsPanel from '@/features/canvas/components/left-sidepanel/GroupsPanel';
+import { LayersPanel } from '@/features/canvas/components/dock/layers/LayersPanel';
+import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
+import { useLayersUiStore } from '@/features/canvas/stores/useLayersUiStore';
 import TopCanvasToolbar from '@/features/canvas/components/mini-control/TopCanvasToolbar';
 import VersionHistoryPanel from '@/features/canvas/components/version-history/VersionHistoryPanel';
 import QuickSearchCommand, {
@@ -172,8 +174,11 @@ function CanvasPageInner() {
   useEffect(() => {
     useTimeTravelStore.getState().reset();
   }, [canvasId]);
-  // Groups side list + focus mode (grouping redesign).
-  const [showGroupsPanel, setShowGroupsPanel] = useState(false);
+  // Layers panel (left dock — absorbs the old Groups fly-out) + focus mode.
+  const showLayersPanel = useCanvasPanelStore((s) => s.leftPanel === 'layers');
+  const toggleLayersPanel = useCanvasPanelStore((s) => s.toggleLayers);
+  // Hide/lock revision — bumps when eye/lock toggles change so nodes rebuild.
+  const layersRev = useLayersUiStore((s) => s.rev);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
   const [focusedGroupId, setFocusedGroupId] = useState<string | null>(null);
   // Holding Space temporarily pans the canvas (React Flow's panActivationKeyCode).
@@ -685,9 +690,9 @@ function CanvasPageInner() {
       if (ids.length < 2) return;
       try {
         const groupId = await groupSelectedNodes(ids, name);
-        // Make the result unmistakable: open the Groups panel with the new
+        // Make the result unmistakable: open the Layers panel with the new
         // group focused, dim everything else, and fit-view the members.
-        setShowGroupsPanel(true);
+        useCanvasPanelStore.setState({ leftPanel: 'layers' });
         setFocusedGroupId(groupId);
         const memberIds = new Set(ids);
         setTimeout(() => {
@@ -957,7 +962,8 @@ function CanvasPageInner() {
 
   // Global inputs (besides the source object) that affect a built node. When
   // this changes, every node rebuilds — rare, deliberate UI events only.
-  const nodeCtxKey = `${state.isSettingsSheetOpen}|${focusedGroupId ?? ''}`;
+  // layersRev covers Layers-panel hide/lock toggles (maps read at build time).
+  const nodeCtxKey = `${state.isSettingsSheetOpen}|${focusedGroupId ?? ''}|${layersRev}`;
 
   // Desired nodes as {id, src, build}. `src` is the SOURCE store object — stable
   // until the store mutates it — which is exactly what keeps RF node identity
@@ -986,9 +992,18 @@ function CanvasPageInner() {
         createdAt: s.createdAt,
       }))
     );
+    // Stamp paint order + Layers-panel hide/lock. Maps are read at build()
+    // time (reconcile), kept fresh by layersRev in nodeCtxKey.
     const withZ = (id: string, node: any) => {
       const z = effectiveZ.get(id);
-      return z === undefined ? node : { ...node, zIndex: z };
+      const { hidden, locked } = useLayersUiStore.getState();
+      const out = z === undefined ? { ...node } : { ...node, zIndex: z };
+      if (hidden[id]) out.hidden = true;
+      if (locked[id]) {
+        out.draggable = false;
+        out.selectable = false;
+      }
+      return out;
     };
     const items: Array<{ id: string; src: any; build: () => any }> = [];
     for (const card of nodeSources.metricCards) {
@@ -1330,6 +1345,12 @@ function CanvasPageInner() {
       if (e.shiftKey && e.code === 'Digit1') {
         e.preventDefault();
         fitView({ padding: 0.2, duration: 800 });
+        return;
+      }
+      // [ → toggle the Layers panel (Figma muscle memory).
+      if (e.key === '[' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        useCanvasPanelStore.getState().toggleLayers();
         return;
       }
       // Draw-mode single-key tool hotkeys (CVS-107): V/H/E/L/R/P. No modifier held;
@@ -2660,8 +2681,8 @@ function CanvasPageInner() {
                 currentLayoutDirection={state.currentLayoutDirection}
                 onAddCustomNode={handleAddCustomNode}
                 onAddFromCatalog={handleAddFromCatalog}
-                onToggleGroups={() => setShowGroupsPanel((v) => !v)}
-                groupsActive={showGroupsPanel}
+                onToggleGroups={toggleLayersPanel}
+                groupsActive={showLayersPanel}
                 onToggleOperators={() => setShowOperatorPanel((v) => !v)}
                 operatorsActive={showOperatorPanel}
               />
@@ -2687,32 +2708,6 @@ function CanvasPageInner() {
                   globalPeriod={globalPeriod}
                   onChangePeriod={setGlobalPeriod}
                 />
-              </Panel>
-            )}
-
-            {/* Groups fly-out — toggled from the toolbar. Sits at the top-right
-                (the toolbar moved to top-center, so no offset needed). */}
-            {state.toolbarMode === 'edit' && showGroupsPanel && (
-              <Panel position="top-right">
-                <div className="flex flex-col items-end gap-2">
-                  {showGroupsPanel && (
-                    <GroupsPanel
-                      groups={canvas?.groups || []}
-                      selectedNodeIds={selectedNodeIds}
-                      focusedGroupId={focusedGroupId}
-                      onFocus={handleFocusGroup}
-                      onClearFocus={handleClearFocus}
-                      onCreateFromSelection={requestGroupSelection}
-                      onAddSelected={handleAddSelectedToGroup}
-                      onRemoveSelected={handleRemoveSelectedFromGroup}
-                      onRename={handleRenameGroup}
-                      onRecolor={handleRecolorGroup}
-                      onDelete={handleDeleteGroup}
-                      unlinkedCount={unlinkedNodeIds.length}
-                      onFocusUnlinked={handleFocusUnlinked}
-                    />
-                  )}
-                </div>
               </Panel>
             )}
 
@@ -2826,6 +2821,24 @@ function CanvasPageInner() {
           />
         </PortalContainerProvider>
       </div>
+
+      {/* Layers panel — left dock (Figma-style tree of all canvas content).
+          Rendered here (inside ReactFlowProvider) so select+zoom work; the DOM
+          portals into CanvasLayout's left dock column below the top bar. */}
+      <LayersPanel
+        selectedNodeIds={selectedNodeIds}
+        focusedGroupId={focusedGroupId}
+        unlinkedCount={unlinkedNodeIds.length}
+        onFocusGroup={handleFocusGroup}
+        onClearFocus={handleClearFocus}
+        onCreateFromSelection={requestGroupSelection}
+        onAddSelected={handleAddSelectedToGroup}
+        onRemoveSelected={handleRemoveSelectedFromGroup}
+        onRenameGroup={handleRenameGroup}
+        onRecolorGroup={handleRecolorGroup}
+        onDeleteGroup={handleDeleteGroup}
+        onFocusUnlinked={handleFocusUnlinked}
+      />
 
       {/* All Modals and Sheets */}
       <CanvasModals

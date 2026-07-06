@@ -222,6 +222,8 @@ export interface EvidenceItem {
   impactOnConfidence?: string;
   /** Public read-only share (see setEvidencePublic + /embed/evidence/:id). */
   isPublic?: boolean;
+  /** Paint order when positioned on the canvas (session-only — evidence positions are client-side). */
+  zIndex?: number | null;
   createdAt?: string;
   createdBy?: string;
   updatedAt?: string;

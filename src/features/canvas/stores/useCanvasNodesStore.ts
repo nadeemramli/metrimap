@@ -20,7 +20,7 @@ interface CanvasNodesState {
   // Actions
   loadCanvasNodes: (projectId: string) => Promise<void>;
   createNode: (nodeData: Omit<CanvasNode, 'id' | 'createdAt' | 'updatedAt'>) => Promise<CanvasNode>;
-  updateNode: (nodeId: string, updates: Partial<Pick<CanvasNode, 'title' | 'position' | 'data'>>) => Promise<void>;
+  updateNode: (nodeId: string, updates: Partial<Pick<CanvasNode, 'title' | 'position' | 'data' | 'zIndex'>>) => Promise<void>;
   updateNodePosition: (nodeId: string, position: { x: number; y: number }) => Promise<void>;
   deleteNode: (nodeId: string) => Promise<void>;
   

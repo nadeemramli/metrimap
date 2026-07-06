@@ -229,12 +229,12 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
             <>
               <div className="mx-0.5 h-6 w-px bg-border" aria-hidden />
               {props.onToggleGroups && (
-                <WithTooltip label="Groups">
+                <WithTooltip label="Layers ( [ )">
                   <Button
                     variant="ghost"
                     size="sm"
                     className={getToolButtonClasses(!!props.groupsActive)}
-                    title="Groups"
+                    title="Layers"
                     aria-pressed={!!props.groupsActive}
                     onClick={props.onToggleGroups}
                   >
