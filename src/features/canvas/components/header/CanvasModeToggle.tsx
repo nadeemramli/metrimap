@@ -15,15 +15,15 @@ export function CanvasModeToggle({
   className = '' 
 }: CanvasModeToggleProps) {
   return (
-    <div className={`flex bg-gray-100 rounded-lg p-0.5 ${className}`}>
+    <div className={`flex bg-muted rounded-lg p-0.5 ${className}`}>
       <Button
         variant={mode === 'edit' ? 'default' : 'ghost'}
         size="sm"
         onClick={() => onChangeMode('edit')}
         className={`h-7 px-3 text-xs font-medium rounded-md transition-all duration-200 ${
           mode === 'edit'
-            ? 'bg-white shadow-sm text-gray-900 border-0'
-            : 'text-gray-600 hover:text-gray-900 bg-transparent border-0 shadow-none'
+            ? 'bg-background shadow-sm text-foreground border-0'
+            : 'text-muted-foreground hover:text-foreground bg-transparent border-0 shadow-none'
         }`}
       >
         <Edit3 className="w-3.5 h-3.5 mr-1.5" />
@@ -35,8 +35,8 @@ export function CanvasModeToggle({
         onClick={() => onChangeMode('draw')}
         className={`h-7 px-3 text-xs font-medium rounded-md transition-all duration-200 ${
           mode === 'draw'
-            ? 'bg-white shadow-sm text-gray-900 border-0'
-            : 'text-gray-600 hover:text-gray-900 bg-transparent border-0 shadow-none'
+            ? 'bg-background shadow-sm text-foreground border-0'
+            : 'text-muted-foreground hover:text-foreground bg-transparent border-0 shadow-none'
         }`}
       >
         <PenTool className="w-3.5 h-3.5 mr-1.5" />

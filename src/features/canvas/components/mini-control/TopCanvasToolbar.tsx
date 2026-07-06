@@ -82,8 +82,8 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
   const getToolButtonClasses = (active: boolean) =>
     `rounded-lg h-8 w-8 p-0 transition-colors ${
       active
-        ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-200'
-        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+        ? 'bg-primary/15 text-primary ring-1 ring-primary/30 hover:bg-primary/25'
+        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
     }`;
 
   const WithTooltip = ({
@@ -109,7 +109,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
   );
 
   return (
-    <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-sm border border-gray-200 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_-1px_0_rgba(0,0,0,0.04)_inset,0_10px_24px_-12px_rgba(0,0,0,0.25)] px-3 py-2">
+    <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-popover/95 backdrop-blur-sm border border-border shadow-[0_10px_24px_-12px_rgba(0,0,0,0.35)] px-3 py-2">
       {/* Drawing Tools - Show different tools based on mode */}
       {mode === 'draw' ? (
         /* React Flow Whiteboard Tools */
@@ -193,7 +193,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
               old scattered top-right panel so the canvas has one toolbar (CVS-31) */}
           {(props.onToggleGroups || props.onToggleOperators || props.exportSlot) && (
             <>
-              <div className="mx-0.5 h-6 w-px bg-gray-200" aria-hidden />
+              <div className="mx-0.5 h-6 w-px bg-border" aria-hidden />
               {props.onToggleGroups && (
                 <WithTooltip label="Groups">
                   <Button

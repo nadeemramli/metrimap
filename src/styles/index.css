@@ -237,6 +237,26 @@
   stroke: var(--primary);
 }
 
+/* Zoom/fit Controls (bottom-left). React Flow ships a hardcoded near-white
+   button background that broke in dark mode — drive it from theme tokens so it
+   follows both themes. Covers every <Controls/> instance app-wide. */
+.react-flow__controls {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.4);
+}
+.react-flow__controls-button {
+  background-color: var(--card);
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+.react-flow__controls-button:hover {
+  background-color: var(--accent);
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
+
 /* ================================================================
    DIALOG / MODAL / OVERLAY OPACITY + Z-INDEX
    ----------------------------------------------------------------
