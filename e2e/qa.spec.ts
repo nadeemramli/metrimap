@@ -1,18 +1,12 @@
-import { clerk, setupClerkTestingToken } from '@clerk/testing/playwright';
 import { test } from '@playwright/test';
-import { activateOrg } from './canvas.spec';
+import { NO_CREDS, signIn } from './helpers';
 
-const EMAIL = process.env.E2E_TEST_EMAIL;
-const PASSWORD = process.env.E2E_TEST_PASSWORD;
 const wait = (p: import('@playwright/test').Page, ms: number) => p.waitForTimeout(ms);
 
 test('cvs-164 visual qa sweep (light + dark)', async ({ page }) => {
-  test.skip(!process.env.CLERK_SECRET_KEY || !EMAIL || !PASSWORD, 'creds');
+  test.skip(NO_CREDS, 'Set CLERK_SECRET_KEY, E2E_TEST_EMAIL, E2E_TEST_PASSWORD in .env');
   test.setTimeout(180_000);
-  await setupClerkTestingToken({ page });
-  await page.goto('/');
-  await clerk.signIn({ page, signInParams: { strategy: 'password', identifier: EMAIL!, password: PASSWORD! } });
-  await activateOrg(page);
+  await signIn(page);
 
   async function capture(theme: 'light' | 'dark') {
     await page.evaluate((t) => localStorage.setItem('theme', t), theme);

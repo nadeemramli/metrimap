@@ -122,6 +122,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-pressed={isActive}
                 className={getToolButtonClasses(isActive)}
                 title={tool.title}
                 onClick={() => {
