@@ -3,7 +3,8 @@ import { Button } from '@/shared/components/ui/button';
 import { ConnectionsPanel } from '@/features/data/components/ConnectionsPanel';
 import { GroupsPanel } from '@/features/settings/components/GroupsPanel';
 import { AccessMatrixPanel } from '@/features/settings/components/AccessMatrixPanel';
-import { ArrowLeft, Database, Grid3x3, ShieldCheck, User, Users } from 'lucide-react';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
+import { Database, Grid3x3, ShieldCheck, User, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function Section({
@@ -40,27 +41,23 @@ export default function WorkspaceSettingsPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-3 px-6 py-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Home
-          </Button>
-          <h1 className="text-xl font-bold">Workspace Settings</h1>
+    <div className="mx-auto max-w-3xl px-6 py-10">
+      <PageHeader
+        title="Workspace Settings"
+        description="Data connections, members, groups, and access for this workspace."
+        actions={
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="ml-auto"
             onClick={() => navigate('/settings')}
           >
             <User className="mr-1 h-4 w-4" />
             Account Settings
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="mx-auto max-w-3xl space-y-5 px-6 py-6">
+      <div className="mt-8 space-y-5">
         {/* Data source connections (workspace-wide) */}
         <Section
           icon={Database}

@@ -8,9 +8,9 @@ import {
   listApiKeys,
   type ApiKey,
 } from '@/shared/lib/supabase/services/apiKeys';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { cn } from '@/shared/utils';
 import {
-  ArrowLeft,
   Bell,
   BarChart3,
   Copy,
@@ -155,27 +155,23 @@ export default function AccountSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-3 px-6 py-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Home
-          </Button>
-          <h1 className="text-xl font-bold">Account Settings</h1>
+    <div className="mx-auto max-w-3xl px-6 py-10">
+      <PageHeader
+        title="Account Settings"
+        description="Your profile, appearance, notifications, and personal API keys."
+        actions={
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="ml-auto"
             onClick={() => navigate('/settings/workspace')}
           >
             <SlidersHorizontal className="mr-1 h-4 w-4" />
             Workspace Settings
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="mx-auto max-w-3xl space-y-5 px-6 py-6">
+      <div className="mt-8 space-y-5">
         {/* Profile / identity (Clerk) */}
         <Section
           icon={User}
