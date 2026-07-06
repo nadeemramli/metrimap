@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import { Sheet, SheetContent } from '@/shared/components/ui/sheet';
+import { DockPanel } from '@/features/canvas/components/dock';
 import { Textarea } from '@/shared/components/ui/textarea';
 import {
   AlertCircle,
@@ -482,47 +482,31 @@ export default function RelationshipSheet({
   };
 
   return (
-    <Sheet
+    <DockPanel
       open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
+      onClose={onClose}
+      width="lg"
+      eyebrow="Relationship"
+      title={`${sourceNode?.title ?? '…'} → ${targetNode?.title ?? '…'}`}
+      subtitle={
+        selectedTypeConfig?.description ||
+        'Configure relationship properties and evidence'
+      }
+      headerActions={
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.open('https://nadeemramli.com', '_blank')}
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+          title="Get help with relationships"
+        >
+          <HelpCircle className="h-4 w-4" />
+        </Button>
+      }
+      padded={false}
     >
-      <SheetContent className="w-[650px] sm:max-w-[650px] overflow-y-auto bg-background border-border z-[1001] relative pointer-events-auto sheet-content">
-        {/* Header */}
-        <div className="p-6 border-b bg-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <div>
-                <h2 className="text-xl font-semibold">
-                  {sourceNode?.title} → {targetNode?.title}
-                </h2>
-                <p className="text-sm text-gray-600">
-                  {selectedTypeConfig?.description ||
-                    'Configure relationship properties and evidence'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.open('https://nadeemramli.com', '_blank')}
-                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                title="Get help with relationships"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+      <div className="p-4">
+        <div>{/* Content */}
             {/* Tabs */}
             <div className="mb-6">
               <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
@@ -1506,9 +1490,8 @@ export default function RelationshipSheet({
                 </div>
               </div>
             )}
-          </div>
         </div>
-      </SheetContent>
+      </div>
 
       {/* Evidence Dialog */}
       <EvidenceDialog
@@ -1525,6 +1508,6 @@ export default function RelationshipSheet({
             : 'Add new evidence to support this relationship'
         }
       />
-    </Sheet>
+    </DockPanel>
   );
 }
