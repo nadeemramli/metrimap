@@ -1,21 +1,24 @@
-import { ImportExportCard } from '@/features/canvas/components/settings/cards/ImportExportCard';
-import { NotificationsCard } from '@/features/canvas/components/settings/cards/NotificationsCard';
-import { TeamMembersCard } from '@/features/canvas/components/settings/cards/TeamMembersCard';
+import { useCanvasStore } from '@/lib/stores';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui/card';
 import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
+import type { Collaborator } from '@/shared/lib/supabase/services/collaborators';
 import { formatDate } from '@/shared/utils/formatDate';
-import { Copy, Tag, Trash2 } from 'lucide-react';
+import {
+  Copy,
+  Download,
+  FileText,
+  Tags,
+  Trash2,
+  TriangleAlert,
+  Users,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface Props {
   currentProject: any;
@@ -30,9 +33,59 @@ interface Props {
   onSave: () => Promise<void> | void;
   onDelete: () => Promise<void> | void;
   onOpenTagManagement: () => void;
-  collaborators?: any[];
+  collaborators?: Collaborator[];
   isLoadingCollaborators?: boolean;
   onDuplicate?: () => Promise<void> | void;
+}
+
+// Same section idiom as Workspace/Account settings — bordered card, icon +
+// title row, optional description, optional right-aligned action.
+function Section({
+  icon: Icon,
+  title,
+  description,
+  action,
+  destructive = false,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  destructive?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <section
+      className={`rounded-lg border bg-card p-5 ${
+        destructive ? 'border-destructive/40' : 'border-border'
+      }`}
+    >
+      <div className="mb-4 flex items-center gap-2">
+        <Icon
+          className={`h-4 w-4 ${destructive ? 'text-destructive' : 'text-primary'}`}
+        />
+        <h2 className="text-base font-semibold">{title}</h2>
+        {action && <div className="ml-auto">{action}</div>}
+      </div>
+      {description && (
+        <p className="-mt-3 mb-4 text-sm text-muted-foreground">
+          {description}
+        </p>
+      )}
+      {children}
+    </section>
+  );
+}
+
+function memberInitials(name: string) {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 }
 
 export function GeneralTab({
@@ -52,137 +105,202 @@ export function GeneralTab({
   isLoadingCollaborators = false,
   onDuplicate,
 }: Props) {
+  const navigate = useNavigate();
+  const canvas = useCanvasStore((s) => s.canvas);
+
   const createdAt = (currentProject?.createdAt ||
     currentProject?.created_at) as string | undefined;
 
+  const handleExport = () => {
+    try {
+      const blob = new Blob([JSON.stringify(canvas ?? currentProject, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(canvasName || 'canvas').replace(/[^\w-]+/g, '-')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Canvas exported as JSON');
+    } catch (e) {
+      console.error('Failed to export canvas:', e);
+      toast.error('Failed to export canvas');
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-            <CardDescription>
-              Update your canvas name and description
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="canvas-name">Canvas Name</Label>
-              <Input
-                id="canvas-name"
-                value={canvasName}
-                onChange={(e) => onNameChange(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="canvas-description">Description</Label>
-              <Textarea
-                id="canvas-description"
-                rows={4}
-                value={canvasDescription}
-                onChange={(e) => onDescriptionChange(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
+    <div className="space-y-5">
+      {/* About this canvas */}
+      <Section
+        icon={FileText}
+        title="About"
+        description="Name, description, and tags for this canvas."
+        action={
+          <div className="flex items-center gap-2">
+            {onDuplicate && (
+              <Button variant="outline" size="sm" onClick={onDuplicate}>
+                <Copy className="mr-1.5 h-3.5 w-3.5" />
+                Duplicate
+              </Button>
+            )}
+            <Button size="sm" disabled={!isDirty} onClick={onSave}>
+              Save changes
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="canvas-name">Name</Label>
+            <Input
+              id="canvas-name"
+              value={canvasName}
+              onChange={(e) => onNameChange(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="canvas-description">Description</Label>
+            <Textarea
+              id="canvas-description"
+              rows={3}
+              value={canvasDescription}
+              onChange={(e) => onDescriptionChange(e.target.value)}
+              placeholder="What is this canvas for?"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
               <Label>Tags</Label>
-              <EnhancedTagInput
-                tags={canvasTags}
-                onAdd={(tag) => onTagsChange([...canvasTags, tag])}
-                onRemove={(tag) =>
-                  onTagsChange(canvasTags.filter((t) => t !== tag))
-                }
-              />
-              <div className="text-xs text-muted-foreground mt-1">
-                Press Enter or comma to add tags
-              </div>
-            </div>
-            <div className="flex items-center gap-2 pt-2">
-              <Button disabled={!isDirty} onClick={onSave}>
-                Save Changes
-              </Button>
-              {onDuplicate && (
-                <Button variant="outline" onClick={onDuplicate}>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Duplicate
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Canvas Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Canvas Details</CardTitle>
-            <CardDescription>
-              View canvas metadata and manage actions
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="text-xs font-medium text-muted-foreground mb-1">
-                Created
-              </div>
-              <div className="text-sm">{formatDate(createdAt)}</div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-muted-foreground mb-1">
-                Canvas Tags
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex flex-wrap gap-1">
-                  {canvasTags.slice(0, 3).map((t) => (
-                    <Badge key={t} variant="secondary">
-                      {t}
-                    </Badge>
-                  ))}
-                  {canvasTags.length > 3 && (
-                    <Badge variant="gray">+{canvasTags.length - 3}</Badge>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenTagManagement}
-                >
-                  <Tag className="h-4 w-4 mr-2" />
-                  Manage Canvas Tags
-                </Button>
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-destructive mb-2">
-                Danger Zone
-              </div>
-              <div className="text-xs text-muted-foreground mb-3">
-                This action cannot be undone. All metrics, relationships, and
-                history will be permanently deleted.
-              </div>
               <Button
-                variant="destructive"
-                onClick={onDelete}
-                disabled={isDeleting}
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={onOpenTagManagement}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {isDeleting ? 'Deleting...' : 'Delete Canvas'}
+                <Tags className="mr-1 h-3.5 w-3.5" />
+                Manage tags
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <EnhancedTagInput
+              tags={canvasTags}
+              onAdd={(tag) => onTagsChange([...canvasTags, tag])}
+              onRemove={(tag) =>
+                onTagsChange(canvasTags.filter((t) => t !== tag))
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Press Enter or comma to add a tag.
+            </p>
+          </div>
+          <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+            Created {formatDate(createdAt)}
+          </p>
+        </div>
+      </Section>
 
-      {/* Team Members */}
-      <TeamMembersCard
-        collaborators={collaborators}
-        isLoading={isLoadingCollaborators}
+      {/* People — read-only glance; management lives in the Collaboration
+          panel (guests) and Workspace Settings (org members). */}
+      <Section
+        icon={Users}
+        title="People"
+        description="Invite guests and change roles from the canvas Collaboration panel. Workspace members are managed in Workspace Settings."
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/settings/workspace')}
+          >
+            Workspace settings
+          </Button>
+        }
+      >
+        {isLoadingCollaborators ? (
+          <p className="py-2 text-sm text-muted-foreground">Loading people…</p>
+        ) : collaborators.length === 0 ? (
+          <p className="py-2 text-sm text-muted-foreground">
+            No guest collaborators on this canvas yet.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {collaborators.map((member) => {
+              const name =
+                member.users?.name || member.users?.email || 'Unknown';
+              return (
+                <li
+                  key={member.id}
+                  className="flex items-center gap-3 rounded-md border border-border px-3 py-2"
+                >
+                  <Avatar className="h-8 w-8">
+                    {member.users?.avatar_url && (
+                      <AvatarImage src={member.users.avatar_url} alt={name} />
+                    )}
+                    <AvatarFallback className="text-xs">
+                      {memberInitials(name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{name}</div>
+                    {member.users?.email && (
+                      <div className="truncate text-xs text-muted-foreground">
+                        {member.users.email}
+                      </div>
+                    )}
+                  </div>
+                  <Badge variant="secondary" className="capitalize">
+                    {member.role}
+                  </Badge>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Section>
+
+      {/* Data */}
+      <Section
+        icon={Download}
+        title="Data"
+        description="Download a full JSON snapshot of this canvas — nodes, relationships, and groups. PNG/PDF/CSV exports live in the canvas Collaboration panel."
+        action={
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            Export JSON
+          </Button>
+        }
       />
 
-      {/* Bottom row: Import & Export | Notifications */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ImportExportCard />
-        <NotificationsCard />
-      </div>
+      {/* Danger zone */}
+      <Section
+        icon={TriangleAlert}
+        title="Danger zone"
+        description="Deleting a canvas removes all its metrics, relationships, checkpoints, and history. This cannot be undone."
+        destructive
+        action={
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={onDelete}
+            disabled={isDeleting}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            {isDeleting ? 'Deleting…' : 'Delete canvas'}
+          </Button>
+        }
+      />
+
+      <p className="px-1 text-xs text-muted-foreground">
+        Looking for notification preferences? They're personal, not
+        per-canvas —{' '}
+        <button
+          type="button"
+          className="underline underline-offset-2 hover:text-foreground"
+          onClick={() => navigate('/settings')}
+        >
+          configure them in Account Settings
+        </button>
+        .
+      </p>
     </div>
   );
 }

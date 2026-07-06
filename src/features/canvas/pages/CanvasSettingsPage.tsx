@@ -252,32 +252,21 @@ export default function CanvasSettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Tabs */}
+    <div className="mx-auto w-full max-w-3xl px-6 py-8">
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as TabType)}
         className="w-full"
       >
-        <div className="flex items-center justify-between mb-6">
-          <TabsList className="bg-muted rounded-lg p-[3px] shadow-sm">
-            <TabsTrigger
-              value="general"
-              className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
-            >
-              General
-            </TabsTrigger>
-            <TabsTrigger
-              value="changelog"
-              className="h-[calc(100%-1px)] flex-1 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
-            >
-              Changelog
-              <span className="inline-flex items-center justify-center rounded-full bg-secondary text-secondary-foreground text-xs font-medium w-5 h-5 min-w-5 min-h-5 p-0">
-                {filteredChangelog.length}
-              </span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="mb-6">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="changelog" className="gap-1.5">
+            Changelog
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary px-1 text-xs font-medium text-secondary-foreground">
+              {filteredChangelog.length}
+            </span>
+          </TabsTrigger>
+        </TabsList>
 
         {/* Search Bar for changelog */}
         {activeTab === 'changelog' && (
