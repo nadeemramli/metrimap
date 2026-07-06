@@ -8,6 +8,8 @@ interface Props {
   canvasId: string;
   filteredChangelog: ChangelogEntry[];
   isLoading: boolean;
+  /** Refreshes the activity list — called after a checkpoint is saved here. */
+  onRefreshActivity?: () => void;
 }
 
 function getTimeAgo(timestamp: string) {
@@ -20,7 +22,12 @@ function getTimeAgo(timestamp: string) {
   return `${days}d ago`;
 }
 
-export function ChangelogTab({ canvasId, filteredChangelog, isLoading }: Props) {
+export function ChangelogTab({
+  canvasId,
+  filteredChangelog,
+  isLoading,
+  onRefreshActivity,
+}: Props) {
   return (
     <div className="space-y-5">
       {/* Checkpoints — the curated, game-style save timeline */}
@@ -29,7 +36,7 @@ export function ChangelogTab({ canvasId, filteredChangelog, isLoading }: Props) 
         title="Checkpoints"
         description="Deliberate saves of this canvas. Save when the tree reaches a state worth keeping; load one to bring it back (the present is backed up automatically)."
       >
-        <CheckpointManager canvasId={canvasId} />
+        <CheckpointManager canvasId={canvasId} onSaved={onRefreshActivity} />
       </Section>
 
       {/* Activity — the raw changelog entries behind the timeline */}

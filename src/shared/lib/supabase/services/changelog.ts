@@ -35,9 +35,11 @@ function transformChangelogEntry(row: ChangelogRow): ChangelogEntry {
   };
 }
 
-// Transform ChangelogEntry to database insert
+// Transform ChangelogEntry to database insert. `metadata` is OMITTED when
+// absent — the generated create schema is strict and rejects an explicit
+// null there, which silently killed every metadata-less changelog write.
 function transformToInsert(entry: Omit<ChangelogEntry, 'id'>): ChangelogInsert {
-  return {
+  const insert: ChangelogInsert = {
     timestamp: entry.timestamp,
     action: entry.action,
     target: entry.target,
@@ -46,8 +48,9 @@ function transformToInsert(entry: Omit<ChangelogEntry, 'id'>): ChangelogInsert {
     description: entry.description,
     user_id: entry.userId || null,
     project_id: entry.projectId || null,
-    metadata: entry.metadata || null,
   };
+  if (entry.metadata) insert.metadata = entry.metadata;
+  return insert;
 }
 
 // Log a new changelog entry

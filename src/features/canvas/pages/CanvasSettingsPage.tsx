@@ -1,7 +1,7 @@
 import { ChangelogFilters } from '@/features/canvas/components/settings/filters/ChangelogFilters';
 import { ChangelogTab } from '@/features/canvas/components/settings/tabs/ChangelogTab';
 import { GeneralTab } from '@/features/canvas/components/settings/tabs/GeneralTab';
-import { useAppStore, useProjectsStore } from '@/lib/stores';
+import { useAppStore, useProjectsStore, useVersionHistoryStore } from '@/lib/stores';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { Badge } from '@/shared/components/ui/badge';
@@ -42,6 +42,17 @@ export default function CanvasSettingsPage() {
   const { user } = useAppStore();
   const confirm = useConfirm();
 
+  // The Changelog tab is checkpoint-centric — its badge counts this canvas's
+  // saved checkpoints, so load them as soon as the page mounts.
+  const snapshots = useVersionHistoryStore((s) => s.snapshots);
+  const loadSnapshots = useVersionHistoryStore((s) => s.loadSnapshots);
+  useEffect(() => {
+    if (canvasId) loadSnapshots(canvasId);
+  }, [canvasId, loadSnapshots]);
+  const checkpointCount = snapshots.filter(
+    (s) => s.canvasId === canvasId
+  ).length;
+
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [searchQuery, setSearchQuery] = useState('');
   const [changelogFilter, setChangelogFilter] = useState('all');
@@ -81,14 +92,16 @@ export default function CanvasSettingsPage() {
     handleTagsChange,
   } = useCanvasForm({ currentProject });
 
-  const { filteredChangelog, isLoading: isLoadingChangelog } = useChangelogData(
-    {
-      projectId: currentProject?.id,
-      supabaseClient,
-      searchQuery,
-      changelogFilter,
-    }
-  );
+  const {
+    filteredChangelog,
+    isLoading: isLoadingChangelog,
+    loadChangelog,
+  } = useChangelogData({
+    projectId: currentProject?.id,
+    supabaseClient,
+    searchQuery,
+    changelogFilter,
+  });
 
   // Load data when component mounts
   useEffect(() => {
@@ -263,7 +276,7 @@ export default function CanvasSettingsPage() {
           <TabsTrigger value="changelog" className="gap-1.5">
             Changelog
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary px-1 text-xs font-medium text-secondary-foreground">
-              {filteredChangelog.length}
+              {checkpointCount}
             </span>
           </TabsTrigger>
         </TabsList>
@@ -317,6 +330,7 @@ export default function CanvasSettingsPage() {
             canvasId={currentProject.id}
             filteredChangelog={filteredChangelog}
             isLoading={isLoadingChangelog}
+            onRefreshActivity={loadChangelog}
           />
         </TabsContent>
       </Tabs>

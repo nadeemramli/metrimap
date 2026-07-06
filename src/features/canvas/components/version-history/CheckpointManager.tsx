@@ -31,6 +31,8 @@ interface CheckpointManagerProps {
   canvasId: string;
   /** Called after a checkpoint is loaded (e.g. to close a wrapping dialog). */
   onLoaded?: () => void;
+  /** Called after a checkpoint is saved (e.g. to refresh the activity feed). */
+  onSaved?: () => void;
 }
 
 /**
@@ -42,6 +44,7 @@ interface CheckpointManagerProps {
 export function CheckpointManager({
   canvasId,
   onLoaded,
+  onSaved,
 }: CheckpointManagerProps) {
   const {
     snapshots,
@@ -74,6 +77,7 @@ export function CheckpointManager({
       toast.success(`Checkpoint “${name}” saved`);
       setTitle(defaultCheckpointName());
       setNote('');
+      onSaved?.();
     } catch {
       toast.error('Could not save checkpoint');
     }
