@@ -68,6 +68,8 @@ export interface LayerRowProps {
   locked: boolean;
   /** Indent members of an expanded group folder. */
   indented?: boolean;
+  /** Another row is being dragged over this one (drop indicator). */
+  dropTarget?: boolean;
   onSelect: (entry: LayerEntry, additive: boolean) => void;
   onRename: (entry: LayerEntry, title: string) => void;
   onToggleHidden: (id: string) => void;
@@ -76,6 +78,10 @@ export interface LayerRowProps {
     entry: LayerEntry,
     action: 'front' | 'forward' | 'backward' | 'back'
   ) => void;
+  onDragStart?: (entry: LayerEntry) => void;
+  onDragOver?: (entry: LayerEntry) => void;
+  onDropOn?: (entry: LayerEntry) => void;
+  onDragEnd?: () => void;
 }
 
 export function LayerRow({
@@ -84,11 +90,16 @@ export function LayerRow({
   hidden,
   locked,
   indented,
+  dropTarget,
   onSelect,
   onRename,
   onToggleHidden,
   onToggleLocked,
   onZAction,
+  onDragStart,
+  onDragOver,
+  onDropOn,
+  onDragEnd,
 }: LayerRowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(entry.title);
@@ -108,7 +119,8 @@ export function LayerRow({
         selected
           ? 'bg-accent text-accent-foreground'
           : 'hover:bg-accent/50 text-foreground',
-        hidden && 'opacity-45'
+        hidden && 'opacity-45',
+        dropTarget && 'ring-1 ring-primary/60 bg-primary/5'
       )}
       onClick={(e) => onSelect(entry, e.metaKey || e.ctrlKey)}
       onDoubleClick={(e) => {
@@ -122,6 +134,22 @@ export function LayerRow({
         if (e.key === 'Enter' && !editing)
           onSelect(entry, e.metaKey || e.ctrlKey);
       }}
+      draggable={!editing}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', entry.id);
+        onDragStart?.(entry);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        onDragOver?.(entry);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDropOn?.(entry);
+      }}
+      onDragEnd={onDragEnd}
     >
       <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 

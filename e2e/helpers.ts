@@ -48,11 +48,21 @@ export async function signIn(page: Page) {
 export async function openFirstCanvas(page: Page): Promise<boolean> {
   await page.goto('/');
   await page.waitForTimeout(3500);
+  // Home tiles changed over time: try the legacy "Canvas Preview" text first,
+  // then fall back to the current ProjectCard (navigation fires from the
+  // title area — data-slot="card-title"). Clicks are timeboxed — an
+  // unmatched locator otherwise hangs the test until the suite timeout.
   await page
     .getByText('Canvas Preview')
     .first()
-    .click()
-    .catch(() => {});
+    .click({ timeout: 4000 })
+    .catch(async () => {
+      await page
+        .locator('[data-slot="card-title"]')
+        .first()
+        .click({ timeout: 4000 })
+        .catch(() => {});
+    });
   await page.waitForURL(/\/canvas\/[^/]+$/, { timeout: 25000 }).catch(() => {});
   const onCanvas = /\/canvas\/[^/]+$/.test(page.url());
   if (onCanvas) await page.waitForTimeout(5000); // let the graph render

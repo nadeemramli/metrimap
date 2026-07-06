@@ -6,8 +6,10 @@ import { useNewNodeTypesStore } from '@/features/canvas/stores/useNewNodeTypesSt
 import {
   bringForward,
   bringToFront,
+  reorder,
   sendBackward,
   sendToBack,
+  sortByZ,
   type ZPatch,
 } from '@/features/canvas/utils/zOrder';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
@@ -190,6 +192,37 @@ export function LayersPanel(props: LayersPanelProps) {
     [tree.all, entriesById]
   );
 
+  // Drag-to-reorder: drop a row onto another to take its stacking position.
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const handleDrop = useCallback(
+    (target: LayerEntry) => {
+      const sourceId = draggingId;
+      setDraggingId(null);
+      setDragOverId(null);
+      if (!sourceId || sourceId === target.id) return;
+      const items = tree.all.map((e) => ({
+        id: e.id,
+        zIndex: e.zIndex,
+        createdAt: e.createdAt,
+      }));
+      // reorder() works on the bottom→top order; take the target's slot there.
+      const toIndex = sortByZ(items).findIndex((i) => i.id === target.id);
+      if (toIndex === -1) return;
+      applyZPatches(reorder(items, sourceId, toIndex), entriesById);
+    },
+    [draggingId, tree.all, entriesById]
+  );
+  const dragHandlers = {
+    onDragStart: (e: LayerEntry) => setDraggingId(e.id),
+    onDragOver: (e: LayerEntry) => setDragOverId(e.id),
+    onDropOn: handleDrop,
+    onDragEnd: () => {
+      setDraggingId(null);
+      setDragOverId(null);
+    },
+  };
+
   const renderRow = (entry: LayerEntry, indented?: boolean) => (
     <LayerRow
       key={entry.id}
@@ -198,11 +231,13 @@ export function LayersPanel(props: LayersPanelProps) {
       selected={selectedSet.has(entry.id)}
       hidden={!!hidden[entry.id]}
       locked={!!locked[entry.id]}
+      dropTarget={dragOverId === entry.id && draggingId !== entry.id}
       onSelect={handleSelect}
       onRename={handleRename}
       onToggleHidden={toggleHidden}
       onToggleLocked={toggleLocked}
       onZAction={handleZAction}
+      {...dragHandlers}
     />
   );
 
