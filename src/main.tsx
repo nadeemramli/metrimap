@@ -5,7 +5,12 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import App from './App.tsx';
 import UserbackInitializer from './shared/components/common/feedback/UserbackInitializer';
+import { captureAttribution } from './shared/utils/attribution';
 import './styles/index.css';
+
+// Capture utm_* attribution from the landing URL BEFORE the router mounts
+// (alias redirects rewrite the URL; first-touch must read the original one).
+captureAttribution();
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

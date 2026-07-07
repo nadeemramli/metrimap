@@ -1,7 +1,8 @@
 import { SignedIn, SignedOut, SignUp } from '@clerk/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { getAttribution } from './shared/utils/attribution';
 
 // Components
 import ClerkSupabaseProvider from './features/auth/components/ClerkSupabaseProvider';
@@ -50,6 +51,17 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Marketing-site CTA aliases: canvasm.app links to /signup and /login, but
+ * the real screens live at /auth/sign-up and /auth/sign-in. Redirect while
+ * preserving the full query string so utm_* attribution isn't dropped
+ * (the bare catch-all <Navigate> discards it).
+ */
+function AuthAliasRedirect({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={`${to}${search}`} replace />;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -65,6 +77,25 @@ export default function App() {
             <AuthenticatedSupabaseProvider>
               <ConfirmDialogProvider>
               <Routes>
+                {/* Marketing-site CTA aliases (canvasm.app → this app).
+                    Query string is preserved for utm attribution. */}
+                <Route
+                  path="/signup"
+                  element={<AuthAliasRedirect to="/auth/sign-up" />}
+                />
+                <Route
+                  path="/sign-up"
+                  element={<AuthAliasRedirect to="/auth/sign-up" />}
+                />
+                <Route
+                  path="/login"
+                  element={<AuthAliasRedirect to="/auth/sign-in" />}
+                />
+                <Route
+                  path="/sign-in"
+                  element={<AuthAliasRedirect to="/auth/sign-in" />}
+                />
+
                 {/* Auth routes with Clerk */}
                 <Route
                   path="/auth/sign-in"
@@ -85,7 +116,14 @@ export default function App() {
                     <>
                       <SignedOut>
                         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
-                          <SignUp />
+                          {/* First-touch utm attribution rides along on the new
+                              Clerk user (unsafeMetadata.attribution) so signups
+                              trace back to the marketing campaign. */}
+                          <SignUp
+                            unsafeMetadata={{
+                              attribution: getAttribution() ?? undefined,
+                            }}
+                          />
                         </div>
                       </SignedOut>
                       <SignedIn>
