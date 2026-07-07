@@ -1,5 +1,4 @@
 import { AccessTagControls } from '@/features/settings/components/AccessTagControls';
-import { AssetsChartsTab } from '@/features/assets/components/AssetsChartsTab';
 import { AssetsDataTab } from '@/features/assets/components/AssetsDataTab';
 import { AssetsEmptyState } from '@/features/assets/components/emptystate/AssetsEmptyState';
 import CardSettingsSheet from '@/features/canvas/components/panels/metric-panel/CardSettingsSheet';
@@ -78,8 +77,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAssetsData } from '@/shared/hooks/useAssetsData';
 import { useAssetsFiltering } from '@/shared/hooks/useAssetsFiltering';
 
-type TabType = 'metrics' | 'relationships' | 'data' | 'charts';
-const TAB_TYPES: TabType[] = ['metrics', 'relationships', 'data', 'charts'];
+// Charts moved to the Dashboard page's "On Canvas" view — assets are the
+// metric/relationship/data records, not visualizations.
+type TabType = 'metrics' | 'relationships' | 'data';
+const TAB_TYPES: TabType[] = ['metrics', 'relationships', 'data'];
 type SortField =
   | 'name'
   | 'category'
@@ -786,7 +787,6 @@ export default function AssetsPage() {
       count: filteredRelationships.length,
     },
     { id: 'data' as const, label: 'Data', count: null },
-    { id: 'charts' as const, label: 'Charts', count: null },
   ];
 
   // The shared top bar stays clean and consistent across pages: title +
@@ -849,11 +849,6 @@ export default function AssetsPage() {
 
       {/* Data hub tab (Connections / Tracked Metrics / Events) */}
       {activeTab === 'data' && <AssetsDataTab />}
-
-      {/* Chart nodes tab */}
-      {activeTab === 'charts' && canvasId && (
-        <AssetsChartsTab canvasId={canvasId} />
-      )}
 
       {isTableTab && (
       <>

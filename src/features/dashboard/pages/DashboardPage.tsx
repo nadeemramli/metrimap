@@ -40,18 +40,27 @@ import {
   type WidgetConfig,
   type WidgetType,
 } from '@/features/dashboard/types';
-import { WidgetCard } from '@/features/dashboard/components/WidgetCard';
+import {
+  WidgetCard,
+  type WidgetMoveTarget,
+} from '@/features/dashboard/components/WidgetCard';
+import { OnCanvasCharts } from '@/features/dashboard/components/OnCanvasCharts';
 import { GroupDashboard } from '@/features/dashboard/components/GroupDashboard';
+import { Badge } from '@/shared/components/ui/badge';
 import {
   WidgetConfigSheet,
   type MetricOption,
 } from '@/features/dashboard/components/WidgetConfigSheet';
 import type { WidgetDataSources } from '@/features/dashboard/utils/widgetData';
-import { chartNodeToWidgetInput } from '@/features/dashboard/utils/chartImport';
+import {
+  chartNodeToWidgetInput,
+  describeChartNode,
+} from '@/features/dashboard/utils/chartImport';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import {
@@ -74,6 +83,7 @@ const COLS = 12;
 const ROW_HEIGHT = 40;
 
 const CUSTOM_VIEW = '__custom__';
+const ONCANVAS_VIEW = '__oncanvas__';
 
 // Stable empty defaults so derived useMemos don't churn on every render while the query
 // resolves (a fresh `[]`/`{}` each render would defeat memoization).
@@ -171,6 +181,24 @@ export default function DashboardPage() {
     () => groups.find((g) => g.id === view) ?? null,
     [groups, view]
   );
+  const isOnCanvas = view === ONCANVAS_VIEW;
+
+  // Widgets scoped to the current dashboard. Widgets pointing at a deleted
+  // group fall back to Custom so nothing silently disappears.
+  const liveGroupIds = useMemo(() => new Set(groups.map((g) => g.id)), [groups]);
+  const widgetGroupId = useMemo(
+    () => (w: DashboardWidget) =>
+      w.group_id && liveGroupIds.has(w.group_id) ? w.group_id : null,
+    [liveGroupIds]
+  );
+  const viewGroupId = activeGroup?.id ?? null;
+  const viewWidgets = useMemo(
+    () =>
+      isOnCanvas
+        ? []
+        : widgets.filter((w) => widgetGroupId(w) === viewGroupId),
+    [widgets, widgetGroupId, viewGroupId, isOnCanvas]
+  );
 
   // Fetch the shared series for every tracked metric referenced by a widget.
   const referencedTrackedIds = useMemo(() => {
@@ -232,7 +260,7 @@ export default function DashboardPage() {
 
   const gridLayout: Layout[] = useMemo(
     () =>
-      widgets.map((w) => ({
+      viewWidgets.map((w) => ({
         i: w.id,
         x: w.layout.x,
         y: w.layout.y,
@@ -241,7 +269,7 @@ export default function DashboardPage() {
         minW: 3,
         minH: 4,
       })),
-    [widgets]
+    [viewWidgets]
   );
 
   const handleLayoutChange = (layout: Layout[]) => {
@@ -306,14 +334,15 @@ export default function DashboardPage() {
           )
         );
       } else {
-        // Drop the new widget at the bottom of the grid.
-        const maxY = widgets.reduce(
+        // Drop the new widget at the bottom of the current dashboard's grid.
+        const maxY = viewWidgets.reduce(
           (m, w) => Math.max(m, w.layout.y + w.layout.h),
           0
         );
         const created = await createWidget(
           {
             projectId: canvasId,
+            groupId: viewGroupId,
             title: draft.title,
             widgetType: draft.widgetType,
             config: draft.config,
@@ -345,23 +374,71 @@ export default function DashboardPage() {
 
   // Copy a canvas chart node's config into a new widget; the series binding
   // stays live because widgets resolve `card`-sourced series the same way.
-  const handleImportChart = async (node: CanvasNode) => {
+  // Lands on the given dashboard (null = Custom, default = the current view).
+  const handleImportChart = async (
+    node: CanvasNode,
+    groupId: string | null = viewGroupId
+  ) => {
     if (!client || !canvasId) return;
-    const maxY = widgets.reduce(
+    const targetWidgets = widgets.filter(
+      (w) => widgetGroupId(w) === groupId
+    );
+    const maxY = targetWidgets.reduce(
       (m, w) => Math.max(m, w.layout.y + w.layout.h),
       0
     );
     try {
       const created = await createWidget(
-        chartNodeToWidgetInput(node, { sortIndex: widgets.length, y: maxY }),
+        chartNodeToWidgetInput(node, {
+          sortIndex: widgets.length,
+          y: maxY,
+          groupId,
+        }),
         client
       );
       setWidgets((prev) => [...prev, created]);
       invalidateDashboard();
-      toast.success('Chart added to dashboard');
+      const dest = groupId
+        ? groups.find((g) => g.id === groupId)?.name || 'group dashboard'
+        : 'Custom';
+      toast.success(`Chart added to ${dest}`);
     } catch {
       toast.error('Failed to import chart');
     }
+  };
+
+  // Transfer a widget to another dashboard (null = Custom). Optimistic.
+  const handleMoveWidget = async (
+    widget: DashboardWidget,
+    groupId: string | null
+  ) => {
+    if (!client) return;
+    const prev = widgets;
+    setWidgets((ws) =>
+      ws.map((w) => (w.id === widget.id ? { ...w, group_id: groupId } : w))
+    );
+    try {
+      await updateWidget(widget.id, { groupId }, client);
+      invalidateDashboard();
+      const dest = groupId
+        ? groups.find((g) => g.id === groupId)?.name || 'group dashboard'
+        : 'Custom';
+      toast.success(`Moved "${widget.title || 'widget'}" to ${dest}`);
+    } catch {
+      setWidgets(prev);
+      toast.error('Failed to move widget');
+    }
+  };
+
+  // Move targets = every dashboard except the widget's current one.
+  const moveTargetsFor = (w: DashboardWidget): WidgetMoveTarget[] => {
+    const current = widgetGroupId(w);
+    const targets: WidgetMoveTarget[] = groups
+      .filter((g) => g.id !== current)
+      .map((g) => ({ id: g.id, label: g.name, color: g.color }));
+    if (current !== null)
+      targets.unshift({ id: null, label: 'Custom', color: '#94a3b8' });
+    return targets;
   };
 
   const isCustom = view === CUSTOM_VIEW;
@@ -456,9 +533,21 @@ export default function DashboardPage() {
           <LayoutGrid className="h-3.5 w-3.5" />
           Custom
         </button>
+        <button
+          onClick={() => setView(ONCANVAS_VIEW)}
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors ${
+            isOnCanvas
+              ? 'border-transparent bg-primary text-primary-foreground'
+              : 'border-border bg-background hover:bg-muted'
+          }`}
+        >
+          <ChartSpline className="h-3.5 w-3.5" />
+          On Canvas
+        </button>
 
-        {/* Custom-view actions — kept on this row (not the shared top bar). */}
-        {isCustom && (
+        {/* Per-dashboard actions — every dashboard (group or Custom) has its
+            own editable widget grid; On Canvas is a read-only gallery. */}
+        {!isOnCanvas && (
           <div className="ml-auto flex items-center gap-1.5">
             {editMode && chartNodes.length > 0 && (
               <DropdownMenu>
@@ -468,15 +557,44 @@ export default function DashboardPage() {
                     Import chart
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuLabel className="text-xs">
+                    Add a canvas chart to{' '}
+                    {activeGroup ? `“${activeGroup.name}”` : 'Custom'}
+                  </DropdownMenuLabel>
                   {chartNodes.map((node) => {
-                    const data = (node.data ?? {}) as { title?: string };
+                    const meta = describeChartNode(node, cards, groups);
                     return (
                       <DropdownMenuItem
                         key={node.id}
                         onSelect={() => void handleImportChart(node)}
+                        className="flex-col items-start gap-0.5 py-2"
                       >
-                        {data.title || node.title || 'Chart'}
+                        <span className="flex w-full items-center gap-2">
+                          <ChartSpline className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                            {meta.title}
+                          </span>
+                        </span>
+                        <span className="pl-5.5 text-xs text-muted-foreground">
+                          {meta.chartType} · {meta.seriesCount} series
+                          {meta.updatedAt
+                            ? ` · updated ${new Date(meta.updatedAt).toLocaleDateString()}`
+                            : ''}
+                        </span>
+                        {meta.groupNames.length > 0 && (
+                          <span className="flex flex-wrap gap-1 pl-5.5">
+                            {meta.groupNames.map((name) => (
+                              <Badge
+                                key={name}
+                                variant="secondary"
+                                className="px-1.5 py-0 text-[10px]"
+                              >
+                                {name}
+                              </Badge>
+                            ))}
+                          </span>
+                        )}
                       </DropdownMenuItem>
                     );
                   })}
@@ -519,60 +637,88 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {activeGroup ? (
-        <GroupDashboard group={activeGroup} cards={visibleCards} />
-      ) : widgets.length === 0 ? (
-        <Card className="p-10">
-          <div className="space-y-3 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-              <LayoutGrid className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <p className="mx-auto max-w-md text-sm text-muted-foreground">
-              No custom widgets yet. Add chart, KPI, and table widgets bound to
-              your tracked metrics or in-canvas cards.
-            </p>
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditMode(true);
-                openAdd();
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add widget
-            </Button>
-          </div>
-        </Card>
+      {isOnCanvas ? (
+        <OnCanvasCharts
+          chartNodes={chartNodes}
+          cards={cards}
+          groups={groups}
+          sources={sources}
+          onImport={(node, groupId) => void handleImportChart(node, groupId)}
+          onOpenCanvas={() => canvasId && navigate(`/canvas/${canvasId}`)}
+        />
       ) : (
-        <ReactGridLayout
-          className="layout"
-          layout={gridLayout}
-          cols={COLS}
-          rowHeight={ROW_HEIGHT}
-          margin={[16, 16]}
-          isDraggable={editMode}
-          isResizable={editMode}
-          draggableHandle=".widget-drag-handle"
-          onLayoutChange={handleLayoutChange}
-          compactType="vertical"
-        >
-          {widgets.map((w) => (
-            <div key={w.id}>
-              <WidgetCard
-                widget={w}
-                sources={sources}
-                editMode={editMode}
-                onConfigure={openConfigure}
-                onRemove={handleRemove}
-                strategyLinks={strategyLinksByWidget[w.id]}
-                measuredMap={measuredMap}
-                currentPeriod={currentPeriod}
-                onOpenStrategy={openStrategyItem}
-                onOpenTrace={setTraceNodeId}
-              />
+        <>
+          {activeGroup && (
+            <GroupDashboard group={activeGroup} cards={visibleCards} />
+          )}
+
+          {viewWidgets.length === 0 ? (
+            isCustom ? (
+              <Card className="p-10">
+                <div className="space-y-3 text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                    <LayoutGrid className="h-7 w-7 text-muted-foreground" />
+                  </div>
+                  <p className="mx-auto max-w-md text-sm text-muted-foreground">
+                    No custom widgets yet. Add chart, KPI, and table widgets
+                    bound to your tracked metrics or in-canvas cards.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditMode(true);
+                      openAdd();
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add widget
+                  </Button>
+                </div>
+              </Card>
+            ) : editMode ? (
+              <p className="mt-4 rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+                No widgets on this group's dashboard yet — use Import chart or
+                Add widget above, or move one here from another dashboard.
+              </p>
+            ) : null
+          ) : (
+            <div className={activeGroup ? 'mt-4' : undefined}>
+              <ReactGridLayout
+                className="layout"
+                layout={gridLayout}
+                cols={COLS}
+                rowHeight={ROW_HEIGHT}
+                margin={[16, 16]}
+                isDraggable={editMode}
+                isResizable={editMode}
+                draggableHandle=".widget-drag-handle"
+                onLayoutChange={handleLayoutChange}
+                compactType="vertical"
+              >
+                {viewWidgets.map((w) => (
+                  <div key={w.id}>
+                    <WidgetCard
+                      widget={w}
+                      sources={sources}
+                      editMode={editMode}
+                      onConfigure={openConfigure}
+                      onRemove={handleRemove}
+                      moveTargets={moveTargetsFor(w)}
+                      onMove={(widget, groupId) =>
+                        void handleMoveWidget(widget, groupId)
+                      }
+                      strategyLinks={strategyLinksByWidget[w.id]}
+                      measuredMap={measuredMap}
+                      currentPeriod={currentPeriod}
+                      onOpenStrategy={openStrategyItem}
+                      onOpenTrace={setTraceNodeId}
+                    />
+                  </div>
+                ))}
+              </ReactGridLayout>
             </div>
-          ))}
-        </ReactGridLayout>
+          )}
+        </>
       )}
 
       <WidgetConfigSheet

@@ -17,6 +17,14 @@ import { WidgetImpactBadge } from '@/features/dashboard/components/WidgetImpactB
 import type { WidgetStrategyLink } from '@/features/strategy/impact/widgetLinks';
 import type { MeasuredImpact } from '@/features/strategy/impact/measurement';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import {
+  FolderInput,
   GripVertical,
   Settings2,
   TrendingDown,
@@ -24,12 +32,22 @@ import {
   Trash2,
 } from 'lucide-react';
 
+export interface WidgetMoveTarget {
+  /** Group dashboard id, or null for the Custom dashboard. */
+  id: string | null;
+  label: string;
+  color?: string;
+}
+
 interface WidgetCardProps {
   widget: DashboardWidget;
   sources: WidgetDataSources;
   editMode: boolean;
   onConfigure: (widget: DashboardWidget) => void;
   onRemove: (id: string) => void;
+  /** Other dashboards this widget can move to (current one excluded). */
+  moveTargets?: WidgetMoveTarget[];
+  onMove?: (widget: DashboardWidget, groupId: string | null) => void;
   strategyLinks?: WidgetStrategyLink[];
   measuredMap?: Record<string, MeasuredImpact>;
   currentPeriod?: string;
@@ -45,6 +63,8 @@ export function WidgetCard({
   editMode,
   onConfigure,
   onRemove,
+  moveTargets,
+  onMove,
   strategyLinks,
   measuredMap,
   currentPeriod,
@@ -92,6 +112,37 @@ export function WidgetCard({
             >
               <Settings2 className="h-3.5 w-3.5" />
             </Button>
+            {onMove && (moveTargets?.length ?? 0) > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    title="Move to another dashboard"
+                  >
+                    <FolderInput className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel className="text-xs">
+                    Move to
+                  </DropdownMenuLabel>
+                  {moveTargets!.map((t) => (
+                    <DropdownMenuItem
+                      key={t.id ?? '__custom__'}
+                      onSelect={() => onMove(widget, t.id)}
+                    >
+                      <span
+                        className="mr-2 h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: t.color || '#94a3b8' }}
+                      />
+                      <span className="truncate">{t.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Button
               variant="ghost"
               size="sm"

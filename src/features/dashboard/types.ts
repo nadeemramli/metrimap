@@ -36,6 +36,8 @@ export interface WidgetLayout {
 export interface DashboardWidget {
   id: string;
   project_id: string;
+  /** Group dashboard this widget lives on; null = the Custom dashboard. */
+  group_id: string | null;
   title: string | null;
   widget_type: WidgetType;
   config: WidgetConfig;

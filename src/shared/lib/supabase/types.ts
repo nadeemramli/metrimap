@@ -97,6 +97,7 @@ export type Database = {
           config: Json
           created_at: string
           created_by: string
+          group_id: string | null
           id: string
           layout: Json
           project_id: string
@@ -109,6 +110,7 @@ export type Database = {
           config?: Json
           created_at?: string
           created_by?: string
+          group_id?: string | null
           id?: string
           layout?: Json
           project_id: string
@@ -121,6 +123,7 @@ export type Database = {
           config?: Json
           created_at?: string
           created_by?: string
+          group_id?: string | null
           id?: string
           layout?: Json
           project_id?: string

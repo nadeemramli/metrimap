@@ -18,6 +18,7 @@ describe('chartNodeToWidgetInput', () => {
     const input = chartNodeToWidgetInput(node, { sortIndex: 3, y: 16 });
     expect(input).toEqual({
       projectId: 'proj-1',
+      groupId: null,
       title: 'Revenue mix',
       widgetType: 'bar',
       config: {

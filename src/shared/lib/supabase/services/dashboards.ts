@@ -14,11 +14,13 @@ import type {
 
 type Client = SupabaseClient<Database>;
 
-const COLS = 'id, project_id, title, widget_type, config, layout, sort_index';
+const COLS =
+  'id, project_id, group_id, title, widget_type, config, layout, sort_index';
 
 function rowToWidget(r: {
   id: string;
   project_id: string;
+  group_id?: string | null;
   title: string | null;
   widget_type: string;
   config: Json;
@@ -28,6 +30,7 @@ function rowToWidget(r: {
   return {
     id: r.id,
     project_id: r.project_id,
+    group_id: r.group_id ?? null,
     title: r.title,
     widget_type: r.widget_type as WidgetType,
     config: (r.config ?? { source: 'card' }) as unknown as WidgetConfig,
@@ -53,6 +56,8 @@ export async function listWidgets(
 
 export interface CreateWidgetInput {
   projectId: string;
+  /** Group dashboard this widget lives on; null/omitted = Custom. */
+  groupId?: string | null;
   title?: string | null;
   widgetType: WidgetType;
   config: WidgetConfig;
@@ -69,6 +74,7 @@ export async function createWidget(
     .from('dashboard_widgets')
     .insert({
       project_id: input.projectId,
+      group_id: input.groupId ?? null,
       title: input.title ?? null,
       widget_type: input.widgetType,
       config: input.config as unknown as Json,
@@ -84,6 +90,8 @@ export async function createWidget(
 export async function updateWidget(
   id: string,
   patch: Partial<{
+    /** Move to another group dashboard (null = back to Custom). */
+    groupId: string | null;
     title: string | null;
     widgetType: WidgetType;
     config: WidgetConfig;
@@ -94,6 +102,7 @@ export async function updateWidget(
 ): Promise<void> {
   const c = resolveClient(client);
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.groupId !== undefined) row.group_id = patch.groupId;
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.widgetType !== undefined) row.widget_type = patch.widgetType;
   if (patch.config !== undefined) row.config = patch.config;
