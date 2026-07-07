@@ -98,6 +98,16 @@ export default function CanvasLayout() {
   // Close any open panels when switching canvases or leaving canvas routes.
   useEffect(() => resetPanels, [canvasId, resetPanels]);
 
+  // Navigating between sub-pages (canvas ↔ dashboard ↔ strategy …) unmounts
+  // the page that owns the open panel; clear the stale open-state so it
+  // doesn't linger (the hosts already collapse via content tracking).
+  // Collaboration is layout-owned — its content survives navigation, keep it.
+  useEffect(() => {
+    const s = useCanvasPanelStore.getState();
+    if (s.rightPanel && s.rightPanel.kind !== 'collaboration') s.closeRight();
+    if (s.leftPanel) s.closeLeft();
+  }, [location.pathname]);
+
   const project = canvasId ? getProjectById(canvasId) : null;
 
   // Live presence — which teammates are in this canvas and on which page.

@@ -14,8 +14,11 @@ import { useCallback } from 'react';
  */
 function DockHost({ side }: { side: DockSide }) {
   const setHostEl = useCanvasPanelStore((s) => s.setHostEl);
+  // Size by ACTUAL mounted content, not by the open-panel flag: if the page
+  // owning the panel unmounts (route change), the column collapses instead
+  // of lingering as an empty shell.
   const open = useCanvasPanelStore((s) =>
-    side === 'right' ? s.rightPanel !== null : s.leftPanel !== null
+    side === 'right' ? s.rightContentCount > 0 : s.leftContentCount > 0
   );
   const width = useCanvasPanelStore((s) =>
     side === 'right' ? s.rightWidth : s.leftWidth
@@ -29,6 +32,7 @@ function DockHost({ side }: { side: DockSide }) {
   return (
     <div
       ref={registerEl}
+      data-testid={`dock-host-${side}`}
       className={cn(
         'relative shrink-0 overflow-hidden bg-background',
         open && (side === 'right' ? 'border-l border-border' : 'border-r border-border')

@@ -34,14 +34,21 @@ export function DockPanel({
   const hostEl = useCanvasPanelStore((s) =>
     side === 'right' ? s.rightHostEl : s.leftHostEl
   );
-  const setPanelWidth = useCanvasPanelStore((s) => s.setPanelWidth);
   const widthPx = typeof width === 'number' ? width : DOCK_WIDTHS[width];
+  const rendering = open && hostEl !== null;
 
+  // Declare width + register mounted content while rendering. The cleanup on
+  // unmount is what lets the host collapse when the owning page navigates
+  // away with the panel still "open" in the store.
   useEffect(() => {
-    if (open) setPanelWidth(side, widthPx);
-  }, [open, side, widthPx, setPanelWidth]);
+    if (!rendering) return;
+    const s = useCanvasPanelStore.getState();
+    s.setPanelWidth(side, widthPx);
+    s.registerContent(side);
+    return () => useCanvasPanelStore.getState().unregisterContent(side);
+  }, [rendering, side, widthPx]);
 
-  if (!open || !hostEl) return null;
+  if (!rendering) return null;
 
   return createPortal(<DockPanelShell {...shellProps} />, hostEl);
 }

@@ -31,12 +31,20 @@ interface CanvasPanelState {
   /** Widths declared by the currently open panel (px). */
   rightWidth: number;
   leftWidth: number;
+  /** How many DockPanels are actually rendering content into each host.
+      The hosts size themselves by THIS, not by rightPanel/leftPanel — if the
+      owning page unmounts (route change), the column collapses instead of
+      persisting as an empty shell. */
+  rightContentCount: number;
+  leftContentCount: number;
   openRight: (panel: RightPanel) => void;
   closeRight: () => void;
   toggleLayers: () => void;
   closeLeft: () => void;
   setHostEl: (side: DockSide, el: HTMLElement | null) => void;
   setPanelWidth: (side: DockSide, width: number) => void;
+  registerContent: (side: DockSide) => void;
+  unregisterContent: (side: DockSide) => void;
   reset: () => void;
 }
 
@@ -47,6 +55,8 @@ export const useCanvasPanelStore = create<CanvasPanelState>((set) => ({
   leftHostEl: null,
   rightWidth: 420,
   leftWidth: 280,
+  rightContentCount: 0,
+  leftContentCount: 0,
   openRight: (panel) => set({ rightPanel: panel }),
   closeRight: () => set({ rightPanel: null }),
   toggleLayers: () =>
@@ -56,6 +66,18 @@ export const useCanvasPanelStore = create<CanvasPanelState>((set) => ({
     set(side === 'right' ? { rightHostEl: el } : { leftHostEl: el }),
   setPanelWidth: (side, width) =>
     set(side === 'right' ? { rightWidth: width } : { leftWidth: width }),
+  registerContent: (side) =>
+    set((s) =>
+      side === 'right'
+        ? { rightContentCount: s.rightContentCount + 1 }
+        : { leftContentCount: s.leftContentCount + 1 }
+    ),
+  unregisterContent: (side) =>
+    set((s) =>
+      side === 'right'
+        ? { rightContentCount: Math.max(0, s.rightContentCount - 1) }
+        : { leftContentCount: Math.max(0, s.leftContentCount - 1) }
+    ),
   reset: () => set({ rightPanel: null, leftPanel: null }),
 }));
 

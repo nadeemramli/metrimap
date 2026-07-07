@@ -61,4 +61,31 @@ test('right dock: contained under the top bar, exclusive, esc-closes', async ({
   await expect(page.locator('[role="complementary"]')).toHaveCount(0);
   const widthAfter = (await flowPane.boundingBox())?.width ?? 0;
   expect(widthAfter).toBeGreaterThan(widthOpen);
+
+  // Regression: a page-owned panel left open must NOT leave an empty dock
+  // column after navigating to another sub-page (its owner unmounts).
+  const card2 = page.locator('.react-flow__node-metricCard').first();
+  if (await card2.isVisible().catch(() => false)) {
+    const nodeId2 = await card2.getAttribute('data-id');
+    await page.evaluate((id) => {
+      window.dispatchEvent(
+        new CustomEvent('canvas:open-node-settings', { detail: { nodeId: id } })
+      );
+    }, nodeId2);
+    await page.waitForTimeout(800);
+    await expect(page.locator('[role="complementary"]')).toHaveCount(1);
+
+    await page.goto(page.url().replace(/\/?$/, '/dashboard'));
+    await page.waitForTimeout(1500);
+    // No lingering empty panel shell on the dashboard — content is gone AND
+    // both dock columns are collapsed to zero width.
+    await expect(page.locator('[role="complementary"]')).toHaveCount(0);
+    const rightHost = await page
+      .getByTestId('dock-host-right')
+      .boundingBox();
+    const leftHost = await page.getByTestId('dock-host-left').boundingBox();
+    expect(rightHost?.width ?? 0).toBeLessThan(3);
+    expect(leftHost?.width ?? 0).toBeLessThan(3);
+    await shot(page, 'dock-no-stale-column');
+  }
 });
