@@ -117,9 +117,22 @@ export interface CandidateCard {
   id: string;
   title: string;
   project_id: string | null;
+  /** Canvas the card lives on — the "where does this metric belong" context. */
+  canvas_name: string | null;
+  category: string | null;
+  sub_category: string | null;
+  description: string | null;
   source_type: string | null;
   formula: string | null;
   points: number; // length of its MetricValue[] series
+  updated_at: string | null;
+  /** Last series point, for an at-a-glance current value + trend. */
+  latest: {
+    value: number;
+    period: string;
+    change_percent: number | null;
+    trend: 'up' | 'down' | 'neutral' | null;
+  } | null;
 }
 
 /**
@@ -196,7 +209,7 @@ export async function listCandidateCards(
     c
       .from('metric_cards')
       .select(
-        'id, title, project_id, source_type, formula, data, tracked_metric_id'
+        'id, title, project_id, category, sub_category, description, source_type, formula, data, updated_at, tracked_metric_id, projects(name)'
       )
       .is('tracked_metric_id', null),
   ]);
@@ -208,14 +221,34 @@ export async function listCandidateCards(
         card.data.length > 0 &&
         !(card.project_id && exampleIds.has(card.project_id))
     )
-    .map((card: any) => ({
-      id: card.id,
-      title: card.title,
-      project_id: card.project_id,
-      source_type: card.source_type,
-      formula: card.formula,
-      points: card.data.length,
-    }));
+    .map((card: any) => {
+      const last = card.data[card.data.length - 1] ?? null;
+      return {
+        id: card.id,
+        title: card.title,
+        project_id: card.project_id,
+        canvas_name: card.projects?.name ?? null,
+        category: card.category ?? null,
+        sub_category: card.sub_category ?? null,
+        description: card.description || null,
+        source_type: card.source_type,
+        formula: card.formula,
+        points: card.data.length,
+        updated_at: card.updated_at ?? null,
+        latest:
+          last && typeof last.value === 'number'
+            ? {
+                value: last.value,
+                period: String(last.period ?? ''),
+                change_percent:
+                  typeof last.change_percent === 'number'
+                    ? last.change_percent
+                    : null,
+                trend: last.trend ?? null,
+              }
+            : null,
+      };
+    });
 }
 
 export interface PromoteInput {

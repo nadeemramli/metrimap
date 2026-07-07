@@ -245,6 +245,15 @@ export function defineScenes({ sleep, glide, glideClick, pan, fitView, zoomIn, t
       await sleep(1500);
     },
 
+    /** Catalog screenshot (verification, not a take). */
+    'catalog-shot': async (page) => {
+      await page.goto('/catalog', { waitUntil: 'domcontentloaded' });
+      await sleep(5000);
+      await page.getByRole('tab', { name: /Candidates/ }).click().catch(() => {});
+      await sleep(2500);
+      await page.screenshot({ path: 'e2e/loops/catalog-candidates.png' });
+    },
+
     /** Diag: dump console errors + URL on prod (not a take). */
     diag: async (page) => {
       page.on('console', (m) => {

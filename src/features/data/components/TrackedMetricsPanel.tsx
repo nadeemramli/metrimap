@@ -42,6 +42,14 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatRelative } from '@/shared/utils/formatDate';
+
+/** 84000 → "84K", 3.84 → "3.8" — at-a-glance current value for a candidate. */
+const compactValue = (v: number) =>
+  new Intl.NumberFormat(undefined, {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(v);
 
 /**
  * The semantic-layer surface: Tracked = catalogued metrics (the moat);
@@ -57,6 +65,7 @@ export function TrackedMetricsPanel({ intro }: { intro?: string }) {
   const [tracked, setTracked] = useState<TrackedMetric[]>([]);
   const [candidates, setCandidates] = useState<CandidateCard[]>([]);
   const [busy, setBusy] = useState(false);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [usage, setUsage] = useState<Record<string, MetricUsage[]>>({});
@@ -95,6 +104,7 @@ export function TrackedMetricsPanel({ intro }: { intro?: string }) {
   const promote = async (card: CandidateCard) => {
     if (!client) return;
     setError(null);
+    setPromotingId(card.id);
     try {
       await promoteCardToTrackedMetric(
         {
@@ -110,6 +120,8 @@ export function TrackedMetricsPanel({ intro }: { intro?: string }) {
       setTab('tracked');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to catalog metric.');
+    } finally {
+      setPromotingId(null);
     }
   };
 
@@ -424,19 +436,88 @@ export function TrackedMetricsPanel({ intro }: { intro?: string }) {
           ) : (
             candidates.map((c) => (
               <Card key={c.id}>
-                <CardContent className="py-3 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{c.title}</div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                      <Badge variant="outline">{c.points} points</Badge>
-                      {c.source_type && (
-                        <Badge variant="outline">{c.source_type}</Badge>
+                <CardContent className="py-3.5 flex items-center justify-between gap-4">
+                  <div className="min-w-0 space-y-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium truncate">{c.title}</span>
+                      {c.sub_category ? (
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 font-normal"
+                        >
+                          {c.sub_category}
+                        </Badge>
+                      ) : c.category ? (
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 font-normal"
+                        >
+                          {c.category}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {c.description && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {c.description}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {c.project_id && (
+                        <button
+                          className="inline-flex items-center gap-1 hover:text-foreground hover:underline underline-offset-2"
+                          title="Open the canvas this metric lives on"
+                          onClick={() => navigate(`/canvas/${c.project_id}`)}
+                        >
+                          <Network className="h-3 w-3" />
+                          <span className="truncate max-w-[180px]">
+                            {c.canvas_name ?? 'Open canvas'}
+                          </span>
+                        </button>
+                      )}
+                      {c.latest && (
+                        <span className="inline-flex items-center gap-1 tabular-nums">
+                          <span className="font-medium text-foreground">
+                            {compactValue(c.latest.value)}
+                          </span>
+                          {c.latest.change_percent != null && (
+                            <span
+                              className={
+                                c.latest.trend === 'down'
+                                  ? 'text-red-500'
+                                  : c.latest.trend === 'up'
+                                    ? 'text-emerald-600'
+                                    : ''
+                              }
+                            >
+                              {c.latest.change_percent > 0 ? '+' : ''}
+                              {c.latest.change_percent}%
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1">
+                        <Database className="h-3 w-3" />
+                        {c.points} points
+                        {c.source_type ? ` · ${c.source_type}` : ''}
+                      </span>
+                      {c.updated_at && (
+                        <span>updated {formatRelative(c.updated_at)}</span>
                       )}
                     </div>
                   </div>
-                  <Button size="sm" onClick={() => promote(c)} className="gap-1">
-                    <Sparkles className="h-4 w-4" />
-                    Catalog this metric
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={promotingId === c.id}
+                    onClick={() => promote(c)}
+                    className="shrink-0 gap-1.5 rounded-full px-4 shadow-none hover:bg-primary hover:text-primary-foreground"
+                  >
+                    {promotingId === c.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    Catalog metric
                   </Button>
                 </CardContent>
               </Card>
