@@ -136,6 +136,9 @@ function buildMcpServer(authed: McpAuthContext): McpServer {
       {
         title: t.title,
         description: t.description,
+        // ToolAnnotations: lets clients auto-approve reads and treat creates as
+        // additive instead of prompting on every call (unannotated = destructive).
+        annotations: { title: t.title, ...t.annotations },
         ...(shape ? { inputSchema: shape } : {}),
       },
       async (args: unknown) => {

@@ -80,6 +80,26 @@ describe('registry metadata', () => {
   it('listTools mirrors the registry', () => {
     expect(listTools().map((t) => t.name)).toEqual(TOOLS.map((t) => t.name));
   });
+  it('every tool carries spec-consistent annotations', () => {
+    for (const t of listTools()) {
+      expect(t.annotations, t.name).toBeDefined();
+      if (t.scope === 'read') {
+        expect(t.annotations.readOnlyHint, t.name).toBe(true);
+      } else {
+        expect(t.annotations.readOnlyHint, t.name).toBe(false);
+        expect(typeof t.annotations.destructiveHint, t.name).toBe('boolean');
+      }
+    }
+    const hint = (name: string) =>
+      TOOLS.find((t) => t.name === name)!.annotations;
+    // Creates are additive; deletes/overwrites stay destructive.
+    expect(hint('create_canvas').destructiveHint).toBe(false);
+    expect(hint('create_evidence').destructiveHint).toBe(false);
+    expect(hint('delete_canvas').destructiveHint).toBe(true);
+    expect(hint('delete_node').destructiveHint).toBe(true);
+    expect(hint('update_node').destructiveHint).toBe(true);
+    expect(hint('list_canvases').readOnlyHint).toBe(true);
+  });
 });
 
 describe('dispatchTool', () => {

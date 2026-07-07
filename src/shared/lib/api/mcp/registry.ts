@@ -22,20 +22,55 @@ import { McpToolError } from './errors';
 import type { AuditSink } from './audit';
 import { enforcePayloadSize, enforceRateLimit, type RateLimiter } from './guards';
 
+/** MCP spec ToolAnnotations (2025-03-26). Hints only — clients decide approval
+ *  UX from these; without them every tool is treated as destructive and prompts
+ *  on each call. */
+export interface McpToolAnnotations {
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint?: boolean;
+}
+
 export interface McpTool {
   name: string;
   title: string;
   description: string;
   scope: McpScope;
+  annotations: McpToolAnnotations;
   inputSchema: z.ZodTypeAny;
   handler: (args: unknown, ctx: McpAuthContext) => Promise<unknown>;
 }
+
+// All tools operate on Metrimap's own DB (closed world). Reads never write;
+// ADDITIVE creates never overwrite; UPSERT re-applies to the same state
+// (layout/values/materialize); DESTRUCTIVE overwrites or deletes user data.
+const READ_ONLY: McpToolAnnotations = { readOnlyHint: true, openWorldHint: false };
+const ADDITIVE: McpToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+};
+const UPSERT: McpToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+const DESTRUCTIVE: McpToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+  openWorldHint: false,
+};
 
 function defineTool<S extends z.ZodTypeAny>(t: {
   name: string;
   title: string;
   description: string;
   scope: McpScope;
+  annotations: McpToolAnnotations;
   inputSchema: S;
   handler: (args: z.infer<S>, ctx: McpAuthContext) => Promise<unknown>;
 }): McpTool {
@@ -56,6 +91,7 @@ export const TOOLS: McpTool[] = [
     description:
       "List the authenticated user's metric-tree canvases (projects). Returns ids to use in other tools.",
     scope: 'read',
+    annotations: READ_ONLY,
     // No `.strict()`: the MCP SDK / claude.ai connector attaches metadata keys to
     // the arguments of a no-param call; strict validation rejects them. Default
     // (strip-unknown) tolerates that and still accepts a genuinely empty payload.
@@ -68,6 +104,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Read a canvas\'s full structure — all metric cards + typed relationships. Call this before adding nodes so you EXTEND the existing tree instead of duplicating it.',
     scope: 'read',
+    annotations: READ_ONLY,
     inputSchema: projectIdInput,
     handler: (a, ctx) => api(ctx).tree.get(a.projectId),
   }),
@@ -76,6 +113,7 @@ export const TOOLS: McpTool[] = [
     title: 'List nodes',
     description: 'List all metric cards (nodes) on a canvas.',
     scope: 'read',
+    annotations: READ_ONLY,
     inputSchema: projectIdInput,
     handler: (a, ctx) => api(ctx).nodes.list(a.projectId),
   }),
@@ -84,6 +122,7 @@ export const TOOLS: McpTool[] = [
     title: 'List relationships',
     description: 'List all typed relationships on a canvas.',
     scope: 'read',
+    annotations: READ_ONLY,
     inputSchema: projectIdInput,
     handler: (a, ctx) => api(ctx).relationships.list(a.projectId),
   }),
@@ -93,6 +132,7 @@ export const TOOLS: McpTool[] = [
     title: 'Create canvas',
     description: 'Create a new metric-tree canvas (project). Returns the canvas id.',
     scope: 'write',
+    annotations: ADDITIVE,
     inputSchema: CreateCanvasInput,
     handler: (a, ctx) => api(ctx).canvases.create(a),
   }),
@@ -101,6 +141,7 @@ export const TOOLS: McpTool[] = [
     title: 'Update canvas',
     description: 'Update a canvas (name, description, isPublic).',
     scope: 'write',
+    annotations: DESTRUCTIVE,
     inputSchema: updateInput,
     handler: ({ id, ...patch }, ctx) => api(ctx).canvases.update(id, patch),
   }),
@@ -109,6 +150,7 @@ export const TOOLS: McpTool[] = [
     title: 'Delete canvas',
     description: 'Delete a canvas and its contents.',
     scope: 'write',
+    annotations: DESTRUCTIVE,
     inputSchema: idInput,
     handler: (a, ctx) => api(ctx).canvases.delete(a.id),
   }),
@@ -119,6 +161,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Create a Data/Metric card (a measured driver). Provide projectId + title. Returns the node id for chaining into create_relationship.',
     scope: 'write',
+    annotations: ADDITIVE,
     inputSchema: CreateTypedNodeInput,
     handler: (a, ctx) => api(ctx).nodes.createMetric(a),
   }),
@@ -128,6 +171,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Create a Core/Value card (an outcome / value node — e.g. Profit). Returns the node id.',
     scope: 'write',
+    annotations: ADDITIVE,
     inputSchema: CreateTypedNodeInput,
     handler: (a, ctx) => api(ctx).nodes.createValue(a),
   }),
@@ -137,6 +181,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Create a Work/Action card (an initiative / task that moves a metric). Returns the node id.',
     scope: 'write',
+    annotations: ADDITIVE,
     inputSchema: CreateTypedNodeInput,
     handler: (a, ctx) => api(ctx).nodes.createAction(a),
   }),
@@ -146,6 +191,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Create an input-driver metric (Data/Metric, subCategory "Input Metric") that drives an output metric or value node. Returns the node id; connect it with create_relationship.',
     scope: 'write',
+    annotations: ADDITIVE,
     inputSchema: CreateTypedNodeInput,
     handler: (a, ctx) => api(ctx).nodes.createDriver(a),
   }),
@@ -154,6 +200,7 @@ export const TOOLS: McpTool[] = [
     title: 'Update node',
     description: 'Update a metric card (title, description, category, formula, position).',
     scope: 'write',
+    annotations: DESTRUCTIVE,
     inputSchema: updateInput,
     handler: ({ id, ...patch }, ctx) => api(ctx).nodes.update(id, patch),
   }),
@@ -162,6 +209,7 @@ export const TOOLS: McpTool[] = [
     title: 'Delete node',
     description: 'Delete a metric card.',
     scope: 'write',
+    annotations: DESTRUCTIVE,
     inputSchema: idInput,
     handler: (a, ctx) => api(ctx).nodes.delete(a.id),
   }),
@@ -172,6 +220,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Connect two nodes with a typed relationship (Deterministic / Probabilistic / Causal / Compositional). Provide projectId, sourceId, targetId, type.',
     scope: 'write',
+    annotations: ADDITIVE,
     inputSchema: CreateRelationshipInput,
     handler: (a, ctx) => api(ctx).relationships.create(a),
   }),
@@ -180,6 +229,7 @@ export const TOOLS: McpTool[] = [
     title: 'Delete relationship',
     description: 'Delete a relationship.',
     scope: 'write',
+    annotations: DESTRUCTIVE,
     inputSchema: idInput,
     handler: (a, ctx) => api(ctx).relationships.delete(a.id),
   }),
@@ -190,6 +240,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Attach an evidence item to a card or a relationship. Provide projectId, exactly one of cardId or relationshipId, plus title, type (Experiment / Analysis / Notebook / External Research / User Interview) and summary. Optional: date, owner, hypothesis, link, content (EditorJS JSON). Returns the evidence id.',
     scope: 'write',
+    annotations: ADDITIVE,
     inputSchema: CreateEvidenceInput,
     handler: (a, ctx) => api(ctx).evidence.create(a),
   }),
@@ -200,6 +251,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Upsert a tracked metric\'s value series (one row per period). Staging + column mapping for raw CSV is a separate tool (CVS-102).',
     scope: 'write',
+    annotations: UPSERT,
     inputSchema: PushValuesInput,
     handler: (a, ctx) => api(ctx).values.push(a),
   }),
@@ -209,6 +261,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Apply Dagre auto-layout to a canvas so a programmatically-built tree renders sensibly (no overlapping nodes at 0,0). Call once after adding nodes + relationships. direction defaults to TB (top-to-bottom).',
     scope: 'write',
+    annotations: UPSERT,
     inputSchema: LayoutTreeInput,
     handler: (a, ctx) => api(ctx).tree.layout(a.projectId, a.direction),
   }),
@@ -219,6 +272,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Stage a structured value series (period/value rows) into TTL staging. Returns a batchId to pass to materialize.',
     scope: 'write',
+    annotations: ADDITIVE,
     inputSchema: StageSeriesInput,
     handler: (a, ctx) => api(ctx).ingest.stageSeries(a),
   }),
@@ -228,6 +282,7 @@ export const TOOLS: McpTool[] = [
     description:
       'Stage raw CSV text into TTL staging. Returns a batchId + the parsed column names; then call materialize with a column mapping.',
     scope: 'write',
+    annotations: ADDITIVE,
     inputSchema: UploadCsvInput,
     handler: (a, ctx) => api(ctx).ingest.uploadCsv(a),
   }),
@@ -237,6 +292,7 @@ export const TOOLS: McpTool[] = [
     description:
       "Map a staged batch onto a metric card and materialize its series — the card's data (which the canvas visualizes) plus, if the card is catalogued, the shared metric_values store. For CSV batches provide mapping.periodColumn + mapping.valueColumn. Returns an ingest report (materialized / skipped / errors).",
     scope: 'write',
+    annotations: UPSERT,
     inputSchema: MaterializeInput,
     handler: (a, ctx) => api(ctx).ingest.materialize(a),
   }),
@@ -246,11 +302,12 @@ const BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
 /** Metadata for MCP `tools/list` (the adapter converts inputSchema → JSON schema). */
 export function listTools() {
-  return TOOLS.map(({ name, title, description, scope, inputSchema }) => ({
+  return TOOLS.map(({ name, title, description, scope, annotations, inputSchema }) => ({
     name,
     title,
     description,
     scope,
+    annotations,
     inputSchema,
   }));
 }
