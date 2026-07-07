@@ -1897,6 +1897,28 @@ function CanvasPageInner() {
           persistDataFlowEdges(nextEdges);
           broadcastCanvasChange({ t: 'extraEdge:create', edge: edgeData });
           log.debug('✅ Reference edge created + persisted');
+          // Evidence → node link: reflect the connection on the evidence item
+          // itself (its whole point is backing a card/hypothesis). The card
+          // shows a "Linked to <target>" chip from this context.
+          const ev = useEvidenceStore
+            .getState()
+            .evidence.find((e) => e.id === edgeData.source);
+          if (ev) {
+            const targetNode = getNodes().find((n) => n.id === edgeData.target);
+            const targetName =
+              (targetNode?.data as any)?.card?.title ||
+              (targetNode?.data as any)?.title ||
+              (targetNode?.data as any)?.node?.title ||
+              'node';
+            useEvidenceStore.getState().updateEvidence(ev.id, {
+              context: {
+                type: 'card',
+                targetId: edgeData.target,
+                targetName,
+              },
+            } as any);
+            toast.success(`Evidence linked to "${targetName}"`);
+          }
         },
       });
 
@@ -2163,6 +2185,21 @@ function CanvasPageInner() {
         persistDataFlowEdges(next);
         for (const e of removed) {
           broadcastCanvasChange({ t: 'extraEdge:delete', id: e.id });
+        }
+        // Evidence links: deleting the reference edge that backs an evidence
+        // item's "Linked to" context clears it back to general.
+        for (const e of removed) {
+          const ev = useEvidenceStore
+            .getState()
+            .evidence.find(
+              (item) =>
+                item.id === e.source && item.context?.targetId === e.target
+            );
+          if (ev) {
+            useEvidenceStore
+              .getState()
+              .updateEvidence(ev.id, { context: { type: 'general' } } as any);
+          }
         }
         // Drop the operator input bindings for any removed inbound-to-operator
         // edges (don't re-key the rest — that would break formulas).

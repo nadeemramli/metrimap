@@ -5,7 +5,11 @@
 'use client';
 
 import { useAppStore } from '@/lib/stores';
-import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
@@ -21,9 +25,15 @@ import {
   isDevelopmentMode,
 } from '@/shared/utils/authenticatedClient';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
+import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
+import {
+  AnnotationPin,
+  useAnnotationScale,
+} from '@/features/canvas/components/nodes/shared/AnnotationPin';
+import { isUnseen, markSeen } from '@/features/canvas/utils/annotationSeen';
 import { codenameInitials, userCodename } from '@/shared/utils/codename';
 import { type NodeProps } from '@xyflow/react';
-import { MapPin, MessageSquare } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -34,6 +44,16 @@ function relativeTime(iso: string): string {
   if (s < 3600) return `${Math.floor(s / 60)}m`;
   if (s < 86400) return `${Math.floor(s / 3600)}h`;
   return `${Math.floor(s / 86400)}d`;
+}
+
+function nameInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 }
 
 export type CommentNodeData = {
@@ -53,6 +73,23 @@ export default function CommentNode({ id, data }: NodeProps) {
   const [content, setContent] = React.useState('');
   const [isSending, setIsSending] = React.useState(false);
   const [isOpen, setIsOpen] = React.useState(true);
+  const bubbleScale = useAnnotationScale();
+
+  // Real identity for authors (real names + avatars — deliberately reverses the
+  // CVS-33 pseudonymity for canvas comments). Unknown ids (past collaborators)
+  // fall back to the codename so old threads keep rendering.
+  const { byId: memberById } = useProjectMembers(
+    nodeData.projectId,
+    Boolean(threadId) || isOpen
+  );
+  const authorName = (authorId: string | null) =>
+    (authorId && memberById[authorId]?.name) || userCodename(authorId);
+  const authorAvatar = (authorId: string | null) =>
+    (authorId && memberById[authorId]?.avatarUrl) || undefined;
+  const authorInitials = (authorId: string | null) => {
+    const real = authorId && memberById[authorId]?.name;
+    return real ? nameInitials(real) : codenameInitials(authorId);
+  };
 
   React.useEffect(() => {
     let mounted = true;
@@ -100,6 +137,22 @@ export default function CommentNode({ id, data }: NodeProps) {
     };
   }, [threadId]);
 
+  // Unread (device-local): activity from OTHERS newer than the last time this
+  // user had the bubble open. Viewing (or posting) marks the thread seen.
+  const latestOther = React.useMemo(() => {
+    for (let i = comments.length - 1; i >= 0; i--) {
+      if (comments[i].author_id !== user?.id) return comments[i].created_at;
+    }
+    return null;
+  }, [comments, user?.id]);
+  const unread =
+    !isOpen && !!threadId && isUnseen(user?.id, threadId, latestOther);
+  React.useEffect(() => {
+    if (isOpen && threadId && comments.length > 0) {
+      markSeen(user?.id, threadId);
+    }
+  }, [isOpen, threadId, comments.length, user?.id]);
+
   const handleSend = async () => {
     if (!content.trim()) return;
     if (!nodeData.projectId) {
@@ -123,8 +176,6 @@ export default function CommentNode({ id, data }: NodeProps) {
         currentThreadId = thread.id;
         setThreadId(thread.id);
         // Persist the threadId onto the node so its comments survive reload.
-        // Previously it lived only in React state, so on refresh the node forgot
-        // its thread and showed "Be the first to comment…" again.
         try {
           await useCanvasNodesStore.getState().updateNode(id, {
             data: { ...nodeData, threadId: thread.id },
@@ -143,6 +194,7 @@ export default function CommentNode({ id, data }: NodeProps) {
       );
       setComments((prev) => [...prev, created]);
       setContent('');
+      markSeen(user?.id, currentThreadId!);
       toast.success('Comment posted');
       // Also broadcast to open collaboration dialog selection if needed
       window.dispatchEvent(
@@ -167,114 +219,136 @@ export default function CommentNode({ id, data }: NodeProps) {
     }
   };
 
-  // Collapsed: render only the pin marker. The pin is NOT marked `nodrag` so a
-  // stationary click toggles open (below the React Flow drag threshold) while a
-  // drag still moves the node — important since the pin is the only grabbable
-  // element when collapsed.
+  // Pin face: the latest commenter's avatar/initials (Figma-style); empty
+  // threads show the comment glyph.
+  const latest = comments[comments.length - 1];
+  const pinFace = latest ? (
+    authorAvatar(latest.author_id) ? (
+      <img
+        src={authorAvatar(latest.author_id)}
+        alt=""
+        className="h-full w-full object-cover"
+      />
+    ) : (
+      <span className="text-[10px] font-semibold">
+        {authorInitials(latest.author_id)}
+      </span>
+    )
+  ) : (
+    <MessageSquare className="h-4 w-4" />
+  );
+
+  // Collapsed: just the pin (constant screen size via AnnotationPin).
   if (!isOpen) {
     return (
-      <div className="relative select-none cursor-move">
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="rounded-full bg-rose-500 text-white w-8 h-8 flex items-center justify-center shadow cursor-pointer"
+      <div className="relative cursor-move">
+        <AnnotationPin
+          colorClass="bg-rose-500"
+          unread={unread}
           title="Open comments"
+          onClick={() => setIsOpen(true)}
         >
-          <MapPin className="w-4 h-4" />
-        </button>
+          {pinFace}
+        </AnnotationPin>
       </div>
     );
   }
 
   return (
     <div className="relative select-none cursor-move">
-      {/* Pin marker — click to collapse */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(false)}
-        className="absolute -left-6 -top-6 rounded-full bg-rose-500 text-white w-8 h-8 flex items-center justify-center shadow cursor-pointer"
-        title="Collapse comments"
-      >
-        <MapPin className="w-4 h-4" />
-      </button>
+      {/* Bubble counter-scales with zoom so it stays readable when zoomed out;
+          scaling an inner wrapper keeps the RF-measured footprint stable. */}
+      <div style={{ transform: `scale(${bubbleScale})`, transformOrigin: 'top left' }}>
+        <div className="mb-1">
+          <AnnotationPin
+            colorClass="bg-rose-500"
+            title="Collapse comments"
+            onClick={() => setIsOpen(false)}
+          >
+            {pinFace}
+          </AnnotationPin>
+        </div>
 
-      <Card
-        data-testid="comment-card"
-        className="w-[280px] rounded-xl border bg-card/95 p-3 shadow-md backdrop-blur-sm"
-      >
-        <div className="mb-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Comments</span>
-            {comments.length > 0 && (
-              <span
-                data-testid="comment-count"
-                className="text-xs text-muted-foreground"
-              >
-                {comments.length}
-              </span>
+        <Card
+          data-testid="comment-card"
+          className="w-[280px] rounded-xl rounded-tl-sm border bg-card/95 p-3 shadow-md backdrop-blur-sm"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Comments</span>
+              {comments.length > 0 && (
+                <span
+                  data-testid="comment-count"
+                  className="text-xs text-muted-foreground"
+                >
+                  {comments.length}
+                </span>
+              )}
+            </div>
+            {!threadId && (
+              <Badge variant="outline" className="text-[10px]">
+                New
+              </Badge>
             )}
           </div>
-          {!threadId && (
-            <Badge variant="outline" className="text-[10px]">
-              New
-            </Badge>
-          )}
-        </div>
 
-        <div className="max-h-44 space-y-3 overflow-y-auto pr-1">
-          {comments.map((c) => (
-            <div
-              key={c.id}
-              data-testid="comment-item"
-              className="flex items-start gap-2"
-            >
-              <Avatar className="h-6 w-6 shrink-0">
-                <AvatarFallback className="bg-muted text-[10px] font-medium text-muted-foreground">
-                  {codenameInitials(c.author_id)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="truncate text-xs font-medium text-foreground">
-                    {userCodename(c.author_id)}
-                  </span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">
-                    {relativeTime(c.created_at)}
-                  </span>
-                </div>
-                <div className="whitespace-pre-wrap break-words text-sm leading-snug text-foreground">
-                  {c.content}
+          <div className="max-h-44 space-y-3 overflow-y-auto pr-1">
+            {comments.map((c) => (
+              <div
+                key={c.id}
+                data-testid="comment-item"
+                className="flex items-start gap-2"
+              >
+                <Avatar className="h-6 w-6 shrink-0">
+                  <AvatarImage src={authorAvatar(c.author_id)} alt="" />
+                  <AvatarFallback className="bg-muted text-[10px] font-medium text-muted-foreground">
+                    {authorInitials(c.author_id)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="truncate text-xs font-medium text-foreground">
+                      {authorName(c.author_id)}
+                    </span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">
+                      {relativeTime(c.created_at)}
+                    </span>
+                  </div>
+                  <div className="whitespace-pre-wrap break-words text-sm leading-snug text-foreground">
+                    {c.content}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-          {comments.length === 0 && (
-            <div className="py-3 text-center text-xs text-muted-foreground">
-              No comments yet — start the thread.
-            </div>
-          )}
-        </div>
-
-        <div className="nodrag mt-2 border-t pt-2">
-          <Textarea
-            placeholder="Reply…"
-            className="nodrag min-h-[52px] resize-none text-sm"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
-          <div className="mt-1.5 flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleSend}
-              disabled={isSending || !content.trim()}
-              className="nodrag h-7"
-            >
-              {isSending ? 'Sending…' : 'Comment'}
-            </Button>
+            ))}
+            {comments.length === 0 && (
+              <div className="py-3 text-center text-xs text-muted-foreground">
+                No comments yet — start the thread.
+              </div>
+            )}
           </div>
-        </div>
-      </Card>
+
+          <div className="nodrag mt-2 border-t pt-2">
+            <Textarea
+              autoFocus
+              placeholder="Reply…"
+              className="nodrag min-h-[52px] resize-none text-sm"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+            />
+            <div className="mt-1.5 flex justify-end">
+              <Button
+                size="sm"
+                onClick={handleSend}
+                disabled={isSending || !content.trim()}
+                className="nodrag h-7"
+              >
+                {isSending ? 'Sending…' : 'Comment'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

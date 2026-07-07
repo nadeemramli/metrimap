@@ -1,59 +1,38 @@
-// @ts-nocheck
-// TODO(type-debt): pre-existing type errors quarantined when strict type-checking
-// was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
-// this directive — do not add new code here assuming it is type-checked.
+// Compact canvas evidence node (annotations overhaul): a Figma-style pin that
+// expands to a theme-aware preview card. Deep editing (notebook, metadata,
+// comments) lives on the full-page editor ("View full") — the old ~900-line
+// inline-EditorJS card is gone.
 import EvidenceContentRenderer from '@/features/evidence/components/EvidenceContentRenderer';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
+import { useAppStore } from '@/lib/stores';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui/dialog';
-import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
+import { Card } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
-import { Textarea } from '@/shared/components/ui/textarea';
-import {
-  createEditorJSInstance,
-  validateAndMigrateEditorData,
-} from '@/shared/lib/editorjs-config';
-import type { EvidenceComment, EvidenceItem } from '@/shared/types';
-import EditorJS from '@editorjs/editorjs';
+import type { EvidenceItem } from '@/shared/types';
 import type { Node, NodeProps } from '@xyflow/react';
-import { Handle, Position } from '@xyflow/react';
 import {
   BookOpen,
   Calendar,
-  ChevronUp,
-  Edit,
   ExternalLink,
   FileText,
   FlaskConical,
   Globe,
-  MapPin,
-  Maximize2,
+  Link2,
+  MessageSquare,
   Minimize2,
-  Save,
   Trash2,
-  User,
   Users,
-  X,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
+import { FourSideHandles } from './FourSideHandles';
+import {
+  AnnotationPin,
+  useAnnotationScale,
+} from '@/features/canvas/components/nodes/shared/AnnotationPin';
+import { isUnseen, markSeen } from '@/features/canvas/utils/annotationSeen';
 
 interface EvidenceNodeData extends Record<string, unknown> {
   evidence: EvidenceItem;
@@ -61,690 +40,242 @@ interface EvidenceNodeData extends Record<string, unknown> {
   onDeleteEvidence: (id: string) => void;
 }
 
-const evidenceTypeOptions = [
-  {
-    value: 'Experiment',
-    icon: FlaskConical,
-    color: 'bg-blue-50 text-blue-700',
-  },
-  { value: 'Analysis', icon: FileText, color: 'bg-green-50 text-green-700' },
-  { value: 'Notebook', icon: BookOpen, color: 'bg-purple-50 text-purple-700' },
-  {
-    value: 'External Research',
-    icon: Globe,
-    color: 'bg-orange-50 text-orange-700',
-  },
-  { value: 'User Interview', icon: Users, color: 'bg-pink-50 text-pink-700' },
-];
-
-// Debounce function for auto-save
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
-
 type EvidenceFlowNode = Node<EvidenceNodeData, 'evidence'>;
 
+const TYPE_META: Record<
+  string,
+  { icon: React.ElementType; chip: string }
+> = {
+  Experiment: { icon: FlaskConical, chip: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  Analysis: { icon: FileText, chip: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  Notebook: { icon: BookOpen, chip: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+  'External Research': { icon: Globe, chip: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+  'User Interview': { icon: Users, chip: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
+};
+
 export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
-  // Hooks must run unconditionally (react-hooks/rules-of-hooks). `data` is always
-  // provided for a React Flow node; guard the null case AFTER the hooks below.
-  // Use a safe fallback so the hook initializers don't crash in that (never) case.
   const onUpdateEvidence = data?.onUpdateEvidence;
   const onDeleteEvidence = data?.onDeleteEvidence;
   const evidence = data?.evidence ?? ({} as EvidenceItem);
-  const { addComment } = useEvidenceStore();
   const { canvasId } = useParams();
   const confirm = useConfirm();
+  const user = useAppStore((s) => s.user);
+  const bubbleScale = useAnnotationScale();
 
-  const editorRef = useRef<EditorJS | null>(null);
-  const editorContainerRef = useRef<HTMLDivElement>(null);
-  const [isExpanded, setIsExpanded] = useState(evidence.isExpanded || false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [newComment, setNewComment] = useState('');
-  const [editForm, setEditForm] = useState<Partial<EvidenceItem>>({
-    title: evidence.title,
-    type: evidence.type,
-    date: evidence.date,
-    owner: evidence.owner,
-    summary: evidence.summary,
-    hypothesis: evidence.hypothesis,
-    impactOnConfidence: evidence.impactOnConfidence,
-    link: evidence.link,
-    tags: evidence.tags || [],
-  });
+  const justCreatedId = useEvidenceStore((s) => s.justCreatedEvidenceId);
+  const clearJustCreated = useEvidenceStore((s) => s.setJustCreatedEvidenceId);
+  const isJustCreated = justCreatedId === evidence.id;
 
-  const getTypeIcon = (type: string) => {
-    const option = evidenceTypeOptions.find((opt) => opt.value === type);
-    return option ? option.icon : FileText;
-  };
-
-  const getTypeColor = (type: string) => {
-    const option = evidenceTypeOptions.find((opt) => opt.value === type);
-    return option ? option.color : 'bg-gray-50 text-gray-700';
-  };
-
-  // Auto-save function with debouncing
-  const autoSave = useCallback(
-    debounce(async (content: any, metadata: Partial<EvidenceItem>) => {
-      const saveTime = new Date().toLocaleTimeString();
-      console.log(
-        `[${saveTime}] 💾 NODE AUTO-SAVE: Starting auto-save process`
-      );
-
-      if (!editorRef.current) {
-        console.log(
-          `[${saveTime}] ⚠️ NODE AUTO-SAVE: Editor not available, skipping`
-        );
-        return;
-      }
-
-      try {
-        setIsAutoSaving(true);
-        console.log(`[${saveTime}] 🔄 NODE AUTO-SAVE: Validating content`);
-
-        const validatedContent = validateAndMigrateEditorData(content);
-
-        const updatedEvidence: EvidenceItem = {
-          ...evidence,
-          ...metadata,
-          content: validatedContent,
-          updatedAt: new Date().toISOString(),
-        };
-
-        console.log(`[${saveTime}] 📤 NODE AUTO-SAVE: Saving to store`);
-        onUpdateEvidence(evidence.id, updatedEvidence);
-        setLastSaved(new Date());
-
-        console.log(`[${saveTime}] ✅ NODE AUTO-SAVE: Success`);
-      } catch (error) {
-        const errorTime = new Date().toLocaleTimeString();
-        console.error(`[${errorTime}] ❌ NODE AUTO-SAVE ERROR:`, error);
-        toast.error('Auto-save failed', {
-          duration: 2000,
-          position: 'bottom-right',
-        });
-      } finally {
-        setIsAutoSaving(false);
-      }
-    }, 3000),
-    [evidence, onUpdateEvidence]
+  const [isExpanded, setIsExpanded] = useState(
+    evidence.isExpanded || isJustCreated
   );
+  // Freshly created evidence opens straight into title editing (card first,
+  // not icon first) with the default title preselected.
+  const [editingTitle, setEditingTitle] = useState(isJustCreated);
+  const [titleDraft, setTitleDraft] = useState(evidence.title || '');
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle editor changes for auto-save
-  const handleEditorChange = useCallback(async () => {
-    const changeTime = new Date().toLocaleTimeString();
-    console.log(`[${changeTime}] ⚡ NODE CHANGE: Editor content changed`);
-
-    if (!editorRef.current) {
-      console.log(`[${changeTime}] ⚠️ NODE CHANGE: Editor not available`);
-      return;
-    }
-
-    try {
-      setTimeout(async () => {
-        try {
-          const content = await editorRef.current!.save();
-          console.log(
-            `[${new Date().toLocaleTimeString()}] 📝 NODE CHANGE: Content saved, triggering auto-save`
-          );
-          autoSave(content, editForm);
-        } catch (error) {
-          console.error(
-            `[${new Date().toLocaleTimeString()}] ❌ NODE CHANGE ERROR:`,
-            error
-          );
-        }
-      }, 100);
-    } catch (error) {
-      console.error(`[${changeTime}] ❌ NODE CHANGE ERROR:`, error);
-    }
-  }, [autoSave, editForm]);
-
-  const handleToggleExpanded = () => {
-    const newExpanded = !isExpanded;
-    setIsExpanded(newExpanded);
-    onUpdateEvidence(evidence.id, { isExpanded: newExpanded });
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editorRef.current) return;
-
-    setIsLoading(true);
-    try {
-      const outputData = await editorRef.current.save();
-      const validatedContent = validateAndMigrateEditorData(outputData);
-
-      const updatedEvidence: EvidenceItem = {
-        ...evidence,
-        ...editForm,
-        content: validatedContent,
-        updatedAt: new Date().toISOString(),
-      };
-
-      onUpdateEvidence(evidence.id, updatedEvidence);
-      setLastSaved(new Date());
-      setIsEditing(false);
-      toast.success('Evidence saved successfully!');
-    } catch (error) {
-      console.error('Error saving evidence:', error);
-      toast.error('Failed to save evidence');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Initialize Editor.js when editing starts
   useEffect(() => {
-    if (isEditing && editorContainerRef.current && !editorRef.current) {
-      const container = editorContainerRef.current;
-      if (!container) {
-        console.warn('Editor container not found');
-        return;
-      }
-
-      try {
-        const initTime = new Date().toLocaleTimeString();
-        console.log(
-          `[${initTime}] 🚀 NODE INIT: Starting EditorJS initialization`
-        );
-
-        const editor = createEditorJSInstance({
-          holder: container,
-          data: evidence?.content,
-          placeholder:
-            "Start writing your evidence notebook... Press '/' for commands",
-          minHeight: 200,
-          onChange: handleEditorChange,
-          onReady: () => {
-            const readyTime = new Date().toLocaleTimeString();
-            console.log(
-              `[${readyTime}] 🎉 NODE INIT: Editor ready and operational`
-            );
-          },
-          onError: (error) => {
-            console.error('❌ NODE EditorJS error:', error);
-            toast.error('Editor error occurred. Auto-saving is still active.', {
-              duration: 3000,
-              position: 'bottom-right',
-            });
-          },
-        });
-
-        editorRef.current = editor;
-      } catch (error) {
-        console.error('❌ Failed to initialize stable EditorJS:', error);
-        toast.error('Editor initialization failed.', {
-          duration: 3000,
-          position: 'bottom-right',
-        });
-      }
+    if (editingTitle) {
+      requestAnimationFrame(() => titleInputRef.current?.select());
     }
+  }, [editingTitle]);
 
-    return () => {
-      if (editorRef.current && !isEditing) {
-        try {
-          editorRef.current.destroy();
-          editorRef.current = null;
-        } catch (error) {
-          console.warn('Error destroying editor:', error);
-          editorRef.current = null;
-        }
-      }
-    };
-  }, [isEditing, evidence?.content, handleEditorChange]);
+  // Unread (device-local): the item changed since this user last opened it.
+  const unread =
+    !isExpanded &&
+    !isJustCreated &&
+    isUnseen(user?.id, evidence.id, evidence.updatedAt);
+  useEffect(() => {
+    if (isExpanded && evidence.id) markSeen(user?.id, evidence.id);
+  }, [isExpanded, evidence.id, evidence.updatedAt, user?.id]);
 
-  // All hooks are above this line — now safe to bail on the (never-in-practice)
-  // missing-data case.
-  if (!data?.evidence) return null;
+  const setExpanded = (expanded: boolean) => {
+    setIsExpanded(expanded);
+    onUpdateEvidence?.(evidence.id, { isExpanded: expanded });
+    if (isJustCreated) clearJustCreated?.(null);
+  };
 
-  // "View Full" opens the evidence under the current canvas (nested route) so the
-  // canvas layout + populated evidence store are kept — the old absolute
-  // /evidence/:id left the canvas and landed on an empty store (CVS-36).
+  const commitTitle = () => {
+    const next = titleDraft.trim();
+    if (next && next !== evidence.title) {
+      onUpdateEvidence?.(evidence.id, { title: next });
+    } else {
+      setTitleDraft(evidence.title || '');
+    }
+    setEditingTitle(false);
+    if (isJustCreated) clearJustCreated?.(null);
+  };
+
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: `Delete "${evidence.title}"?`,
+      description: 'This removes the evidence item and its content.',
+      actionLabel: 'Delete',
+      destructive: true,
+    });
+    if (ok) onDeleteEvidence?.(evidence.id);
+  };
+
+  const meta = TYPE_META[evidence.type] ?? {
+    icon: FileText,
+    chip: 'bg-muted text-muted-foreground',
+  };
+  const TypeIcon = meta.icon;
+
+  // "View full" keeps the canvas context (nested route — CVS-36).
   const evidenceHref = canvasId
     ? `/canvas/${canvasId}/evidence/${evidence.id}`
     : `/evidence/${evidence.id}`;
 
-  const handleAddComment = () => {
-    if (newComment.trim()) {
-      addComment(evidence.id, {
-        content: newComment,
-        author: 'Current User', // TODO: Get from auth
-      });
-      setNewComment('');
-      setIsCommentDialogOpen(false);
-    }
-  };
+  const linkedName =
+    evidence.context && evidence.context.type !== 'general'
+      ? evidence.context.targetName
+      : null;
+  const commentCount = evidence.comments?.length || 0;
 
-  const handleDeleteEvidence = async () => {
-    const confirmed = await confirm({
-      title: 'Delete this evidence?',
-      description: 'This action cannot be undone.',
-      actionLabel: 'Delete',
-      destructive: true,
-    });
-    if (confirmed) {
-      onDeleteEvidence(evidence.id);
-    }
-  };
-
-  const TypeIcon = getTypeIcon(evidence.type);
-
-  // If collapsed, show just the pin
+  // Collapsed: just the pin — constant screen size, no floating title label.
   if (!isExpanded) {
     return (
       <div className="relative cursor-move">
-        <Handle type="target" position={Position.Top} className="w-3 h-3" />
-        <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
-
-        <div className="flex flex-col items-center">
-          {/* Pin is intentionally NOT `nodrag`: a stationary click expands it
-              (below React Flow's drag threshold) while a drag still moves the
-              node — the pin is the only grabbable element when collapsed. */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleToggleExpanded}
-            className="h-8 w-8 p-0 rounded-full bg-white border-2 border-blue-500 hover:bg-blue-50 cursor-move"
-            title={`${evidence.title} - Click to expand`}
-          >
-            <MapPin className="h-4 w-4 text-blue-600" />
-          </Button>
-          <div className="mt-1 text-xs text-gray-500 max-w-16 text-center truncate">
-            {evidence.title}
-          </div>
-        </div>
+        <FourSideHandles />
+        <AnnotationPin
+          colorClass="bg-emerald-500"
+          unread={unread}
+          title={evidence.title || 'Evidence'}
+          onClick={() => setExpanded(true)}
+        >
+          <TypeIcon className="h-4 w-4" />
+        </AnnotationPin>
       </div>
     );
   }
 
-  // If expanded, show the full evidence card with editor
   return (
-    <div className="relative cursor-move">
-      <Handle type="target" position={Position.Top} className="w-3 h-3" />
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
-
-      <Card
-        className={`bg-white shadow-lg border-2 border-blue-200 ${
-          isFullscreen ? 'w-[95vw] max-w-[95vw]' : 'w-80'
-        } transition-all duration-300`}
+    <div className="relative select-none cursor-move">
+      <FourSideHandles />
+      <div
+        style={{ transform: `scale(${bubbleScale})`, transformOrigin: 'top left' }}
       >
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className={`p-2 rounded-lg ${getTypeColor(evidence.type)}`}>
-                <TypeIcon className="h-4 w-4" />
-              </div>
-              <div className="flex-1">
-                {isEditing ? (
-                  <div className="nodrag space-y-2">
-                    <Input
-                      value={editForm.title}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, title: e.target.value })
-                      }
-                      placeholder="Evidence title"
-                      className="nodrag text-lg font-bold border-none p-0 focus:ring-0"
-                    />
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <Input
-                          value={editForm.owner}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, owner: e.target.value })
-                          }
-                          placeholder="Owner"
-                          className="nodrag border-none p-0 text-sm focus:ring-0"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <Input
-                          type="date"
-                          value={editForm.date}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, date: e.target.value })
-                          }
-                          className="nodrag border-none p-0 text-sm focus:ring-0"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <CardTitle className="text-lg font-semibold">
-                      {evidence.title}
-                    </CardTitle>
-                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                      <Badge variant="secondary" className="text-xs">
-                        {evidence.type}
-                      </Badge>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(evidence.date).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="nodrag flex items-center gap-1">
-              {isEditing && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsFullscreen(!isFullscreen)}
-                    title={
-                      isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'
-                    }
-                    className="nodrag"
-                  >
-                    {isFullscreen ? (
-                      <Minimize2 className="h-3 w-3" />
-                    ) : (
-                      <Maximize2 className="h-3 w-3" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSaveEdit}
-                    disabled={isLoading}
-                    className="nodrag"
-                  >
-                    <Save className="h-3 w-3 mr-1" />
-                    {isLoading ? 'Saving...' : 'Save'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditing(false)}
-                    className="nodrag"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleToggleExpanded}
-                className="nodrag h-6 w-6 p-0"
-              >
-                <ChevronUp className="h-3 w-3" />
-              </Button>
-              {!isEditing && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsEditing(true)}
-                    className="nodrag h-6 w-6 p-0"
-                  >
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDeleteEvidence}
-                    className="nodrag h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                  <Link
-                    to={evidenceHref}
-                    title="Open full page"
-                    className="nodrag"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="nodrag h-6 w-6 p-0"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </CardHeader>
+        <div className="mb-1">
+          <AnnotationPin
+            colorClass="bg-emerald-500"
+            title="Collapse"
+            onClick={() => setExpanded(false)}
+          >
+            <TypeIcon className="h-4 w-4" />
+          </AnnotationPin>
+        </div>
 
-        {/* Auto-save indicator */}
-        {(isAutoSaving || lastSaved) && isEditing && (
-          <div className="px-6 py-2 bg-blue-50 border-b border-blue-200">
-            <div className="flex items-center gap-2 text-sm text-blue-700">
-              {isAutoSaving ? (
-                <>
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span>Auto-saving...</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Last saved: {lastSaved?.toLocaleTimeString()}</span>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Metadata Section */}
-        {isEditing && (
-          <div className="nodrag px-6 py-4 border-b bg-gray-50">
-            <div
-              className={`grid gap-4 ${isFullscreen ? 'grid-cols-1 md:grid-cols-6' : 'grid-cols-1 md:grid-cols-3'}`}
+        <Card className="w-80 rounded-xl rounded-tl-sm border bg-card/95 p-3 shadow-md backdrop-blur-sm">
+          {/* Header: type chip + inline-editable title + actions */}
+          <div className="flex items-start gap-2">
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${meta.chip}`}
             >
-              <div>
-                <Label className="text-xs font-medium text-gray-600">
-                  Hypothesis
-                </Label>
+              <TypeIcon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              {editingTitle ? (
                 <Input
-                  value={editForm.hypothesis}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, hypothesis: e.target.value })
-                  }
-                  placeholder="What hypothesis is being tested?"
-                  className="nodrag mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-xs font-medium text-gray-600">
-                  External Link
-                </Label>
-                <Input
-                  value={editForm.link}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, link: e.target.value })
-                  }
-                  placeholder="https://..."
-                  className="nodrag mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-xs font-medium text-gray-600">
-                  Impact on Confidence
-                </Label>
-                <Input
-                  value={editForm.impactOnConfidence}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      impactOnConfidence: e.target.value,
-                    })
-                  }
-                  placeholder="How does this affect confidence?"
-                  className="nodrag mt-1"
-                />
-              </div>
-              <div className="md:col-span-3">
-                <Label className="text-xs font-medium text-gray-600">
-                  Tags
-                </Label>
-                <EnhancedTagInput
-                  tags={editForm.tags || []}
-                  onAdd={(tag) =>
-                    setEditForm({
-                      ...editForm,
-                      tags: [...(editForm.tags || []), tag],
-                    })
-                  }
-                  onRemove={(tag) =>
-                    setEditForm({
-                      ...editForm,
-                      tags: (editForm.tags || []).filter((t) => t !== tag),
-                    })
-                  }
-                  className="nodrag mt-1"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <CardContent className="space-y-3">
-          {/* Content */}
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                CONTENT
-              </span>
-              {!isEditing && (
-                <Link
-                  to={evidenceHref}
-                  className="nodrag text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                  title="View full content"
-                >
-                  View Full
-                </Link>
-              )}
-            </div>
-            <div className="mt-2">
-              {isEditing ? (
-                <div
-                  ref={editorContainerRef}
-                  className="nodrag codex-editor"
-                  style={{ minHeight: '300px' }}
+                  ref={titleInputRef}
+                  autoFocus
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onBlur={commitTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      commitTitle();
+                    } else if (e.key === 'Escape') {
+                      setTitleDraft(evidence.title || '');
+                      setEditingTitle(false);
+                    }
+                  }}
+                  className="nodrag h-7 text-sm font-semibold"
+                  placeholder="Evidence title…"
                 />
               ) : (
-                <div className="max-h-32 overflow-hidden relative">
-                  <EvidenceContentRenderer evidence={evidence} />
-                  {/* Fade overlay for long content */}
-                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-                </div>
+                <button
+                  type="button"
+                  className="nodrag block w-full truncate text-left text-sm font-semibold hover:underline"
+                  title="Rename"
+                  onClick={() => {
+                    setTitleDraft(evidence.title || '');
+                    setEditingTitle(true);
+                  }}
+                >
+                  {evidence.title || 'Untitled evidence'}
+                </button>
               )}
+              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
+                  {evidence.type}
+                </Badge>
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {evidence.date}
+                </span>
+              </div>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="nodrag h-6 w-6 shrink-0 p-0 text-muted-foreground"
+              title="Collapse"
+              onClick={() => setExpanded(false)}
+            >
+              <Minimize2 className="h-3.5 w-3.5" />
+            </Button>
           </div>
 
-          {/* Link */}
-          {evidence.link && !isEditing && (
-            <div className="pt-2">
-              <a
-                href={evidence.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                <ExternalLink className="h-3 w-3" />
-                View Source
-              </a>
+          {/* Content preview */}
+          <div className="relative mt-2 max-h-32 overflow-hidden rounded-md">
+            <EvidenceContentRenderer evidence={evidence} className="text-sm" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-card to-transparent" />
+          </div>
+
+          {/* Linked target (set by dragging an edge to a node, or via the
+              relationship sheet) — the point of evidence: it backs something. */}
+          {linkedName && (
+            <div className="mt-2 flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-xs">
+              <Link2 className="h-3 w-3 text-muted-foreground" />
+              <span className="text-muted-foreground">Linked to</span>
+              <span className="truncate font-medium">{linkedName}</span>
             </div>
           )}
 
-          {/* Comments */}
-          <div className="nodrag border-t pt-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                COMMENTS ({evidence.comments?.length || 0})
-              </span>
-            </div>
-
-            {evidence.comments && evidence.comments.length > 0 && (
-              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                {evidence.comments.map((comment: EvidenceComment) => (
-                  <div
-                    key={comment.id}
-                    className="text-xs bg-gray-50 p-2 rounded border"
-                  >
-                    <div className="flex items-center gap-1 mb-1">
-                      <User className="h-3 w-3" />
-                      <span className="font-medium">{comment.author}</span>
-                      <span className="text-gray-400">
-                        {new Date(comment.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-gray-700">{comment.content}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="mt-2 flex gap-2">
-              <Input
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
-                className="nodrag"
-              />
+          {/* Footer: comments count + actions */}
+          <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-2">
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <MessageSquare className="h-3 w-3" />
+              {commentCount} comment{commentCount === 1 ? '' : 's'}
+            </span>
+            <div className="flex items-center gap-0.5">
               <Button
-                variant="outline"
-                disabled={!newComment.trim()}
-                onClick={() => {
-                  if (!newComment.trim()) return;
-                  addComment(evidence.id, {
-                    content: newComment,
-                    author: 'Current User',
-                  });
-                  setNewComment('');
-                }}
-                className="nodrag text-xs"
+                variant="ghost"
+                size="sm"
+                className="nodrag h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                title="Delete evidence"
+                onClick={handleDelete}
               >
-                Add
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="nodrag h-6 gap-1 px-2 text-xs"
+              >
+                <Link to={evidenceHref}>
+                  <ExternalLink className="h-3 w-3" />
+                  View full
+                </Link>
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Add Comment Dialog */}
-      <Dialog open={isCommentDialogOpen} onOpenChange={setIsCommentDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Comment</DialogTitle>
-            <DialogDescription>
-              Add a comment to this evidence item
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Enter your comment..."
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsCommentDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleAddComment}>Add Comment</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </Card>
+      </div>
     </div>
   );
 }

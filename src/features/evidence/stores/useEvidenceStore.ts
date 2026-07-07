@@ -5,6 +5,11 @@ import { persist } from 'zustand/middleware';
 interface EvidenceState {
   evidence: EvidenceItem[];
 
+  // Transient (not persisted): the evidence item just created on the canvas —
+  // its node opens expanded with the title in edit mode (card-first creation).
+  justCreatedEvidenceId: string | null;
+  setJustCreatedEvidenceId: (id: string | null) => void;
+
   // Actions
   addEvidence: (evidence: EvidenceItem) => void;
   updateEvidence: (id: string, updates: Partial<EvidenceItem>) => void;
@@ -50,6 +55,10 @@ export const useEvidenceStore = create<EvidenceState>()(
   persist(
     (set, get) => ({
       evidence: [],
+
+      justCreatedEvidenceId: null,
+      setJustCreatedEvidenceId: (id: string | null) =>
+        set({ justCreatedEvidenceId: id }),
 
       addEvidence: (evidence: EvidenceItem) =>
         set((state) => ({
@@ -265,6 +274,8 @@ export const useEvidenceStore = create<EvidenceState>()(
     }),
     {
       name: 'metrimap-evidence-store',
+      // Persist only the data; transient UI flags stay session-local.
+      partialize: (s) => ({ evidence: s.evidence }),
     }
   )
 );

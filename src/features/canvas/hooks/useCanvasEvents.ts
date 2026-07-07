@@ -85,11 +85,12 @@ export function useCanvasEvents({
     // evidence node appears on the canvas (it renders from the evidence store).
     const { user } = useAppStore.getState();
     const now = new Date().toISOString();
+    const id =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `evidence_${Date.now()}`;
     useEvidenceStore.getState().addEvidence({
-      id:
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `evidence_${Date.now()}`,
+      id,
       title: 'New Evidence',
       type: 'Analysis',
       date: now.slice(0, 10),
@@ -107,10 +108,13 @@ export function useCanvasEvents({
         state.reactFlowRef?.current
       ),
       isVisible: true,
-      isExpanded: false,
+      // Card-first creation: the node opens expanded with the title in edit
+      // mode (see EvidenceNode + justCreatedEvidenceId), not as a bare icon.
+      isExpanded: true,
       comments: [],
       context: { type: 'general' },
     } as any);
+    useEvidenceStore.getState().setJustCreatedEvidenceId(id);
     // Also call the legacy hook if a page ever provides it.
     state.addEvidenceAtCenter?.();
   }, []);
