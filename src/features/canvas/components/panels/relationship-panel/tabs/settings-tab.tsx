@@ -30,7 +30,6 @@ import {
 } from "@/shared/lib/supabase/services/tags";
 import type {
   CardCategory,
-  SourceType,
   Dimension,
   CausalFactor,
 } from "@/shared/types";
@@ -162,12 +161,6 @@ const CAUSAL_FACTOR_OPTIONS: Array<{
   },
 ];
 
-const SOURCE_TYPE_OPTIONS: Array<{ value: SourceType; label: string }> = [
-  { value: "Manual", label: "Manual Entry" },
-  { value: "Calculated", label: "Calculated Formula" },
-  { value: "Random", label: "Random Data (Testing)" },
-];
-
 interface SettingsTabProps {
   cardId?: string;
   onSave: () => void;
@@ -282,62 +275,31 @@ export function SettingsTab({
 
   return (
     <div className="space-y-6">
-      {/* Data Source Configuration */}
+      {/* Definition — metadata only. card.formula is never computed (Operator
+          nodes run the math; Source nodes ingest data); it documents how the
+          metric is derived and is copied into the catalog on promote. The old
+          Manual/Calculated/Random source-type picker is gone with ingestion. */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            Data Source Configuration
+            Definition
           </CardTitle>
           <CardDescription>
-            Configure where your data comes from
+            How this metric is derived — copied to the catalog when promoted.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Source Type</label>
-            <Select
-              value={card.sourceType || "Manual"}
-              onValueChange={(value: SourceType) =>
-                updateCard({ sourceType: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SOURCE_TYPE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {(card.sourceType || "Manual") === "Calculated" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Formula</label>
-              <Textarea
-                value={card.formula || ""}
-                onChange={(e) => updateCard({ formula: e.target.value })}
-                placeholder="Enter your calculation formula..."
-                className="min-h-[100px]"
-              />
-              <p className="text-xs text-muted-foreground">
-                Use mathematical expressions and reference other metrics
-              </p>
-            </div>
-          )}
-
-          {(card.sourceType || "Manual") === "Random" && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Random data will be generated based on your chart configuration
-              </p>
-              <Button variant="outline">Generate Sample Data</Button>
-            </div>
-          )}
+        <CardContent className="space-y-3">
+          <Textarea
+            value={card.formula || ""}
+            onChange={(e) => updateCard({ formula: e.target.value })}
+            placeholder="e.g. MRR = customers × ARPU"
+            className="min-h-[80px]"
+          />
+          <p className="text-xs text-muted-foreground">
+            Data flows in via <span className="font-medium">Source nodes</span>{" "}
+            · computation via <span className="font-medium">Operator nodes</span>.
+          </p>
         </CardContent>
       </Card>
 

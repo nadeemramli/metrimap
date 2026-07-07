@@ -47,7 +47,6 @@ import {
   MoreHorizontal,
   Plus,
   Save,
-  Sparkles,
   Target,
   Trash2,
   TrendingUp,
@@ -55,11 +54,8 @@ import {
 import { useState } from 'react';
 import {
   deriveSeries,
-  generateSeries,
   parseSeries,
-  type Granularity,
 } from '@/features/canvas/utils/sourceBinding';
-import { WarehouseSourceDialog } from './warehouse-source-dialog';
 import {
   Area,
   AreaChart,
@@ -192,34 +188,10 @@ export function DataEventsTab({
   const [editValue, setEditValue] = useState('');
   const [showEventDialog, setShowEventDialog] = useState(false);
 
-  // Generate-sample dialog (trend/seasonality/noise model -> MetricValue[])
-  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
-  const [genOptions, setGenOptions] = useState({
-    periods: 12,
-    granularity: 'Monthly' as Granularity,
-    start: 1000,
-    growth: 0.05,
-    seasonality: 0.15,
-    noise: 0.08,
-  });
-
   // CSV/JSON paste-import dialog
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
-
-  // Warehouse query dialog (Phase 3)
-  const [showWarehouseDialog, setShowWarehouseDialog] = useState(false);
-
-  // Persist a fully-derived series as the card's canonical data.
-  const applySeries = (series: { period: string; value: number }[]) => {
-    updateCard({ data: deriveSeries(series) });
-  };
-
-  const handleGenerate = () => {
-    applySeries(generateSeries({ ...genOptions, seed: 7 }));
-    setShowGenerateDialog(false);
-  };
 
   const handleImport = () => {
     try {
@@ -575,18 +547,11 @@ export function DataEventsTab({
             <div>
               <CardTitle>Data Points & Events</CardTitle>
               <CardDescription>
-                View and edit data points, add events to specific dates
+                View and edit data points, add events to specific dates.
+                Recurring pipelines → connect a Source node.
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowGenerateDialog(true)}
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Generate
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -688,12 +653,6 @@ export function DataEventsTab({
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setShowImportDialog(true)}>
                     Import File (CSV/JSON)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowWarehouseDialog(true)}>
-                    Query Warehouse (SQL)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowGenerateDialog(true)}>
-                    Generate Sample Data
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowEventDialog(true)}>
                     Add Event
@@ -831,144 +790,6 @@ export function DataEventsTab({
       )}
 
       {/* Generate Sample Data */}
-      <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Generate Sample Data
-            </DialogTitle>
-            <DialogDescription>
-              Build a time series from a trend, seasonality, and noise model.
-              Replaces this card's current data.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Periods</label>
-                <Input
-                  type="number"
-                  min={2}
-                  max={365}
-                  value={genOptions.periods}
-                  onChange={(e) =>
-                    setGenOptions({
-                      ...genOptions,
-                      periods: parseInt(e.target.value) || 12,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Granularity</label>
-                <Select
-                  value={genOptions.granularity}
-                  onValueChange={(value: Granularity) =>
-                    setGenOptions({ ...genOptions, granularity: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Daily">Daily</SelectItem>
-                    <SelectItem value="Weekly">Weekly</SelectItem>
-                    <SelectItem value="Monthly">Monthly</SelectItem>
-                    <SelectItem value="Quarterly">Quarterly</SelectItem>
-                    <SelectItem value="Yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Starting value</label>
-                <Input
-                  type="number"
-                  value={genOptions.start}
-                  onChange={(e) =>
-                    setGenOptions({
-                      ...genOptions,
-                      start: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Growth / period ({Math.round(genOptions.growth * 100)}%)
-                </label>
-                <Input
-                  type="number"
-                  step={0.01}
-                  value={genOptions.growth}
-                  onChange={(e) =>
-                    setGenOptions({
-                      ...genOptions,
-                      growth: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Seasonality ({Math.round(genOptions.seasonality * 100)}%)
-                </label>
-                <Input
-                  type="number"
-                  step={0.05}
-                  min={0}
-                  max={1}
-                  value={genOptions.seasonality}
-                  onChange={(e) =>
-                    setGenOptions({
-                      ...genOptions,
-                      seasonality: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Noise ({Math.round(genOptions.noise * 100)}%)
-                </label>
-                <Input
-                  type="number"
-                  step={0.05}
-                  min={0}
-                  max={1}
-                  value={genOptions.noise}
-                  onChange={(e) =>
-                    setGenOptions({
-                      ...genOptions,
-                      noise: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={handleGenerate} className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Generate
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowGenerateDialog(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Query Warehouse (Phase 3) */}
-      <WarehouseSourceDialog
-        open={showWarehouseDialog}
-        onOpenChange={setShowWarehouseDialog}
-        onApply={(series) => updateCard({ data: series })}
-      />
-
       {/* Import CSV / JSON */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <DialogContent>
