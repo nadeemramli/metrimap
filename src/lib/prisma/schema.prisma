@@ -70,16 +70,17 @@ model metric_cards {
 }
 
 model relationships {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  project_id  String?   @db.Uuid
-  source_id   String?   @db.Uuid
-  target_id   String?   @db.Uuid
-  type        String
-  confidence  String    @default("Medium")
-  weight      Float?
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
-  created_by  String
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id      String?   @db.Uuid
+  source_id       String?   @db.Uuid
+  target_id       String?   @db.Uuid
+  type            String
+  confidence      String    @default("Medium")
+  weight          Float?
+  causal_metadata Json?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+  created_by      String
 
   @@map("relationships")
 }
