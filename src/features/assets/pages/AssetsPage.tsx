@@ -5,6 +5,7 @@ import { AssetsEmptyState } from '@/features/assets/components/emptystate/Assets
 import CardSettingsSheet from '@/features/canvas/components/panels/metric-panel/CardSettingsSheet';
 import RelationshipSheet from '@/features/canvas/components/panels/relationship-panel/RelationshipSheet';
 import { useCanvasStore, useTagStore } from '@/lib/stores';
+import { useNodeStore } from '@/features/canvas/stores/useNodeStore';
 import { usePagePanel } from '@/features/canvas/stores/useCanvasPanelStore';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
@@ -163,6 +164,13 @@ export default function AssetsPage() {
   const [newAssetType, setNewAssetType] = useState<'metric' | 'relationship'>(
     'metric'
   );
+  const [newAssetTitle, setNewAssetTitle] = useState('');
+  const [newAssetCategory, setNewAssetCategory] =
+    useState<MetricCard['category']>('Data/Metric');
+  const [newRelSource, setNewRelSource] = useState('');
+  const [newRelTarget, setNewRelTarget] = useState('');
+  const [newRelType, setNewRelType] = useState<Relationship['type']>('Exploratory');
+  const [isCreatingAsset, setIsCreatingAsset] = useState(false);
 
   // Drag and drop state
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
@@ -710,6 +718,63 @@ export default function AssetsPage() {
       toast.success(`"${metric.title}" catalogued as a tracked metric`);
     } catch {
       toast.error('Failed to promote metric');
+    }
+  };
+
+  // Add Asset: actually create (was a "coming soon" stub). Metric mirrors the
+  // catalog picker (service createNode + local addNode); relationship goes
+  // through canvasStore.createEdge (persists + renders like a drawn edge).
+  const handleCreateAsset = async () => {
+    if (!canvasId) return;
+    setIsCreatingAsset(true);
+    try {
+      if (newAssetType === 'metric') {
+        const newCard = await useNodeStore.getState().createNode(
+          {
+            title: newAssetTitle.trim(),
+            description: '',
+            category: newAssetCategory,
+            tags: [],
+            causalFactors: [],
+            dimensions: [],
+            segments: [],
+            assignees: [],
+            position: {
+              x: 120 + Math.round(Math.random() * 160),
+              y: 120 + Math.round(Math.random() * 160),
+            },
+            data: [],
+          } as Omit<MetricCard, 'id' | 'createdAt' | 'updatedAt'>,
+          canvasId
+        );
+        useCanvasStore.getState().addNode(newCard as MetricCard);
+        toast.success(`Created "${newCard.title}"`);
+      } else {
+        if (!useCanvasStore.getState().canvas) {
+          toast.error('Open the canvas once first, then create relationships.');
+          return;
+        }
+        await useCanvasStore.getState().createEdge({
+          sourceId: newRelSource,
+          targetId: newRelTarget,
+          type: newRelType,
+          confidence: 'Medium',
+          weight: 1,
+          evidence: [],
+          notes: '',
+        } as Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>);
+        toast.success('Relationship created');
+      }
+      setIsAddAssetOpen(false);
+      setNewAssetTitle('');
+      setNewRelSource('');
+      setNewRelTarget('');
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : `Failed to create ${newAssetType}`
+      );
+    } finally {
+      setIsCreatingAsset(false);
     }
   };
 
@@ -1760,19 +1825,114 @@ export default function AssetsPage() {
               </Select>
             </div>
 
-            <div className="text-sm text-muted-foreground">
-              {newAssetType === 'metric' ? (
-                <p>
-                  Create a new metric card that will appear on the canvas and in
-                  the metrics table.
+            {newAssetType === 'metric' ? (
+              <>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Title</label>
+                  <Input
+                    autoFocus
+                    value={newAssetTitle}
+                    onChange={(e) => setNewAssetTitle(e.target.value)}
+                    placeholder="e.g. Monthly Recurring Revenue"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Category</label>
+                  <Select
+                    value={newAssetCategory}
+                    onValueChange={(v) =>
+                      setNewAssetCategory(v as MetricCard['category'])
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(
+                        [
+                          'Core/Value',
+                          'Data/Metric',
+                          'Work/Action',
+                          'Ideas/Hypothesis',
+                          'Metadata',
+                        ] as const
+                      ).map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  The card is created on this canvas and appears in the metrics
+                  table.
                 </p>
-              ) : (
-                <p>
-                  Create a new relationship between existing metrics on the
-                  canvas.
-                </p>
-              )}
-            </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">From</label>
+                  <Select value={newRelSource} onValueChange={setNewRelSource}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Source metric…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {metrics.map((m: MetricCard) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">To</label>
+                  <Select value={newRelTarget} onValueChange={setNewRelTarget}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Target metric…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {metrics
+                        .filter((m: MetricCard) => m.id !== newRelSource)
+                        .map((m: MetricCard) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.title}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Type</label>
+                  <Select
+                    value={newRelType}
+                    onValueChange={(v) =>
+                      setNewRelType(v as Relationship['type'])
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(
+                        [
+                          'Exploratory',
+                          'Deterministic',
+                          'Probabilistic',
+                          'Causal',
+                          'Compositional',
+                        ] as const
+                      ).map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
           </div>
 
           <DialogFooter>
@@ -1780,14 +1940,17 @@ export default function AssetsPage() {
               Cancel
             </Button>
             <Button
-              onClick={() => {
-                // TODO: Implement actual asset creation
-                console.log('Creating new', newAssetType);
-                toast.info(`${newAssetType} creation functionality coming soon!`);
-                setIsAddAssetOpen(false);
-              }}
+              disabled={
+                isCreatingAsset ||
+                (newAssetType === 'metric'
+                  ? !newAssetTitle.trim()
+                  : !newRelSource || !newRelTarget)
+              }
+              onClick={handleCreateAsset}
             >
-              Create {newAssetType === 'metric' ? 'Metric' : 'Relationship'}
+              {isCreatingAsset
+                ? 'Creating…'
+                : `Create ${newAssetType === 'metric' ? 'Metric' : 'Relationship'}`}
             </Button>
           </DialogFooter>
         </DialogContent>

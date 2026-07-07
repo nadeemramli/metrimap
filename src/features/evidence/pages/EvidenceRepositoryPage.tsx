@@ -47,8 +47,8 @@ import {
   User,
   Users,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import EvidenceEditor from '../components/EvidenceEditor';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useAppStore } from '@/shared/stores/useAppStore';
@@ -84,6 +84,33 @@ function contentPreview(ev: EvidenceItem): string {
 export default function EvidenceRepositoryPage() {
   const { canvasId } = useParams();
   const isCanvasScoped = Boolean(canvasId);
+  const location = useLocation();
+
+  // Deep-link from global search: navigate('/evidence', { state: { focusEvidence } })
+  // scrolls the target card into view and flashes a highlight ring. Previously
+  // the state was never read — the deep-link silently did nothing.
+  const [focusId, setFocusId] = useState<string | null>(
+    (location.state as { focusEvidence?: string } | null)?.focusEvidence ?? null
+  );
+  useEffect(() => {
+    const id = (location.state as { focusEvidence?: string } | null)
+      ?.focusEvidence;
+    if (id) setFocusId(id);
+  }, [location.state]);
+  useEffect(() => {
+    if (!focusId) return;
+    // Let the grid render, then scroll + clear the flash after a beat.
+    const t = setTimeout(() => {
+      document
+        .getElementById(`evidence-${focusId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+    const clear = setTimeout(() => setFocusId(null), 2600);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(clear);
+    };
+  }, [focusId]);
   const client = useClerkSupabase();
   const { user } = useAppStore();
   const { canvas } = useCanvasStore();
@@ -380,7 +407,15 @@ export default function EvidenceRepositoryPage() {
           {filteredEvidence.map((evidence) => {
             const TypeIcon = getTypeIcon(evidence.type);
             return (
-              <Card key={evidence.id} className="relative">
+              <Card
+                key={evidence.id}
+                id={`evidence-${evidence.id}`}
+                className={`relative transition-shadow ${
+                  focusId === evidence.id
+                    ? 'ring-2 ring-primary shadow-lg'
+                    : ''
+                }`}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <Badge variant={getTypeVariant(evidence.type)}>

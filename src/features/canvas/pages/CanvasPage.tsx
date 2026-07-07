@@ -1910,12 +1910,19 @@ function CanvasPageInner() {
               (targetNode?.data as any)?.title ||
               (targetNode?.data as any)?.node?.title ||
               'node';
+            const links = [
+              ...(ev.links || []).filter(
+                (l) => l.targetId !== edgeData.target
+              ),
+              { targetId: edgeData.target, targetName },
+            ];
             useEvidenceStore.getState().updateEvidence(ev.id, {
               context: {
                 type: 'card',
                 targetId: edgeData.target,
                 targetName,
               },
+              links,
             } as any);
             toast.success(`Evidence linked to "${targetName}"`);
           }
@@ -2186,19 +2193,29 @@ function CanvasPageInner() {
         for (const e of removed) {
           broadcastCanvasChange({ t: 'extraEdge:delete', id: e.id });
         }
-        // Evidence links: deleting the reference edge that backs an evidence
-        // item's "Linked to" context clears it back to general.
+        // Evidence links: deleting a reference edge drops that target from the
+        // evidence item's links; the primary context falls back to the latest
+        // remaining link (or general when none are left).
         for (const e of removed) {
           const ev = useEvidenceStore
             .getState()
             .evidence.find(
               (item) =>
-                item.id === e.source && item.context?.targetId === e.target
+                item.id === e.source &&
+                (item.context?.targetId === e.target ||
+                  (item.links || []).some((l) => l.targetId === e.target))
             );
           if (ev) {
-            useEvidenceStore
-              .getState()
-              .updateEvidence(ev.id, { context: { type: 'general' } } as any);
+            const links = (ev.links || []).filter(
+              (l) => l.targetId !== e.target
+            );
+            const last = links[links.length - 1];
+            useEvidenceStore.getState().updateEvidence(ev.id, {
+              links,
+              context: last
+                ? { type: 'card', targetId: last.targetId, targetName: last.targetName }
+                : { type: 'general' },
+            } as any);
           }
         }
         // Drop the operator input bindings for any removed inbound-to-operator

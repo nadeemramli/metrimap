@@ -21,12 +21,15 @@ import {
   Link2,
   MessageSquare,
   Minimize2,
+  PenLine,
   Trash2,
   Users,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
+import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
+import EvidenceEditPanel from '@/features/evidence/components/EvidenceEditPanel';
 import { FourSideHandles } from './FourSideHandles';
 import {
   AnnotationPin,
@@ -65,6 +68,27 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
   const justCreatedId = useEvidenceStore((s) => s.justCreatedEvidenceId);
   const clearJustCreated = useEvidenceStore((s) => s.setJustCreatedEvidenceId);
   const isJustCreated = justCreatedId === evidence.id;
+
+  // Side-panel editor (docked right slot) — write into the evidence without
+  // leaving the canvas. Chart-node pattern: this node owns its DockPanel.
+  const editOpen = useCanvasPanelStore(
+    (s) =>
+      s.rightPanel?.kind === 'evidenceEdit' &&
+      s.rightPanel.evidenceId === evidence.id
+  );
+  const setEditOpen = useCallback(
+    (open: boolean) => {
+      const s = useCanvasPanelStore.getState();
+      if (open)
+        s.openRight({ kind: 'evidenceEdit', evidenceId: evidence.id });
+      else if (
+        s.rightPanel?.kind === 'evidenceEdit' &&
+        s.rightPanel.evidenceId === evidence.id
+      )
+        s.closeRight();
+    },
+    [evidence.id]
+  );
 
   const [isExpanded, setIsExpanded] = useState(
     evidence.isExpanded || isJustCreated
@@ -128,11 +152,35 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
     ? `/canvas/${canvasId}/evidence/${evidence.id}`
     : `/evidence/${evidence.id}`;
 
-  const linkedName =
-    evidence.context && evidence.context.type !== 'general'
-      ? evidence.context.targetName
-      : null;
+  // Every canvas link (reference edges) + the context link from the
+  // relationship sheet, deduped — the card names everything this evidence backs.
+  const linkChips: Array<{ id: string; name: string }> = [
+    ...(evidence.links || []).map((l) => ({
+      id: l.targetId,
+      name: l.targetName,
+    })),
+  ];
+  if (
+    evidence.context &&
+    evidence.context.type !== 'general' &&
+    evidence.context.targetId &&
+    !linkChips.some((c) => c.id === evidence.context!.targetId)
+  ) {
+    linkChips.push({
+      id: evidence.context.targetId,
+      name: evidence.context.targetName || 'target',
+    });
+  }
   const commentCount = evidence.comments?.length || 0;
+
+  // Docked side editor — mounted from both states so it survives collapse.
+  const editPanel = (
+    <EvidenceEditPanel
+      evidenceId={evidence.id}
+      open={editOpen}
+      onClose={() => setEditOpen(false)}
+    />
+  );
 
   // Collapsed: just the pin — constant screen size, no floating title label.
   if (!isExpanded) {
@@ -147,6 +195,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
         >
           <TypeIcon className="h-4 w-4" />
         </AnnotationPin>
+        {editPanel}
       </div>
     );
   }
@@ -227,13 +276,20 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-card to-transparent" />
           </div>
 
-          {/* Linked target (set by dragging an edge to a node, or via the
-              relationship sheet) — the point of evidence: it backs something. */}
-          {linkedName && (
-            <div className="mt-2 flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-xs">
+          {/* Linked targets (drag an edge to a node, or via the relationship
+              sheet) — the point of evidence: it backs things. */}
+          {linkChips.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1 rounded-md bg-muted/60 px-2 py-1 text-xs">
               <Link2 className="h-3 w-3 text-muted-foreground" />
               <span className="text-muted-foreground">Linked to</span>
-              <span className="truncate font-medium">{linkedName}</span>
+              {linkChips.map((c) => (
+                <span
+                  key={c.id}
+                  className="max-w-[110px] truncate rounded bg-background px-1.5 py-0.5 font-medium"
+                >
+                  {c.name}
+                </span>
+              ))}
             </div>
           )}
 
@@ -254,6 +310,16 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
               <Button
+                variant="outline"
+                size="sm"
+                className="nodrag h-6 gap-1 px-2 text-xs"
+                title="Edit in side panel"
+                onClick={() => setEditOpen(true)}
+              >
+                <PenLine className="h-3 w-3" />
+                Edit
+              </Button>
+              <Button
                 asChild
                 variant="outline"
                 size="sm"
@@ -268,6 +334,7 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
           </div>
         </Card>
       </div>
+      {editPanel}
     </div>
   );
 }

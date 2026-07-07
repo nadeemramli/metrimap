@@ -248,6 +248,10 @@ export interface EvidenceItem {
     targetName?: string; // for display purposes
   };
 
+  // All canvas nodes this evidence backs (reference edges drawn on the canvas).
+  // `context` keeps the latest/primary link; this carries the full set.
+  links?: Array<{ targetId: string; targetName: string }>;
+
   // Canvas positioning for general evidence
   position?: {
     x: number;

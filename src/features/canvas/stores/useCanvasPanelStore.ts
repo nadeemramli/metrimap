@@ -13,6 +13,7 @@ export type RightPanel =
   | { kind: 'sourceConfig'; nodeId: string }
   | { kind: 'chartSettings'; nodeId: string }
   | { kind: 'groupEdit'; groupId: string }
+  | { kind: 'evidenceEdit'; evidenceId: string }
   /** Generic slot for sub-page detail panels (dashboard/strategy/assets…).
       `id` is page-scoped, e.g. 'widget:<uuid>' or 'impact:<cardId>'. */
   | { kind: 'page'; id: string };
