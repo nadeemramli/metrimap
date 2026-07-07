@@ -1,4 +1,5 @@
 import { useAppStore } from '@/lib/stores';
+import { identifyUser, resetAnalytics } from '@/shared/lib/analytics';
 import { createClerkSupabaseClient } from '@/shared/lib/supabase/client';
 import { CreateUserSchema } from '@/shared/lib/validation/zod';
 import { useAuth, useUser } from '@clerk/react-router';
@@ -33,6 +34,13 @@ export default function ClerkSupabaseProvider({
             name:
               user.fullName || user.emailAddresses[0]?.emailAddress || 'User',
             email: user.emailAddresses[0]?.emailAddress || '',
+          });
+
+          // Tie analytics to the Clerk identity (attribution rides along).
+          identifyUser({
+            id: user.id,
+            name: user.fullName || undefined,
+            email: user.emailAddresses[0]?.emailAddress || undefined,
           });
 
           // Create Supabase client with Clerk authentication using NATIVE integration
@@ -95,6 +103,7 @@ export default function ClerkSupabaseProvider({
       } else {
         // User is signed out, clear app store
         console.log('User signed out, clearing app store');
+        resetAnalytics();
         await signOut();
       }
     };

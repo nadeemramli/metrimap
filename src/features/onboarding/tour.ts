@@ -1,6 +1,7 @@
 import { driver, type DriveStep } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import './tour.css';
+import { track } from '@/shared/lib/analytics';
 import { useOnboardingStore } from './useOnboardingStore';
 
 // The guided canvas tour (CVS-114 slice 2). Runs on the user's own copy of the
@@ -89,10 +90,16 @@ export function startCanvasTour() {
       tour.destroy();
     },
     onDestroyed: () => {
-      if (finished) store.markTourCompleted();
-      else store.markTourSkipped();
+      if (finished) {
+        store.markTourCompleted();
+        track('tour_completed');
+      } else {
+        store.markTourSkipped();
+        track('tour_skipped', { at_step: tour.getActiveIndex() });
+      }
     },
   });
 
+  track('tour_started');
   tour.drive();
 }

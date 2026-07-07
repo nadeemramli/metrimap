@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
+import { track } from '@/shared/lib/analytics';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import {
   duplicateProjectDeep,
@@ -37,6 +38,7 @@ export function WelcomeDialog({
 
   const closeAsSeen = () => {
     useOnboardingStore.getState().markFirstRunSeen();
+    track('welcome_seen', { path: 'scratch' });
     onOpenChange(false);
   };
 
@@ -60,6 +62,8 @@ export function WelcomeDialog({
       onboarding.setDemoCopyProjectId(copyId);
       onboarding.setTourPending(true);
       onboarding.markFirstRunSeen();
+      track('welcome_seen', { path: 'tour' });
+      track('demo_copied', { source_example: demo.id });
       onOpenChange(false);
       navigate(`/canvas/${copyId}`);
     } catch (e) {

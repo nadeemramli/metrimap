@@ -109,6 +109,7 @@
     "next-themes": "^0.4.6",
     "perfect-freehand": "^1.2.3",
     "postcss": "^8.5.6",
+    "posthog-js": "^1.398.2",
     "prisma-zod-generator": "^1.4.1",
     "react": "^19.1.0",
     "react-day-picker": "^9.8.1",

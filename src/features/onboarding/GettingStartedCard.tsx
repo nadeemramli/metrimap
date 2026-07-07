@@ -1,4 +1,5 @@
 import { Button } from '@/shared/components/ui/button';
+import { track } from '@/shared/lib/analytics';
 import { cn } from '@/shared/utils';
 import type { CanvasProject } from '@/shared/types';
 import { Check, Circle, ListChecks, X } from 'lucide-react';
@@ -97,7 +98,10 @@ export function GettingStartedCard({
           variant="ghost"
           size="sm"
           className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-          onClick={() => useOnboardingStore.getState().dismissChecklist()}
+          onClick={() => {
+            useOnboardingStore.getState().dismissChecklist();
+            track('checklist_dismissed', { completed: doneCount });
+          }}
           aria-label="Dismiss getting started"
         >
           <X className="h-3.5 w-3.5" />

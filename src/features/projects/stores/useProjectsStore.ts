@@ -1,3 +1,4 @@
+import { track } from '@/shared/lib/analytics';
 import {
   createProject as createProjectInSupabase,
   deleteProject as deleteProjectInSupabase,
@@ -253,6 +254,7 @@ export const useProjectsStore = create<ProjectsStoreState>()(
               isLoading: false,
             }));
 
+            track('canvas_created', { canvas_id: newProject.id });
             return newProject.id;
           }
 
