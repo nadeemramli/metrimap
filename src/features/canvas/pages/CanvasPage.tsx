@@ -54,8 +54,13 @@ import { CatalogMetricPicker } from '@/features/catalog/components/CatalogMetric
 import { useCanvasExport } from '@/features/canvas/components/export/useCanvasExport';
 import {
   getAuthenticatedClient,
+  getClientForEnvironment,
   whenAuthenticatedClientReady,
 } from '@/shared/utils/authenticatedClient';
+import {
+  createCommentThread,
+  updateCommentThread,
+} from '@/shared/lib/supabase/services/collaboration';
 import { runPipeline } from '@/features/canvas/utils/runSimulation';
 import { normalizeOperatorData } from '@/features/canvas/utils/operatorMigration';
 import { resolveZ } from '@/features/canvas/utils/zOrder';
@@ -555,6 +560,7 @@ function CanvasPageInner() {
     return () =>
       window.removeEventListener('canvas:export', onExport as EventListener);
   }, [exportAs]);
+
 
   // Inline text editor for the Text tool (create) and double-click (re-edit).
   // id present → editing an existing whiteboard text node; absent → creating.
@@ -1758,6 +1764,204 @@ function CanvasPageInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasId, canvas?.id, canvas?.settings]);
+
+  // Card panel → canvas delegation bridges. The metric-card side panel pins its
+  // discussion / evidence onto the canvas; node creation + positioning happen
+  // here (the panel has no canvas access). One thread/evidence item, two views.
+  useEffect(() => {
+    // "Pin discussion to canvas": focus the existing pin for this card's
+    // thread, or create one beside the card sharing the SAME thread. The thread
+    // keeps source:'node' + context.cardId (Strategy counts + the panel tab key
+    // off it); context gains nodeId so both views point at one conversation.
+    const onPinDiscussion = async (e: Event) => {
+      const { cardId, threadId } = (e as CustomEvent).detail || {};
+      const currentCanvas = useCanvasStore.getState().canvas;
+      if (!cardId || !currentCanvas?.id) return;
+      try {
+        if (threadId) {
+          const existing = useCanvasNodesStore
+            .getState()
+            .canvasNodes.find(
+              (n) =>
+                n.nodeType === 'commentNode' &&
+                (n.data as any)?.threadId === threadId
+            );
+          if (existing) {
+            fitView({
+              nodes: [{ id: existing.id }],
+              duration: 500,
+              maxZoom: 1.2,
+              padding: 0.4,
+            });
+            return;
+          }
+        }
+        const card = currentCanvas.nodes.find((n) => n.id === cardId);
+        const title = card?.title || 'Discussion';
+        const client = getClientForEnvironment();
+        let tid: string | null = threadId ?? null;
+        if (!tid) {
+          const thread = await createCommentThread(
+            {
+              projectId: currentCanvas.id,
+              source: 'node',
+              context: { cardId, title },
+              createdBy: useAppStore.getState().user?.id ?? null,
+            },
+            client
+          );
+          tid = thread.id;
+        }
+        const position = card?.position
+          ? { x: card.position.x + 360, y: card.position.y }
+          : screenToFlowPosition({
+              x: window.innerWidth / 2,
+              y: window.innerHeight / 2,
+            });
+        const created = await useCanvasNodesStore.getState().createNode({
+          projectId: currentCanvas.id,
+          nodeType: 'commentNode',
+          title: 'Comment',
+          position,
+          data: { title, threadId: tid, projectId: currentCanvas.id },
+          createdBy: useAppStore.getState().user?.id || 'anonymous',
+        } as any);
+        void updateCommentThread(
+          tid!,
+          { context: { cardId, nodeId: created?.id, title } as any },
+          client
+        );
+        if (created?.id) {
+          setTimeout(
+            () =>
+              fitView({
+                nodes: [{ id: created.id }],
+                duration: 500,
+                maxZoom: 1.2,
+                padding: 0.4,
+              }),
+            80
+          );
+        }
+        toast.success('Discussion pinned to canvas');
+      } catch (err) {
+        console.error('Failed to pin discussion', err);
+        toast.error('Could not pin the discussion');
+      }
+    };
+
+    // "Link evidence to card": create (or reuse) an evidence pin beside the
+    // card, wire the reference edge, and record the link on the evidence item —
+    // the same result as dragging the edge by hand.
+    const onLinkEvidence = async (e: Event) => {
+      const { cardId, evidenceId } = (e as CustomEvent).detail || {};
+      const currentCanvas = useCanvasStore.getState().canvas;
+      if (!cardId || !currentCanvas?.id) return;
+      try {
+        const card = currentCanvas.nodes.find((n) => n.id === cardId);
+        const targetName = card?.title || 'node';
+        const user = useAppStore.getState().user;
+        const store = useEvidenceStore.getState();
+        let ev = evidenceId
+          ? store.evidence.find((item) => item.id === evidenceId)
+          : undefined;
+        const isNew = !ev;
+        if (!ev) {
+          const now = new Date().toISOString();
+          const id =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `evidence_${Date.now()}`;
+          ev = {
+            id,
+            title: `Evidence for ${targetName}`,
+            type: 'Analysis',
+            date: now.slice(0, 10),
+            summary: '',
+            owner: user?.name || 'You',
+            hypothesis: '',
+            impactOnConfidence: '',
+            link: '',
+            createdAt: now,
+            updatedAt: now,
+            createdBy: user?.id || 'unknown',
+            position: card?.position
+              ? { x: card.position.x - 80, y: card.position.y + 240 }
+              : screenToFlowPosition({
+                  x: window.innerWidth / 2,
+                  y: window.innerHeight / 2,
+                }),
+            isVisible: true,
+            isExpanded: false,
+            comments: [],
+            context: { type: 'card', targetId: cardId, targetName },
+            links: [{ targetId: cardId, targetName }],
+          } as any;
+          store.addEvidence(ev as any);
+        } else {
+          // Ensure it's positioned (visible as a pin) and linked to this card.
+          const links = [
+            ...(ev.links || []).filter((l) => l.targetId !== cardId),
+            { targetId: cardId, targetName },
+          ];
+          store.updateEvidence(ev.id, {
+            position:
+              ev.position ??
+              (card?.position
+                ? { x: card.position.x - 80, y: card.position.y + 240 }
+                : undefined),
+            context: { type: 'card', targetId: cardId, targetName },
+            links,
+          } as any);
+        }
+        // Reference edge — identical to what a hand-drawn connection produces.
+        const edgeId = `ref-${ev!.id}-${cardId}`;
+        const currentEdges = state.extraEdges || [];
+        if (!currentEdges.some((edge: any) => edge.id === edgeId)) {
+          const edgeData = {
+            id: edgeId,
+            source: ev!.id,
+            target: cardId,
+            type: 'referenceEdge',
+            data: { label: 'Evidence' },
+          };
+          const nextEdges = [...currentEdges, edgeData];
+          state.setExtraEdges(nextEdges);
+          persistDataFlowEdges(nextEdges);
+          broadcastCanvasChange({ t: 'extraEdge:create', edge: edgeData });
+        }
+        if (isNew) {
+          useCanvasPanelStore
+            .getState()
+            .openRight({ kind: 'evidenceEdit', evidenceId: ev!.id });
+        }
+        toast.success(
+          isNew
+            ? `Evidence pin created and linked to "${targetName}"`
+            : `Evidence linked to "${targetName}"`
+        );
+      } catch (err) {
+        console.error('Failed to link evidence', err);
+        toast.error('Could not link evidence');
+      }
+    };
+
+    window.addEventListener(
+      'card:pin-discussion',
+      onPinDiscussion as EventListener
+    );
+    window.addEventListener('card:link-evidence', onLinkEvidence as EventListener);
+    return () => {
+      window.removeEventListener(
+        'card:pin-discussion',
+        onPinDiscussion as EventListener
+      );
+      window.removeEventListener(
+        'card:link-evidence',
+        onLinkEvidence as EventListener
+      );
+    };
+  }, [fitView, screenToFlowPosition, state, persistDataFlowEdges]);
 
   // Enhanced edge connection handler
   // Phase B: resolve a node's display title (card title / source title / operator

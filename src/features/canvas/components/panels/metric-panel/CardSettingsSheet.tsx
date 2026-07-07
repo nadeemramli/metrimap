@@ -6,7 +6,7 @@ import { ResultsTab } from '@/features/canvas/components/panels/relationship-pan
 import { SettingsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/settings-tab';
 import { WorkflowSection } from '@/features/canvas/components/panels/metric-panel/WorkflowSection';
 import { NodeVisibilityControl } from '@/features/settings/components/NodeVisibilityControl';
-import EvidenceDialog from '@/features/evidence/components/EvidenceDialog';
+import LinkedEvidenceList from '@/features/canvas/components/panels/metric-panel/LinkedEvidenceList';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import {
@@ -25,27 +25,15 @@ import {
 } from '@/shared/components/ui/tabs';
 import { Textarea } from '@/shared/components/ui/textarea';
 import {
-  BookOpen,
-  Calendar,
   ChevronRight,
-  Copy,
-  Edit,
-  ExternalLink,
-  FileText,
-  FlaskConical,
-  Globe,
-  MoreVertical,
   PieChart,
   Plus,
   Settings,
   Trash2,
-  User,
-  Users,
   X,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
-import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import { useCanvasStore } from '@/lib/stores';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
@@ -55,14 +43,7 @@ import {
 } from '@/shared/lib/supabase/services/trackedMetrics';
 import AlertsTab from './AlertsTab';
 import { Badge } from '@/shared/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
-import type { EvidenceItem, MetricCard, Segment } from '@/shared/types';
+import type { MetricCard, Segment } from '@/shared/types';
 // Source pipeline UI is now owned by Source Node; removed from card settings
 
 interface CardSettingsSheetProps {
@@ -86,8 +67,6 @@ function CardSettingsSheetComponent({
 
   const { getNodeById, persistNodeUpdate, persistNodeDelete } =
     useCanvasStore();
-  const { getEvidenceForCard, addEvidence, updateEvidence, deleteEvidence } =
-    useEvidenceStore();
   const confirm = useConfirm();
   const catalogClient = useClerkSupabase();
   const card = cardId ? getNodeById(cardId) : null;
@@ -158,33 +137,6 @@ function CardSettingsSheetComponent({
       setCatalogBusy(false);
     }
   };
-
-  // Evidence dialog state
-  const [isEvidenceDialogOpen, setIsEvidenceDialogOpen] = useState(false);
-  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(
-    null
-  );
-
-  // Evidence type options for display
-  const evidenceTypeOptions = [
-    {
-      value: 'Experiment',
-      icon: FlaskConical,
-      color: 'bg-blue-50 text-blue-700',
-    },
-    { value: 'Analysis', icon: FileText, color: 'bg-green-50 text-green-700' },
-    {
-      value: 'Notebook',
-      icon: BookOpen,
-      color: 'bg-purple-50 text-purple-700',
-    },
-    {
-      value: 'External Research',
-      icon: Globe,
-      color: 'bg-orange-50 text-orange-700',
-    },
-    { value: 'User Interview', icon: Users, color: 'bg-pink-50 text-pink-700' },
-  ];
 
   // Form state
   const [formData, setFormData] = useState<Partial<MetricCard>>(() => ({
@@ -284,68 +236,6 @@ function CardSettingsSheetComponent({
     // Update the form data to reflect changes
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
-
-  // Evidence management functions
-  const handleOpenEvidenceDialog = (evidence?: EvidenceItem) => {
-    setSelectedEvidence(evidence || null);
-    setIsEvidenceDialogOpen(true);
-  };
-
-  const handleCloseEvidenceDialog = () => {
-    setIsEvidenceDialogOpen(false);
-    setSelectedEvidence(null);
-  };
-
-  const handleSaveEvidence = async (evidence: EvidenceItem) => {
-    if (selectedEvidence) {
-      // Update existing evidence
-      updateEvidence(evidence.id, evidence);
-    } else {
-      // Add new evidence with card context
-      const evidenceWithContext: EvidenceItem = {
-        ...evidence,
-        context: {
-          type: 'card',
-          targetId: cardId,
-          targetName: formData.title || card?.title || 'Untitled Card',
-        },
-      };
-      addEvidence(evidenceWithContext);
-    }
-  };
-
-  const handleRemoveEvidence = async (evidenceId: string) => {
-    deleteEvidence(evidenceId);
-  };
-
-  const handleDuplicateEvidence = (evidence: EvidenceItem) => {
-    const duplicate = {
-      ...evidence,
-      id: `evidence_${Date.now()}`,
-      title: `${evidence.title} (Copy)`,
-      createdAt: new Date().toISOString(),
-      context: {
-        type: 'card' as const,
-        targetId: cardId,
-        targetName: formData.title || card?.title || 'Untitled Card',
-      },
-    };
-    addEvidence(duplicate);
-  };
-
-  // Helper functions for evidence display
-  const getTypeIcon = (type: string) => {
-    const option = evidenceTypeOptions.find((opt) => opt.value === type);
-    return option ? option.icon : FileText;
-  };
-
-  const getTypeColor = (type: string) => {
-    const option = evidenceTypeOptions.find((opt) => opt.value === type);
-    return option ? option.color : 'bg-gray-50 text-gray-700';
-  };
-
-  // Get evidence for this card
-  const cardEvidence = cardId ? getEvidenceForCard(cardId) : [];
 
   // Handle switching to a different card (for persistent sheet)
   // const handleSwitchToDifferentCard = (newCardId: string, tab?: string) => {
@@ -1008,182 +898,9 @@ function CardSettingsSheetComponent({
 
               {/* Evidence Tab */}
               <TabsContent value="evidence" className="space-y-6 pt-2">
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">
-                        Card Evidence Repository
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        All supporting evidence for this metric card
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => handleOpenEvidenceDialog()}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Evidence
-                    </Button>
-                  </div>
-
-                  {/* Evidence Grid */}
-                  <div className="space-y-4">
-                    {cardEvidence && cardEvidence.length > 0 ? (
-                      cardEvidence.map((evidence) => {
-                        const TypeIcon = getTypeIcon(evidence.type);
-                        return (
-                          <div
-                            key={evidence.id}
-                            className="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <div
-                                    className={`p-2 rounded-lg ${getTypeColor(
-                                      evidence.type
-                                    )}`}
-                                  >
-                                    <TypeIcon className="h-4 w-4" />
-                                  </div>
-                                  <div>
-                                    <h3 className="font-semibold text-lg">
-                                      {evidence.title}
-                                    </h3>
-                                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                                      <Badge
-                                        variant="secondary"
-                                        className="text-xs"
-                                      >
-                                        {evidence.type}
-                                      </Badge>
-                                      <div className="flex items-center gap-1">
-                                        <Calendar className="h-3 w-3" />
-                                        {new Date(
-                                          evidence.date
-                                        ).toLocaleDateString()}
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <User className="h-3 w-3" />
-                                        {evidence.owner || 'Unknown'}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                  {evidence.hypothesis && (
-                                    <div>
-                                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                        HYPOTHESIS
-                                      </span>
-                                      <p className="text-sm mt-1 text-gray-700">
-                                        {evidence.hypothesis}
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  <div>
-                                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                      SUMMARY
-                                    </span>
-                                    <p className="text-sm mt-1 text-gray-700">
-                                      {evidence.summary}
-                                    </p>
-                                  </div>
-
-                                  {evidence.impactOnConfidence && (
-                                    <div>
-                                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                        IMPACT ON CONFIDENCE
-                                      </span>
-                                      <p className="text-sm mt-1 text-blue-600 font-medium">
-                                        {evidence.impactOnConfidence}
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  {evidence.link && (
-                                    <div className="pt-2">
-                                      <a
-                                        href={evidence.link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                                      >
-                                        <ExternalLink className="h-3 w-3" />
-                                        View Source
-                                      </a>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleOpenEvidenceDialog(evidence)
-                                    }
-                                  >
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleDuplicateEvidence(evidence)
-                                    }
-                                  >
-                                    <Copy className="mr-2 h-4 w-4" />
-                                    Duplicate
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleRemoveEvidence(evidence.id)
-                                    }
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Remove from Card
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center py-12 text-gray-500">
-                        <FileText className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                        <h3 className="text-lg font-medium mb-2">
-                          No Evidence Yet
-                        </h3>
-                        <p className="text-sm mb-4">
-                          Add evidence to support and validate this metric card
-                        </p>
-                        <Button
-                          onClick={() => handleOpenEvidenceDialog()}
-                          variant="outline"
-                          className="inline-flex items-center gap-2"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add Your First Evidence
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                {/* Delegated: evidence lives as pins + the docked editor; the
+                    panel just lists what's linked to this card. */}
+                {cardId && <LinkedEvidenceList cardId={cardId} />}
               </TabsContent>
 
               {/* Settings Tab */}
@@ -1212,18 +929,6 @@ function CardSettingsSheetComponent({
       )}
 
       {/* Evidence Dialog */}
-      <EvidenceDialog
-        isOpen={isEvidenceDialogOpen}
-        onClose={handleCloseEvidenceDialog}
-        onSave={handleSaveEvidence}
-        evidence={selectedEvidence}
-        title={selectedEvidence ? 'Edit Evidence' : 'Add Evidence to Card'}
-        description={
-          selectedEvidence
-            ? 'Update the evidence details below'
-            : 'Add new evidence to support this metric card'
-        }
-      />
     </DockPanel>
   );
 }

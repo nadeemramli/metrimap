@@ -13,6 +13,8 @@ import {
 } from '@/shared/lib/supabase/services/collaboration';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
 import { userCodename } from '@/shared/utils/codename';
+import { Button } from '@/shared/components/ui/button';
+import { MapPin } from 'lucide-react';
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -112,13 +114,42 @@ export function CommentsTab({ cardId }: CommentsTabProps) {
     }
   };
 
+  // Pin the SAME thread to the canvas as a comment pin (one conversation, two
+  // views). Handled by CanvasPage, so it only works while the canvas is
+  // mounted — the DOM check hides the button on non-canvas surfaces (Assets).
+  const [onCanvas, setOnCanvas] = React.useState(false);
+  React.useEffect(() => {
+    setOnCanvas(!!document.querySelector('.react-flow__viewport'));
+  }, []);
+  const pinToCanvas = () => {
+    window.dispatchEvent(
+      new CustomEvent('card:pin-discussion', {
+        detail: { cardId, threadId },
+      })
+    );
+  };
+
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold mb-1">Discussion</h3>
-        <p className="text-sm text-muted-foreground">
-          Collaborate with your team on this metric. Type @ to mention someone.
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="text-lg font-semibold mb-1">Discussion</h3>
+          <p className="text-sm text-muted-foreground">
+            Collaborate with your team on this metric. Type @ to mention someone.
+          </p>
+        </div>
+        {onCanvas && cardId && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5"
+            onClick={pinToCanvas}
+            title="Show this discussion as a pin next to the card"
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            Pin to canvas
+          </Button>
+        )}
       </div>
 
       <Card>
