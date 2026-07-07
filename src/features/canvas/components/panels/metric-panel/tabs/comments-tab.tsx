@@ -1,133 +1,64 @@
 'use client';
 
-import { CommentComposer } from '@/features/canvas/components/collaboration/CommentComposer';
-import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
-import { postComment } from '@/features/canvas/utils/comments';
-import { useAppStore } from '@/lib/stores';
-import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
-import { Card, CardContent } from '@/shared/components/ui/card';
-import {
-  listCommentThreads,
-  listComments,
-  type CommentRow,
-} from '@/shared/lib/supabase/services/collaboration';
-import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
-import { userCodename } from '@/shared/utils/codename';
+import CommentThread from '@/features/canvas/components/collaboration/CommentThread';
 import { Button } from '@/shared/components/ui/button';
+import { listCommentThreads } from '@/shared/lib/supabase/services/collaboration';
+import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
 import { MapPin } from 'lucide-react';
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 
 interface CommentsTabProps {
   cardId?: string;
-  // Kept for call-site compatibility; this tab now persists to the DB on post,
-  // so the explicit Save controls are no longer used.
+  // Kept for call-site compatibility (the tab persists on post).
   onSave?: () => void;
   isModified?: boolean;
   onFieldChange?: (field: string, value: any) => void;
 }
 
-function initials(name: string) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-}
-
 /**
- * Card discussion — backed by the real comment_threads/comments tables (one
- * thread per card, keyed by `context.cardId`). Replaces the previous local
- * card-JSON storage with hardcoded "Current User" authorship. Shares the
- * @mention composer + persistence helper with the collaboration panel.
+ * Card discussion — a thin shell over the shared Monday-style CommentThread
+ * (one thread per card, keyed by `context.cardId`; same tables + realtime as
+ * the canvas comment pins, so both views stay in sync).
  */
 export function CommentsTab({ cardId }: CommentsTabProps) {
   const { canvasId } = useParams();
   const projectId = canvasId && canvasId !== 'new' ? canvasId : undefined;
-  const user = useAppStore((s) => s.user);
-  const { members } = useProjectMembers(projectId, Boolean(cardId));
 
   const [threadId, setThreadId] = React.useState<string | null>(null);
-  const [comments, setComments] = React.useState<CommentRow[]>([]);
-  const [posting, setPosting] = React.useState(false);
-
-  // Privacy: show a stable pseudonymous codename, never the raw Clerk id or the
-  // real name/email (CVS-33).
-  const authorName = (id: string | null) => userCodename(id);
+  const [resolved, setResolved] = React.useState(false);
 
   // Resolve (but don't create) this card's thread on open.
   React.useEffect(() => {
     let mounted = true;
     if (!projectId || !cardId) return;
-    const load = async () => {
+    setResolved(false);
+    (async () => {
       try {
         const client = getClientForEnvironment();
         const threads = await listCommentThreads(projectId, client);
+        if (!mounted) return;
         const match = threads.find(
           (t) => t.source === 'node' && (t.context as any)?.cardId === cardId
         );
-        if (!mounted) return;
-        if (match) {
-          setThreadId(match.id);
-          const c = await listComments(match.id, client);
-          if (mounted) setComments(c);
-        } else {
-          setThreadId(null);
-          setComments([]);
-        }
+        setThreadId(match?.id ?? null);
       } catch (e) {
-        console.error('Failed to load card comments', e);
+        console.error('Failed to resolve card thread', e);
+      } finally {
+        if (mounted) setResolved(true);
       }
-    };
-    void load();
+    })();
     return () => {
       mounted = false;
     };
   }, [projectId, cardId]);
 
-  const handlePost = async (content: string, mentionedIds: string[]) => {
-    if (!projectId || !cardId) {
-      toast.error('Save the canvas before commenting');
-      return;
-    }
-    setPosting(true);
-    try {
-      const { threadId: tid, comment } = await postComment({
-        threadId,
-        projectId,
-        source: 'node',
-        context: { cardId },
-        content,
-        mentionedIds,
-        userId: user?.id,
-      });
-      setThreadId(tid);
-      setComments((prev) => [...prev, comment]);
-    } catch (e: any) {
-      console.error('Failed to post comment', e);
-      toast.error(e?.message || 'Could not post comment');
-    } finally {
-      setPosting(false);
-    }
-  };
-
   // Pin the SAME thread to the canvas as a comment pin (one conversation, two
-  // views). Handled by CanvasPage, so it only works while the canvas is
-  // mounted — the DOM check hides the button on non-canvas surfaces (Assets).
+  // views). Handled by CanvasPage — hidden on non-canvas surfaces (Assets).
   const [onCanvas, setOnCanvas] = React.useState(false);
   React.useEffect(() => {
     setOnCanvas(!!document.querySelector('.react-flow__viewport'));
   }, []);
-  const pinToCanvas = () => {
-    window.dispatchEvent(
-      new CustomEvent('card:pin-discussion', {
-        detail: { cardId, threadId },
-      })
-    );
-  };
 
   return (
     <div className="space-y-4">
@@ -143,7 +74,13 @@ export function CommentsTab({ cardId }: CommentsTabProps) {
             variant="outline"
             size="sm"
             className="shrink-0 gap-1.5"
-            onClick={pinToCanvas}
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent('card:pin-discussion', {
+                  detail: { cardId, threadId },
+                })
+              )
+            }
             title="Show this discussion as a pin next to the card"
           >
             <MapPin className="h-3.5 w-3.5" />
@@ -152,52 +89,15 @@ export function CommentsTab({ cardId }: CommentsTabProps) {
         )}
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <CommentComposer
-            members={members}
-            onPost={handlePost}
-            isPosting={posting}
-          />
-        </CardContent>
-      </Card>
-
-      <div className="space-y-3">
-        {comments.map((c) => (
-          <Card key={c.id}>
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>
-                    {initials(authorName(c.author_id))}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">
-                      {authorName(c.author_id)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(c.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-sm whitespace-pre-wrap">{c.content}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {comments.length === 0 && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-8 text-muted-foreground">
-                No comments yet. Start the discussion!
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {resolved && (
+        <CommentThread
+          projectId={projectId}
+          threadId={threadId}
+          onThreadCreated={setThreadId}
+          source="node"
+          context={cardId ? { cardId } : null}
+        />
+      )}
     </div>
   );
 }

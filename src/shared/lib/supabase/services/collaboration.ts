@@ -16,7 +16,9 @@ import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 
 export type CommentThreadRow = Tables<'comment_threads'>;
-export type CommentRow = Tables<'comments'>;
+// parent_id landed via migration 20260708090000 (threaded replies); the
+// generated Tables<> type predates it (prisma:types is broken — hand-patched).
+export type CommentRow = Tables<'comments'> & { parent_id?: string | null };
 export type CommentMentionRow = Tables<'comment_mentions'>;
 export type NotificationRow = Tables<'notifications'>;
 
@@ -131,6 +133,8 @@ export interface CreateCommentParams {
   threadId: string;
   authorId?: string | null;
   content: string;
+  /** Threaded reply target (Monday-style). Top-level posts omit it. */
+  parentId?: string | null;
 }
 
 export async function createComment(
@@ -144,6 +148,7 @@ export async function createComment(
     content: params.content,
   };
   try {
+    // Validate the base shape only — parent_id postdates the generated schema.
     CreateCommentSchema.parse(insert as unknown);
   } catch (e) {
     console.error('Validation error creating comment:', e);
@@ -152,7 +157,7 @@ export async function createComment(
 
   const { data, error } = await client
     .from('comments')
-    .insert(insert)
+    .insert({ ...insert, parent_id: params.parentId ?? null } as any)
     .select('*')
     .single();
 
@@ -179,6 +184,56 @@ export async function listComments(
     throw error;
   }
   return (data || []) as CommentRow[];
+}
+
+/** Likes per comment for a set of comments → { commentId: [userId, …] }. */
+export async function listCommentLikes(
+  commentIds: string[],
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<Record<string, string[]>> {
+  if (commentIds.length === 0) return {};
+  const client = resolveClient(authenticatedClient);
+  const { data, error } = await client
+    .from('comment_likes' as any)
+    .select('comment_id, user_id')
+    .in('comment_id', commentIds);
+  if (error) {
+    console.error('Error fetching comment likes:', error);
+    throw error;
+  }
+  const map: Record<string, string[]> = {};
+  for (const row of (data || []) as Array<{
+    comment_id: string;
+    user_id: string;
+  }>) {
+    (map[row.comment_id] ??= []).push(row.user_id);
+  }
+  return map;
+}
+
+/** Like/unlike a comment for the given user (RLS enforces self-only). */
+export async function setCommentLike(
+  commentId: string,
+  userId: string,
+  liked: boolean,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = resolveClient(authenticatedClient);
+  if (liked) {
+    const { error } = await client
+      .from('comment_likes' as any)
+      .upsert({ comment_id: commentId, user_id: userId } as any, {
+        onConflict: 'comment_id,user_id',
+      });
+    if (error) throw error;
+  } else {
+    const { error } = await client
+      .from('comment_likes' as any)
+      .delete()
+      .eq('comment_id', commentId)
+      .eq('user_id', userId);
+    if (error) throw error;
+  }
 }
 
 export async function updateComment(

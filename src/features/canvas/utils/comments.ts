@@ -22,6 +22,8 @@ export interface PostCommentArgs {
   content: string;
   /** User ids to @mention (already de-duped by the caller). */
   mentionedIds?: string[];
+  /** Threaded reply target (Monday-style). Top-level posts omit it. */
+  parentId?: string | null;
   userId?: string | null;
   client?: SupabaseClient<Database>;
 }
@@ -58,7 +60,12 @@ export async function postComment(
   }
 
   const comment = await createComment(
-    { threadId: threadId!, authorId: userId, content: args.content },
+    {
+      threadId: threadId!,
+      authorId: userId,
+      content: args.content,
+      parentId: args.parentId ?? null,
+    },
     client
   );
 
