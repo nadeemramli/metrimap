@@ -12,8 +12,9 @@ shared, and the server never uses a service-role key.
 
 In Metrimap: **Settings → Connect your agent → Generate key** (or Account
 Settings → API keys). Copy it once — it's shown only once. Non-interactive
-clients authenticate with `Authorization: Bearer <key>`. (OAuth "sign in →
-connected" is coming.)
+clients authenticate with `Authorization: Bearer <key>`. OAuth clients
+(claude.ai / Claude Desktop connectors) don't need a key — adding the
+connector starts a Clerk sign-in and connects under your account.
 
 ## 2. Add the server
 
@@ -24,8 +25,9 @@ claude mcp add --transport http metrimap https://mcp.canvasm.app/mcp \
   --header "Authorization: Bearer <YOUR_API_KEY>"
 ```
 
-**claude.ai:** Settings → Connectors → Add custom connector → paste
-`https://mcp.canvasm.app/mcp` and set the `Authorization: Bearer <key>` header.
+**claude.ai / Claude Desktop:** Settings → Connectors → Add custom connector →
+paste `https://mcp.canvasm.app/mcp` — no header needed; it signs you in via
+OAuth (Clerk).
 
 **Codex / other MCP clients:** point them at the same URL with the same
 `Authorization` header.
@@ -71,6 +73,3 @@ duplicating nodes.
 - **Scopes**: keys are read+write by default (finer per-key scopes are coming).
 - **Revoke** a key anytime in Account Settings → API keys; it stops working
   immediately.
-
-_Server status: the MCP server (CVS-100) is built; hosting + deploy is being set
-up. Until it's live, the URL above won't accept connections yet._
