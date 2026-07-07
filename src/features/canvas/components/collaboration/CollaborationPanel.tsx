@@ -46,13 +46,11 @@ import {
   listNotifications,
   markNotificationRead,
   updateCommentThread,
-  type CommentRow,
   type CommentThreadRow,
   type NotificationRow,
 } from '@/shared/lib/supabase/services/collaboration';
 import { setProjectPublic } from '@/shared/lib/supabase/services/projects';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
-import { userCodename } from '@/shared/utils/codename';
 import {
   ArrowLeft,
   Check,
@@ -70,6 +68,7 @@ import {
 import * as React from 'react';
 import { toast } from 'sonner';
 import { CommentComposer } from './CommentComposer';
+import CommentThread from './CommentThread';
 import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
 
 type CollaborationTab = 'people' | 'comments' | 'activity';
@@ -120,10 +119,6 @@ export function CollaborationPanel({
   const setTab = onTabChange ?? setInternalTab;
   const { members, isLoading: membersLoading, reload: reloadMembers } =
     useProjectMembers(projectId, open, presence);
-
-  // Comment authors show a stable pseudonymous codename — never the raw Clerk id
-  // or real name (CVS-33). The People list keeps real names (intentional).
-  const authorName = (id: string | null) => userCodename(id);
 
   // Trigger a canvas export — CanvasPage (inside the ReactFlowProvider) runs it.
   const emitExport = (format: 'png' | 'pdf' | 'csv') =>
@@ -192,7 +187,6 @@ export function CollaborationPanel({
           open={open}
           members={members}
           userId={user?.id}
-          authorName={authorName}
           currentPage={currentPage}
         />
 
@@ -514,21 +508,18 @@ function CommentsTab({
   open,
   members,
   userId,
-  authorName,
   currentPage,
 }: {
   projectId?: string;
   open: boolean;
   members: ReturnType<typeof useProjectMembers>['members'];
   userId?: string;
-  authorName: (id: string | null) => string;
   currentPage?: string;
 }) {
   const { canComment, loading: permLoading } = useCanvasPermission(projectId);
   const [threads, setThreads] = React.useState<CommentThreadRow[]>([]);
   const [counts, setCounts] = React.useState<Record<string, number>>({});
   const [selected, setSelected] = React.useState<string | null>(null);
-  const [comments, setComments] = React.useState<CommentRow[]>([]);
   const [posting, setPosting] = React.useState(false);
   const [pageOnly, setPageOnly] = React.useState(false);
 
@@ -554,42 +545,10 @@ function CommentsTab({
     if (open) void loadThreads();
   }, [open, loadThreads]);
 
-  const openThread = React.useCallback(async (threadId: string) => {
+  // Selection only — the shared CommentThread loads + live-syncs its own data.
+  const openThread = React.useCallback((threadId: string) => {
     setSelected(threadId);
-    try {
-      const c = await listComments(threadId, getClientForEnvironment());
-      setComments(c);
-    } catch (e) {
-      console.error('Failed to load comments', e);
-    }
   }, []);
-
-  // Live sync: append comments inserted by other sessions on the open thread.
-  React.useEffect(() => {
-    if (!selected) return;
-    const client = getClientForEnvironment();
-    const channel = client
-      .channel(`panel-comments-${selected}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'comments',
-          filter: `thread_id=eq.${selected}`,
-        },
-        (payload) => {
-          const row = payload.new as CommentRow;
-          setComments((prev) =>
-            prev.some((c) => c.id === row.id) ? prev : [...prev, row]
-          );
-        }
-      )
-      .subscribe();
-    return () => {
-      void client.removeChannel(channel);
-    };
-  }, [selected]);
 
   // Auto-open a thread when a canvas comment-node broadcasts navigation.
   React.useEffect(() => {
@@ -605,19 +564,16 @@ function CommentsTab({
     if (!projectId) return;
     setPosting(true);
     try {
-      const { threadId, comment } = await postComment({
-        threadId: selected,
+      const { threadId } = await postComment({
+        threadId: null,
         projectId,
         source: 'canvas',
-        context: selected
-          ? undefined
-          : { general: true, page: currentPage ?? null },
+        context: { general: true, page: currentPage ?? null },
         content,
         mentionedIds,
         userId,
       });
       setSelected(threadId);
-      setComments((prev) => [...prev, comment]);
       setCounts((prev) => ({
         ...prev,
         [threadId]: (prev[threadId] || 0) + 1,
@@ -665,7 +621,7 @@ function CommentsTab({
             className="h-7 -ml-2 gap-1 text-muted-foreground"
             onClick={() => {
               setSelected(null);
-              setComments([]);
+              void loadThreads();
             }}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -683,44 +639,14 @@ function CommentsTab({
             </Button>
           )}
         </div>
-        <ScrollArea className="flex-1 min-h-0 px-4 mt-2">
-          <div className="space-y-3 pb-3">
-            {comments.map((c) => (
-              <div key={c.id} className="flex items-start gap-2">
-                <Avatar className="h-6 w-6">
-                  <AvatarFallback className="text-[10px]">
-                    {initials(authorName(c.author_id))}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[11px] text-muted-foreground">
-                    {authorName(c.author_id)} •{' '}
-                    {new Date(c.created_at).toLocaleString()}
-                  </div>
-                  <div className="text-sm leading-snug whitespace-pre-wrap">
-                    {c.content}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {comments.length === 0 && (
-              <p className="text-sm text-muted-foreground">No comments yet.</p>
-            )}
-          </div>
-        </ScrollArea>
-        <div className="border-t p-4">
-          {canComment || permLoading ? (
-            <CommentComposer
-              members={members}
-              onPost={handlePost}
-              isPosting={posting}
-              placeholder="Reply…  (type @ to mention)"
-            />
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              You have view-only access — you can’t comment on this canvas.
-            </p>
-          )}
+        <div className="mt-2 flex-1 min-h-0 overflow-y-auto px-4 pb-4">
+          <CommentThread
+            projectId={projectId}
+            threadId={selected}
+            source="canvas"
+            readOnly={!canComment && !permLoading}
+            composerPlaceholder="Write an update and mention others with @"
+          />
         </div>
       </TabsContent>
     );

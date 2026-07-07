@@ -8,11 +8,13 @@ import { useAppStore } from '@/lib/stores';
 import { Card } from '@/shared/components/ui/card';
 import CommentThread from '@/features/canvas/components/collaboration/CommentThread';
 import {
+  getCommentThread,
   listComments,
   type CommentRow,
 } from '@/shared/lib/supabase/services/collaboration';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
+import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
 import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
 import {
   AnnotationPin,
@@ -21,7 +23,7 @@ import {
 import { isUnseen, markSeen } from '@/features/canvas/utils/annotationSeen';
 import { codenameInitials } from '@/shared/utils/codename';
 import { type NodeProps } from '@xyflow/react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, PanelRight } from 'lucide-react';
 import * as React from 'react';
 
 function nameInitials(name: string): string {
@@ -49,6 +51,21 @@ export default function CommentNode({ id, data }: NodeProps) {
   );
   const [comments, setComments] = React.useState<CommentRow[]>([]);
   const [isOpen, setIsOpen] = React.useState(true);
+  // If this pin embeds a card discussion, it can locate the card's panel too
+  // (the panel side shows "Show pin" for the same thread — both ways linked).
+  const [linkedCardId, setLinkedCardId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    let mounted = true;
+    if (!threadId) return;
+    getCommentThread(threadId, getClientForEnvironment())
+      .then((t) => {
+        if (mounted) setLinkedCardId(((t?.context as any)?.cardId as string) ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [threadId]);
   const bubbleScale = useAnnotationScale();
 
   // Real identity for authors (real names + avatars — deliberately reverses the
@@ -191,6 +208,23 @@ export default function CommentNode({ id, data }: NodeProps) {
               >
                 {comments.length}
               </span>
+            )}
+            {linkedCardId && (
+              <button
+                type="button"
+                className="nodrag ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title="Open this discussion in the card's panel"
+                onClick={() =>
+                  useCanvasPanelStore.getState().openRight({
+                    kind: 'cardSettings',
+                    cardId: linkedCardId,
+                    initialTab: 'comments',
+                  })
+                }
+              >
+                <PanelRight className="h-3 w-3" />
+                Open panel
+              </button>
             )}
           </div>
 

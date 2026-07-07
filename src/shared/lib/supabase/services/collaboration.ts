@@ -186,6 +186,24 @@ export async function listComments(
   return (data || []) as CommentRow[];
 }
 
+/** Fetch a single thread (for pins resolving their card/panel context). */
+export async function getCommentThread(
+  threadId: string,
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<CommentThreadRow | null> {
+  const client = resolveClient(authenticatedClient);
+  const { data, error } = await client
+    .from('comment_threads')
+    .select('*')
+    .eq('id', threadId)
+    .maybeSingle();
+  if (error) {
+    console.error('Error fetching comment thread:', error);
+    throw error;
+  }
+  return (data as CommentThreadRow) ?? null;
+}
+
 /** Likes per comment for a set of comments → { commentId: [userId, …] }. */
 export async function listCommentLikes(
   commentIds: string[],

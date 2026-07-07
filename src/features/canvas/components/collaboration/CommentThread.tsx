@@ -86,6 +86,8 @@ export interface CommentThreadProps {
   context?: Record<string, unknown> | null;
   /** Tight spacing + capped height for the canvas pin bubble. */
   compact?: boolean;
+  /** Hide composers (view-only access). */
+  readOnly?: boolean;
   composerPlaceholder?: string;
   autoFocusComposer?: boolean;
   className?: string;
@@ -98,6 +100,7 @@ export function CommentThread({
   source = 'node',
   context = null,
   compact = false,
+  readOnly = false,
   composerPlaceholder = 'Write an update and mention others with @',
   autoFocusComposer = false,
   className,
@@ -296,15 +299,17 @@ export function CommentThread({
   return (
     <div className={cn('space-y-3', className)}>
       {/* Top composer */}
-      <div className="rounded-xl border border-border bg-card p-2">
-        <CommentComposer
-          members={members}
-          onPost={(content, mentionedIds) => post(content, mentionedIds, null)}
-          placeholder={composerPlaceholder}
-          isPosting={posting}
-          autoFocus={autoFocusComposer}
-        />
-      </div>
+      {!readOnly && (
+        <div className="rounded-xl border border-border bg-card p-2">
+          <CommentComposer
+            members={members}
+            onPost={(content, mentionedIds) => post(content, mentionedIds, null)}
+            placeholder={composerPlaceholder}
+            isPosting={posting}
+            autoFocus={autoFocusComposer}
+          />
+        </div>
+      )}
 
       {/* Posts, newest first */}
       <div
@@ -342,14 +347,16 @@ export function CommentThread({
                   <LikeButton commentId={p.id} />
                 </div>
                 <div className="h-5 w-px bg-border" />
-                <button
-                  type="button"
-                  onClick={() => setReplyTo(replyTo === p.id ? null : p.id)}
-                  className="nodrag flex flex-1 items-center justify-center gap-1 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <Reply className="h-3.5 w-3.5" />
-                  Reply
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => setReplyTo(replyTo === p.id ? null : p.id)}
+                    className="nodrag flex flex-1 items-center justify-center gap-1 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Reply className="h-3.5 w-3.5" />
+                    Reply
+                  </button>
+                )}
               </div>
 
               {/* Replies */}

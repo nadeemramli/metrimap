@@ -1,6 +1,7 @@
 'use client';
 
 import CommentThread from '@/features/canvas/components/collaboration/CommentThread';
+import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { Button } from '@/shared/components/ui/button';
 import { listCommentThreads } from '@/shared/lib/supabase/services/collaboration';
 import { getClientForEnvironment } from '@/shared/utils/authenticatedClient';
@@ -60,6 +61,19 @@ export function CommentsTab({ cardId }: CommentsTabProps) {
     setOnCanvas(!!document.querySelector('.react-flow__viewport'));
   }, []);
 
+  // Does a canvas pin already embed this thread? Then the button LOCATES it
+  // instead of creating a duplicate (CanvasPage fit-views the existing pin).
+  const pinExists = useCanvasNodesStore((s) =>
+    Boolean(
+      threadId &&
+        s.canvasNodes.some(
+          (n) =>
+            n.nodeType === 'commentNode' &&
+            (n.data as any)?.threadId === threadId
+        )
+    )
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-2">
@@ -81,10 +95,14 @@ export function CommentsTab({ cardId }: CommentsTabProps) {
                 })
               )
             }
-            title="Show this discussion as a pin next to the card"
+            title={
+              pinExists
+                ? 'Locate this discussion’s pin on the canvas'
+                : 'Show this discussion as a pin next to the card'
+            }
           >
             <MapPin className="h-3.5 w-3.5" />
-            Pin to canvas
+            {pinExists ? 'Show pin' : 'Pin to canvas'}
           </Button>
         )}
       </div>
