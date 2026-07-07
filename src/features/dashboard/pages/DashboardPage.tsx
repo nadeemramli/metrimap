@@ -1,6 +1,6 @@
 import { useCanvasStore } from '@/lib/stores';
 import { usePagePanel } from '@/features/canvas/stores/useCanvasPanelStore';
-import { useOnboardingStore } from '@/features/onboarding';
+import { fireTipToast, useOnboardingStore } from '@/features/onboarding';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { Skeleton } from '@/shared/components/ui/skeleton';
@@ -129,6 +129,14 @@ export default function DashboardPage() {
   }, []);
 
   const [editMode, setEditMode] = useState(false);
+  // One-shot dashboard-editing tip on first Edit (CVS-114 slice 4).
+  useEffect(() => {
+    if (editMode)
+      fireTipToast(
+        'dashboard-edit',
+        'Editing: drag widgets by their handle, Import chart pulls canvas charts into this view, and Move to sends a widget to another dashboard.'
+      );
+  }, [editMode]);
   // Widget config docks into the shared right slot (one open panel app-wide);
   // the store owns the open flag, `editing` carries the payload.
   const pagePanel = usePagePanel();

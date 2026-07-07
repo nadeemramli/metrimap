@@ -1,3 +1,4 @@
+import { FeatureTipCard } from '@/features/onboarding';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils';
 import { X } from 'lucide-react';
@@ -128,6 +129,18 @@ export function DockPanelShell({
           padded && 'px-4 py-3'
         )}
       >
+        {/* One-shot dock-concept tip — right-dock detail panels only
+            (closeOnEscape=false marks the Layers/left panels, which carry
+            their own tip). */}
+        {closeOnEscape && (
+          <FeatureTipCard
+            id="dock-panels"
+            className={cn('mb-3', !padded && 'mx-4 mt-3')}
+          >
+            Panels dock beside the canvas instead of covering it. Esc closes;
+            opening another panel swaps it in.
+          </FeatureTipCard>
+        )}
         {children}
       </div>
 

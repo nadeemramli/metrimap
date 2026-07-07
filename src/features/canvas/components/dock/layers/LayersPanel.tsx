@@ -1,4 +1,5 @@
 import { DockPanel } from '@/features/canvas/components/dock';
+import { FeatureTipCard } from '@/features/onboarding';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
 import { useLayersUiStore } from '@/features/canvas/stores/useLayersUiStore';
@@ -439,6 +440,12 @@ export function LayersPanel(props: LayersPanelProps) {
 
       {/* Tree — top-most first, groups as folders */}
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {/* First-encounter tip (one-shot, persisted). */}
+        <FeatureTipCard id="layers-panel" className="mb-2">
+          Everything on the canvas, top-most first — including drawings. Click
+          to select &amp; zoom, double-click to rename, use the eye/lock to
+          hide or freeze, and drag rows to change paint order.
+        </FeatureTipCard>
         {isEmpty ? (
           <div className="px-3 py-10 text-center">
             <Layers className="mx-auto mb-2 h-6 w-6 text-muted-foreground/50" />

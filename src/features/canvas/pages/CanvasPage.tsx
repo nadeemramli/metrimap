@@ -114,7 +114,7 @@ import GroupNameDialog from '@/features/canvas/components/grouping/GroupNameDial
 import OffscreenNodeIndicator from '@/features/canvas/components/wayfinding/OffscreenNodeIndicator';
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
 import { LayersPanel } from '@/features/canvas/components/dock/layers/LayersPanel';
-import { CanvasTourLauncher } from '@/features/onboarding';
+import { CanvasTourLauncher, DrawModeTip } from '@/features/onboarding';
 import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
 import { useLayersUiStore } from '@/features/canvas/stores/useLayersUiStore';
 import TopCanvasToolbar from '@/features/canvas/components/mini-control/TopCanvasToolbar';
@@ -3134,6 +3134,7 @@ function CanvasPageInner() {
       {/* First-run guided tour: launches once the graph is rendered when the
           welcome flow queued it (CVS-114). */}
       <CanvasTourLauncher ready={rfNodes.length > 0} />
+      <DrawModeTip active={state.toolbarMode === 'draw'} />
 
       {/* Layers panel — left dock (Figma-style tree of all canvas content).
           Rendered here (inside ReactFlowProvider) so select+zoom work; the DOM
