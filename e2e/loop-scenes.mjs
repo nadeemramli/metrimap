@@ -179,8 +179,14 @@ export function defineScenes({ sleep, glide, glideClick, pan, fitView, zoomIn, t
       await glideClick(page, page.getByRole('button', { name: 'Table' }), 700);
       await sleep(1400);
       const row = page.locator('tr', { hasText: 'Onboarding revamp' }).first();
-      // NOTE: the People-assignment beat returns once the assignees uuid[]→text[]
-      // migration (20260708210000) is applied — updates fail against uuid[].
+      // Owner: the People cell's avatar-stack popover
+      await glideClick(page, row.locator('[data-slot="popover-trigger"]').first(), 750);
+      await page.getByPlaceholder('Assign people…').waitFor({ timeout: 8000 });
+      await sleep(600);
+      await glideClick(page, page.locator('[cmdk-item]').first(), 650);
+      await sleep(900); // avatar lands in the People cell
+      await page.keyboard.press('Escape');
+      await sleep(500);
       // Review the impact contract
       await glideClick(page, row.locator('[title="Edit impact"]').first(), 800);
       await page.getByText('Review', { exact: true }).first().waitFor({ timeout: 12_000 });
