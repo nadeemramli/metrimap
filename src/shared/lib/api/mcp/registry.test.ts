@@ -14,6 +14,7 @@ const { fakeApi } = vi.hoisted(() => ({
       createMetric: vi.fn(async () => ({ id: 'n' })),
       createValue: vi.fn(async () => ({ id: 'v' })),
       createAction: vi.fn(async () => ({ id: 'a' })),
+      createHypothesis: vi.fn(async () => ({ id: 'h' })),
       createDriver: vi.fn(async () => ({ id: 'd' })),
       update: vi.fn(async () => ({ id: 'n' })),
       delete: vi.fn(async () => undefined),
@@ -21,11 +22,36 @@ const { fakeApi } = vi.hoisted(() => ({
     },
     relationships: {
       create: vi.fn(async () => ({ id: 'r' })),
+      update: vi.fn(async () => ({ id: 'r' })),
       delete: vi.fn(async () => undefined),
       list: vi.fn(async () => []),
     },
     evidence: {
       create: vi.fn(async () => ({ id: 'ev' })),
+      list: vi.fn(async () => []),
+      update: vi.fn(async () => ({ id: 'ev' })),
+    },
+    tags: {
+      list: vi.fn(async () => []),
+      create: vi.fn(async () => ({ id: 't' })),
+      tagCard: vi.fn(async () => ['growth']),
+      untagCard: vi.fn(async () => ['growth']),
+    },
+    catalog: {
+      listTracked: vi.fn(async () => []),
+      listCandidates: vi.fn(async () => []),
+      promote: vi.fn(async () => ({ trackedMetricId: 'tm' })),
+      values: vi.fn(async () => []),
+    },
+    comments: {
+      list: vi.fn(async () => []),
+      create: vi.fn(async () => ({ threadId: 'th', comment: { id: 'cm' } })),
+    },
+    dashboards: {
+      list: vi.fn(async () => ({ widgets: [], groups: [] })),
+    },
+    groups: {
+      list: vi.fn(async () => []),
     },
     tree: {
       get: vi.fn(async (pid: string) => ({ projectId: pid, cards: [], relationships: [] })),
@@ -138,14 +164,85 @@ describe('dispatchTool', () => {
     expect(out).toEqual({ id: 'ev' });
   });
 
-  it('rejects create_evidence without exactly one target', async () => {
+  it('routes create_hypothesis to nodes.createHypothesis', async () => {
+    await dispatchTool('create_hypothesis', { projectId: PROJECT, title: 'H1' }, ctx());
+    expect(fakeApi.nodes.createHypothesis).toHaveBeenCalled();
+  });
+  it('splits id + patch for update_relationship', async () => {
+    await dispatchTool('update_relationship', { id: NODE_A, weight: 0.7 }, ctx());
+    expect(fakeApi.relationships.update).toHaveBeenCalledWith(NODE_A, { weight: 0.7 });
+  });
+  it('routes general (target-less) create_evidence to evidence.create', async () => {
+    await dispatchTool(
+      'create_evidence',
+      { projectId: PROJECT, title: 'E', type: 'Analysis', summary: 's' },
+      ctx()
+    );
+    expect(fakeApi.evidence.create).toHaveBeenCalled();
+  });
+  it('routes list_evidence and update_evidence', async () => {
+    await dispatchTool('list_evidence', { projectId: PROJECT, cardId: NODE_A }, ctx());
+    expect(fakeApi.evidence.list).toHaveBeenCalledWith({ projectId: PROJECT, cardId: NODE_A });
+    await dispatchTool('update_evidence', { id: NODE_A, summary: 's2' }, ctx());
+    expect(fakeApi.evidence.update).toHaveBeenCalledWith(NODE_A, { summary: 's2' });
+  });
+  it('routes tag tools to the tags namespace', async () => {
+    await dispatchTool('list_tags', { projectId: PROJECT }, ctx());
+    expect(fakeApi.tags.list).toHaveBeenCalledWith(PROJECT);
+    await dispatchTool('create_tag', { projectId: PROJECT, name: 'growth' }, ctx());
+    expect(fakeApi.tags.create).toHaveBeenCalled();
+    await dispatchTool('tag_card', { cardId: NODE_A, tags: ['growth'] }, ctx());
+    expect(fakeApi.tags.tagCard).toHaveBeenCalledWith({ cardId: NODE_A, tags: ['growth'] });
+    await dispatchTool('untag_card', { cardId: NODE_A, tags: ['growth'] }, ctx());
+    expect(fakeApi.tags.untagCard).toHaveBeenCalled();
+  });
+  it('routes catalog tools (discovery unblocks push_values)', async () => {
+    await dispatchTool('list_tracked_metrics', {}, ctx());
+    expect(fakeApi.catalog.listTracked).toHaveBeenCalled();
+    await dispatchTool('list_candidate_cards', {}, ctx());
+    expect(fakeApi.catalog.listCandidates).toHaveBeenCalled();
+    await dispatchTool('promote_card', { cardId: NODE_A, name: 'MRR' }, ctx());
+    expect(fakeApi.catalog.promote).toHaveBeenCalled();
+    await dispatchTool('get_metric_values', { trackedMetricId: NODE_B }, ctx());
+    expect(fakeApi.catalog.values).toHaveBeenCalledWith({ trackedMetricId: NODE_B });
+  });
+  it('routes comments + dashboards + groups reads', async () => {
+    await dispatchTool('list_comments', { projectId: PROJECT }, ctx());
+    expect(fakeApi.comments.list).toHaveBeenCalledWith(PROJECT);
+    await dispatchTool(
+      'create_comment',
+      { projectId: PROJECT, content: 'hi', cardId: NODE_A },
+      ctx()
+    );
+    expect(fakeApi.comments.create).toHaveBeenCalled();
+    await dispatchTool('list_dashboards', { projectId: PROJECT }, ctx());
+    expect(fakeApi.dashboards.list).toHaveBeenCalledWith(PROJECT);
+    await dispatchTool('list_groups', { projectId: PROJECT }, ctx());
+    expect(fakeApi.groups.list).toHaveBeenCalledWith(PROJECT);
+  });
+  it('rejects create_evidence with BOTH card and relationship targets', async () => {
     await expect(
       dispatchTool(
         'create_evidence',
-        { projectId: PROJECT, title: 'x', type: 'Analysis', summary: 'y' },
-        ctx(['write'])
+        {
+          projectId: PROJECT,
+          cardId: NODE_A,
+          relationshipId: NODE_B,
+          title: 'E',
+          type: 'Analysis',
+          summary: 's',
+        },
+        ctx()
       )
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ code: 'invalid_input' });
+  });
+  it('accepts target-less create_evidence as general project evidence', async () => {
+    await dispatchTool(
+      'create_evidence',
+      { projectId: PROJECT, title: 'x', type: 'Analysis', summary: 'y' },
+      ctx(['write'])
+    );
+    expect(fakeApi.evidence.create).toHaveBeenCalled();
   });
 
   it('routes layout_tree to tree.layout with direction', async () => {

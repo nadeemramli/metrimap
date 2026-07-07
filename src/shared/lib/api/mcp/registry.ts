@@ -8,13 +8,19 @@ import { z } from 'zod';
 import { createMetrimapApi } from '../metrimapApi';
 import {
   CreateCanvasInput,
+  CreateCommentInput,
   CreateEvidenceInput,
   CreateRelationshipInput,
+  CreateTagInput,
   CreateTypedNodeInput,
+  GetMetricValuesInput,
   LayoutTreeInput,
+  ListEvidenceInput,
   MaterializeInput,
+  PromoteCardInput,
   PushValuesInput,
   StageSeriesInput,
+  TagCardInput,
   UploadCsvInput,
 } from '../schemas';
 import type { McpAuthContext, McpScope } from './authContext';
@@ -186,6 +192,16 @@ export const TOOLS: McpTool[] = [
     handler: (a, ctx) => api(ctx).nodes.createAction(a),
   }),
   defineTool({
+    name: 'create_hypothesis',
+    title: 'Create hypothesis node',
+    description:
+      'Create an Ideas/Hypothesis card (a belief to validate with evidence). Returns the node id.',
+    scope: 'write',
+    annotations: ADDITIVE,
+    inputSchema: CreateTypedNodeInput,
+    handler: (a, ctx) => api(ctx).nodes.createHypothesis(a),
+  }),
+  defineTool({
     name: 'create_driver_node',
     title: 'Create driver node',
     description:
@@ -225,6 +241,16 @@ export const TOOLS: McpTool[] = [
     handler: (a, ctx) => api(ctx).relationships.create(a),
   }),
   defineTool({
+    name: 'update_relationship',
+    title: 'Update relationship',
+    description:
+      'Update a relationship (type, confidence High/Medium/Low, weight 0–1, notes).',
+    scope: 'write',
+    annotations: DESTRUCTIVE,
+    inputSchema: updateInput,
+    handler: ({ id, ...patch }, ctx) => api(ctx).relationships.update(id, patch),
+  }),
+  defineTool({
     name: 'delete_relationship',
     title: 'Delete relationship',
     description: 'Delete a relationship.',
@@ -233,23 +259,165 @@ export const TOOLS: McpTool[] = [
     inputSchema: idInput,
     handler: (a, ctx) => api(ctx).relationships.delete(a.id),
   }),
-  // --- Write: evidence ---
+  // --- Evidence ---
   defineTool({
     name: 'create_evidence',
     title: 'Create evidence',
     description:
-      'Attach an evidence item to a card or a relationship. Provide projectId, exactly one of cardId or relationshipId, plus title, type (Experiment / Analysis / Notebook / External Research / User Interview) and summary. Optional: date, owner, hypothesis, link, content (EditorJS JSON). Returns the evidence id.',
+      'Create an evidence item: attach it to a card (cardId), a relationship (relationshipId), or neither for general project-level evidence. Provide projectId, title, type (Experiment / Analysis / Notebook / External Research / User Interview) and summary. Optional: date, owner, hypothesis, link, content (EditorJS JSON). Returns the evidence id.',
     scope: 'write',
     annotations: ADDITIVE,
     inputSchema: CreateEvidenceInput,
     handler: (a, ctx) => api(ctx).evidence.create(a),
+  }),
+  defineTool({
+    name: 'list_evidence',
+    title: 'List evidence',
+    description:
+      "List a project's evidence items (newest first); pass cardId to filter to one card.",
+    scope: 'read',
+    annotations: READ_ONLY,
+    inputSchema: ListEvidenceInput,
+    handler: (a, ctx) => api(ctx).evidence.list(a),
+  }),
+  defineTool({
+    name: 'update_evidence',
+    title: 'Update evidence',
+    description:
+      'Update an evidence item (title, type, summary, date, owner, hypothesis, link, content).',
+    scope: 'write',
+    annotations: DESTRUCTIVE,
+    inputSchema: updateInput,
+    handler: ({ id, ...patch }, ctx) => api(ctx).evidence.update(id, patch),
+  }),
+  // --- Tags ---
+  defineTool({
+    name: 'list_tags',
+    title: 'List tags',
+    description: "List a project's tags (name, color, description).",
+    scope: 'read',
+    annotations: READ_ONLY,
+    inputSchema: projectIdInput,
+    handler: (a, ctx) => api(ctx).tags.list(a.projectId),
+  }),
+  defineTool({
+    name: 'create_tag',
+    title: 'Create tag',
+    description:
+      'Create a project tag (name + optional color/description). Tags must exist before tag_card can apply them.',
+    scope: 'write',
+    annotations: ADDITIVE,
+    inputSchema: CreateTagInput,
+    handler: (a, ctx) => api(ctx).tags.create(a),
+  }),
+  defineTool({
+    name: 'tag_card',
+    title: 'Tag a card',
+    description:
+      'Apply existing project tags (by name) to a metric card. Create missing tags first with create_tag.',
+    scope: 'write',
+    annotations: ADDITIVE,
+    inputSchema: TagCardInput,
+    handler: (a, ctx) => api(ctx).tags.tagCard(a),
+  }),
+  defineTool({
+    name: 'untag_card',
+    title: 'Untag a card',
+    description: 'Remove tags (by name) from a metric card.',
+    scope: 'write',
+    annotations: DESTRUCTIVE,
+    inputSchema: TagCardInput,
+    handler: (a, ctx) => api(ctx).tags.untagCard(a),
+  }),
+  // --- Tracked-metric catalog + values ---
+  defineTool({
+    name: 'list_tracked_metrics',
+    title: 'List tracked metrics',
+    description:
+      "List the workspace's catalogued (tracked) metrics — ids here are the trackedMetricId that push_values and get_metric_values need.",
+    scope: 'read',
+    annotations: READ_ONLY,
+    inputSchema: z.object({}),
+    handler: (_a, ctx) => api(ctx).catalog.listTracked(),
+  }),
+  defineTool({
+    name: 'list_candidate_cards',
+    title: 'List candidate cards',
+    description:
+      'List operationalized cards (they have data) not yet in the tracked-metric catalog — candidates for promote_card.',
+    scope: 'read',
+    annotations: READ_ONLY,
+    inputSchema: z.object({}),
+    handler: (_a, ctx) => api(ctx).catalog.listCandidates(),
+  }),
+  defineTool({
+    name: 'promote_card',
+    title: 'Promote card to catalog',
+    description:
+      'Promote a card into the tracked-metric catalog (seeds the shared series from the card data). Returns the trackedMetricId for push_values / get_metric_values.',
+    scope: 'write',
+    annotations: ADDITIVE,
+    inputSchema: PromoteCardInput,
+    handler: (a, ctx) => api(ctx).catalog.promote(a),
+  }),
+  defineTool({
+    name: 'get_metric_values',
+    title: 'Get metric values',
+    description:
+      "Read a tracked metric's shared value series (period/value rows) — use this to analyze or chart Metrimap data. Card-bound series also come back inside list_nodes/get_tree card data.",
+    scope: 'read',
+    annotations: READ_ONLY,
+    inputSchema: GetMetricValuesInput,
+    handler: (a, ctx) => api(ctx).catalog.values(a),
+  }),
+  // --- Comments ---
+  defineTool({
+    name: 'list_comments',
+    title: 'List comments',
+    description:
+      "List a project's comment threads (each with its comments), newest activity first.",
+    scope: 'read',
+    annotations: READ_ONLY,
+    inputSchema: projectIdInput,
+    handler: (a, ctx) => api(ctx).comments.list(a.projectId),
+  }),
+  defineTool({
+    name: 'create_comment',
+    title: 'Create comment',
+    description:
+      'Leave a comment: starts a new thread on the canvas (or pinned to a card via cardId), or replies into an existing thread via threadId.',
+    scope: 'write',
+    annotations: ADDITIVE,
+    inputSchema: CreateCommentInput,
+    handler: (a, ctx) => api(ctx).comments.create(a),
+  }),
+  // --- Dashboards + groups (read) ---
+  defineTool({
+    name: 'list_dashboards',
+    title: 'List dashboards',
+    description:
+      "A canvas's dashboard structure: widgets (chart/stat tiles with their card bindings + layout) and the canvas groups they belong to (each group = one dashboard; group_id null = Custom). Combine with get_metric_values / card data to re-render the charts.",
+    scope: 'read',
+    annotations: READ_ONLY,
+    inputSchema: projectIdInput,
+    handler: (a, ctx) => api(ctx).dashboards.list(a.projectId),
+  }),
+  defineTool({
+    name: 'list_groups',
+    title: 'List groups',
+    description:
+      "List a canvas's groups (name, node_ids, position/size) — the grouping that also drives group dashboards.",
+    scope: 'read',
+    annotations: READ_ONLY,
+    inputSchema: projectIdInput,
+    handler: (a, ctx) => api(ctx).groups.list(a.projectId),
   }),
   // --- Write: values ---
   defineTool({
     name: 'push_values',
     title: 'Push values',
     description:
-      'Upsert a tracked metric\'s value series (one row per period). Staging + column mapping for raw CSV is a separate tool (CVS-102).',
+      "Upsert a tracked metric's value series (one row per period). Discover the trackedMetricId with list_tracked_metrics, or promote_card a card that has data. For raw CSV use upload_csv → materialize.",
     scope: 'write',
     annotations: UPSERT,
     inputSchema: PushValuesInput,

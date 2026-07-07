@@ -21,13 +21,21 @@ import { applyAutoLayout, type LayoutDirection } from '@/shared/utils/autoLayout
 
 import {
   CreateCanvasInput,
+  CreateCommentInput,
   CreateEvidenceInput,
   CreateNodeInput,
   CreateRelationshipInput,
+  CreateTagInput,
   CreateTypedNodeInput,
+  GetMetricValuesInput,
+  ListEvidenceInput,
+  PromoteCardInput,
   PushValuesInput,
+  TagCardInput,
   UpdateCanvasInput,
+  UpdateEvidenceInput,
   UpdateNodeInput,
+  UpdateRelationshipInput,
   type CreateNodeInputT,
   type CreateTypedNodeInputT,
 } from './schemas';
@@ -36,6 +44,7 @@ import {
   createProject,
   deleteProject,
   getProjectById,
+  getProjectGroups,
   getUserProjects,
   updateProject,
 } from '@/shared/lib/supabase/services/projects';
@@ -51,9 +60,35 @@ import {
   createRelationship,
   deleteRelationship,
   getProjectRelationships,
+  updateEvidenceItem,
+  updateRelationship,
 } from '@/shared/lib/supabase/services/relationships';
-import { createCardEvidence } from '@/shared/lib/supabase/services/evidence';
-import { writeMetricValues } from '@/shared/lib/supabase/services/trackedMetrics';
+import {
+  createCardEvidence,
+  createProjectEvidence,
+  getCardEvidence,
+  getProjectEvidence,
+} from '@/shared/lib/supabase/services/evidence';
+import {
+  getMetricValues,
+  listCandidateCards,
+  listTrackedMetrics,
+  promoteCardToTrackedMetric,
+  writeMetricValues,
+} from '@/shared/lib/supabase/services/trackedMetrics';
+import {
+  addTagsToMetricCard,
+  createTag,
+  getProjectTags,
+  removeTagsFromMetricCard,
+} from '@/shared/lib/supabase/services/tags';
+import {
+  createComment,
+  createCommentThread,
+  listComments,
+  listCommentThreads,
+} from '@/shared/lib/supabase/services/collaboration';
+import { listWidgets } from '@/shared/lib/supabase/services/dashboards';
 import { createIngest } from './ingest';
 
 export const API_VERSION = 'v1' as const;
@@ -180,11 +215,15 @@ export function createMetrimapApi(client: Client, userId: string) {
         };
         return createRelationship(rel, v.projectId, userId, client);
       },
+      update: (id: string, patch: unknown) => {
+        const v = UpdateRelationshipInput.parse(patch);
+        return updateRelationship(id, v as Partial<Relationship>, client);
+      },
       delete: (id: string) => deleteRelationship(id, client),
       list: (projectId: string) => getProjectRelationships(projectId, client),
     },
 
-    // Attach evidence to a card XOR a relationship (RLS-scoped, created_by = user).
+    // Evidence: attach to a card, a relationship, or the project itself (general).
     evidence: {
       create: (input: unknown) => {
         const v = CreateEvidenceInput.parse(input);
@@ -201,10 +240,119 @@ export function createMetrimapApi(client: Client, userId: string) {
           createdAt: nowIso(),
           updatedAt: nowIso(),
         };
-        return v.cardId
-          ? createCardEvidence(item, v.cardId, v.projectId, userId, client)
-          : createEvidenceItem(item, v.relationshipId as string, userId, client);
+        if (v.cardId) return createCardEvidence(item, v.cardId, v.projectId, userId, client);
+        if (v.relationshipId)
+          return createEvidenceItem(item, v.relationshipId, userId, client);
+        return createProjectEvidence(item, v.projectId, userId, client);
       },
+      list: (input: unknown) => {
+        const v = ListEvidenceInput.parse(input);
+        return v.cardId
+          ? getCardEvidence(v.cardId, client)
+          : getProjectEvidence(v.projectId, client);
+      },
+      update: (id: string, patch: unknown) => {
+        const v = UpdateEvidenceInput.parse(patch);
+        return updateEvidenceItem(id, v as Partial<EvidenceItem>, client);
+      },
+    },
+
+    // Project tags + card tagging (tags must exist before tagging — see create).
+    tags: {
+      list: (projectId: string) => getProjectTags(projectId, client),
+      create: (input: unknown) => {
+        const v = CreateTagInput.parse(input);
+        return createTag(
+          {
+            name: v.name,
+            color: v.color ?? null,
+            description: v.description ?? null,
+            project_id: v.projectId,
+            created_by: userId,
+          },
+          client
+        );
+      },
+      tagCard: (input: unknown) => {
+        const v = TagCardInput.parse(input);
+        return addTagsToMetricCard(v.cardId, v.tags, client);
+      },
+      untagCard: (input: unknown) => {
+        const v = TagCardInput.parse(input);
+        return removeTagsFromMetricCard(v.cardId, v.tags, client);
+      },
+    },
+
+    // Tracked-metric catalog: discovery + promotion + shared value-series reads.
+    catalog: {
+      listTracked: () => listTrackedMetrics(client),
+      listCandidates: () => listCandidateCards(client),
+      promote: async (input: unknown) => {
+        const v = PromoteCardInput.parse(input);
+        const trackedMetricId = await promoteCardToTrackedMetric(
+          {
+            cardId: v.cardId,
+            projectId: v.projectId ?? null,
+            name: v.name,
+            unit: v.unit ?? null,
+            formula: v.formula ?? null,
+            owner_label: v.ownerLabel ?? null,
+            source_kind: v.sourceKind ?? null,
+          },
+          client
+        );
+        return { trackedMetricId };
+      },
+      values: (input: unknown) => {
+        const v = GetMetricValuesInput.parse(input);
+        return getMetricValues(v.trackedMetricId, client);
+      },
+    },
+
+    // Comment threads (canvas-level or pinned to a card) + replies.
+    comments: {
+      list: async (projectId: string) => {
+        const threads = await listCommentThreads(projectId, client);
+        return Promise.all(
+          threads.map(async (t) => ({
+            ...t,
+            comments: await listComments(t.id, client),
+          }))
+        );
+      },
+      create: async (input: unknown) => {
+        const v = CreateCommentInput.parse(input);
+        const threadId =
+          v.threadId ??
+          (
+            await createCommentThread(
+              {
+                projectId: v.projectId,
+                source: v.cardId ? 'node' : 'canvas',
+                context: v.cardId ? { cardId: v.cardId } : null,
+                createdBy: userId,
+              },
+              client
+            )
+          ).id;
+        const comment = await createComment(
+          { threadId, content: v.content, authorId: userId },
+          client
+        );
+        return { threadId, comment };
+      },
+    },
+
+    // Dashboards are widgets (group dashboards + Custom) over canvas groups.
+    dashboards: {
+      list: async (projectId: string) => ({
+        widgets: await listWidgets(projectId, client),
+        groups: await getProjectGroups(projectId, client),
+      }),
+    },
+
+    groups: {
+      list: (projectId: string) => getProjectGroups(projectId, client),
     },
 
     // get_tree: full structure so agents extend rather than duplicate.

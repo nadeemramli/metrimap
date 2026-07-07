@@ -59,6 +59,21 @@ export async function getCardEvidence(
   return (data ?? []).map(rowToEvidence);
 }
 
+/** All of a project's evidence items (any scope), newest first. */
+export async function getProjectEvidence(
+  projectId: string,
+  client?: Client
+): Promise<EvidenceItem[]> {
+  const c = resolveClient(client);
+  const { data, error } = await c
+    .from('evidence_items')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('date', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(rowToEvidence);
+}
+
 /** A single evidence item by id (any scope), or null — the notebook's DB source. */
 export async function getEvidenceItemById(
   id: string,

@@ -71,8 +71,10 @@ export const UpdateNodeInput = z
     title: z.string().min(1).max(200).optional(),
     description: z.string().max(4000).optional(),
     category: z.enum(CARD_CATEGORIES).optional(),
+    subCategory: z.string().max(100).optional(),
     formula: z.string().max(2000).optional(),
     position: zPosition.optional(),
+    assignees: z.array(z.string()).max(50).optional(),
   })
   .refine((o) => Object.keys(o).length > 0, {
     message: 'Provide at least one field to update',
@@ -88,6 +90,17 @@ export const CreateRelationshipInput = z.object({
   weight: z.number().min(0).max(1).optional(),
   notes: z.string().max(2000).optional(),
 });
+
+export const UpdateRelationshipInput = z
+  .object({
+    type: z.enum(RELATIONSHIP_TYPES).optional(),
+    confidence: z.enum(CONFIDENCE_LEVELS).optional(),
+    weight: z.number().min(0).max(1).optional(),
+    notes: z.string().max(2000).optional(),
+  })
+  .refine((o) => Object.keys(o).length > 0, {
+    message: 'Provide at least one field to update',
+  });
 
 // --- Evidence (attach to a card XOR a relationship) ---
 export const CreateEvidenceInput = z
@@ -107,9 +120,69 @@ export const CreateEvidenceInput = z
     content: z.unknown().optional(),
   })
   .refine(
-    (v) => (v.cardId ? 1 : 0) + (v.relationshipId ? 1 : 0) === 1,
-    { message: 'Provide exactly one of cardId or relationshipId.' }
+    (v) => (v.cardId ? 1 : 0) + (v.relationshipId ? 1 : 0) <= 1,
+    { message: 'Provide at most one of cardId or relationshipId (neither = general project evidence).' }
   );
+
+export const ListEvidenceInput = z.object({
+  projectId: z.string().uuid(),
+  /** When set, only evidence attached to this card. */
+  cardId: z.string().uuid().optional(),
+});
+
+export const UpdateEvidenceInput = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    type: z.enum(EVIDENCE_TYPES).optional(),
+    summary: z.string().min(1).max(5000).optional(),
+    date: z.string().optional(),
+    owner: z.string().max(200).optional(),
+    hypothesis: z.string().max(2000).optional(),
+    link: z.string().url().max(500).optional(),
+    content: z.unknown().optional(),
+  })
+  .refine((o) => Object.keys(o).length > 0, {
+    message: 'Provide at least one field to update',
+  });
+
+// --- Tags ---
+export const CreateTagInput = z.object({
+  projectId: z.string().uuid(),
+  name: z.string().min(1).max(100),
+  color: z.string().max(32).optional(),
+  description: z.string().max(500).optional(),
+});
+
+export const TagCardInput = z.object({
+  cardId: z.string().uuid(),
+  /** Tag NAMES (must already exist on the project — see create_tag). */
+  tags: z.array(z.string().min(1).max(100)).min(1).max(20),
+});
+
+// --- Tracked-metric catalog ---
+export const PromoteCardInput = z.object({
+  cardId: z.string().uuid(),
+  projectId: z.string().uuid().optional(),
+  name: z.string().min(1).max(200),
+  unit: z.string().max(50).optional(),
+  formula: z.string().max(2000).optional(),
+  ownerLabel: z.string().max(200).optional(),
+  sourceKind: z.string().max(100).optional(),
+});
+
+export const GetMetricValuesInput = z.object({
+  trackedMetricId: z.string().uuid(),
+});
+
+// --- Comments ---
+export const CreateCommentInput = z.object({
+  projectId: z.string().uuid(),
+  content: z.string().min(1).max(5000),
+  /** Pin the new thread to a card (ignored when replying via threadId). */
+  cardId: z.string().uuid().optional(),
+  /** Reply into an existing thread instead of starting a new one. */
+  threadId: z.string().uuid().optional(),
+});
 
 // --- Values (tracked-metric series) ---
 export const MetricValueInput = z.object({

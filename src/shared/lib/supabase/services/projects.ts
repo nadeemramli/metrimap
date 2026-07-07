@@ -629,6 +629,22 @@ export async function duplicateProject(
 }
 
 // Group database operations
+export async function getProjectGroups(
+  projectId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const client = resolveClient(authenticatedClient);
+  const { data, error } = await client
+    .from('groups')
+    .select('*')
+    .eq('project_id', projectId);
+  if (error) {
+    console.error('Error fetching project groups:', error);
+    throw error;
+  }
+  return data ?? [];
+}
+
 export async function createGroup(
   group: {
     id: string;

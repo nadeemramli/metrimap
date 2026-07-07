@@ -60,12 +60,24 @@ duplicating nodes.
 | `create_value` | write | A `Core/Value` (outcome) card |
 | `create_driver_node` | write | An input-driver metric (`Input Metric`) |
 | `create_action` | write | A `Work/Action` card |
+| `create_hypothesis` | write | An `Ideas/Hypothesis` card |
 | `update_node` / `delete_node` | write | Node update / delete |
-| `create_relationship` / `delete_relationship` | write | Typed link: Deterministic / Probabilistic / Causal / Compositional |
+| `create_relationship` / `update_relationship` / `delete_relationship` | write | Typed link: Deterministic / Probabilistic / Causal / Compositional |
+| `create_evidence` / `list_evidence` / `update_evidence` | write / read | Evidence on a card, a relationship, or the project (general) |
+| `list_tags` / `create_tag` / `tag_card` / `untag_card` | read / write | Project tags + card tagging |
+| `list_tracked_metrics` / `list_candidate_cards` | read | Tracked-metric catalog + promotable cards |
+| `promote_card` | write | Promote a card into the catalog (returns `trackedMetricId`) |
+| `get_metric_values` | read | A tracked metric's shared value series (chart the data) |
+| `list_comments` / `create_comment` | read / write | Comment threads (canvas or card-pinned) + replies |
+| `list_dashboards` / `list_groups` | read | Dashboard widgets + canvas groups (re-render charts client-side) |
 | `layout_tree` | write | Auto-layout (Dagre) so a built tree renders well |
 | `push_values` | write | Upsert a tracked-metric value series |
 | `stage_series` / `upload_csv` | write | Stage data (TTL) for mapping |
 | `materialize` | write | Map a staged batch onto a card → the canvas shows it |
+
+All tools carry MCP **ToolAnnotations** (reads are `readOnlyHint`, creates are
+additive, deletes/overwrites destructive), so well-behaved clients only
+prompt for genuinely destructive calls.
 
 ## Limits & safety
 
