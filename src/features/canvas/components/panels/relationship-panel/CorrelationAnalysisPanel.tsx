@@ -104,7 +104,7 @@ export default function CorrelationAnalysisPanel({
     if (abs >= 0.7) return "text-green-600 bg-green-50 border-green-200";
     if (abs >= 0.5) return "text-blue-600 bg-blue-50 border-blue-200";
     if (abs >= 0.3) return "text-yellow-600 bg-yellow-50 border-yellow-200";
-    return "text-gray-600 bg-gray-50 border-gray-200";
+    return "text-muted-foreground bg-muted/50 border-border";
   };
 
   const getSignificanceIcon = (isSignificant: boolean) => {
@@ -124,7 +124,7 @@ export default function CorrelationAnalysisPanel({
       case "small":
         return "text-yellow-600 bg-yellow-50";
       default:
-        return "text-gray-600 bg-gray-50";
+        return "text-muted-foreground bg-muted/50";
     }
   };
 

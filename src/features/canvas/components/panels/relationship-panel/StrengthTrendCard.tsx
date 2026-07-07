@@ -20,7 +20,7 @@ export function StrengthTrendCard({
 
   if (summary.points === 0) {
     return (
-      <div className="rounded-lg border p-3 text-sm text-gray-500">
+      <div className="rounded-lg border p-3 text-sm text-muted-foreground">
         No strength history yet — change this relationship's strength to start
         tracking its trend.
       </div>
@@ -40,11 +40,11 @@ export function StrengthTrendCard({
     <div className="rounded-lg border p-3">
       <div className="mb-1 flex items-center justify-between">
         <span className="text-sm font-medium">Strength trend</span>
-        <span className="flex items-center gap-1 text-xs text-gray-600">
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
           <Icon className="h-3.5 w-3.5" />
           {current}
           {summary.delta != null && summary.points > 1 && (
-            <span className="text-gray-400">
+            <span className="text-muted-foreground/70">
               ({summary.delta > 0 ? '+' : ''}
               {summary.delta})
             </span>
@@ -59,11 +59,11 @@ export function StrengthTrendCard({
           height={40}
         />
       ) : (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           One data point so far — more edits will draw the trend.
         </p>
       )}
-      <p className="mt-1 text-[11px] text-gray-500">
+      <p className="mt-1 text-[11px] text-muted-foreground">
         {summary.points} recorded change{summary.points === 1 ? '' : 's'}
       </p>
     </div>

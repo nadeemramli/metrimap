@@ -478,7 +478,7 @@ export default function RelationshipSheet({
   const getStrengthColor = (value: number) => {
     if (value > 0) return 'text-green-600';
     if (value < 0) return 'text-red-600';
-    return 'text-gray-600';
+    return 'text-muted-foreground';
   };
 
   return (
@@ -509,14 +509,14 @@ export default function RelationshipSheet({
         <div>{/* Content */}
             {/* Tabs */}
             <div className="mb-6">
-              <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+              <div className="flex space-x-1 bg-muted rounded-lg p-1">
                 {availableTabs.includes('settings') && (
                   <button
                     onClick={() => setActiveTab('settings')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
                       activeTab === 'settings'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-muted-foreground'
                     }`}
                   >
                     Settings
@@ -527,8 +527,8 @@ export default function RelationshipSheet({
                     onClick={() => setActiveTab('evidence')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
                       activeTab === 'evidence'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-muted-foreground'
                     }`}
                   >
                     Evidence ({formData.evidence?.length || 0})
@@ -539,8 +539,8 @@ export default function RelationshipSheet({
                     onClick={() => setActiveTab('history')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
                       activeTab === 'history'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-muted-foreground'
                     }`}
                   >
                     History ({relationship?.history?.length || 0})
@@ -551,8 +551,8 @@ export default function RelationshipSheet({
                     onClick={() => setActiveTab('analysis')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
                       activeTab === 'analysis'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-muted-foreground'
                     }`}
                   >
                     Analysis
@@ -563,8 +563,8 @@ export default function RelationshipSheet({
                     onClick={() => setActiveTab('checklist')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all ${
                       activeTab === 'checklist'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-muted-foreground'
                     }`}
                   >
                     Checklist
@@ -579,7 +579,7 @@ export default function RelationshipSheet({
               <div className="space-y-6">
                 {/* Relationship Type */}
                 <div className="space-y-3">
-                  <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     Relationship Type
                     <InfoHint
                       side="right"
@@ -600,7 +600,7 @@ export default function RelationshipSheet({
                                 className={`p-3 rounded-lg border-2 text-left transition-all ${
                                   formData.type === type.value
                                     ? 'border-blue-500 bg-blue-50'
-                                    : 'border-gray-200 hover:border-gray-300'
+                                    : 'border-border hover:border-border'
                                 }`}
                               >
                                 <div className="flex items-center gap-2 mb-1">
@@ -609,7 +609,7 @@ export default function RelationshipSheet({
                                     {type.label}
                                   </span>
                                 </div>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-muted-foreground">
                                   {type.description}
                                 </p>
                               </button>
@@ -630,7 +630,7 @@ export default function RelationshipSheet({
                 {/* Confidence & Strength */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Confidence
                     </label>
                     <select
@@ -641,7 +641,7 @@ export default function RelationshipSheet({
                           e.target.value as ConfidenceLevel
                         )
                       }
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full p-2 border border-border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="High">🟢 High</option>
                       <option value="Medium">🟡 Medium</option>
@@ -651,7 +651,7 @@ export default function RelationshipSheet({
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">
+                      <label className="text-sm font-medium text-muted-foreground">
                         Strength
                       </label>
                       <span
@@ -672,7 +672,7 @@ export default function RelationshipSheet({
                       }
                       className="w-full"
                     />
-                    <div className="flex justify-between text-xs text-gray-500">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Negative (-100)</span>
                       <span>Neutral (0)</span>
                       <span>Positive (+100)</span>
@@ -682,21 +682,21 @@ export default function RelationshipSheet({
 
                 {/* Notes */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-muted-foreground">
                     Notes
                   </label>
                   <textarea
                     placeholder="Add notes about this relationship..."
                     value={formData.notes || ''}
                     onChange={(e) => handleFieldChange('notes', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full p-3 border border-border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     rows={3}
                   />
                 </div>
 
                 {/* Tags */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-muted-foreground">
                     Tags
                   </label>
                   {isLoadingTags ? (
@@ -729,7 +729,7 @@ export default function RelationshipSheet({
                 </div>
 
                 {/* Action Buttons - Only in Settings Tab */}
-                <div className="pt-6 mt-6 border-t border-gray-200">
+                <div className="pt-6 mt-6 border-t border-border">
                   <div className="flex items-center justify-between">
                     <Button
                       variant="destructive"
@@ -743,7 +743,7 @@ export default function RelationshipSheet({
                       <Button
                         variant="outline"
                         onClick={onClose}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted/60 transition-colors"
                       >
                         Cancel
                       </Button>
@@ -769,7 +769,7 @@ export default function RelationshipSheet({
                     <h3 className="text-lg font-semibold">
                       Evidence Repository
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       All supporting evidence for this relationship
                     </p>
                   </div>
@@ -790,7 +790,7 @@ export default function RelationshipSheet({
                       return (
                         <div
                           key={evidence.id}
-                          className="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow"
+                          className="bg-card border rounded-lg p-6 hover:shadow-md transition-shadow"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -806,7 +806,7 @@ export default function RelationshipSheet({
                                   <h3 className="font-semibold text-lg">
                                     {evidence.title}
                                   </h3>
-                                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                     <Badge
                                       variant="secondary"
                                       className="text-xs"
@@ -830,27 +830,27 @@ export default function RelationshipSheet({
                               <div className="space-y-3">
                                 {evidence.hypothesis && (
                                   <div>
-                                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                       HYPOTHESIS
                                     </span>
-                                    <p className="text-sm mt-1 text-gray-700">
+                                    <p className="text-sm mt-1 text-muted-foreground">
                                       {evidence.hypothesis}
                                     </p>
                                   </div>
                                 )}
 
                                 <div>
-                                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                     SUMMARY
                                   </span>
-                                  <p className="text-sm mt-1 text-gray-700">
+                                  <p className="text-sm mt-1 text-muted-foreground">
                                     {evidence.summary}
                                   </p>
                                 </div>
 
                                 {evidence.impactOnConfidence && (
                                   <div>
-                                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                       IMPACT ON CONFIDENCE
                                     </span>
                                     <p className="text-sm mt-1 text-blue-600 font-medium">
@@ -919,7 +919,7 @@ export default function RelationshipSheet({
                       );
                     })
                   ) : (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12 text-muted-foreground">
                       <FileText className="h-16 w-16 mx-auto mb-4 opacity-30" />
                       <h3 className="text-lg font-medium mb-2">
                         No Evidence Yet
@@ -946,7 +946,7 @@ export default function RelationshipSheet({
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold">Audit Trail</h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Comprehensive log of all changes and activities for this
                     relationship
                   </p>
@@ -955,7 +955,7 @@ export default function RelationshipSheet({
                 <StrengthTrendCard points={strengthHistory} />
 
                 {isLoadingChangelog ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-muted-foreground">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
                     <p>Loading history...</p>
                   </div>
@@ -975,7 +975,7 @@ export default function RelationshipSheet({
                           case 'analysis_run':
                             return 'bg-orange-500';
                           default:
-                            return 'bg-gray-500';
+                            return 'bg-muted/500';
                         }
                       };
 
@@ -1032,21 +1032,21 @@ export default function RelationshipSheet({
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
-                              <p className="text-sm font-medium text-gray-900">
+                              <p className="text-sm font-medium text-foreground">
                                 {entry.description}
                               </p>
-                              <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 capitalize">
+                              <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground capitalize">
                                 {entry.action.replace('_', ' ')}
                               </span>
                             </div>
-                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span>{formatTimestamp(entry.timestamp)}</span>
                               {entry.userId && <span>by {entry.userId}</span>}
                             </div>
 
                             {/* Show metadata if available */}
                             {entry.metadata && (
-                              <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs">
+                              <div className="mt-2 p-2 bg-muted/50 border border-border rounded text-xs">
                                 {entry.action === 'updated' &&
                                   entry.metadata.changes && (
                                     <div className="space-y-1">
@@ -1088,7 +1088,7 @@ export default function RelationshipSheet({
                                     <strong>Analysis Type:</strong>{' '}
                                     {entry.metadata.analysisType}
                                     {entry.metadata.results && (
-                                      <div className="mt-1 text-xs text-gray-600">
+                                      <div className="mt-1 text-xs text-muted-foreground">
                                         Results logged
                                       </div>
                                     )}
@@ -1102,13 +1102,13 @@ export default function RelationshipSheet({
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-muted-foreground">
                     <Clock className="h-16 w-16 mx-auto mb-4 opacity-30" />
                     <h3 className="text-lg font-medium mb-2">No History Yet</h3>
                     <p className="text-sm mb-4">
                       Activities and changes will be automatically tracked here
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-muted-foreground/70">
                       Try adding evidence, changing settings, or running
                       analysis to see events appear
                     </p>
@@ -1117,39 +1117,39 @@ export default function RelationshipSheet({
 
                 {/* Quick Stats */}
                 {changelog.length > 0 && (
-                  <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="bg-muted/50 rounded-lg p-4">
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
-                        <div className="text-lg font-semibold text-gray-900">
+                        <div className="text-lg font-semibold text-foreground">
                           {
                             changelog.filter(
                               (e) => e.action === 'evidence_added'
                             ).length
                           }
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-muted-foreground">
                           Evidence Added
                         </div>
                       </div>
                       <div>
-                        <div className="text-lg font-semibold text-gray-900">
+                        <div className="text-lg font-semibold text-foreground">
                           {
                             changelog.filter((e) => e.action === 'updated')
                               .length
                           }
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-muted-foreground">
                           Settings Updates
                         </div>
                       </div>
                       <div>
-                        <div className="text-lg font-semibold text-gray-900">
+                        <div className="text-lg font-semibold text-foreground">
                           {
                             changelog.filter((e) => e.action === 'analysis_run')
                               .length
                           }
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-muted-foreground">
                           Analyses Run
                         </div>
                       </div>
@@ -1167,7 +1167,7 @@ export default function RelationshipSheet({
                     <h3 className="text-lg font-semibold">
                       Statistical Analysis
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       Correlation analysis and statistical evidence
                     </p>
                   </div>
@@ -1175,7 +1175,7 @@ export default function RelationshipSheet({
                     variant="outline"
                     onClick={handleRunAnalysis}
                     disabled={isRunningAnalysis || isWorkerLoading}
-                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted/60 transition-colors disabled:opacity-50"
                   >
                     {isRunningAnalysis ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -1206,13 +1206,13 @@ export default function RelationshipSheet({
                     {/* Analysis Results */}
                     {analysisResults ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white border rounded-lg p-4">
+                        <div className="bg-card border rounded-lg p-4">
                           <h4 className="text-base font-medium mb-4">
                             Correlation Metrics
                           </h4>
                           <div className="space-y-4">
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Correlation Coefficient (r)
                               </span>
                               <span
@@ -1229,7 +1229,7 @@ export default function RelationshipSheet({
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 P-value
                               </span>
                               <span
@@ -1245,15 +1245,15 @@ export default function RelationshipSheet({
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Sample Size
                               </span>
-                              <span className="text-sm font-medium px-2 py-1 bg-gray-100 rounded">
+                              <span className="text-sm font-medium px-2 py-1 bg-muted rounded">
                                 {analysisResults.sampleSize}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Effect Size
                               </span>
                               <span
@@ -1262,14 +1262,14 @@ export default function RelationshipSheet({
                                     ? 'text-green-600 bg-green-50'
                                     : analysisResults.effectSize === 'medium'
                                       ? 'text-yellow-600 bg-yellow-50'
-                                      : 'text-gray-600 bg-gray-100'
+                                      : 'text-muted-foreground bg-muted'
                                 }`}
                               >
                                 {analysisResults.effectSize}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Statistical Significance
                               </span>
                               <span
@@ -1287,16 +1287,16 @@ export default function RelationshipSheet({
                           </div>
                         </div>
 
-                        <div className="bg-white border rounded-lg p-4">
+                        <div className="bg-card border rounded-lg p-4">
                           <h4 className="text-base font-medium mb-4">
                             Advanced Metrics
                           </h4>
                           <div className="space-y-4">
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Confidence Interval (95%)
                               </span>
-                              <span className="text-sm font-medium px-2 py-1 bg-gray-100 rounded">
+                              <span className="text-sm font-medium px-2 py-1 bg-muted rounded">
                                 [
                                 {analysisResults.confidenceInterval[0].toFixed(
                                   3
@@ -1309,10 +1309,10 @@ export default function RelationshipSheet({
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Statistical Power
                               </span>
-                              <span className="text-sm font-medium px-2 py-1 bg-gray-100 rounded">
+                              <span className="text-sm font-medium px-2 py-1 bg-muted rounded">
                                 {(
                                   analysisResults.powerAnalysis.power * 100
                                 ).toFixed(1)}
@@ -1320,10 +1320,10 @@ export default function RelationshipSheet({
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-muted-foreground">
                                 Required Sample Size
                               </span>
-                              <span className="text-sm font-medium px-2 py-1 bg-gray-100 rounded">
+                              <span className="text-sm font-medium px-2 py-1 bg-muted rounded">
                                 {
                                   analysisResults.powerAnalysis
                                     .requiredSampleSize
@@ -1348,7 +1348,7 @@ export default function RelationshipSheet({
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-12 text-muted-foreground">
                         <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-30" />
                         <h3 className="text-lg font-medium mb-2">
                           No Analysis Results
@@ -1357,7 +1357,7 @@ export default function RelationshipSheet({
                           Click "Re-run Analysis" to perform statistical
                           analysis on this relationship
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-muted-foreground/70">
                           Analysis will calculate correlation, statistical
                           significance, and effect size
                         </p>
@@ -1375,7 +1375,7 @@ export default function RelationshipSheet({
                   <h3 className="text-lg font-semibold">
                     Causal Validation Checklist
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Systematic validation of causal claims based on established
                     criteria
                   </p>
@@ -1383,7 +1383,7 @@ export default function RelationshipSheet({
 
                 {/* Validation status — surfaces on the edge (CVS-264) */}
                 <div>
-                  <p className="mb-2 text-sm font-medium text-gray-700">
+                  <p className="mb-2 text-sm font-medium text-muted-foreground">
                     Validation status
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -1395,14 +1395,14 @@ export default function RelationshipSheet({
                         className={`rounded-full border px-3 py-1 text-sm transition-colors ${
                           causalStatus === s.status
                             ? `${s.badge} font-medium`
-                            : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                            : 'border-border text-muted-foreground hover:bg-muted/60'
                         }`}
                       >
                         {s.label}
                       </button>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Correlation isn't causation — work the checklist below, then
                     mark this claim <strong>validated</strong> or{' '}
                     <strong>refuted</strong>. A refuted causal link is flagged on
@@ -1414,7 +1414,7 @@ export default function RelationshipSheet({
                   {causalChecklist.map((item) => (
                     <div
                       key={item.id}
-                      className={`bg-white border-l-4 rounded-lg p-4 ${
+                      className={`bg-card border-l-4 rounded-lg p-4 ${
                         item.checked
                           ? 'border-l-green-500'
                           : 'border-l-gray-300'
@@ -1431,14 +1431,14 @@ export default function RelationshipSheet({
                               e.target.checked
                             )
                           }
-                          className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          className="mt-1 w-4 h-4 text-blue-600 border-border rounded focus:ring-blue-500"
                         />
                         <div className="flex-1 space-y-3">
                           <div>
                             <h4 className="text-base font-medium">
                               {item.label}
                             </h4>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-muted-foreground mt-1">
                               {item.description}
                             </p>
                           </div>
@@ -1452,7 +1452,7 @@ export default function RelationshipSheet({
                                 e.target.value
                               )
                             }
-                            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                            className="w-full p-3 border border-border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                             rows={3}
                           />
                         </div>

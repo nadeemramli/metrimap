@@ -309,7 +309,7 @@ export default function SourceConfigurationPanel({
         </Button>
         <div>
           <h2 className="text-xl font-semibold">Configure Data Source</h2>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Set up your connection to retrieve data
           </p>
         </div>
@@ -341,7 +341,7 @@ export default function SourceConfigurationPanel({
                   {getSourceIcon(source.id)}
                 </div>
                 <h3 className="font-semibold">{source.name}</h3>
-                <p className="text-sm text-gray-600">{source.desc}</p>
+                <p className="text-sm text-muted-foreground">{source.desc}</p>
               </CardContent>
             </Card>
           ))}

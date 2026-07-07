@@ -325,16 +325,16 @@ function CardSettingsSheetComponent({
               className="w-full"
             >
               <div className="mb-6">
-                <TabsList className="bg-gray-100 rounded-lg p-[3px] shadow-sm w-full h-auto">
+                <TabsList className="bg-muted rounded-lg p-[3px] shadow-sm w-full h-auto">
                   <TabsTrigger
                     value="data"
-                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
                   >
                     Data
                   </TabsTrigger>
                   <TabsTrigger
                     value="results"
-                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
                   >
                     Results
                   </TabsTrigger>
@@ -343,31 +343,31 @@ function CardSettingsSheetComponent({
 
                   <TabsTrigger
                     value="segments"
-                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
                   >
                     Segments
                   </TabsTrigger>
                   <TabsTrigger
                     value="comments"
-                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
                   >
                     Comments
                   </TabsTrigger>
                   <TabsTrigger
                     value="evidence"
-                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
                   >
                     Evidence
                   </TabsTrigger>
                   <TabsTrigger
                     value="alerts"
-                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
                   >
                     Alerts
                   </TabsTrigger>
                   <TabsTrigger
                     value="settings"
-                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
+                    className="flex-1 h-9 px-3 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent transition-all duration-300"
                   >
                     Settings
                   </TabsTrigger>
