@@ -3,6 +3,9 @@ import type { MetricValue } from '@/shared/types';
 import {
   Background,
   Controls,
+  Handle,
+  MarkerType,
+  Position,
   ReactFlow,
   type Edge,
   type Node,
@@ -21,6 +24,10 @@ function latest(data?: MetricValue[]): number | null {
 
 const EmbedNode = memo(({ data }: { data: any }) => (
   <div className="min-w-[150px] rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+    {/* Invisible anchors — without Handles React Flow silently drops every
+        edge, so public embeds rendered bare nodes with no relationships. */}
+    <Handle type="target" position={Position.Top} className="!h-1 !w-1 !border-0 !bg-transparent" />
+    <Handle type="source" position={Position.Bottom} className="!h-1 !w-1 !border-0 !bg-transparent" />
     {data.category && (
       <div className="text-[10px] uppercase tracking-wide text-gray-400">
         {data.category}
@@ -69,10 +76,14 @@ export default function EmbedCanvasPage() {
           }))
         );
         setEdges(
+          // Relationships come from the data layer as sourceId/targetId (the
+          // domain shape) — mapping only e.source/e.target dropped every edge
+          // from public embeds. Accept both shapes.
           (proj.edges || []).map((e: any) => ({
             id: e.id,
-            source: e.source,
-            target: e.target,
+            source: e.sourceId ?? e.source,
+            target: e.targetId ?? e.target,
+            markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
           }))
         );
         setStatus('ok');
