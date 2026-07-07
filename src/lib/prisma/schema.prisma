@@ -52,6 +52,7 @@ model metric_cards {
   sub_category    String?
   position_x      Float     @default(0)
   position_y      Float     @default(0)
+  z_index         Int?
   data            Json?     @default("[]")
   source_type     String?
   formula         String?

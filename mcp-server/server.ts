@@ -148,7 +148,10 @@ function buildMcpServer(authed: McpAuthContext): McpServer {
             maxPayloadBytes: DEFAULT_MAX_PAYLOAD_BYTES,
             audit: supabaseAuditSink(authed.client),
           });
-          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+          // JSON.stringify(undefined) is undefined (not a string) — void handlers
+          // (e.g. delete_*) would otherwise emit malformed content the client rejects.
+          const text = JSON.stringify(result) ?? JSON.stringify({ ok: true });
+          return { content: [{ type: 'text' as const, text }] };
         } catch (e) {
           const code = e instanceof McpToolError ? e.code : 'internal';
           const message = e instanceof Error ? e.message : String(e);
