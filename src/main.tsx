@@ -6,14 +6,16 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import App from './App.tsx';
 import UserbackInitializer from './shared/components/common/feedback/UserbackInitializer';
 import { captureAttribution } from './shared/utils/attribution';
-import { initAnalytics } from './shared/lib/analytics';
+import { initAnalytics, initGtm } from './shared/lib/analytics';
 import './styles/index.css';
 
 // Capture utm_* attribution from the landing URL BEFORE the router mounts
 // (alias redirects rewrite the URL; first-touch must read the original one),
-// then boot analytics so the attribution registers on every event.
+// then boot analytics so the attribution registers on every event. GTM loads
+// the shared GA4 tag (no-op unless VITE_GTM_ID is set).
 captureAttribution();
 initAnalytics();
+initGtm();
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

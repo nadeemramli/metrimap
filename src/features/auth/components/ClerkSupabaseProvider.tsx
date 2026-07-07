@@ -37,10 +37,12 @@ export default function ClerkSupabaseProvider({
           });
 
           // Tie analytics to the Clerk identity (attribution rides along).
+          // createdAt lets GTM tell a fresh sign_up from a returning login.
           identifyUser({
             id: user.id,
             name: user.fullName || undefined,
             email: user.emailAddresses[0]?.emailAddress || undefined,
+            createdAt: user.createdAt ?? undefined,
           });
 
           // Create Supabase client with Clerk authentication using NATIVE integration
