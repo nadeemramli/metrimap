@@ -185,6 +185,7 @@ export default function CanvasLayout() {
                   key={item.label}
                   variant="ghost"
                   size="sm"
+                  data-tour={`rail-${item.label.toLowerCase()}`}
                   className={cn(
                     'w-9 h-9 p-0 rounded-md transition-all duration-150',
                     isActive
@@ -192,6 +193,7 @@ export default function CanvasLayout() {
                       : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
                   )}
                   onClick={() => handleNavigation(item)}
+                  title={item.label}
                 >
                   <Icon className="h-4 w-4" />
                 </Button>

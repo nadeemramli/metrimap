@@ -1,5 +1,6 @@
 import { useCanvasStore } from '@/lib/stores';
 import { usePagePanel } from '@/features/canvas/stores/useCanvasPanelStore';
+import { useOnboardingStore } from '@/features/onboarding';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { Skeleton } from '@/shared/components/ui/skeleton';
@@ -121,6 +122,11 @@ export default function DashboardPage() {
   const invalidateDashboard = () => {
     if (canvasId) void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.data(canvasId) });
   };
+
+  // Onboarding checklist signal (CVS-114): "Open your dashboard".
+  useEffect(() => {
+    useOnboardingStore.getState().markVisitedDashboard();
+  }, []);
 
   const [editMode, setEditMode] = useState(false);
   // Widget config docks into the shared right slot (one open panel app-wide);

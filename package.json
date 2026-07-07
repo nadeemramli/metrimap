@@ -94,6 +94,7 @@
     "comlink": "^4.4.2",
     "dagre": "^0.8.5",
     "date-fns": "^4.1.0",
+    "driver.js": "^1.6.0",
     "editorjs-alert": "^1.1.4",
     "editorjs-color-picker": "^1.0.8",
     "editorjs-header-with-alignment": "^1.0.1",

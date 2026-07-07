@@ -131,7 +131,10 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
   );
 
   return (
-    <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-popover/95 backdrop-blur-sm border border-border shadow-[0_10px_24px_-12px_rgba(0,0,0,0.35)] px-3 py-2">
+    <div
+      data-tour="canvas-toolbar"
+      className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-popover/95 backdrop-blur-sm border border-border shadow-[0_10px_24px_-12px_rgba(0,0,0,0.35)] px-3 py-2"
+    >
       {/* Drawing Tools - Show different tools based on mode */}
       {mode === 'draw' ? (
         /* React Flow Whiteboard Tools */
@@ -233,6 +236,7 @@ export default function TopCanvasToolbar(props: TopCanvasToolbarProps) {
                   <Button
                     variant="ghost"
                     size="sm"
+                    data-tour="layers-toggle"
                     className={getToolButtonClasses(!!props.groupsActive)}
                     title="Layers"
                     aria-pressed={!!props.groupsActive}

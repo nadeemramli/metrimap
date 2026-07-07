@@ -14,6 +14,11 @@ import {
 } from '@/shared/hooks/useKeyboardShortcuts';
 import { LayoutTemplate, Loader2, Plus, Sparkles, Workflow } from 'lucide-react';
 import { ProductSystemFlowExplorer } from '@/features/product-system';
+import {
+  GettingStartedCard,
+  useOnboardingStore,
+  WelcomeDialog,
+} from '@/features/onboarding';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -56,6 +61,7 @@ export default function HomePage() {
   const {
     projects,
     initializeProjects,
+    isLoading: isLoadingProjects,
     spaces,
     createSpace,
     updateSpace,
@@ -65,6 +71,12 @@ export default function HomePage() {
   } = useProjectsStore();
   const safeProjects = Array.isArray(projects) ? projects : [];
   const { user } = useAppStore();
+
+  // First-run welcome (CVS-114): brand-new account = no answered welcome and
+  // no canvases of their own once the list has actually loaded.
+  const firstRunSeen = useOnboardingStore((s) => s.firstRunSeen);
+  const welcomeOpen =
+    !firstRunSeen && !isLoadingProjects && safeProjects.length === 0;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -173,6 +185,13 @@ export default function HomePage() {
 
           {/* Operate — the user's own canvases (their durable work). */}
           <TabsContent value="operate" className="mt-0">
+            {/* First-run onboarding checklist (CVS-114) — auto-completes and
+                disappears; renders nothing once done or dismissed. */}
+            <GettingStartedCard
+              projects={safeProjects}
+              onCreateCanvas={handleCreateCanvas}
+            />
+
             {/* One consolidated control bar: space · filter · search · sort · view · New */}
             <HomeControlBar
               spaces={spaces}
@@ -389,6 +408,8 @@ export default function HomePage() {
         open={templatePickerOpen}
         onOpenChange={setTemplatePickerOpen}
       />
+      {/* First-run welcome — copy the demo & tour it, or start from scratch. */}
+      <WelcomeDialog open={welcomeOpen} onOpenChange={() => {}} />
     </div>
   );
 }

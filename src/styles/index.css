@@ -298,11 +298,14 @@
   pointer-events: none !important;
 }
 
-/* All dialog content - opaque themed backgrounds */
+/* All dialog content - opaque themed backgrounds.
+   (.driver-popover is excluded: the onboarding tour popover also carries
+   role="dialog", and this blanket z-index/background sank it below driver's
+   overlay and repainted it — the tour themes itself in tour.css.) */
 [data-slot='dialog-content'],
 [data-slot='alert-dialog-content'],
 [data-slot='sheet-content'],
-[role='dialog'] {
+[role='dialog']:not(.driver-popover) {
   z-index: 1001 !important;
   background: var(--background) !important;
   color: var(--foreground) !important;

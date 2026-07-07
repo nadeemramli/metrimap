@@ -114,6 +114,7 @@ import GroupNameDialog from '@/features/canvas/components/grouping/GroupNameDial
 import OffscreenNodeIndicator from '@/features/canvas/components/wayfinding/OffscreenNodeIndicator';
 import ControlPanel from '@/features/canvas/components/left-sidepanel/ControlPanel';
 import { LayersPanel } from '@/features/canvas/components/dock/layers/LayersPanel';
+import { CanvasTourLauncher } from '@/features/onboarding';
 import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
 import { useLayersUiStore } from '@/features/canvas/stores/useLayersUiStore';
 import TopCanvasToolbar from '@/features/canvas/components/mini-control/TopCanvasToolbar';
@@ -2739,7 +2740,11 @@ function CanvasPageInner() {
   return (
     <div className="w-full h-full bg-background">
       {/* Layer 1: App Context - Base layer */}
-      <div className="h-full relative" style={{ zIndex: 0 }}>
+      <div
+        className="h-full relative"
+        style={{ zIndex: 0 }}
+        data-tour="canvas-pane"
+      >
         <PortalContainerProvider container={state.reactFlowRef.current as any}>
           {/* ReactFlow Canvas - Always rendered, with whiteboard tools overlaid in draw mode */}
           <ReactFlow
@@ -3125,6 +3130,10 @@ function CanvasPageInner() {
           />
         </PortalContainerProvider>
       </div>
+
+      {/* First-run guided tour: launches once the graph is rendered when the
+          welcome flow queued it (CVS-114). */}
+      <CanvasTourLauncher ready={rfNodes.length > 0} />
 
       {/* Layers panel — left dock (Figma-style tree of all canvas content).
           Rendered here (inside ReactFlowProvider) so select+zoom work; the DOM
