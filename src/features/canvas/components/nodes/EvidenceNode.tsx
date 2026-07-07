@@ -154,19 +154,11 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
   return (
     <div className="relative select-none cursor-move">
       <FourSideHandles />
+      {/* Card-only bubble: the RF node bounds = this card, so the connection
+          handles frame the card exactly (a pin row above would offset them). */}
       <div
         style={{ transform: `scale(${bubbleScale})`, transformOrigin: 'top left' }}
       >
-        <div className="mb-1">
-          <AnnotationPin
-            colorClass="bg-emerald-500"
-            title="Collapse"
-            onClick={() => setExpanded(false)}
-          >
-            <TypeIcon className="h-4 w-4" />
-          </AnnotationPin>
-        </div>
-
         <Card className="w-80 rounded-xl rounded-tl-sm border bg-card/95 p-3 shadow-md backdrop-blur-sm">
           {/* Header: type chip + inline-editable title + actions */}
           <div className="flex items-start gap-2">

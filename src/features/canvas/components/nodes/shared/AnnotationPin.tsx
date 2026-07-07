@@ -51,9 +51,12 @@ export function AnnotationPin({
   return (
     // Fixed 32px footprint — RF measures this, never the scaled inner.
     <div className={cn('relative h-8 w-8 select-none', className)}>
+      {/* Scale from CENTER so the visual pin stays centered on the node's
+          32px footprint — connection handles sit on that footprint, so any
+          other origin drifts the icon off its own handles. */}
       <div
-        className="absolute bottom-0 left-0"
-        style={{ transform: `scale(${scale})`, transformOrigin: 'bottom left' }}
+        className="absolute inset-0"
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center' }}
       >
         {unread && (
           <span
