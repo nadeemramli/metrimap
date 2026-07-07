@@ -1,23 +1,23 @@
 # Brand assets
 
-Drop the Metrimap logo files here. These are served as static files from the
-site root — a file at `public/brand/logo-light.svg` is reachable at
-`/brand/logo-light.svg` in the app.
+Static files served from the site root — a file at `public/brand/icon.svg` is
+reachable at `/brand/icon.svg` in the app.
 
 See the **branding-and-logo** note in the Obsidian product vault (migrated out of
-the repo) for the naming convention, expected files, and how to wire them into the UI.
+the repo) for the full brand system.
 
 ## Files in use
 
-| File             | When it shows                             |
-| ---------------- | ----------------------------------------- |
-| `logo-light.svg` | light theme + light browser chrome favicon |
-| `logo-dark.svg`  | dark / night themes + dark chrome favicon  |
+| File       | When it shows                                             |
+| ---------- | --------------------------------------------------------- |
+| `icon.svg` | favicon / browser-tab app icon (dark badge, `index.html`) |
 
-Both are square (2048×2048) badge logos with their own background fill, wired
-through `src/shared/components/layout/Logo.tsx` and used in the app header and
-as the favicon (`index.html`).
+`icon.svg` is the Canvasm badge — the connected-node "map" glyph on a dark
+rounded square, mirrored from the marketing site (canvasm.app) and docs
+(docs.canvasm.app).
 
-SVG is strongly preferred (crisp at every size). If you later add an icon-only
-mark or a horizontal wordmark, follow the same `-light` / `-dark` naming and
-update `Logo.tsx`.
+The **in-app logo** is not an image asset: `src/shared/components/layout/Logo.tsx`
+renders the same glyph as inline SVG using `currentColor`, so it's ~1KB, crisp at
+every size, and theme-aware (follows the in-app `dark`/`night` foreground) with
+nothing to load. If you add a new brand asset, prefer inline SVG for anything
+rendered in-app and reserve this folder for static browser-chrome assets.

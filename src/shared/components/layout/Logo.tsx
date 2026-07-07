@@ -1,44 +1,35 @@
 import { cn } from '@/shared/utils';
 
 type LogoProps = {
-  /** Extra classes controlling size/spacing. Height/width sizing works best
-   *  since the logos are square (e.g. `h-8 w-8`). */
+  /** Extra classes controlling size/spacing. The mark is square (e.g. `h-8 w-8`). */
   className?: string;
   /** Accessible label; falls back to the product name. */
   alt?: string;
 };
 
 /**
- * Theme-aware Metrimap logo.
- *
- * Renders the light logo by default and swaps to the dark logo whenever the
- * document carries the `dark` OR `night` theme class (see App.tsx: next-themes
- * with attribute="class"). We match those classes explicitly via arbitrary
- * variants rather than Tailwind's `dark:` variant — this project doesn't load
- * tailwind.config.ts's `darkMode: "class"` into Tailwind v4, so `dark:` falls
- * back to `prefers-color-scheme` (the OS scheme) and would ignore the in-app
- * theme toggle. Both <img>s stay mounted; CSS picks the visible one, so there's
- * no flash on theme change and no client-side theme hook needed.
+ * Canvasm brand mark — the connected-node "map" glyph, mirrored from the
+ * marketing site (canvasm.app) and docs (docs.canvasm.app). Inline SVG using
+ * `currentColor`, so it's crisp, ~1KB, and theme-aware (follows the in-app
+ * `dark`/`night` foreground) with no image asset to load.
  */
 export function Logo({ className, alt = 'Metrimap' }: LogoProps) {
   return (
-    // inline-block + overflow-hidden so height/width classes always apply and the
-    // SVG never overflows its box, even when wrapped in an inline element (e.g. a
-    // bare <a>) rather than sitting directly in a flex row.
-    <span className={cn('inline-block overflow-hidden', className)}>
-      <img
-        src="/brand/logo-light.svg"
-        alt={alt}
-        className="block h-full w-full object-contain [.dark_&]:hidden [.night_&]:hidden"
-        draggable={false}
-      />
-      <img
-        src="/brand/logo-dark.svg"
-        alt={alt}
-        aria-hidden
-        className="hidden h-full w-full object-contain [.dark_&]:block [.night_&]:block"
-        draggable={false}
-      />
+    <span className={cn('inline-block overflow-hidden text-foreground', className)}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        role="img"
+        aria-label={alt}
+        className="block h-full w-full"
+      >
+        <path d="M6 6.5 L12 12 L18 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.55" />
+        <path d="M12 12 L12 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.55" />
+        <circle cx="6" cy="6.5" r="2.4" fill="currentColor" opacity="0.85" />
+        <circle cx="18" cy="7.5" r="2.4" fill="currentColor" opacity="0.85" />
+        <circle cx="12" cy="12" r="2.8" fill="currentColor" />
+        <circle cx="12" cy="18.5" r="2.4" fill="currentColor" opacity="0.85" />
+      </svg>
     </span>
   );
 }
