@@ -22,6 +22,7 @@ import {
 import { updateEvidenceItem } from '@/shared/lib/supabase/services/relationships';
 import type { EvidenceItem } from '@/shared/types';
 import EditorJS from '@editorjs/editorjs';
+import EvidenceLinkChips from '@/features/evidence/components/EvidenceLinkChips';
 import { ArrowLeft, Maximize2, Minimize2, Save } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -118,6 +119,7 @@ export default function EvidencePage() {
         updatedAt: new Date().toISOString(),
         content: validatedContent,
         context: initialEvidence?.context || { type: 'general' },
+        links: initialEvidence?.links,
         position: initialEvidence?.position,
         isVisible: initialEvidence?.isVisible ?? true,
         isExpanded: initialEvidence?.isExpanded ?? false,
@@ -266,6 +268,9 @@ export default function EvidencePage() {
       </div>
 
       <div className="p-4 border-b bg-muted/40">
+        {initialEvidence && (
+          <EvidenceLinkChips evidence={initialEvidence} className="mb-3" />
+        )}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
           <div>
             <Label className="text-xs font-medium text-muted-foreground">

@@ -31,10 +31,7 @@ import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
 import EvidenceEditPanel from '@/features/evidence/components/EvidenceEditPanel';
 import { FourSideHandles } from './FourSideHandles';
-import {
-  AnnotationPin,
-  useAnnotationScale,
-} from '@/features/canvas/components/nodes/shared/AnnotationPin';
+import { AnnotationPin } from '@/features/canvas/components/nodes/shared/AnnotationPin';
 import { isUnseen, markSeen } from '@/features/canvas/utils/annotationSeen';
 
 interface EvidenceNodeData extends Record<string, unknown> {
@@ -63,7 +60,6 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
   const { canvasId } = useParams();
   const confirm = useConfirm();
   const user = useAppStore((s) => s.user);
-  const bubbleScale = useAnnotationScale();
 
   const justCreatedId = useEvidenceStore((s) => s.justCreatedEvidenceId);
   const clearJustCreated = useEvidenceStore((s) => s.setJustCreatedEvidenceId);
@@ -203,11 +199,11 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
   return (
     <div className="relative select-none cursor-move">
       <FourSideHandles />
-      {/* Card-only bubble: the RF node bounds = this card, so the connection
-          handles frame the card exactly (a pin row above would offset them). */}
-      <div
-        style={{ transform: `scale(${bubbleScale})`, transformOrigin: 'top left' }}
-      >
+      {/* Card-only bubble, NOT counter-scaled: the expanded card is a
+          first-class node with connection handles, and scaling its visuals
+          detaches them from the layout box the handles sit on. Zoom
+          invariance is for the collapsed pin only. */}
+      <div>
         <Card className="w-80 rounded-xl rounded-tl-sm border bg-card/95 p-3 shadow-md backdrop-blur-sm">
           {/* Header: type chip + inline-editable title + actions */}
           <div className="flex items-start gap-2">

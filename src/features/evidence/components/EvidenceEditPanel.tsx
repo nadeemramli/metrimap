@@ -21,6 +21,7 @@ import {
 } from '@/shared/lib/editorjs-config';
 import type { EvidenceItem } from '@/shared/types';
 import type EditorJS from '@editorjs/editorjs';
+import EvidenceLinkChips from './EvidenceLinkChips';
 import { FileText } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -120,6 +121,7 @@ export function EvidenceEditPanel({
       onClose={onClose}
     >
       <div className="space-y-4">
+        <EvidenceLinkChips evidence={evidence} />
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-1.5">
             <Label className="text-xs text-muted-foreground">Title</Label>

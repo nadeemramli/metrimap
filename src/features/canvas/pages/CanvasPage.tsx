@@ -1713,6 +1713,19 @@ function CanvasPageInner() {
       // .catch during the auth-startup window.
       const client = supabaseClient || getAuthenticatedClient();
       if (!client) return;
+      // Mirror into the canvas store's settings so a same-canvas remount can
+      // rehydrate extraEdges (the store outlives this component; see the
+      // rehydration effect below).
+      useCanvasStore.setState((s) =>
+        s.canvas
+          ? {
+              canvas: {
+                ...s.canvas,
+                settings: { ...(s.canvas.settings || {}), dataFlowEdges: nextEdges },
+              },
+            }
+          : {}
+      );
       void mergeProjectSettings(
         canvasId,
         { dataFlowEdges: nextEdges },
@@ -1723,6 +1736,28 @@ function CanvasPageInner() {
     },
     [canvasId, supabaseClient]
   );
+
+  // Rehydrate extraEdges on same-canvas remounts. The big load effect skips
+  // entirely when the canvas store already holds this canvas (guard at its
+  // top), but extraEdges is COMPONENT state — so navigating within the canvas
+  // (evidence full page → back, assets → back) used to silently drop every
+  // reference/data-flow edge until a hard reload. Only fills an empty local
+  // array, so live edits are never clobbered.
+  const extraEdgesHydratedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!canvasId || canvas?.id !== canvasId) return;
+    if (extraEdgesHydratedFor.current === canvasId) return;
+    extraEdgesHydratedFor.current = canvasId;
+    const persisted = (canvas?.settings as any)?.dataFlowEdges;
+    if (
+      Array.isArray(persisted) &&
+      persisted.length > 0 &&
+      (state.extraEdges || []).length === 0
+    ) {
+      state.setExtraEdges(persisted);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasId, canvas?.id, canvas?.settings]);
 
   // Enhanced edge connection handler
   // Phase B: resolve a node's display title (card title / source title / operator
