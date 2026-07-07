@@ -1,4 +1,4 @@
-import { CommentsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/comments-tab';
+import { CommentsTab } from '@/features/canvas/components/panels/metric-panel/tabs/comments-tab';
 import { NodePanelShell } from '@/features/canvas/components/panels/shared/NodePanelShell';
 import { WorkflowSection } from '@/features/canvas/components/panels/metric-panel/WorkflowSection';
 import { TaskEvidenceSection } from '@/features/canvas/components/panels/task-panel/TaskEvidenceSection';

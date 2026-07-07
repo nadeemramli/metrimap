@@ -1,4 +1,4 @@
-import { CommentsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/comments-tab';
+import { CommentsTab } from '@/features/canvas/components/panels/metric-panel/tabs/comments-tab';
 import { NodePanelShell } from '@/features/canvas/components/panels/shared/NodePanelShell';
 import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
 import { buildValueJourney } from '@/features/strategy/utils/valueJourney';

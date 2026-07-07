@@ -1,5 +1,5 @@
 import { DockPanel } from '@/features/canvas/components/dock';
-import { CommentsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/comments-tab';
+import { CommentsTab } from '@/features/canvas/components/panels/metric-panel/tabs/comments-tab';
 import { MessageSquare } from 'lucide-react';
 
 // Right-side discussion panel for a Strategy card — docked below the top bar

@@ -1,9 +1,9 @@
 import { toast } from 'sonner';
 import { InlineEditableField } from '@/features/canvas/components/node-function/inline-editable-field';
-import { CommentsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/comments-tab';
-import { DataEventsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/data-events-tab';
-import { ResultsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/results-tab';
-import { SettingsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/settings-tab';
+import { CommentsTab } from '@/features/canvas/components/panels/metric-panel/tabs/comments-tab';
+import { DataEventsTab } from '@/features/canvas/components/panels/metric-panel/tabs/data-events-tab';
+import { ResultsTab } from '@/features/canvas/components/panels/metric-panel/tabs/results-tab';
+import { SettingsTab } from '@/features/canvas/components/panels/metric-panel/tabs/settings-tab';
 import { WorkflowSection } from '@/features/canvas/components/panels/metric-panel/WorkflowSection';
 import { NodeVisibilityControl } from '@/features/settings/components/NodeVisibilityControl';
 import LinkedEvidenceList from '@/features/canvas/components/panels/metric-panel/LinkedEvidenceList';
