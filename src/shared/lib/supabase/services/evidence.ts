@@ -10,6 +10,14 @@ import type { EvidenceItem } from '@/shared/types';
 
 type Client = SupabaseClient<Database>;
 
+/** evidence_items.owner_id is an FK to users(id) (Clerk ids), but the domain
+ *  EvidenceItem.owner usually carries a display name (EvidenceDialog prefills
+ *  one) — writing that violated the FK and failed every dialog save. Persist
+ *  only real user ids; anything else stores no owner. */
+export function evidenceOwnerId(owner?: string | null): string | null {
+  return owner && /^user_[A-Za-z0-9]+$/.test(owner) ? owner : null;
+}
+
 function rowToEvidence(row: Tables<'evidence_items'>): EvidenceItem {
   return {
     id: row.id,
@@ -106,7 +114,7 @@ export async function createCardEvidence(
       title: evidence.title,
       type: evidence.type,
       date: evidence.date,
-      owner_id: evidence.owner || null,
+      owner_id: evidenceOwnerId(evidence.owner),
       link: evidence.link ?? null,
       hypothesis: evidence.hypothesis ?? null,
       summary: evidence.summary,
@@ -136,7 +144,7 @@ export async function createProjectEvidence(
       title: evidence.title,
       type: evidence.type,
       date: evidence.date,
-      owner_id: evidence.owner || null,
+      owner_id: evidenceOwnerId(evidence.owner),
       link: evidence.link ?? null,
       hypothesis: evidence.hypothesis ?? null,
       summary: evidence.summary || evidence.title,

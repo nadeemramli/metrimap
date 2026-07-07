@@ -11,6 +11,7 @@ import {
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveClient } from '@/shared/utils/authenticatedClient';
 import { appendRelationshipHistory } from './relationshipHistory';
+import { evidenceOwnerId } from './evidence';
 import type { EvidenceItem, Relationship } from '../../types';
 import type {
   Database,
@@ -274,7 +275,8 @@ export async function updateEvidenceItem(
 
   if (updates.title !== undefined) updateData.title = updates.title;
   if (updates.type !== undefined) updateData.type = updates.type;
-  if (updates.owner !== undefined) updateData.owner_id = updates.owner;
+  if (updates.owner !== undefined)
+    updateData.owner_id = evidenceOwnerId(updates.owner);
   if (updates.link !== undefined) updateData.link = updates.link;
   if (updates.hypothesis !== undefined)
     updateData.hypothesis = updates.hypothesis;
