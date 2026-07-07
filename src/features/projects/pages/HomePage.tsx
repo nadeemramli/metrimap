@@ -12,7 +12,8 @@ import {
   createShortcut,
   useKeyboardShortcuts,
 } from '@/shared/hooks/useKeyboardShortcuts';
-import { LayoutTemplate, Loader2, Plus, Sparkles } from 'lucide-react';
+import { LayoutTemplate, Loader2, Plus, Sparkles, Workflow } from 'lucide-react';
+import { ProductSystemFlowExplorer } from '@/features/product-system';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -305,6 +306,24 @@ export default function HomePage() {
             </section>
 
             <ShowcaseSection onOpenCanvas={handleOpenCanvas} />
+
+            {/* How Canvasm works — the product-system operating loops
+                (CVS-301). Same registry the public site consumes. */}
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <Workflow className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">
+                  How Canvasm works — operating loops
+                </h2>
+              </div>
+              <p className="mb-4 max-w-2xl text-xs text-muted-foreground">
+                Metrimap is an orchestrator for measurable strategy: it maps
+                what the team believes, connects work to metrics, records what
+                was learned, and controls who sees what. These are the loops
+                the product is built around.
+              </p>
+              <ProductSystemFlowExplorer />
+            </section>
           </TabsContent>
         </Tabs>
       </div>
