@@ -51,10 +51,15 @@ const GUARDRAIL_STYLE: Record<GuardrailStatus, string> = {
   unknown: 'text-muted-foreground',
 };
 
+/** Trim float noise: up to 2 decimals, no trailing zeros (34.8-34.6 = 0.200…03). */
+function fmtNum(n: number): string {
+  return `${n > 0 ? '+' : ''}${parseFloat(n.toFixed(2))}`;
+}
+
 function fmtDelta(e: MetricEval): string {
   if (!e.hasData) return 'no data';
   const pct = e.pctDelta != null ? `${e.pctDelta > 0 ? '+' : ''}${e.pctDelta.toFixed(1)}%` : null;
-  const abs = e.absDelta != null ? `${e.absDelta > 0 ? '+' : ''}${e.absDelta}` : null;
+  const abs = e.absDelta != null ? fmtNum(e.absDelta) : null;
   return pct ? `${pct} (${abs})` : (abs ?? '—');
 }
 

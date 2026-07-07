@@ -1,4 +1,4 @@
-import posthog from 'posthog-js';
+import posthog, { type PostHogInterface } from 'posthog-js';
 import { getAttribution } from '@/shared/utils/attribution';
 
 // PostHog product analytics (CVS-115 / CVS-114 slice 5).
@@ -25,7 +25,7 @@ export function initAnalytics() {
     // Only create person profiles for identified (signed-in) users.
     person_profiles: 'identified_only',
     autocapture: true,
-    loaded: (ph) => {
+    loaded: (ph: PostHogInterface) => {
       // First-touch marketing attribution (captured at landing by
       // src/shared/utils/attribution.ts) rides on every event.
       const attribution = getAttribution();
