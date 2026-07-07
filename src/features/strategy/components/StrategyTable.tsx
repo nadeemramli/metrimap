@@ -400,7 +400,18 @@ export function StrategyTable({
                       const count = commentCounts[card.id] ?? 0;
                       const assignees = card.assignees ?? [];
                       return (
-                        <TableRow key={card.id} className="group">
+                        <TableRow
+                          key={card.id}
+                          className="group cursor-pointer transition-colors duration-150 hover:bg-accent/50"
+                          onDoubleClick={(e) => {
+                            // Don't hijack double-clicks on inline controls.
+                            const t = e.target as HTMLElement;
+                            if (t.closest('button, a, input, [role="checkbox"]'))
+                              return;
+                            onOpenCard(card.id);
+                          }}
+                          title="Double-click to open"
+                        >
                           <TableCell>
                             <button
                               onClick={() => onOpenCard(card.id)}

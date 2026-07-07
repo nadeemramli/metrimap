@@ -6,6 +6,7 @@ import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
 import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
+import { usePagePanel } from '@/features/canvas/stores/useCanvasPanelStore';
 import {
   createMetricCard,
   deleteMetricCard,
@@ -120,9 +121,24 @@ export default function StrategyPage() {
   const [fetchedUsers, setFetchedUsers] = useState<Record<string, UserLite>>({});
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
-  const [settingsCardId, setSettingsCardId] = useState<string | null>(null);
-  const [commentCardId, setCommentCardId] = useState<string | null>(null);
-  const [impactCardId, setImpactCardId] = useState<string | null>(null);
+  // Detail panels dock into the shared right slot (one open at a time,
+  // app-wide) — open state lives in the panel store, payload in the id.
+  const pagePanel = usePagePanel();
+  const settingsCardId = pagePanel.openId?.startsWith('task:')
+    ? pagePanel.openId.slice('task:'.length)
+    : null;
+  const commentCardId = pagePanel.openId?.startsWith('comments:')
+    ? pagePanel.openId.slice('comments:'.length)
+    : null;
+  const impactCardId = pagePanel.openId?.startsWith('impact:')
+    ? pagePanel.openId.slice('impact:'.length)
+    : null;
+  const setSettingsCardId = (id: string | null) =>
+    id ? pagePanel.open(`task:${id}`) : pagePanel.close();
+  const setCommentCardId = (id: string | null) =>
+    id ? pagePanel.open(`comments:${id}`) : pagePanel.close();
+  const setImpactCardId = (id: string | null) =>
+    id ? pagePanel.open(`impact:${id}`) : pagePanel.close();
   const [traceCardId, setTraceCardId] = useState<string | null>(null);
   const [impactEntries, setImpactEntries] = useState<
     Array<{ contract: ImpactContract; links: MetricLink[] }>

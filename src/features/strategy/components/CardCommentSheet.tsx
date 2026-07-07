@@ -1,15 +1,11 @@
+import { DockPanel } from '@/features/canvas/components/dock';
 import { CommentsTab } from '@/features/canvas/components/panels/relationship-panel/tabs/comments-tab';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/shared/components/ui/sheet';
+import { MessageSquare } from 'lucide-react';
 
-// Right-side discussion panel for a Strategy card. Reuses the card CommentsTab
-// (keyed by context.cardId; reads projectId from the /canvas/:id route). Fires
-// onClosed so the table can refresh its per-card comment counts.
+// Right-side discussion panel for a Strategy card — docked below the top bar
+// like every detail panel. Reuses the card CommentsTab (keyed by
+// context.cardId; reads projectId from the /canvas/:id route). Fires onClosed
+// so the table can refresh its per-card comment counts.
 
 interface CardCommentSheetProps {
   cardId: string | null;
@@ -27,26 +23,19 @@ export function CardCommentSheet({
   onClosed,
 }: CardCommentSheetProps) {
   return (
-    <Sheet
+    <DockPanel
       open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) onClosed?.();
+      onClose={() => {
+        onOpenChange(false);
+        onClosed?.();
       }}
+      width="md"
+      icon={<MessageSquare />}
+      eyebrow="Discussion"
+      title={cardTitle || 'Discussion'}
+      subtitle="Comments and @mentions on this item."
     >
-      <SheetContent side="right" className="w-[440px] overflow-y-auto sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle className="truncate">
-            {cardTitle || 'Discussion'}
-          </SheetTitle>
-          <SheetDescription>
-            Comments and @mentions on this item.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="mt-4 px-1">
-          {cardId && <CommentsTab cardId={cardId} />}
-        </div>
-      </SheetContent>
-    </Sheet>
+      {cardId && <CommentsTab cardId={cardId} />}
+    </DockPanel>
   );
 }

@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useCanvasPanelStore } from '@/features/canvas/stores/useCanvasPanelStore';
 import type { MetricCard } from '@/shared/types';
 
 // No Clerk client in the test → the load effect early-returns and no network runs.
@@ -43,6 +44,15 @@ const baseProps = {
 };
 
 describe('StrategyImpactSheet', () => {
+  // The panel portals into the dock host CanvasLayout registers; give the
+  // store a host element so DockPanel renders in this isolated tree.
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    useCanvasPanelStore.setState({ rightHostEl: host });
+  });
+
   it('shows the empty state and the contract fields when no target is set', () => {
     render(<StrategyImpactSheet {...baseProps} canEdit />);
     expect(screen.getByText('Add a target metric to measure impact.')).toBeInTheDocument();

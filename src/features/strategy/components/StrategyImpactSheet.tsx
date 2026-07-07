@@ -6,13 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, Target, TrendingUp, X } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/shared/components/ui/sheet';
+import { DockPanel } from '@/features/canvas/components/dock';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -346,24 +340,44 @@ export function StrategyImpactSheet({
   const kpiPathLabels = trace?.kpiPath.map((c) => c.title || 'Untitled') ?? [];
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-[460px] flex-col overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2 truncate">
-            <Target className="h-4 w-4 shrink-0" />
-            {cardTitle || 'Impact'}
-          </SheetTitle>
-          <SheetDescription>
-            What should this move, by how much, and where will you see it?
-          </SheetDescription>
-        </SheetHeader>
-
+    <DockPanel
+      open={open}
+      onClose={() => onOpenChange(false)}
+      width={460}
+      icon={<Target />}
+      eyebrow="Impact"
+      title={cardTitle || 'Impact'}
+      subtitle="What should this move, by how much, and where will you see it?"
+      footer={
+        canEdit ? (
+          <div className="flex items-center justify-between">
+            {contractId ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive"
+                onClick={handleRemove}
+                disabled={saving}
+              >
+                Remove
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Button onClick={() => handleSave()} disabled={saving}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save impact
+            </Button>
+          </div>
+        ) : undefined
+      }
+    >
         {loading ? (
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex h-40 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="mt-4 space-y-5 px-1 pb-6">
+          <div className="space-y-5">
             {/* Trace preview */}
             <div className="rounded-md border bg-muted/40 p-3">
               <div className="mb-1 flex items-center justify-between gap-1.5 text-xs font-medium text-muted-foreground">
@@ -567,25 +581,9 @@ export function StrategyImpactSheet({
               />
             )}
 
-            {canEdit && (
-              <div className="flex items-center justify-between pt-1">
-                {contractId ? (
-                  <Button variant="ghost" size="sm" className="text-destructive" onClick={handleRemove} disabled={saving}>
-                    Remove
-                  </Button>
-                ) : (
-                  <span />
-                )}
-                <Button onClick={() => handleSave()} disabled={saving}>
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Save impact
-                </Button>
-              </div>
-            )}
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+    </DockPanel>
   );
 }
 

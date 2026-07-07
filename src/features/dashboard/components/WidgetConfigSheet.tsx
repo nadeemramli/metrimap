@@ -9,13 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/shared/components/ui/sheet';
+import { DockPanel } from '@/features/canvas/components/dock';
 import type {
   DashboardWidget,
   WidgetConfig,
@@ -117,13 +111,25 @@ export function WidgetConfigSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-[400px] flex-col sm:max-w-[400px]">
-        <SheetHeader>
-          <SheetTitle>{widget ? 'Edit widget' : 'Add widget'}</SheetTitle>
-        </SheetHeader>
-
-        <div className="mt-4 flex-1 space-y-4 overflow-auto">
+    <DockPanel
+      open={open}
+      onClose={() => onOpenChange(false)}
+      width="md"
+      eyebrow="Dashboard"
+      title={widget ? 'Edit widget' : 'Add widget'}
+      subtitle="Chart a tracked metric or in-canvas cards."
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={!canSave}>
+            {widget ? 'Save' : 'Add widget'}
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Title</Label>
             <Input
@@ -213,17 +219,7 @@ export function WidgetConfigSheet({
               Show legend
             </label>
           )}
-        </div>
-
-        <SheetFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={save} disabled={!canSave}>
-            {widget ? 'Save' : 'Add widget'}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </DockPanel>
   );
 }

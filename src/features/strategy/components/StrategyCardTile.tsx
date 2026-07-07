@@ -30,7 +30,8 @@ export function StrategyCardTile({ card, onClick, impact, measured }: StrategyCa
         e.dataTransfer.effectAllowed = 'move';
       }}
       onClick={() => onClick?.(card.id)}
-      className="cursor-grab space-y-2 rounded-lg border bg-card p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
+      className="cursor-grab space-y-2 rounded-lg border bg-card p-3 shadow-sm transition-all duration-150 ease-out hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:translate-y-0 active:cursor-grabbing active:shadow-sm"
+      title="Click to open"
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium leading-snug">

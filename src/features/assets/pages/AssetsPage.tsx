@@ -5,6 +5,7 @@ import { AssetsEmptyState } from '@/features/assets/components/emptystate/Assets
 import CardSettingsSheet from '@/features/canvas/components/panels/metric-panel/CardSettingsSheet';
 import RelationshipSheet from '@/features/canvas/components/panels/relationship-panel/RelationshipSheet';
 import { useCanvasStore, useTagStore } from '@/lib/stores';
+import { usePagePanel } from '@/features/canvas/stores/useCanvasPanelStore';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
@@ -137,13 +138,17 @@ export default function AssetsPage() {
     confidenceFilter,
   });
 
-  // Sheet state
-  const [isCardSettingsOpen, setIsCardSettingsOpen] = useState(false);
-  const [selectedCardId, setSelectedCardId] = useState<string | undefined>();
-  const [isRelationshipSheetOpen, setIsRelationshipSheetOpen] = useState(false);
-  const [selectedRelationshipId, setSelectedRelationshipId] = useState<
-    string | undefined
-  >();
+  // Detail panels dock into the shared right slot (one open at a time,
+  // app-wide) — open state lives in the panel store, payload in the id.
+  const pagePanel = usePagePanel();
+  const selectedCardId = pagePanel.openId?.startsWith('metric:')
+    ? pagePanel.openId.slice('metric:'.length)
+    : undefined;
+  const isCardSettingsOpen = selectedCardId !== undefined;
+  const selectedRelationshipId = pagePanel.openId?.startsWith('rel:')
+    ? pagePanel.openId.slice('rel:'.length)
+    : undefined;
+  const isRelationshipSheetOpen = selectedRelationshipId !== undefined;
 
   // Tag dialog state
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
@@ -275,25 +280,12 @@ export default function AssetsPage() {
   // Tags are loaded by useAssetsData hook - no need for duplicate loading logic
 
   // Sheet handlers
-  const handleOpenCardSettings = (cardId: string) => {
-    setSelectedCardId(cardId);
-    setIsCardSettingsOpen(true);
-  };
-
-  const handleCloseCardSettings = () => {
-    setIsCardSettingsOpen(false);
-    setSelectedCardId(undefined);
-  };
-
-  const handleOpenRelationshipSheet = (relationshipId: string) => {
-    setSelectedRelationshipId(relationshipId);
-    setIsRelationshipSheetOpen(true);
-  };
-
-  const handleCloseRelationshipSheet = () => {
-    setIsRelationshipSheetOpen(false);
-    setSelectedRelationshipId(undefined);
-  };
+  const handleOpenCardSettings = (cardId: string) =>
+    pagePanel.open(`metric:${cardId}`);
+  const handleCloseCardSettings = () => pagePanel.close();
+  const handleOpenRelationshipSheet = (relationshipId: string) =>
+    pagePanel.open(`rel:${relationshipId}`);
+  const handleCloseRelationshipSheet = () => pagePanel.close();
 
   const handleDeleteMetric = async (metricId: string) => {
     const confirmed = await confirm({
@@ -1193,7 +1185,15 @@ export default function AssetsPage() {
                       filteredMetrics.map((metric: MetricCard) => (
                         <tr
                           key={metric.id}
-                          className="hover:bg-muted/30 transition-colors duration-150"
+                          className="cursor-pointer transition-colors duration-150 hover:bg-accent/50 active:bg-accent/70"
+                          onDoubleClick={(e) => {
+                            // Don't hijack double-clicks on inline controls.
+                            const t = e.target as HTMLElement;
+                            if (t.closest('button, a, input, [role="checkbox"], [role="menu"]'))
+                              return;
+                            handleOpenCardSettings(metric.id);
+                          }}
+                          title="Double-click to open"
                         >
                           <td className="px-6 py-4 w-12">
                             <Checkbox
@@ -1386,7 +1386,15 @@ export default function AssetsPage() {
                       return (
                         <tr
                           key={rel.id}
-                          className="hover:bg-muted/30 transition-colors duration-150"
+                          className="cursor-pointer transition-colors duration-150 hover:bg-accent/50 active:bg-accent/70"
+                          onDoubleClick={(e) => {
+                            // Don't hijack double-clicks on inline controls.
+                            const t = e.target as HTMLElement;
+                            if (t.closest('button, a, input, [role="checkbox"], [role="menu"]'))
+                              return;
+                            handleOpenRelationshipSheet(rel.id);
+                          }}
+                          title="Double-click to open"
                         >
                           <td className="px-6 py-4 w-12">
                             <Checkbox

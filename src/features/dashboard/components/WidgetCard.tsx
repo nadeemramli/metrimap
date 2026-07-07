@@ -54,7 +54,16 @@ export function WidgetCard({
   const isChart = (CHART_TYPES as string[]).includes(widget.widget_type);
 
   return (
-    <Card className="flex h-full flex-col overflow-hidden">
+    <Card
+      className="flex h-full flex-col overflow-hidden transition-all duration-150 ease-out hover:border-primary/30 hover:shadow-md"
+      onDoubleClick={(e) => {
+        // Double-click opens the widget's config — skip inline controls.
+        const t = e.target as HTMLElement;
+        if (t.closest('button, a, input')) return;
+        onConfigure(widget);
+      }}
+      title="Double-click to configure"
+    >
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 py-2">
         <CardTitle className="flex min-w-0 items-center gap-1.5 text-sm">
           {editMode && (

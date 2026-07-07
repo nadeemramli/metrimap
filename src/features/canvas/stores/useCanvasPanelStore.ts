@@ -12,7 +12,10 @@ export type RightPanel =
   | { kind: 'relationship'; relationshipId?: string }
   | { kind: 'sourceConfig'; nodeId: string }
   | { kind: 'chartSettings'; nodeId: string }
-  | { kind: 'groupEdit'; groupId: string };
+  | { kind: 'groupEdit'; groupId: string }
+  /** Generic slot for sub-page detail panels (dashboard/strategy/assets…).
+      `id` is page-scoped, e.g. 'widget:<uuid>' or 'impact:<cardId>'. */
+  | { kind: 'page'; id: string };
 
 export type LeftPanel = 'layers';
 
@@ -54,3 +57,23 @@ export const useCanvasPanelStore = create<CanvasPanelState>((set) => ({
     set(side === 'right' ? { rightWidth: width } : { leftWidth: width }),
   reset: () => set({ rightPanel: null, leftPanel: null }),
 }));
+
+/**
+ * Sub-page helper: claim the right dock for a page-scoped panel id.
+ * `open(id)` replaces whatever panel is open (structural exclusivity);
+ * `close()` only closes if this page's panel is still the open one.
+ */
+export function usePagePanel() {
+  const openId = useCanvasPanelStore((s) =>
+    s.rightPanel?.kind === 'page' ? s.rightPanel.id : null
+  );
+  return {
+    openId,
+    open: (id: string) =>
+      useCanvasPanelStore.getState().openRight({ kind: 'page', id }),
+    close: () => {
+      const s = useCanvasPanelStore.getState();
+      if (s.rightPanel?.kind === 'page') s.closeRight();
+    },
+  };
+}

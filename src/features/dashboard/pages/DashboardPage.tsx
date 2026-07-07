@@ -1,4 +1,5 @@
 import { useCanvasStore } from '@/lib/stores';
+import { usePagePanel } from '@/features/canvas/stores/useCanvasPanelStore';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { Skeleton } from '@/shared/components/ui/skeleton';
@@ -112,7 +113,13 @@ export default function DashboardPage() {
   };
 
   const [editMode, setEditMode] = useState(false);
-  const [configOpen, setConfigOpen] = useState(false);
+  // Widget config docks into the shared right slot (one open panel app-wide);
+  // the store owns the open flag, `editing` carries the payload.
+  const pagePanel = usePagePanel();
+  const configOpen = pagePanel.openId?.startsWith('widget:') ?? false;
+  const setConfigOpen = (open: boolean) => {
+    if (!open) pagePanel.close();
+  };
   const [editing, setEditing] = useState<DashboardWidget | null>(null);
   const [view, setView] = useState<string>(CUSTOM_VIEW);
   const [traceNodeId, setTraceNodeId] = useState<string | null>(null);
@@ -261,12 +268,12 @@ export default function DashboardPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setConfigOpen(true);
+    pagePanel.open('widget:new');
   };
 
   const openConfigure = (widget: DashboardWidget) => {
     setEditing(widget);
-    setConfigOpen(true);
+    pagePanel.open(`widget:${widget.id}`);
   };
 
   const handleSave = async (draft: {
