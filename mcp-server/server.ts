@@ -63,6 +63,25 @@ if (
 const RESOURCE_URL = `${MCP_PUBLIC_URL}/mcp`;
 // RFC 9728 Protected Resource Metadata path (also served with a `/mcp` suffix).
 const PRM_PATH = '/.well-known/oauth-protected-resource';
+// Older MCP clients skip PRM and probe RFC 8414 authorization-server metadata
+// directly on this host — redirect them to Clerk (the real AS). The Clerk
+// frontend-API domain is base64 inside the publishable key ("<domain>$").
+const AS_META_PATH = '/.well-known/oauth-authorization-server';
+const clerkFapiDomain = Buffer.from(
+  CLERK_PUBLISHABLE_KEY.split('_')[2] ?? '',
+  'base64'
+)
+  .toString()
+  .replace(/\$$/, '');
+// Browser-based MCP clients preflight POST /mcp; the Clerk corsHeaders only
+// cover the metadata GETs.
+const mcpCorsHeaders = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'POST, GET, OPTIONS',
+  'access-control-allow-headers':
+    'authorization, content-type, mcp-session-id, mcp-protocol-version',
+  'access-control-max-age': '86400',
+};
 
 // One anon client for key lookups; the resolver mints a per-user JWT + client.
 const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -199,6 +218,23 @@ const http = createServer(async (req: IncomingMessage, res: ServerResponse) => {
         res.end(JSON.stringify(meta));
         return;
       }
+    }
+
+    // RFC 8414 fallback for clients that don't speak RFC 9728 — Clerk is the AS.
+    if (req.url && req.url.startsWith(AS_META_PATH) && clerkFapiDomain) {
+      res.writeHead(req.method === 'OPTIONS' ? 204 : 307, {
+        ...corsHeaders,
+        location: `https://${clerkFapiDomain}${AS_META_PATH}`,
+      });
+      res.end();
+      return;
+    }
+
+    // CORS preflight for browser-based MCP clients hitting POST /mcp.
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, mcpCorsHeaders);
+      res.end();
+      return;
     }
 
     if (req.method !== 'POST') {
