@@ -17,13 +17,13 @@ const { fakeApi } = vi.hoisted(() => ({
       createHypothesis: vi.fn(async () => ({ id: 'h' })),
       createDriver: vi.fn(async () => ({ id: 'd' })),
       update: vi.fn(async () => ({ id: 'n' })),
-      delete: vi.fn(async () => undefined),
+      delete: vi.fn(async () => ({ deleted: 1 })),
       list: vi.fn(async () => []),
     },
     relationships: {
       create: vi.fn(async () => ({ id: 'r' })),
       update: vi.fn(async () => ({ id: 'r' })),
-      delete: vi.fn(async () => undefined),
+      delete: vi.fn(async () => ({ deleted: 1 })),
       list: vi.fn(async () => []),
     },
     evidence: {
@@ -52,6 +52,11 @@ const { fakeApi } = vi.hoisted(() => ({
     },
     groups: {
       list: vi.fn(async () => []),
+      create: vi.fn(async () => ({ id: 'g', node_ids: ['a', 'b'] })),
+      update: vi.fn(async () => ({ id: 'g', node_ids: ['a'] })),
+      addCards: vi.fn(async () => ({ id: 'g', node_ids: ['a', 'b', 'c'] })),
+      removeCards: vi.fn(async () => ({ id: 'g', node_ids: ['a'] })),
+      delete: vi.fn(async () => ({ deleted: 1 })),
     },
     tree: {
       get: vi.fn(async (pid: string) => ({ projectId: pid, cards: [], relationships: [] })),
@@ -219,6 +224,51 @@ describe('dispatchTool', () => {
     expect(fakeApi.dashboards.list).toHaveBeenCalledWith(PROJECT);
     await dispatchTool('list_groups', { projectId: PROJECT }, ctx());
     expect(fakeApi.groups.list).toHaveBeenCalledWith(PROJECT);
+  });
+  it('routes the group write tools (create/update/membership/delete)', async () => {
+    await dispatchTool(
+      'create_group',
+      { projectId: PROJECT, name: 'Funnel', nodeIds: [NODE_A, NODE_B] },
+      ctx()
+    );
+    expect(fakeApi.groups.create).toHaveBeenCalled();
+    await dispatchTool('update_group', { id: NODE_A, name: 'Funnel v2' }, ctx());
+    expect(fakeApi.groups.update).toHaveBeenCalledWith(NODE_A, {
+      name: 'Funnel v2',
+    });
+    await dispatchTool(
+      'add_cards_to_group',
+      { groupId: NODE_A, nodeIds: [NODE_B] },
+      ctx()
+    );
+    expect(fakeApi.groups.addCards).toHaveBeenCalled();
+    await dispatchTool(
+      'remove_cards_from_group',
+      { groupId: NODE_A, nodeIds: [NODE_B] },
+      ctx()
+    );
+    expect(fakeApi.groups.removeCards).toHaveBeenCalled();
+    await expect(
+      dispatchTool('delete_group', { id: NODE_A }, ctx())
+    ).resolves.toEqual({ ok: true, id: NODE_A });
+  });
+  it('delete_node returns an explicit result and not_found on zero rows', async () => {
+    await expect(
+      dispatchTool('delete_node', { id: NODE_A }, ctx())
+    ).resolves.toEqual({ ok: true, id: NODE_A });
+    fakeApi.nodes.delete.mockResolvedValueOnce({ deleted: 0 });
+    await expect(
+      dispatchTool('delete_node', { id: NODE_A }, ctx())
+    ).rejects.toMatchObject({ code: 'not_found' });
+  });
+  it('internal errors from thrown plain objects stay readable', async () => {
+    fakeApi.nodes.createMetric.mockRejectedValueOnce({
+      message: 'column x does not exist',
+      code: 'PGRST204',
+    });
+    await expect(
+      dispatchTool('create_metric', { projectId: PROJECT, title: 'T' }, ctx())
+    ).rejects.toMatchObject({ message: 'column x does not exist' });
   });
   it('rejects create_evidence with BOTH card and relationship targets', async () => {
     await expect(

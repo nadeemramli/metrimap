@@ -23,17 +23,20 @@ import {
   CreateCanvasInput,
   CreateCommentInput,
   CreateEvidenceInput,
+  CreateGroupInput,
   CreateNodeInput,
   CreateRelationshipInput,
   CreateTagInput,
   CreateTypedNodeInput,
   GetMetricValuesInput,
+  GroupMembershipInput,
   ListEvidenceInput,
   PromoteCardInput,
   PushValuesInput,
   TagCardInput,
   UpdateCanvasInput,
   UpdateEvidenceInput,
+  UpdateGroupInput,
   UpdateNodeInput,
   UpdateRelationshipInput,
   type CreateNodeInputT,
@@ -41,11 +44,14 @@ import {
 } from './schemas';
 
 import {
+  createGroup,
   createProject,
+  deleteGroup,
   deleteProject,
   getProjectById,
   getProjectGroups,
   getUserProjects,
+  updateGroup,
   updateProject,
 } from '@/shared/lib/supabase/services/projects';
 import {
@@ -97,6 +103,62 @@ type Client = SupabaseClient<Database>;
 
 const nowIso = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
+
+/**
+ * Group bounding box from its members' current positions — the same padding
+ * and nominal card size the canvas uses (canvasStore.groupSelectedNodes), so
+ * MCP-created groups render like hand-drawn ones. Explicit position/size win.
+ * Also validates membership: every nodeId must be a card on the project.
+ */
+async function resolveGroupBox(
+  client: Client,
+  projectId: string | null,
+  nodeIds: string[],
+  position?: { x: number; y: number },
+  size?: { width: number; height: number }
+): Promise<{
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+}> {
+  const { data, error } = await client
+    .from('metric_cards')
+    .select('id, position_x, position_y')
+    .in('id', nodeIds)
+    .eq('project_id', projectId ?? '');
+  if (error) throw new Error(error.message);
+  const found = new Set((data ?? []).map((r) => r.id));
+  const missing = nodeIds.filter((id) => !found.has(id));
+  if (missing.length) {
+    throw new Error(
+      `Not cards on this canvas: ${missing.join(', ')} — check nodeIds/projectId.`
+    );
+  }
+  if (position && size) return { position, size };
+
+  const xs = (data ?? []).map((r) => r.position_x ?? 0);
+  const ys = (data ?? []).map((r) => r.position_y ?? 0);
+  const [minX, maxX] = [Math.min(...xs), Math.max(...xs)];
+  const [minY, maxY] = [Math.min(...ys), Math.max(...ys)];
+  const padding = 50; // matches canvasStore.groupSelectedNodes
+  return {
+    position: position ?? { x: minX - padding, y: minY - padding },
+    size: size ?? {
+      width: maxX - minX + 200 + padding * 2,
+      height: maxY - minY + 150 + padding * 2,
+    },
+  };
+}
+
+async function getGroupOrThrow(client: Client, id: string) {
+  const { data, error } = await client
+    .from('groups')
+    .select('id, project_id, node_ids')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(`No group with id ${id}`);
+  return data;
+}
 
 /**
  * Build the RLS-scoped programmatic API bound to one authenticated user.
@@ -353,6 +415,79 @@ export function createMetrimapApi(client: Client, userId: string) {
 
     groups: {
       list: (projectId: string) => getProjectGroups(projectId, client),
+      create: async (input: unknown) => {
+        const v = CreateGroupInput.parse(input);
+        const box = await resolveGroupBox(
+          client,
+          v.projectId,
+          v.nodeIds,
+          v.position,
+          v.size
+        );
+        return createGroup(
+          {
+            id: newId(),
+            name: v.name,
+            nodeIds: v.nodeIds,
+            position: box.position,
+            size: box.size,
+            projectId: v.projectId,
+            createdBy: userId,
+            color: v.color ?? null,
+            description: v.description ?? null,
+          },
+          client
+        );
+      },
+      update: async (id: string, patch: unknown) => {
+        const v = UpdateGroupInput.parse(patch);
+        const current = await getGroupOrThrow(client, id);
+        const nodeIds = v.nodeIds ?? (current.node_ids as string[]);
+        // Membership changed or refit requested → re-derive the box from the
+        // members' current positions unless an explicit box was supplied.
+        const needsBox = v.refit || (v.nodeIds && !v.position && !v.size);
+        const box = needsBox
+          ? await resolveGroupBox(client, current.project_id, nodeIds)
+          : { position: v.position, size: v.size };
+        return updateGroup(
+          id,
+          {
+            ...(v.name !== undefined ? { name: v.name } : {}),
+            ...(v.color !== undefined ? { color: v.color } : {}),
+            ...(v.description !== undefined
+              ? { description: v.description }
+              : {}),
+            ...(v.nodeIds !== undefined ? { nodeIds: v.nodeIds } : {}),
+            ...(box.position ? { position: box.position } : {}),
+            ...(box.size ? { size: box.size } : {}),
+          },
+          client
+        );
+      },
+      addCards: async (input: unknown) => {
+        const v = GroupMembershipInput.parse(input);
+        const current = await getGroupOrThrow(client, v.groupId);
+        const merged = Array.from(
+          new Set([...(current.node_ids as string[]), ...v.nodeIds])
+        );
+        const box = await resolveGroupBox(client, current.project_id, merged);
+        return updateGroup(v.groupId, { nodeIds: merged, ...box }, client);
+      },
+      removeCards: async (input: unknown) => {
+        const v = GroupMembershipInput.parse(input);
+        const current = await getGroupOrThrow(client, v.groupId);
+        const remaining = (current.node_ids as string[]).filter(
+          (id) => !v.nodeIds.includes(id)
+        );
+        if (remaining.length === 0) {
+          throw new Error(
+            'Removing these cards would empty the group — delete_group instead.'
+          );
+        }
+        const box = await resolveGroupBox(client, current.project_id, remaining);
+        return updateGroup(v.groupId, { nodeIds: remaining, ...box }, client);
+      },
+      delete: (id: string) => deleteGroup(id, client),
     },
 
     // get_tree: full structure so agents extend rather than duplicate.

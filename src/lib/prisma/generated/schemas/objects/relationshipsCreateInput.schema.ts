@@ -19,6 +19,7 @@ export const relationshipsCreateInputObjectSchema: z.ZodType<Prisma.relationship
   confidence: z.string().optional(),
   weight: z.number().optional().nullable(),
   causal_metadata: jsonSchema.optional().nullable(),
+  description: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   created_by: z.string()
@@ -32,6 +33,7 @@ export const relationshipsCreateInputObjectZodSchema = z.object({
   confidence: z.string().optional(),
   weight: z.number().optional().nullable(),
   causal_metadata: jsonSchema.optional().nullable(),
+  description: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   created_by: z.string()

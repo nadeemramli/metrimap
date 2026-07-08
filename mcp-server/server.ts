@@ -130,7 +130,14 @@ function buildMcpServer(authed: McpAuthContext): McpServer {
     // published empty `{properties:{}}` to connectors, so create_*/get_* got no
     // fields to send → invalid_input on every call. The SDK's shape handling is
     // v3/v4-compat (objectFromShape rebuilds the fields), so the raw shape is enough.
-    const shape = (t.inputSchema as { shape?: ZodRawShape }).shape;
+    // .shape is undefined on ZodEffects (.refine()'d schemas, e.g.
+    // CreateEvidenceInput) — unwrap to the inner object or the tool would
+    // advertise NO input fields and every connector call would fail.
+    const schemaLike = t.inputSchema as {
+      shape?: ZodRawShape;
+      _def?: { schema?: { shape?: ZodRawShape } };
+    };
+    const shape = schemaLike.shape ?? schemaLike._def?.schema?.shape;
     server.registerTool(
       t.name,
       {

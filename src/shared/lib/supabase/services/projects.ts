@@ -654,6 +654,8 @@ export async function createGroup(
     size: { width: number; height: number };
     projectId: string;
     createdBy: string;
+    color?: string | null;
+    description?: string | null;
   },
   authenticatedClient?: SupabaseClient<Database>
 ) {
@@ -668,6 +670,8 @@ export async function createGroup(
     height: group.size.height,
     project_id: group.projectId,
     created_by: group.createdBy,
+    ...(group.color ? { color: group.color } : {}),
+    ...(group.description ? { description: group.description } : {}),
   } as const;
   // Validate against Prisma create input (which excludes id)
   const prismaCreatePayload = {
@@ -679,6 +683,8 @@ export async function createGroup(
     height: insertData.height,
     project_id: insertData.project_id,
     created_by: insertData.created_by,
+    ...(group.color ? { color: group.color } : {}),
+    ...(group.description ? { description: group.description } : {}),
   } as const;
   try {
     CreateGroupSchema.parse(prismaCreatePayload as unknown);
@@ -708,6 +714,7 @@ export async function updateGroup(
     position?: { x: number; y: number };
     size?: { width: number; height: number };
     color?: string;
+    description?: string;
   },
   authenticatedClient?: SupabaseClient<Database>
 ) {
@@ -715,6 +722,8 @@ export async function updateGroup(
 
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.color !== undefined) updateData.color = updates.color;
+  if (updates.description !== undefined)
+    updateData.description = updates.description;
   if (updates.nodeIds !== undefined) updateData.node_ids = updates.nodeIds;
   if (updates.position !== undefined) {
     updateData.position_x = updates.position.x;
@@ -752,10 +761,15 @@ export async function deleteGroup(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = resolveClient(authenticatedClient);
-  const { error } = await client.from('groups').delete().eq('id', groupId);
+  const { data, error } = await client
+    .from('groups')
+    .delete()
+    .eq('id', groupId)
+    .select('id');
 
   if (error) {
     console.error('Error deleting group:', error);
     throw error;
   }
+  return { deleted: data?.length ?? 0 };
 }

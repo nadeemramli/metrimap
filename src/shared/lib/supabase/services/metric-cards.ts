@@ -200,12 +200,17 @@ export async function deleteMetricCard(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = resolveClient(authenticatedClient);
-  const { error } = await client.from('metric_cards').delete().eq('id', id);
+  const { data, error } = await client
+    .from('metric_cards')
+    .delete()
+    .eq('id', id)
+    .select('id');
 
   if (error) {
     console.error('Error deleting metric card:', error);
     throw error;
   }
+  return { deleted: data?.length ?? 0 };
 }
 
 // Get metric cards for a project

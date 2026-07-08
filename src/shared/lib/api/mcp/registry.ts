@@ -13,7 +13,9 @@ import {
   CreateRelationshipInput,
   CreateTagInput,
   CreateTypedNodeInput,
+  CreateGroupInput,
   GetMetricValuesInput,
+  GroupMembershipInput,
   LayoutTreeInput,
   ListEvidenceInput,
   MaterializeInput,
@@ -21,6 +23,7 @@ import {
   PushValuesInput,
   StageSeriesInput,
   TagCardInput,
+  UpdateGroupFields,
   UploadCsvInput,
 } from '../schemas';
 import type { McpAuthContext, McpScope } from './authContext';
@@ -227,7 +230,12 @@ export const TOOLS: McpTool[] = [
     scope: 'write',
     annotations: DESTRUCTIVE,
     inputSchema: idInput,
-    handler: (a, ctx) => api(ctx).nodes.delete(a.id),
+    handler: async (a, ctx) => {
+      const res = await api(ctx).nodes.delete(a.id);
+      if (res && res.deleted === 0)
+        throw new McpToolError('not_found', `No metric card with id ${a.id}`);
+      return { ok: true, id: a.id };
+    },
   }),
   // --- Write: relationships ---
   defineTool({
@@ -257,7 +265,12 @@ export const TOOLS: McpTool[] = [
     scope: 'write',
     annotations: DESTRUCTIVE,
     inputSchema: idInput,
-    handler: (a, ctx) => api(ctx).relationships.delete(a.id),
+    handler: async (a, ctx) => {
+      const res = await api(ctx).relationships.delete(a.id);
+      if (res && res.deleted === 0)
+        throw new McpToolError('not_found', `No relationship with id ${a.id}`);
+      return { ok: true, id: a.id };
+    },
   }),
   // --- Evidence ---
   defineTool({
@@ -412,6 +425,63 @@ export const TOOLS: McpTool[] = [
     inputSchema: projectIdInput,
     handler: (a, ctx) => api(ctx).groups.list(a.projectId),
   }),
+  // --- Write: groups (each group also backs a group dashboard — the
+  // Dashboard page derives one per group at render time, so creating a group
+  // needs no separate dashboard-provisioning step) ---
+  defineTool({
+    name: 'create_group',
+    title: 'Create group',
+    description:
+      'Group cards on a canvas (name + nodeIds). Position/size are computed from the members (same padding the canvas uses) when omitted, so call it any time after layout_tree. The group automatically drives a group dashboard.',
+    scope: 'write',
+    annotations: ADDITIVE,
+    inputSchema: CreateGroupInput,
+    handler: (a, ctx) => api(ctx).groups.create(a),
+  }),
+  defineTool({
+    name: 'update_group',
+    title: 'Update group',
+    description:
+      'Rename/recolor a group, replace its membership, or refit:true to re-derive its box from member positions after a re-layout.',
+    scope: 'write',
+    annotations: DESTRUCTIVE,
+    inputSchema: z.object({ id: z.string().uuid() }).merge(UpdateGroupFields),
+    handler: ({ id, ...patch }, ctx) => api(ctx).groups.update(id, patch),
+  }),
+  defineTool({
+    name: 'add_cards_to_group',
+    title: 'Add cards to group',
+    description:
+      "Add cards to an existing group (incremental membership); the group's box refits to the new members.",
+    scope: 'write',
+    annotations: ADDITIVE,
+    inputSchema: GroupMembershipInput,
+    handler: (a, ctx) => api(ctx).groups.addCards(a),
+  }),
+  defineTool({
+    name: 'remove_cards_from_group',
+    title: 'Remove cards from group',
+    description:
+      'Remove cards from a group (cards are kept). Refuses to empty the group — use delete_group for that.',
+    scope: 'write',
+    annotations: DESTRUCTIVE,
+    inputSchema: GroupMembershipInput,
+    handler: (a, ctx) => api(ctx).groups.removeCards(a),
+  }),
+  defineTool({
+    name: 'delete_group',
+    title: 'Delete group',
+    description: 'Delete a group (its cards are kept on the canvas).',
+    scope: 'write',
+    annotations: DESTRUCTIVE,
+    inputSchema: idInput,
+    handler: async (a, ctx) => {
+      const res = await api(ctx).groups.delete(a.id);
+      if (res && res.deleted === 0)
+        throw new McpToolError('not_found', `No group with id ${a.id}`);
+      return { ok: true, id: a.id };
+    },
+  }),
   // --- Write: values ---
   defineTool({
     name: 'push_values',
@@ -553,6 +623,22 @@ export async function dispatchTool(
       throw e;
     }
     audit('error', 'internal');
-    throw new McpToolError('internal', e instanceof Error ? e.message : String(e));
+    throw new McpToolError('internal', describeError(e));
   }
+}
+
+/** Human-readable message for any thrown value — plain objects (e.g. Supabase
+ *  PostgrestError) otherwise stringify to the undebuggable "[object Object]". */
+function describeError(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'object' && e !== null) {
+    const msg = (e as { message?: unknown }).message;
+    if (typeof msg === 'string' && msg) return msg;
+    try {
+      return JSON.stringify(e);
+    } catch {
+      /* circular — fall through */
+    }
+  }
+  return String(e);
 }

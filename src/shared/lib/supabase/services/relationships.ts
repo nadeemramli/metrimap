@@ -79,6 +79,8 @@ function transformToInsert(
     confidence: rel.confidence,
     weight: rel.weight,
     causal_metadata: (rel.causalMetadata ?? null) as Json,
+    // Notes live in the `description` column (domain calls it `notes`).
+    description: rel.notes ?? null,
     created_by: userId,
   };
 }
@@ -96,10 +98,6 @@ export async function createRelationship(
   } catch (error) {
     console.error('Validation error creating relationship:', error);
     throw error;
-  }
-  // Notes → `description` column, set after validation (see updateRelationship).
-  if (relationship.notes !== undefined) {
-    insertData.description = relationship.notes ?? null;
   }
   const client = resolveClient(authenticatedClient);
 
@@ -131,6 +129,8 @@ export async function updateRelationship(
   if (updates.weight !== undefined) updateData.weight = updates.weight;
   if (updates.causalMetadata !== undefined)
     updateData.causal_metadata = (updates.causalMetadata ?? null) as Json;
+  // Notes live in the `description` column (domain calls it `notes`).
+  if (updates.notes !== undefined) updateData.description = updates.notes ?? null;
 
   const client = resolveClient(authenticatedClient);
   try {
@@ -139,10 +139,6 @@ export async function updateRelationship(
     console.error('Validation error updating relationship:', error);
     throw error;
   }
-  // Relationship notes live in the `description` column (the domain model calls
-  // it `notes`). Set it AFTER validation — the generated strict schema doesn't
-  // know this column (stale Prisma mirror) but Postgres accepts it (cf. CVS-34).
-  if (updates.notes !== undefined) updateData.description = updates.notes ?? null;
   const { data, error } = await client
     .from('relationships')
     .update(updateData)
@@ -181,12 +177,17 @@ export async function deleteRelationship(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = resolveClient(authenticatedClient);
-  const { error } = await client.from('relationships').delete().eq('id', id);
+  const { data, error } = await client
+    .from('relationships')
+    .delete()
+    .eq('id', id)
+    .select('id');
 
   if (error) {
     console.error('Error deleting relationship:', error);
     throw error;
   }
+  return { deleted: data?.length ?? 0 };
 }
 
 // Get relationships for a project

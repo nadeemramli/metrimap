@@ -102,6 +102,47 @@ export const UpdateRelationshipInput = z
     message: 'Provide at least one field to update',
   });
 
+// --- Groups (canvas grouping — each group also drives a group dashboard) ---
+const zSize = z.object({
+  width: z.number().positive(),
+  height: z.number().positive(),
+});
+
+export const CreateGroupInput = z.object({
+  projectId: z.string().uuid(),
+  name: z.string().min(1).max(200),
+  nodeIds: z.array(z.string().uuid()).min(1).max(500),
+  color: z.string().max(32).optional(),
+  description: z.string().max(2000).optional(),
+  // Omitted → computed from the members' current positions (same padding the
+  // canvas uses), so create_group can run after layout_tree at any time.
+  position: zPosition.optional(),
+  size: zSize.optional(),
+});
+
+// Exported un-refined so the MCP tool schema can publish a flat shape
+// (ZodEffects have no .shape).
+export const UpdateGroupFields = z.object({
+  name: z.string().min(1).max(200).optional(),
+  nodeIds: z.array(z.string().uuid()).min(1).max(500).optional(),
+  color: z.string().max(32).optional(),
+  description: z.string().max(2000).optional(),
+  position: zPosition.optional(),
+  size: zSize.optional(),
+  /** Re-fit position/size to the current member positions (post-layout). */
+  refit: z.boolean().optional(),
+});
+
+export const UpdateGroupInput = UpdateGroupFields.refine(
+  (o) => Object.keys(o).length > 0,
+  { message: 'Provide at least one field to update' }
+);
+
+export const GroupMembershipInput = z.object({
+  groupId: z.string().uuid(),
+  nodeIds: z.array(z.string().uuid()).min(1).max(500),
+});
+
 // --- Evidence (attach to a card XOR a relationship) ---
 export const CreateEvidenceInput = z
   .object({

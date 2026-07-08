@@ -70,6 +70,9 @@ duplicating nodes.
 | `get_metric_values` | read | A tracked metric's shared value series (chart the data) |
 | `list_comments` / `create_comment` | read / write | Comment threads (canvas or card-pinned) + replies |
 | `list_dashboards` / `list_groups` | read | Dashboard widgets + canvas groups (re-render charts client-side) |
+| `create_group` / `update_group` | write | Group cards (box auto-fits members; each group drives a group dashboard) |
+| `add_cards_to_group` / `remove_cards_from_group` | write | Incremental group membership |
+| `delete_group` | write | Delete a group (cards are kept) |
 | `layout_tree` | write | Auto-layout (Dagre) so a built tree renders well |
 | `push_values` | write | Upsert a tracked-metric value series |
 | `stage_series` / `upload_csv` | write | Stage data (TTL) for mapping |
