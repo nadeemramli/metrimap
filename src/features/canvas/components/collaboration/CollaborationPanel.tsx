@@ -34,6 +34,7 @@ import {
   TabsTrigger,
 } from '@/shared/components/ui/tabs';
 import { getProjectChangelog } from '@/shared/lib/supabase/services/changelog';
+import { track } from '@/shared/lib/analytics';
 import {
   addCollaborator,
   permissionsForRole,
@@ -229,6 +230,9 @@ function PeopleTab({
         undefined, // permissions derived from role
         getClientForEnvironment()
       );
+      // Collaboration/retention signal: multiplayer accounts retain far better.
+      // Role only — no raw email (PII).
+      track('collaborator_invited', { project_id: projectId, role: inviteRole });
       toast.success(`Invited ${inviteEmail.trim()}`);
       setInviteEmail('');
       reloadMembers();

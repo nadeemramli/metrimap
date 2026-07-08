@@ -33,6 +33,7 @@ import {
 } from '../../../shared/utils/authenticatedClient';
 import { generateUUID } from '../../../shared/utils/validation';
 import { createLogger } from '@/shared/utils/logger';
+import { track } from '@/shared/lib/analytics';
 import { broadcastCanvasChange } from '@/features/canvas/realtime/canvasSyncChannel';
 import { syncCardValuesToCatalog } from '@/shared/lib/supabase/services/trackedMetrics';
 import { evaluateAlertRules } from '@/features/canvas/utils/evaluateAlerts';
@@ -540,6 +541,14 @@ export const useCanvasStore = create<CanvasStoreState>()(
         }));
 
         log.debug('✅ New relationship created and saved:', newEdge.type);
+        // Retention signal: typed relationships are a core differentiator — a
+        // connected tree, not lone cards. (PostHog; harmless dataLayer no-op.)
+        track('relationship_created', {
+          relationship_id: newEdge.id,
+          canvas_id: state.canvas.id,
+          relationship_type: newEdge.type,
+          confidence: newEdge.confidence,
+        });
         broadcastCanvasChange({ t: 'edge:create', edge: newEdge });
       } catch (error) {
         console.error('Error creating edge:', error);

@@ -3,6 +3,7 @@
 // was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
 // this directive — do not add new code here assuming it is type-checked.
 import { toast } from 'sonner';
+import { track } from '@/shared/lib/analytics';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -343,6 +344,17 @@ export default function RelationshipSheet({
         sampleSize: results.sampleSize,
         isSignificant: results.isSignificant,
         effectSize: results.effectSize,
+      });
+
+      // Value signal: the analytical payoff of a live tree — running a real
+      // correlation between two metrics.
+      track('correlation_analyzed', {
+        relationship_id: relationship?.id,
+        project_id: currentProject?.id,
+        correlation: results.correlation,
+        p_value: results.pValue,
+        sample_size: results.sampleSize,
+        is_significant: results.isSignificant,
       });
     } catch (error) {
       console.error('Analysis failed:', error);

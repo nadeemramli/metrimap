@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveClient } from '@/shared/utils/authenticatedClient';
+import { track } from '@/shared/lib/analytics';
 import type { Database, Json, Tables } from '../types';
 import type { EvidenceItem } from '@/shared/types';
 
@@ -125,6 +126,8 @@ export async function createCardEvidence(
     .select('*')
     .single();
   if (error) throw new Error(error.message);
+  // Value/governance signal: evidence backs decisions in the tree.
+  track('evidence_created', { scope: 'card', evidence_type: evidence.type });
   return rowToEvidence(data);
 }
 
@@ -155,5 +158,6 @@ export async function createProjectEvidence(
     .select('*')
     .single();
   if (error) throw new Error(error.message);
+  track('evidence_created', { scope: 'project', evidence_type: evidence.type });
   return rowToEvidence(data);
 }

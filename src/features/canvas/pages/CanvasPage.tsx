@@ -40,6 +40,7 @@ import {
 } from '@/shared/lib/supabase/services/trackedMetrics';
 import type { MetricCard } from '@/shared/types';
 import { listConnections } from '@/shared/lib/supabase/services/sourceConnections';
+import { track } from '@/shared/lib/analytics';
 import { findOrphanedSourceBindings } from '@/features/canvas/utils/sourceResolver';
 import {
   broadcastCanvasChange,
@@ -398,6 +399,14 @@ function CanvasPageInner() {
             groups: projectData.groups?.length || 0,
           });
           loadCanvas(projectData);
+
+          // Retention signal: returning to an EXISTING canvas (UUID branch only;
+          // the "new" bootstrap above returns early, so this never counts creation).
+          track('canvas_opened', {
+            canvas_id: canvasId,
+            node_count: projectData.nodes?.length ?? 0,
+            edge_count: projectData.edges?.length ?? 0,
+          });
 
           // Phase B: hydrate persisted data-flow / reference edges (operator
           // pipeline) from projects.settings.dataFlowEdges into the in-memory

@@ -27,6 +27,7 @@ import {
 } from '@/shared/components/ui/select';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { listTrackedMetrics } from '@/shared/lib/supabase/services/trackedMetrics';
+import { track } from '@/shared/lib/analytics';
 import {
   deleteContract,
   getContractForNode,
@@ -309,6 +310,16 @@ export function StrategyImpactSheet({
       ];
       await setMetricLinks(contract.id, links, client);
       setContractId(contract.id);
+      // Governance signal: a fresh contract save (not a review — markResult
+      // passes statusOverride and fires impact_review_submitted instead).
+      if (statusOverride === undefined) {
+        track('impact_contract_saved', {
+          card_id: cardId,
+          project_id: projectId,
+          direction: direction || null,
+          confidence: confidence || null,
+        });
+      }
       toast.success('Impact contract saved');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save impact contract');
@@ -321,6 +332,13 @@ export function StrategyImpactSheet({
   const markResult = async (next: ImpactStatus) => {
     setStatus(next);
     await handleSave(next);
+    // Governance/retention signal: the recurring review beat — a reason to
+    // come back. Outcome = the status the reviewer chose.
+    track('impact_review_submitted', {
+      card_id: cardId,
+      project_id: projectId,
+      outcome: next,
+    });
   };
 
   const handleRemove = async () => {

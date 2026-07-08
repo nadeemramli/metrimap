@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { track } from '@/shared/lib/analytics';
 import { toast } from 'sonner';
 import { Bell, Loader2, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -97,6 +98,12 @@ export default function AlertsTab({ cardId }: AlertsTabProps) {
       setRules((prev) => [...prev, rule]);
       useAlertRulesStore.getState().upsertLocal(rule);
       setDraft({ ...emptyDraft });
+      // Governance/retention signal: a monitoring rule is a reason to return.
+      track('alert_rule_created', {
+        project_id: projectId,
+        card_id: cardId,
+        rule_type: draft.ruleType,
+      });
       toast.success('Alert rule added');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to add rule');

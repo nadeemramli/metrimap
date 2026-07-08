@@ -6,6 +6,7 @@
 // feeds the series into every metric card the node is wired to.
 
 import { Button } from '@/shared/components/ui/button';
+import { track } from '@/shared/lib/analytics';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import {
@@ -175,6 +176,13 @@ export function SourceConfigSheet({
         .filter((e) => e.source === nodeId)
         .map((e) => ({ id: e.id, source: e.source, target: e.target, type: e.type }));
       const result = await feedDownstream(nodeId, series, edges);
+      // Aha/retention signal: a source was bound and fed live data into the
+      // tree (this is the "connected data, not a static tree" moment).
+      track('source_binding_saved', {
+        card_id: nodeId,
+        series_length: series.length,
+        downstream_targets: edges.length,
+      });
       if (result.warnings.length) {
         setError(result.warnings.join('; '));
       } else {

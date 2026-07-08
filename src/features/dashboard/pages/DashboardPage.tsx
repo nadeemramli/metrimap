@@ -1,4 +1,5 @@
 import { useCanvasStore } from '@/lib/stores';
+import { track } from '@/shared/lib/analytics';
 import { usePagePanel } from '@/features/canvas/stores/useCanvasPanelStore';
 import { fireTipToast, useOnboardingStore } from '@/features/onboarding';
 import { Button } from '@/shared/components/ui/button';
@@ -127,6 +128,16 @@ export default function DashboardPage() {
   useEffect(() => {
     useOnboardingStore.getState().markVisitedDashboard();
   }, []);
+
+  // Retention signal: a genuine dashboard view (once per canvas, only after the
+  // data resolves — not on the loading spinner or on every re-render).
+  const trackedDashboardView = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isLoading && canvasId && trackedDashboardView.current !== canvasId) {
+      trackedDashboardView.current = canvasId;
+      track('dashboard_viewed', { dashboard_id: canvasId });
+    }
+  }, [isLoading, canvasId]);
 
   const [editMode, setEditMode] = useState(false);
   // One-shot dashboard-editing tip on first Edit (CVS-114 slice 4).

@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { track } from '@/shared/lib/analytics';
 import { useCanvasStore } from '@/lib/stores';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -195,7 +196,14 @@ export function DataEventsTab({
 
   const handleImport = () => {
     try {
-      updateCard({ data: parseSeries(importText) });
+      const series = parseSeries(importText);
+      updateCard({ data: series });
+      // Retention/value signal: user populated a metric with real data (bulk).
+      track('metric_values_pushed', {
+        card_id: cardId,
+        method: 'import',
+        point_count: series.length,
+      });
       setImportText('');
       setImportError(null);
       setShowImportDialog(false);
@@ -301,6 +309,13 @@ export function DataEventsTab({
         }
         // Re-derive change_percent/trend across the whole series after the edit.
         await updateCard({ data: deriveSeries(points) });
+        // Value signal: manual single-value push (method-tagged so import vs
+        // hand-entry can be told apart in PostHog).
+        track('metric_values_pushed', {
+          card_id: cardId,
+          method: 'manual_edit',
+          point_count: points.length,
+        });
 
         setEditingRow(null);
         setEditValue('');

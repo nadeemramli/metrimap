@@ -13,6 +13,7 @@ import {
 } from '@/shared/lib/validation/zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveClient } from '@/shared/utils/authenticatedClient';
+import { track } from '@/shared/lib/analytics';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 
 export type CommentThreadRow = Tables<'comment_threads'>;
@@ -165,6 +166,11 @@ export async function createComment(
     console.error('Error creating comment:', error);
     throw error;
   }
+  // Collaboration/retention signal: a comment was written (reply vs top-level).
+  track('comment_added', {
+    thread_id: params.threadId,
+    is_reply: !!params.parentId,
+  });
   return data as CommentRow;
 }
 
