@@ -1044,6 +1044,104 @@ export type Database = {
           },
         ]
       }
+      connector_cursors: {
+        Row: {
+          connected_account_id: string
+          connector_id: string
+          stream: string
+          cursor: string
+          workspace_id: string | null
+          created_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          connected_account_id: string
+          connector_id: string
+          stream: string
+          cursor: string
+          workspace_id?: string | null
+          created_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          connected_account_id?: string
+          connector_id?: string
+          stream?: string
+          cursor?: string
+          workspace_id?: string | null
+          created_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connector_cursors_connected_account_id_fkey"
+            columns: ["connected_account_id"]
+            isOneToOne: false
+            referencedRelation: "connected_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      metric_bindings: {
+        Row: {
+          id: string
+          created_by: string
+          workspace_id: string | null
+          connected_account_id: string
+          connector_id: string
+          stream: string
+          canonical_schema: string
+          recipe: Json
+          tracked_metric_id: string
+          enabled: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connected_account_id: string
+          connector_id: string
+          stream: string
+          canonical_schema: string
+          recipe: Json
+          tracked_metric_id: string
+          enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          created_by?: string
+          workspace_id?: string | null
+          connected_account_id?: string
+          connector_id?: string
+          stream?: string
+          canonical_schema?: string
+          recipe?: Json
+          tracked_metric_id?: string
+          enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metric_bindings_connected_account_id_fkey"
+            columns: ["connected_account_id"]
+            isOneToOne: false
+            referencedRelation: "connected_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "metric_bindings_tracked_metric_id_fkey"
+            columns: ["tracked_metric_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_metrics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       source_connection_secrets: {
         Row: {
           connection_id: string
