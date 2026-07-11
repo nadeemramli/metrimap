@@ -41,7 +41,7 @@ import EvidenceDialog from '@/features/evidence/components/EvidenceDialog';
 import { useProjectsStore } from '@/features/projects/stores/useProjectsStore';
 import { useCanvasStore } from '@/lib/stores';
 import { EnhancedTagInput } from '@/shared/components/ui/enhanced-tag-input';
-import { useWorker } from '@/shared/hooks/useWorker';
+import { analyzeCorrelation } from '@/lib/workers';
 import {
   logAnalysisRun,
   logRelationshipUpdated,
@@ -197,9 +197,6 @@ export default function RelationshipSheet({
   const [causalStatus, setCausalStatus] = useState<CausalStatus>(
     relationship?.causalMetadata?.status ?? 'unvalidated'
   );
-
-  // Worker hook for statistical analysis
-  const { analyzeCorrelation, isLoading: isWorkerLoading } = useWorker();
 
   // Get available tabs based on relationship type
   const getAvailableTabs = (type: RelationshipType) => {
@@ -1186,7 +1183,7 @@ export default function RelationshipSheet({
                   <Button
                     variant="outline"
                     onClick={handleRunAnalysis}
-                    disabled={isRunningAnalysis || isWorkerLoading}
+                    disabled={isRunningAnalysis}
                     className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted/60 transition-colors disabled:opacity-50"
                   >
                     {isRunningAnalysis ? (

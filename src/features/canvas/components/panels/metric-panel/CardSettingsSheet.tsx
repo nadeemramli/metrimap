@@ -149,7 +149,7 @@ function CardSettingsSheetComponent({
     causalFactors: card?.causalFactors || [],
     sourceType: card?.sourceType || 'Manual',
     formula: card?.formula || '',
-    owner: card?.assignees?.[0] || '',
+    owner: card?.owner || '',
   }));
 
   // Update form data when card changes
@@ -165,7 +165,7 @@ function CardSettingsSheetComponent({
         causalFactors: card.causalFactors || [],
         sourceType: card.sourceType || 'Manual',
         formula: card.formula || '',
-        owner: card.assignees?.[0] || '',
+        owner: card.owner || '',
       });
     }
   }, [card]);

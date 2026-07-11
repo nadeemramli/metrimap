@@ -48,7 +48,18 @@ export async function runPipeline(
     const card = cardById.get(cardId);
     if (!card) continue;
     const series: MetricValue[] = Array.isArray(card.data) ? [...card.data] : [];
-    const before = series.length ? series[series.length - 1].value : null;
+    // Re-running in the same period replaces the last point, so the baseline for
+    // change_percent/trend must be the prior period, not the point being replaced.
+    const replacingLast =
+      series.length > 0 && series[series.length - 1].period === period;
+    const baseline = replacingLast
+      ? series.length > 1
+        ? series[series.length - 2]
+        : null
+      : series.length
+        ? series[series.length - 1]
+        : null;
+    const before = baseline?.value ?? null;
     const change_percent =
       before != null && before !== 0
         ? Number((((value - before) / before) * 100).toFixed(1))
@@ -58,7 +69,7 @@ export async function runPipeline(
     const rounded = Number(value.toFixed(Math.abs(value) < 100 ? 2 : 0));
     const point: MetricValue = { period, value: rounded, change_percent, trend };
 
-    if (series.length && series[series.length - 1].period === period) {
+    if (replacingLast) {
       series[series.length - 1] = point;
     } else {
       series.push(point);

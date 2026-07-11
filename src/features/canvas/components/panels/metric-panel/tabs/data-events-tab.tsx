@@ -262,6 +262,14 @@ export function DataEventsTab({
     showCumulative ? 'Cumulative' : chartOptions.chartType
   );
 
+  // The Data Points table must always show (and edit) raw stored values —
+  // never the cumulative-transformed series used by the chart.
+  const tableData = generateChartData(
+    card,
+    chartOptions.dateGranularity,
+    'Incremental'
+  );
+
   const chartConfig = {
     value: { label: 'Value', color: 'hsl(var(--chart-1))' },
     events: { label: 'Events', color: 'hsl(var(--chart-2))' },
@@ -281,7 +289,12 @@ export function DataEventsTab({
 
   const handleEditValue = (date: string, currentValue: number) => {
     setEditingRow(date);
-    setEditValue(currentValue.toString());
+    // Prefill from the stored raw series so a transformed display value
+    // (e.g. a cumulative total) can never be written back as the raw point.
+    const raw = (card?.data || []).find(
+      (p: any) => p.period === date
+    )?.value;
+    setEditValue(String(typeof raw === 'number' ? raw : currentValue));
   };
 
   const handleSaveEdit = async () => {
@@ -695,7 +708,7 @@ export function DataEventsTab({
             </div>
 
             {/* Table Rows */}
-            {chartData.map((item: any) => (
+            {tableData.map((item: any) => (
               <div
                 key={item.date}
                 className="grid grid-cols-5 gap-4 py-3 px-4 border rounded-lg hover:bg-muted/30 transition-colors"

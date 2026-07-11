@@ -24,7 +24,7 @@ import {
   Zap,
   Info,
 } from "lucide-react";
-import { useWorker } from "@/shared/hooks/useWorker";
+import { analyzeCorrelation } from "@/lib/workers";
 import type { MetricCard } from "@/shared/types";
 
 interface CorrelationAnalysisPanelProps {
@@ -36,7 +36,7 @@ export default function CorrelationAnalysisPanel({
   sourceCard,
   targetCard,
 }: CorrelationAnalysisPanelProps) {
-  const { analyzeCorrelation, isLoading } = useWorker();
+  const [isLoading, setIsLoading] = useState(false);
   const [analysis, setAnalysis] = useState<{
     correlation: number;
     pValue: number;
@@ -79,6 +79,7 @@ export default function CorrelationAnalysisPanel({
       return;
     }
 
+    setIsLoading(true);
     try {
       const result = await analyzeCorrelation(sourceData, targetData);
       if (result) {
@@ -88,6 +89,8 @@ export default function CorrelationAnalysisPanel({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 

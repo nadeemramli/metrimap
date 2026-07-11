@@ -125,10 +125,17 @@ class WorkerManager {
 
     const n = data1.length;
     const correlation = ss.sampleCorrelation(data1, data2);
-    
+    if (!Number.isFinite(correlation)) {
+      throw new Error('Correlation is undefined: one or both series have zero variance (constant values)');
+    }
+
+    // Clamp for derived stats so |r| = 1 (perfect correlation) doesn't produce
+    // Infinity/NaN in the t-statistic and Fisher transform.
+    const r = Math.max(-0.999999, Math.min(0.999999, correlation));
+
     // Simplified fallback calculations
-    const tStat = correlation * Math.sqrt((n - 2) / (1 - correlation * correlation));
-    
+    const tStat = r * Math.sqrt((n - 2) / (1 - r * r));
+
     // Simple p-value approximation
     const absT = Math.abs(tStat);
     let pValue = 0.2;
@@ -136,9 +143,9 @@ class WorkerManager {
     else if (absT > 2.58) pValue = 0.01;
     else if (absT > 1.96) pValue = 0.05;
     else if (absT > 1.645) pValue = 0.1;
-    
+
     // Confidence interval using Fisher transformation
-    const fisherZ = 0.5 * Math.log((1 + correlation) / (1 - correlation));
+    const fisherZ = 0.5 * Math.log((1 + r) / (1 - r));
     const se = 1 / Math.sqrt(n - 3);
     const zCritical = 1.96;
     
@@ -156,7 +163,7 @@ class WorkerManager {
     else effectSize = 'large';
     
     // Power analysis (simplified)
-    const effectSizeForPower = Math.abs(correlation);
+    const effectSizeForPower = Math.min(Math.abs(correlation), 0.999999);
     const z = Math.sqrt(n - 3) * 0.5 * Math.log((1 + effectSizeForPower) / (1 - effectSizeForPower));
     let power = 0.2;
     if (z > 2.8) power = 0.95;
@@ -170,7 +177,7 @@ class WorkerManager {
     else requiredSampleSize = 15;
     
     return {
-      correlation,
+      correlation: Math.max(-1, Math.min(1, correlation)),
       pValue,
       confidenceInterval: [lowerCI, upperCI],
       sampleSize: n,

@@ -81,6 +81,18 @@ function isoDate(d: Date): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
+// Step months/years while clamping the day-of-month, so anchors on day 29-31
+// don't overflow into the next month (e.g. Jan 31 - 1 month → Feb 28, not Mar 3).
+function stepClampedMonths(d: Date, months: number): void {
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  const lastDayOfMonth = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)
+  ).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDayOfMonth));
+}
+
 function stepDate(start: Date, granularity: Granularity, steps: number): Date {
   const d = new Date(start.getTime());
   switch (granularity) {
@@ -91,13 +103,13 @@ function stepDate(start: Date, granularity: Granularity, steps: number): Date {
       d.setUTCDate(d.getUTCDate() + steps * 7);
       break;
     case 'Monthly':
-      d.setUTCMonth(d.getUTCMonth() + steps);
+      stepClampedMonths(d, steps);
       break;
     case 'Quarterly':
-      d.setUTCMonth(d.getUTCMonth() + steps * 3);
+      stepClampedMonths(d, steps * 3);
       break;
     case 'Yearly':
-      d.setUTCFullYear(d.getUTCFullYear() + steps);
+      stepClampedMonths(d, steps * 12);
       break;
   }
   return d;

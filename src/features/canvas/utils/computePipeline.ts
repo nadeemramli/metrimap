@@ -145,6 +145,31 @@ export async function computePipeline(
     }
     return [];
   };
+  // Period-preserving variant of seriesOf: lets statistical ops pair values
+  // from the SAME period instead of blindly index-aligning two histories.
+  const pointsOf = (id: string): { period?: string; value: number }[] => {
+    const card = cardById.get(id);
+    if (card && Array.isArray(card.data)) {
+      return card.data.map((d) => ({ period: d.period, value: d.value }));
+    }
+    if (computed.has(id)) return [{ value: computed.get(id)! }];
+    if (srcById.has(id)) {
+      const sd: any = srcById.get(id)?.data;
+      if (Array.isArray(sd?.series) && sd.series.length > 0) {
+        return sd.series.map((d: any) => ({
+          period:
+            typeof d?.period === 'string'
+              ? d.period
+              : typeof d?.date === 'string'
+                ? d.date
+                : undefined,
+          value: d?.value,
+        }));
+      }
+      return [{ value: sourceNodeValue(srcById.get(id)) }];
+    }
+    return [];
+  };
 
   const titleOf = (id: string): string => {
     const card = cardById.get(id);
@@ -258,23 +283,43 @@ export async function computePipeline(
               ?.sourceId;
             const sy = inputs.find((i) => i.key === (st.yKey || inputs[1]?.key))
               ?.sourceId;
-            const a = sx ? seriesOf(sx) : [];
-            const b = sy ? seriesOf(sy) : [];
-            const n = Math.min(a.length, b.length);
-            if (n < 2) {
+            const aPts = sx ? pointsOf(sx) : [];
+            const bPts = sy ? pointsOf(sy) : [];
+            let a: number[];
+            let b: number[];
+            const bothHavePeriods =
+              aPts.length > 0 &&
+              bPts.length > 0 &&
+              aPts.every((p) => p.period != null) &&
+              bPts.every((p) => p.period != null);
+            if (bothHavePeriods) {
+              // Join on period (oldest-first) so only same-period values pair.
+              const bByPeriod = new Map(bPts.map((p) => [p.period!, p.value]));
+              a = [];
+              b = [];
+              for (const p of aPts) {
+                if (bByPeriod.has(p.period!)) {
+                  a.push(p.value);
+                  b.push(bByPeriod.get(p.period!)!);
+                }
+              }
+            } else {
+              // No periods on one side — pair the most recent points instead.
+              const tail = Math.min(aPts.length, bPts.length);
+              a = tail > 0 ? aPts.slice(-tail).map((p) => p.value) : [];
+              b = tail > 0 ? bPts.slice(-tail).map((p) => p.value) : [];
+            }
+            if (a.length < 2) {
               warnings.push(
                 `Operator "${label}" needs two ≥2-point series — skipped`
               );
               continue;
             }
             if (st.method === 'correlation') {
-              result = await workerManager.calculateCorrelation(
-                a.slice(0, n),
-                b.slice(0, n)
-              );
+              result = await workerManager.calculateCorrelation(a, b);
             } else {
               const reg = await workerManager.calculateRegression(
-                a.slice(0, n).map((v, i) => [v, b[i]] as [number, number])
+                a.map((v, i) => [v, b[i]] as [number, number])
               );
               result = reg.slope;
             }

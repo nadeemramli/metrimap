@@ -47,6 +47,32 @@ describe('buildPeriods', () => {
     const periods = buildPeriods(2, 'Weekly', anchor);
     expect(periods).toEqual(['2025-12-25', '2026-01-01']);
   });
+
+  it('clamps monthly steps anchored on day 31 (no duplicate or skipped months)', () => {
+    const periods = buildPeriods(6, 'Monthly', new Date(Date.UTC(2026, 4, 31)));
+    expect(periods).toEqual([
+      '2025-12-31',
+      '2026-01-31',
+      '2026-02-28',
+      '2026-03-31',
+      '2026-04-30',
+      '2026-05-31',
+    ]);
+  });
+
+  it('clamps quarterly steps anchored on day 31', () => {
+    const periods = buildPeriods(
+      4,
+      'Quarterly',
+      new Date(Date.UTC(2026, 7, 31))
+    );
+    expect(periods).toEqual([
+      '2025-11-30',
+      '2026-02-28',
+      '2026-05-31',
+      '2026-08-31',
+    ]);
+  });
 });
 
 describe('generateSeries', () => {

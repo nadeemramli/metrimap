@@ -59,4 +59,24 @@ describe('Web Worker Integration', () => {
       expect(error).toBeDefined();
     }
   });
+
+  it('should return finite stats for a perfect linear correlation', async () => {
+    const data1 = [1, 2, 3, 4, 5];
+    const data2 = [2, 4, 6, 8, 10]; // r = 1 exactly
+    const result = await workerManager.calculateCorrelationAnalysis(data1, data2);
+
+    expect(result.correlation).toBeCloseTo(1, 5);
+    expect(Number.isFinite(result.confidenceInterval[0])).toBe(true);
+    expect(Number.isFinite(result.confidenceInterval[1])).toBe(true);
+    expect(result.pValue).toBeLessThan(0.05);
+    expect(Number.isFinite(result.powerAnalysis.power)).toBe(true);
+  });
+
+  it('should reject constant series with a readable error', async () => {
+    const constant = [5, 5, 5, 5, 5];
+    const varying = [1, 2, 3, 4, 5];
+    await expect(
+      workerManager.calculateCorrelationAnalysis(constant, varying)
+    ).rejects.toThrow(/zero variance/);
+  });
 });

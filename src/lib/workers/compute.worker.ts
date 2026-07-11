@@ -159,16 +159,23 @@ const computationWorker: ComputationWorker = {
 
     const n = data1.length;
     const correlation = ss.sampleCorrelation(data1, data2);
-    
+    if (!Number.isFinite(correlation)) {
+      throw new Error('Correlation is undefined: one or both series have zero variance (constant values)');
+    }
+
+    // Clamp for derived stats so |r| = 1 (perfect correlation) doesn't produce
+    // Infinity/NaN in the t-statistic and Fisher transform.
+    const r = Math.max(-0.999999, Math.min(0.999999, correlation));
+
     // Calculate t-statistic for correlation
-    const tStat = correlation * Math.sqrt((n - 2) / (1 - correlation * correlation));
-    
+    const tStat = r * Math.sqrt((n - 2) / (1 - r * r));
+
     // Calculate p-value using t-distribution (approximate)
     // For simplicity, using normal approximation for large samples
     const pValue = this.calculatePValue(tStat);
-    
+
     // Calculate confidence interval using Fisher transformation
-    const fisherZ = 0.5 * Math.log((1 + correlation) / (1 - correlation));
+    const fisherZ = 0.5 * Math.log((1 + r) / (1 - r));
     const se = 1 / Math.sqrt(n - 3);
     const zCritical = 1.96; // 95% confidence
     
@@ -193,7 +200,7 @@ const computationWorker: ComputationWorker = {
     const requiredSampleSize = this.calculateRequiredSampleSize(correlation); // 80% power
     
     return {
-      correlation,
+      correlation: Math.max(-1, Math.min(1, correlation)),
       pValue,
       confidenceInterval: [lowerCI, upperCI],
       sampleSize: n,
@@ -222,7 +229,7 @@ const computationWorker: ComputationWorker = {
 
   // Simplified power calculation
   calculatePower(correlation: number, sampleSize: number): number {
-    const effectSize = Math.abs(correlation);
+    const effectSize = Math.min(Math.abs(correlation), 0.999999);
     const z = Math.sqrt(sampleSize - 3) * 0.5 * Math.log((1 + effectSize) / (1 - effectSize));
     
     // Simplified power calculation
