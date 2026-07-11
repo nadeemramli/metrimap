@@ -217,8 +217,8 @@ export async function addTagsToMetricCard(
       throw fetchError;
     }
 
-    // Get tag IDs for the tag names
-    const tagIds = await getTagIdsByNames(
+    // Resolve tag IDs, creating any tags that don't exist yet
+    const tagIds = await resolveOrCreateTagIds(
       metricCard.project_id,
       tagNames,
       authenticatedClient
@@ -370,8 +370,8 @@ export async function addTagsToRelationship(
       throw fetchError;
     }
 
-    // Get tag IDs for the tag names
-    const tagIds = await getTagIdsByNames(
+    // Resolve tag IDs, creating any tags that don't exist yet
+    const tagIds = await resolveOrCreateTagIds(
       relationship.project_id,
       tagNames,
       authenticatedClient
@@ -496,6 +496,57 @@ export async function getTagIdsByNames(
     return tagIds;
   } catch (error) {
     console.error('Error converting tag names to IDs:', error);
-    return [];
+    throw error;
   }
+}
+
+// Resolve tag names to ids, creating any missing tags rows in the project.
+// The tag-input UI can call add-tag persistence before its createProjectTag
+// insert lands, so a brand-new tag name may not exist yet — silently skipping
+// it dropped the junction row and lost the tag on reload.
+async function resolveOrCreateTagIds(
+  projectId: string,
+  tagNames: string[],
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<string[]> {
+  const client = resolveClient(authenticatedClient);
+  const { data: existing, error } = await client
+    .from('tags')
+    .select('id, name')
+    .eq('project_id', projectId)
+    .in('name', tagNames);
+
+  if (error) {
+    console.error('Error resolving tag names to IDs:', error);
+    throw error;
+  }
+
+  const tagMap = new Map(existing.map((tag) => [tag.name, tag.id]));
+  const missingNames = tagNames.filter((name) => !tagMap.has(name));
+
+  if (missingNames.length > 0) {
+    log.debug('🏷️ Creating missing tags before attach:', missingNames);
+    const { data: created, error: insertError } = await client
+      .from('tags')
+      // created_by is nullable in the DB and defaulted by RLS context; the
+      // generated Insert type marks it required, so cast the minimal payload.
+      .insert(
+        missingNames.map(
+          (name) =>
+            ({ project_id: projectId, name }) as Database['public']['Tables']['tags']['Insert']
+        )
+      )
+      .select('id, name');
+
+    if (insertError) {
+      console.error('Error creating missing tags:', insertError);
+      throw insertError;
+    }
+
+    created?.forEach((tag) => tagMap.set(tag.name, tag.id));
+  }
+
+  return tagNames
+    .map((name) => tagMap.get(name))
+    .filter((id): id is string => Boolean(id));
 }

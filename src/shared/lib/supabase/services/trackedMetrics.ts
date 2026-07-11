@@ -141,14 +141,26 @@ export interface CandidateCard {
  * candidates). Filtering happens client-side: a SQL NOT IN would also drop
  * rows whose project id is NULL.
  */
+// PostgREST caps unranged selects (default 1000 rows), so exhaustive reads
+// must page with .range() until a short page signals the end.
+const FETCH_PAGE_SIZE = 1000;
+
 async function getExampleProjectIds(c: Client): Promise<Set<string>> {
-  const { data, error } = await c
-    .from('projects')
-    .select('id')
-    .contains('tags', ['example'])
-    .eq('is_public', true);
-  if (error) throw new Error(error.message);
-  return new Set((data ?? []).map((r) => r.id));
+  const ids = new Set<string>();
+  for (let offset = 0; ; offset += FETCH_PAGE_SIZE) {
+    const { data, error } = await c
+      .from('projects')
+      .select('id')
+      .contains('tags', ['example'])
+      .eq('is_public', true)
+      .order('id', { ascending: true })
+      .range(offset, offset + FETCH_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const page = data ?? [];
+    for (const r of page) ids.add(r.id);
+    if (page.length < FETCH_PAGE_SIZE) break;
+  }
+  return ids;
 }
 
 /** List the workspace's catalogued (tracked) metrics (example data excluded). */
@@ -204,17 +216,31 @@ export async function listCandidateCards(
   client?: Client
 ): Promise<CandidateCard[]> {
   const c = resolveClient(client);
-  const [exampleIds, { data, error }] = await Promise.all([
+  // Page to exhaustion: an unranged select silently truncates at PostgREST's
+  // max-rows cap (default 1000), hiding candidates in large workspaces.
+  const fetchAllCandidates = async () => {
+    const all: any[] = [];
+    for (let offset = 0; ; offset += FETCH_PAGE_SIZE) {
+      const { data, error } = await c
+        .from('metric_cards')
+        .select(
+          'id, title, project_id, category, sub_category, description, source_type, formula, data, updated_at, tracked_metric_id, projects(name)'
+        )
+        .is('tracked_metric_id', null)
+        .order('id', { ascending: true })
+        .range(offset, offset + FETCH_PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      const page = data ?? [];
+      all.push(...page);
+      if (page.length < FETCH_PAGE_SIZE) break;
+    }
+    return all;
+  };
+  const [exampleIds, allCards] = await Promise.all([
     getExampleProjectIds(c),
-    c
-      .from('metric_cards')
-      .select(
-        'id, title, project_id, category, sub_category, description, source_type, formula, data, updated_at, tracked_metric_id, projects(name)'
-      )
-      .is('tracked_metric_id', null),
+    fetchAllCandidates(),
   ]);
-  if (error) throw new Error(error.message);
-  return (data ?? [])
+  return allCards
     .filter(
       (card: any) =>
         Array.isArray(card.data) &&
@@ -264,12 +290,21 @@ export interface PromoteInput {
 /**
  * Promote an operationalized card into the catalog: create the tracked_metrics
  * row (state='tracked') and link the card to it. Returns the new metric id.
+ * Idempotent: if the card is already linked to a tracked metric, returns that
+ * id without inserting a duplicate catalog row.
  */
 export async function promoteCardToTrackedMetric(
   input: PromoteInput,
   client?: Client
 ): Promise<string> {
   const c = resolveClient(client);
+  const { data: existing, error: existingError } = await c
+    .from('metric_cards')
+    .select('tracked_metric_id')
+    .eq('id', input.cardId)
+    .single();
+  if (existingError) throw new Error(existingError.message);
+  if (existing?.tracked_metric_id) return existing.tracked_metric_id;
   const { data, error } = await c
     .from('tracked_metrics')
     .insert({

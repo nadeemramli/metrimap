@@ -22,6 +22,14 @@ function setIfDefined<T extends Record<string, any>>(
   if (value !== undefined) (obj as any)[key] = value;
 }
 
+/** metric_cards.owner_id is an FK to users(id) (Clerk ids), but the settings
+ *  form lets users type free text. Persist only real user ids; anything else
+ *  (display names, empty string) stores no owner. Mirrors evidenceOwnerId. */
+export function cardOwnerId(owner?: string | null): string | null {
+  const trimmed = owner?.trim();
+  return trimmed && /^user_[A-Za-z0-9]+$/.test(trimmed) ? trimmed : null;
+}
+
 // Transform database row to MetricCard
 function transformMetricCard(card: MetricCardRow): MetricCard {
   return {
@@ -70,7 +78,7 @@ function transformToInsert(
     causal_factors: card.causalFactors,
     dimensions: card.dimensions,
     assignees: card.assignees,
-    owner_id: card.owner && card.owner.trim() !== '' ? card.owner.trim() : null,
+    owner_id: cardOwnerId(card.owner),
     status: card.status ?? null,
     workflow: (card.workflow ?? {}) as MetricCardInsert['workflow'],
     created_by: userId,
@@ -102,8 +110,9 @@ function buildUpdateData(updates: Partial<MetricCard>): MetricCardUpdate {
   setIfDefined(updateData, 'status', updates.status);
   setIfDefined(updateData, 'workflow', updates.workflow as any);
 
-  const trimmedOwner = updates.owner?.trim();
-  if (trimmedOwner) updateData.owner_id = trimmedOwner;
+  if (updates.owner !== undefined) {
+    updateData.owner_id = cardOwnerId(updates.owner);
+  }
 
   // Always update the timestamp
   updateData.updated_at = new Date().toISOString();

@@ -230,7 +230,7 @@ export async function createEvidenceItem(
     relationship_id: relationshipId,
     title: evidence.title,
     type: evidence.type,
-    owner_id: evidence.owner || null,
+    owner_id: evidenceOwnerId(evidence.owner),
     link: evidence.link,
     hypothesis: evidence.hypothesis,
     summary: evidence.summary,

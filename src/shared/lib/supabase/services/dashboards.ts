@@ -122,14 +122,19 @@ export async function updateLayouts(
 ): Promise<void> {
   if (!positions.length) return;
   const c = resolveClient(client);
-  await Promise.all(
+  const results = await Promise.all(
     positions.map(({ id, layout }) =>
       c
         .from('dashboard_widgets')
-        .update({ layout: layout as unknown as Json })
+        .update({
+          layout: layout as unknown as Json,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', id)
     )
   );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw new Error(failed.error.message);
 }
 
 export async function deleteWidget(

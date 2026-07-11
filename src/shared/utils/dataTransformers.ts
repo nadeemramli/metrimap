@@ -35,6 +35,7 @@ export function transformMetricCard(card: DBMetricCard): MetricCardType {
     dimensions: (card.dimensions || []) as any,
     segments: [],
     position: { x: card.position_x, y: card.position_y },
+    zIndex: (card as { z_index?: number | null }).z_index ?? null,
     parentId: undefined,
     data: card.data as any,
     sourceType: card.source_type as any,
@@ -42,8 +43,11 @@ export function transformMetricCard(card: DBMetricCard): MetricCardType {
     formula: card.formula || undefined,
     owner: card.owner_id || '',
     assignees: card.assignees || [],
+    status: (card.status as MetricCardType['status']) ?? null,
+    workflow: (card.workflow ?? {}) as MetricCardType['workflow'],
     createdAt: card.created_at || new Date().toISOString(),
     updatedAt: card.updated_at || new Date().toISOString(),
+    updatedBy: (card as { updated_by?: string | null }).updated_by ?? null,
   };
 }
 
@@ -76,7 +80,11 @@ export function transformRelationship(rel: DBRelationship): Relationship {
     target: rel.target_id, // For CanvasPreview compatibility
     type: rel.type as any,
     confidence: rel.confidence as any,
-    weight: rel.weight || 1,
+    weight: rel.weight ?? undefined,
+    notes: rel.description || undefined,
+    causalMetadata:
+      (rel.causal_metadata as unknown as Relationship['causalMetadata']) ??
+      undefined,
     description: rel.description || '',
     evidence:
       (rel as any).evidence_items?.map((evidence: any) => ({

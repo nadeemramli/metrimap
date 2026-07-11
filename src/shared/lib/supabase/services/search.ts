@@ -48,6 +48,9 @@ export async function searchAcrossCanvases(
       .limit(25),
   ]);
 
+  if (cardsRes.error) throw new Error(cardsRes.error.message);
+  if (evidenceRes.error) throw new Error(evidenceRes.error.message);
+
   const cards = cardsRes.data ?? [];
   const evidence = evidenceRes.data ?? [];
 
@@ -61,10 +64,14 @@ export async function searchAcrossCanvases(
   );
   const nameById = new Map<string, string>();
   if (projectIds.length > 0) {
-    const { data: projects } = await client
+    const { data: projects, error: projectsError } = await client
       .from('projects')
       .select('id, name')
       .in('id', projectIds);
+    // Subtitles are cosmetic — log and continue rather than failing the search.
+    if (projectsError) {
+      console.error('Global search: canvas name lookup failed:', projectsError.message);
+    }
     for (const p of projects ?? []) {
       nameById.set(p.id, (p.name as string) ?? 'Untitled canvas');
     }
