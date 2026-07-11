@@ -211,6 +211,38 @@ export async function createMetricCard(
   return transformMetricCard(data as MetricCardRow);
 }
 
+// Idempotent create that PRESERVES the caller's (client-generated) id via upsert.
+// Used by the offline/failed-create fallback: if a prior insert committed but its
+// response was lost, retrying upserts the same primary key instead of inserting a
+// duplicate row. `card.id` must be a valid UUID.
+export async function upsertMetricCardWithId(
+  card: MetricCard,
+  projectId: string,
+  userId: string,
+  authenticatedClient?: SupabaseClient<Database>
+) {
+  const insertData = {
+    ...transformToInsert(card, projectId, userId),
+    id: card.id,
+  };
+  const client = resolveClient(authenticatedClient);
+  const { data, error } = await client
+    .from('metric_cards')
+    .upsert(insertData, { onConflict: 'id' })
+    .select(CARD_COLUMNS_NO_DATA)
+    .single();
+
+  if (error) {
+    console.error('❌ Error upserting metric card:', error);
+    throw error;
+  }
+
+  if (insertData.data !== undefined) {
+    (data as MetricCardRow).data = insertData.data as MetricCardRow['data'];
+  }
+  return transformMetricCard(data as MetricCardRow);
+}
+
 // Update a metric card
 export async function updateMetricCard(
   id: string,

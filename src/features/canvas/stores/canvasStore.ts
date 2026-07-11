@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import {
   createMetricCard,
+  upsertMetricCardWithId,
   deleteMetricCard as deleteMetricCardInSupabase,
   updateMetricCard as updateMetricCardInSupabase,
 } from '../../../shared/lib/supabase/services/metric-cards';
@@ -749,8 +750,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
               if (!user) throw new Error('User not authenticated');
               if (!current.canvas) throw new Error('No canvas loaded');
 
-              const createdNode = await createMetricCard(
-                { ...node, id: '', owner: user.id },
+              // Idempotent upsert keyed on the node's existing UUID: if a prior
+              // attempt committed but its response was lost, retrying updates the
+              // same row instead of inserting a duplicate. The id is preserved,
+              // so the re-key below is a safe no-op in the common path.
+              const createdNode = await upsertMetricCardWithId(
+                { ...node, owner: user.id },
                 current.canvas.id,
                 user.id,
                 client

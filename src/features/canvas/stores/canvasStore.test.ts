@@ -6,6 +6,7 @@ import type {
 } from '@/shared/types';
 import {
   createMetricCard,
+  upsertMetricCardWithId,
   updateMetricCard,
 } from '@/shared/lib/supabase/services/metric-cards';
 import { createRelationship } from '@/shared/lib/supabase/services/relationships';
@@ -13,6 +14,7 @@ import { useCanvasStore } from './canvasStore';
 
 vi.mock('@/shared/lib/supabase/services/metric-cards', () => ({
   createMetricCard: vi.fn(),
+  upsertMetricCardWithId: vi.fn(),
   updateMetricCard: vi.fn(),
   deleteMetricCard: vi.fn(),
 }));
@@ -158,8 +160,8 @@ describe('saveAllPendingChanges', () => {
     expect(state.error).toBeUndefined();
   });
 
-  it('INSERTs local-only fallback nodes and re-keys them to the DB id', async () => {
-    vi.mocked(createMetricCard).mockResolvedValue(makeNode(DB_ID_1));
+  it('upserts local-only fallback nodes idempotently and re-keys to the returned id', async () => {
+    vi.mocked(upsertMetricCardWithId).mockResolvedValue(makeNode(DB_ID_1));
     const edge: Relationship = {
       id: DB_ID_2,
       sourceId: C,
@@ -191,7 +193,9 @@ describe('saveAllPendingChanges', () => {
 
     await useCanvasStore.getState().saveAllPendingChanges();
 
-    expect(createMetricCard).toHaveBeenCalledTimes(1);
+    expect(upsertMetricCardWithId).toHaveBeenCalledTimes(1);
+    // The upsert preserves the node's own UUID (idempotent on retry).
+    expect(vi.mocked(upsertMetricCardWithId).mock.calls[0][0].id).toBe(C);
     expect(updateMetricCard).not.toHaveBeenCalled();
 
     const state = useCanvasStore.getState();
