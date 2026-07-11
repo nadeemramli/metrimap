@@ -151,8 +151,22 @@ describe('toRecordHandler — plugs into the fetch runtime', () => {
 
 describe('getMapper', () => {
   it('resolves registered connector:stream keys', () => {
-    expect(getMapper('stripe', 'payment_intents')).toBe(mapStripePayment);
+    expect(getMapper('stripe', 'payments')).toBe(mapStripePayment);
     expect(getMapper('woocommerce', 'orders')).toBe(mapWooOrder);
     expect(getMapper('nope', 'nope')).toBeUndefined();
+  });
+
+  it('every mapper key matches a manifest stream (CVS-320 regression)', async () => {
+    const { getConnector } = await import('../manifests');
+    const { MAPPER_KEYS } = await import('./registry');
+    for (const key of MAPPER_KEYS) {
+      const [connectorId, stream] = key.split(':');
+      const manifest = getConnector(connectorId);
+      expect(manifest, `manifest for ${connectorId}`).toBeDefined();
+      expect(
+        manifest!.streams.some((s) => s.name === stream),
+        `stream '${stream}' on connector '${connectorId}'`
+      ).toBe(true);
+    }
   });
 });

@@ -9,7 +9,7 @@ import { mapWooOrder } from './mappers/woocommerce';
 import type { Mapper } from './types';
 
 export const MAPPERS: Record<string, Mapper> = {
-  'stripe:payment_intents': mapStripePayment,
+  'stripe:payments': mapStripePayment, // stream name matches the CVS-140 Stripe manifest (CVS-320 fix)
   'ga4:page_metrics': mapGa4PageMetric, // stream name matches the CVS-140 GA4 manifest
   'ga4:events': mapGa4Event,
   'woocommerce:orders': mapWooOrder,
