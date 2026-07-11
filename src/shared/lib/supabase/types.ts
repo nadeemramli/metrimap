@@ -1476,6 +1476,7 @@ export type Database = {
       created_at: string | null
       updated_at: string | null
       created_by: string
+      updated_by: string | null
       last_modified_by: string | null
     }
     Insert: {
@@ -1501,6 +1502,7 @@ export type Database = {
       created_at?: string | null
       updated_at?: string | null
       created_by: string
+      updated_by?: string | null
       last_modified_by?: string | null
     }
     Update: {
@@ -1526,6 +1528,7 @@ export type Database = {
       created_at?: string | null
       updated_at?: string | null
       created_by?: string
+      updated_by?: string | null
       last_modified_by?: string | null
     }
         Relationships: [

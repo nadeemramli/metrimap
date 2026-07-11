@@ -7,12 +7,20 @@ import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 import { createLogger } from '@/shared/utils/logger';
+import { cardsReadSource } from '../cardsReadSource';
 
 const log = createLogger('metric-cards');
 
 export type MetricCardRow = Tables<'metric_cards'>;
 export type MetricCardInsert = TablesInsert<'metric_cards'>;
 export type MetricCardUpdate = TablesUpdate<'metric_cards'>;
+
+// Every metric_cards column EXCEPT `data`. Writes must RETURNING these explicit
+// columns: after the hide_value migration, reading `data` off metric_cards is
+// REVOKEd (it's only readable via the redacting metric_cards_visible view), so
+// a bare `.select()` (= all columns) would fail. Keep in sync with the table.
+const CARD_COLUMNS_NO_DATA =
+  'id, project_id, title, description, category, sub_category, position_x, position_y, source_type, formula, causal_factors, dimensions, owner_id, assignees, created_at, updated_at, created_by, updated_by, status, workflow, z_index, tracked_metric_id';
 
 function setIfDefined<T extends Record<string, any>>(
   obj: T,
@@ -135,11 +143,13 @@ async function executeUpdate(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = resolveClient(authenticatedClient);
+  // RETURNING must avoid `data` (REVOKEd post hide_value migration). Re-attach
+  // the value series the caller just wrote so it still sees what it persisted.
   const { data, error } = await client
     .from('metric_cards')
     .update(updateData)
     .eq('id', id)
-    .select()
+    .select(CARD_COLUMNS_NO_DATA)
     .single();
 
   if (error) {
@@ -147,7 +157,11 @@ async function executeUpdate(
     throw error;
   }
 
-  return data;
+  if (updateData.data !== undefined) {
+    (data as MetricCardRow).data = updateData.data as MetricCardRow['data'];
+  }
+
+  return data as MetricCardRow;
 }
 
 // Create a new metric card
@@ -176,10 +190,12 @@ export async function createMetricCard(
 
   const client = resolveClient(authenticatedClient);
 
+  // RETURNING avoids `data` (REVOKEd post hide_value migration); merge the
+  // series we just inserted back so callers reading data get their value.
   const { data, error } = await client
     .from('metric_cards')
     .insert(insertData)
-    .select()
+    .select(CARD_COLUMNS_NO_DATA)
     .single();
 
   if (error) {
@@ -187,8 +203,12 @@ export async function createMetricCard(
     throw error;
   }
 
+  if (insertData.data !== undefined) {
+    (data as MetricCardRow).data = insertData.data as MetricCardRow['data'];
+  }
+
   log.debug('✅ Metric card created successfully:', data);
-  return transformMetricCard(data);
+  return transformMetricCard(data as MetricCardRow);
 }
 
 // Update a metric card
@@ -228,8 +248,11 @@ export async function getProjectMetricCards(
   authenticatedClient?: SupabaseClient<Database>
 ) {
   const client = resolveClient(authenticatedClient);
+  // Read through the redacting view so hide_value nodes come back with data
+  // blanked server-side (falls back to the base table pre-migration).
+  const src = await cardsReadSource(client);
   const { data, error } = await client
-    .from('metric_cards')
+    .from(src as 'metric_cards')
     .select('*')
     .eq('project_id', projectId);
 
@@ -250,6 +273,8 @@ export async function updateMetricCardPosition(
   log.debug(`💾 Updating position for metric card ${id}:`, position);
 
   const client = resolveClient(authenticatedClient);
+  // Position-only write; RETURNING avoids `data` (REVOKEd post hide_value
+  // migration). Callers use id/position, not the value series.
   const { data, error } = await client
     .from('metric_cards')
     .update({
@@ -258,7 +283,7 @@ export async function updateMetricCardPosition(
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
-    .select()
+    .select(CARD_COLUMNS_NO_DATA)
     .single();
 
   if (error) {
@@ -267,5 +292,5 @@ export async function updateMetricCardPosition(
   }
 
   log.debug(`✅ Successfully updated position for metric card ${id}`);
-  return transformMetricCard(data);
+  return transformMetricCard(data as MetricCardRow);
 }

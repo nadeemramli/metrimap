@@ -10,6 +10,7 @@ import { transformCanvasProject } from '@/shared/utils/dataTransformers';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Tables, TablesInsert, TablesUpdate } from '../types';
 import { createLogger } from '@/shared/utils/logger';
+import { cardsReadSource } from '../cardsReadSource';
 
 const log = createLogger('projects');
 
@@ -136,8 +137,11 @@ export async function duplicateProjectDeep(
     .single();
   if (origErr || !orig) throw origErr ?? new Error('Project not found');
 
+  // Cards read through the redacting view (hide_value blanked server-side);
+  // resolve the source before the parallel fetch. Falls back pre-migration.
+  const cardsSrc = await cardsReadSource(client);
   const [cardsRes, nodesRes, relsRes, groupsRes] = await Promise.all([
-    client.from('metric_cards').select('*').eq('project_id', projectId),
+    client.from(cardsSrc as 'metric_cards').select('*').eq('project_id', projectId),
     client.from('canvas_nodes').select('*').eq('project_id', projectId),
     client.from('relationships').select('*').eq('project_id', projectId),
     client.from('groups').select('*').eq('project_id', projectId),
@@ -330,9 +334,11 @@ export async function getProjectById(
   // Attach collaborators to project
   (project as any).project_collaborators = collaborators || [];
 
-  // Fetch metric cards
+  // Fetch metric cards through the redacting view (hide_value blanked
+  // server-side); falls back to the base table pre-migration.
+  const cardsSrc = await cardsReadSource(client);
   const { data: metricCards, error: cardsError } = await client
-    .from('metric_cards')
+    .from(cardsSrc as 'metric_cards')
     .select('*')
     .eq('project_id', projectId);
 

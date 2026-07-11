@@ -1,6 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types';
+
+// The redacting-view probe is irrelevant to these tests (the fake client models
+// only the real query chains), so pin the read source to the base table.
+vi.mock('../cardsReadSource', () => ({
+  cardsReadSource: async () => 'metric_cards',
+  resetCardsReadSource: () => {},
+}));
+
 import { listCandidateCards, promoteCardToTrackedMetric } from './trackedMetrics';
 
 // Minimal fake PostgREST client covering the chains promoteCardToTrackedMetric
@@ -87,7 +95,8 @@ function makePagedClient(queues: Record<string, Result[]>) {
       const result = queues[table]?.shift() ?? { data: [], error: null };
       const b: Record<string, unknown> = {};
       const ret = () => b;
-      for (const m of ['select', 'contains', 'eq', 'is', 'order']) b[m] = ret;
+      for (const m of ['select', 'contains', 'eq', 'is', 'order', 'in'])
+        b[m] = ret;
       b.range = (from: number, to: number) => {
         rangeCalls.push({ table, range: [from, to] });
         return b;

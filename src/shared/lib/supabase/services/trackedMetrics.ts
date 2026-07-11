@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveClient } from '@/shared/utils/authenticatedClient';
 import type { MetricValue } from '@/shared/types';
 import type { Database } from '../types';
+import { cardsReadSource } from '../cardsReadSource';
 
 type Client = SupabaseClient<Database>;
 
@@ -216,15 +217,20 @@ export async function listCandidateCards(
   client?: Client
 ): Promise<CandidateCard[]> {
   const c = resolveClient(client);
-  // Page to exhaustion: an unranged select silently truncates at PostgREST's
-  // max-rows cap (default 1000), hiding candidates in large workspaces.
+  // Read `data` through the redacting view (base-table data reads are REVOKEd
+  // post hide_value migration). A view can't carry a PostgREST embed, so the
+  // projects(name) join is dropped here and the canvas names are batch-fetched
+  // separately and re-attached as { projects: { name } } (unchanged shape).
+  const cardsSrc = await cardsReadSource(c);
   const fetchAllCandidates = async () => {
     const all: any[] = [];
+    // Page to exhaustion: an unranged select silently truncates at PostgREST's
+    // max-rows cap (default 1000), hiding candidates in large workspaces.
     for (let offset = 0; ; offset += FETCH_PAGE_SIZE) {
       const { data, error } = await c
-        .from('metric_cards')
+        .from(cardsSrc as 'metric_cards')
         .select(
-          'id, title, project_id, category, sub_category, description, source_type, formula, data, updated_at, tracked_metric_id, projects(name)'
+          'id, title, project_id, category, sub_category, description, source_type, formula, data, updated_at, tracked_metric_id'
         )
         .is('tracked_metric_id', null)
         .order('id', { ascending: true })
@@ -233,6 +239,28 @@ export async function listCandidateCards(
       const page = data ?? [];
       all.push(...page);
       if (page.length < FETCH_PAGE_SIZE) break;
+    }
+    // Attach canvas names via a batch lookup keyed by project_id, mirroring the
+    // dropped projects(name) embed so the mapping below is unchanged.
+    const projectIds = [
+      ...new Set(
+        all.map((card: any) => card.project_id).filter((id: any): id is string => !!id)
+      ),
+    ];
+    if (projectIds.length) {
+      const { data: projectRows, error: projErr } = await c
+        .from('projects')
+        .select('id, name')
+        .in('id', projectIds);
+      if (projErr) throw new Error(projErr.message);
+      const nameById = new Map<string, string | null>(
+        (projectRows ?? []).map((p: any) => [p.id, p.name ?? null])
+      );
+      for (const card of all) {
+        card.projects = card.project_id
+          ? { name: nameById.get(card.project_id) ?? null }
+          : null;
+      }
     }
     return all;
   };
@@ -323,9 +351,11 @@ export async function promoteCardToTrackedMetric(
   await linkCardToMetric(input.cardId, data.id, c);
 
   // Seed the shared store from the card's current series so the catalogued
-  // metric carries its history immediately.
+  // metric carries its history immediately. Read `data` through the redacting
+  // view (base-table data reads are REVOKEd post hide_value migration).
+  const cardSrc = await cardsReadSource(c);
   const { data: cardRow } = await c
-    .from('metric_cards')
+    .from(cardSrc as 'metric_cards')
     .select('data')
     .eq('id', input.cardId)
     .single();
