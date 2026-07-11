@@ -57,7 +57,19 @@ WHERE public.can_view_project(mc.project_id)
   AND NOT public.node_hidden_from_me(mc.id);
 
 -- 2) Block direct reads of the value column; everything else stays readable.
-REVOKE SELECT (data) ON public.metric_cards FROM anon, authenticated;
+--    A column-level `REVOKE SELECT (data)` is a NO-OP while the role holds a
+--    table-wide SELECT grant (metric_cards has GRANT ALL TO anon, authenticated),
+--    so we must drop the table-level SELECT and re-grant every column EXCEPT data
+--    explicitly. INSERT/UPDATE/DELETE grants are untouched, so writes still work
+--    (their RETURNING now selects the explicit non-data columns). service_role /
+--    prisma keep GRANT ALL and are unaffected.
+REVOKE SELECT ON public.metric_cards FROM anon, authenticated;
+GRANT SELECT (
+  id, project_id, title, description, category, sub_category,
+  position_x, position_y, source_type, formula, causal_factors, dimensions,
+  owner_id, assignees, created_at, updated_at, created_by, updated_by,
+  status, workflow, z_index, tracked_metric_id
+) ON public.metric_cards TO anon, authenticated;
 
 -- 3) Expose the redacting view to clients.
 GRANT SELECT ON public.metric_cards_visible TO anon, authenticated;
