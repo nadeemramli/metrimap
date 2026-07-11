@@ -165,6 +165,14 @@ const NODE_TYPE_TITLES: Record<string, string> = {
 const defaultNodeTitle = (type: string) =>
   NODE_TYPE_TITLES[type] ?? type.replace('Node', '');
 
+// Which canvas the last COMPLETED load hydrated. Module-level (not a ref) so it
+// survives same-canvas remounts (evidence full page → back, assets → back)
+// without refetching, yet is nulled the moment a load for another canvas starts
+// wiping the global stores — so rapid A→B→Back-to-A re-runs A's full load
+// instead of skipping past wiped stores, and a stale B response never lands
+// under A's URL (see the cancellation guards in the load effect).
+let canvasLoadedFor: string | null = null;
+
 function CanvasPageInner() {
   const { canvasId } = useParams();
   const supabaseClient = useClerkSupabase();
@@ -343,8 +351,22 @@ function CanvasPageInner() {
 
   // Load canvas data from database when component mounts
   useEffect(() => {
+    // Stale-response guard: a superseded run (canvas switched, client swapped,
+    // unmount) must never write its results into the stores.
+    let cancelled = false;
+
     const loadCanvasData = async () => {
-      if (!canvasId || canvas?.id === canvasId) return;
+      if (!canvasId) return;
+      // Skip only when a COMPLETED load already hydrated this canvas AND the
+      // store still holds it. An in-flight load for another canvas nulls
+      // canvasLoadedFor before wiping the global stores, so navigating back
+      // mid-load re-runs the full load instead of skipping past wiped stores.
+      if (
+        canvasLoadedFor === canvasId &&
+        useCanvasStore.getState().canvas?.id === canvasId
+      )
+        return;
+      canvasLoadedFor = null;
 
       setLoading(true);
       setError(undefined);
@@ -359,6 +381,9 @@ function CanvasPageInner() {
           e.position ? { ...e, position: undefined } : e
         ),
       }));
+      // Close the evidence save gate NOW — the debounced save must never fire
+      // against this stripped pre-hydration state (it re-arms on hydration).
+      evidenceHydratedFor.current = null;
 
       try {
         log.debug('🔄 Loading canvas data for:', canvasId);
@@ -382,6 +407,7 @@ function CanvasPageInner() {
             updatedAt: now,
             lastModifiedBy: 'system',
           } as any);
+          canvasLoadedFor = canvasId;
           return;
         }
 
@@ -391,6 +417,7 @@ function CanvasPageInner() {
         // initializeProjects — gates the load on auth readiness.
         const client = supabaseClient || (await whenAuthenticatedClientReady());
         const projectData = await getProjectById(canvasId, client);
+        if (cancelled) return;
 
         if (projectData) {
           log.debug('✅ Canvas data loaded:', {
@@ -445,6 +472,7 @@ function CanvasPageInner() {
                 getMetricValuesByMetricIds(ids, client),
                 getTrackedMetricsByIds(ids, client),
               ]);
+              if (cancelled) return;
               for (const card of trackedCards) {
                 const metricId = (card as any).trackedMetricId as string;
                 const series = byMetric[metricId];
@@ -467,12 +495,14 @@ function CanvasPageInner() {
           }
 
           // Load canvas nodes for this project
+          if (cancelled) return;
           try {
             await loadCanvasNodes(canvasId);
             log.debug('✅ Canvas nodes loaded');
           } catch (error) {
             console.error('❌ Error loading canvas nodes:', error);
           }
+          if (cancelled) return;
 
           // Load alert rules for the project so metric cards can show a
           // monitored/breached badge (one query, not per-card).
@@ -482,6 +512,7 @@ function CanvasPageInner() {
               .loadForProject(canvasId, client)
               .catch(() => {});
           }
+          canvasLoadedFor = canvasId;
         } else {
           console.error('❌ No project data returned for canvas:', canvasId);
           // Initialize a local skeleton canvas so the UI stays interactive
@@ -500,9 +531,11 @@ function CanvasPageInner() {
             updatedAt: now,
             lastModifiedBy: 'system',
           } as any);
+          canvasLoadedFor = canvasId;
         }
       } catch (error) {
         console.error('❌ Error loading canvas data:', error);
+        if (cancelled) return;
         // Initialize a local skeleton canvas on error as well
         if (canvasId) {
           const now = new Date().toISOString();
@@ -520,18 +553,22 @@ function CanvasPageInner() {
             updatedAt: now,
             lastModifiedBy: 'system',
           } as any);
+          canvasLoadedFor = canvasId;
         } else {
           setError('Failed to load canvas data');
         }
       } finally {
-        setLoading(false);
+        // A superseded run must not clear the newer run's loading spinner.
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadCanvasData();
+    return () => {
+      cancelled = true;
+    };
   }, [
     canvasId,
-    canvas?.id,
     supabaseClient,
     loadCanvas,
     setLoading,
@@ -1330,6 +1367,22 @@ function CanvasPageInner() {
       // evidence change re-fires this debounced save.
       const client = supabaseClient || getAuthenticatedClient();
       if (!client) return;
+      // Mirror into the canvas store's settings so a same-canvas remount can
+      // rehydrate evidence (the store outlives this component; see the
+      // rehydration effect below — same pattern as persistDataFlowEdges).
+      useCanvasStore.setState((s) =>
+        s.canvas
+          ? {
+              canvas: {
+                ...s.canvas,
+                settings: {
+                  ...(s.canvas.settings || {}),
+                  evidence: evidenceList,
+                },
+              },
+            }
+          : {}
+      );
       void mergeProjectSettings(
         canvasId,
         { evidence: evidenceList },
@@ -1617,14 +1670,22 @@ function CanvasPageInner() {
   );
 
   const handleNodeDragStop = useCallback(
-    (_: any, node: any) => {
+    (_: any, node: any, dragNodes?: any[]) => {
       // Reconcile may resume owning these nodes now the drag is done.
       draggingIds.current.clear();
       // Clear any drop-target highlights from the drag.
       clearIntersections();
-      // A moved node invalidates the ELK-routed channels of its incident edges —
+      // Dragging one node of a shift-click multi-selection moves ALL selected
+      // nodes but React Flow fires only onNodeDragStop (with the full group as
+      // the third argument) — persist every moved node, not just the grabbed
+      // one, or the companions snap back on reload.
+      const moved = (dragNodes?.length ? dragNodes : [node]).filter(
+        (n: any) => n?.id && n?.position
+      );
+      const movedIds = new Set(moved.map((n: any) => n.id));
+      // Moved nodes invalidate the ELK-routed channels of their incident edges —
       // drop those so they fall back to smoothstep until the next auto-layout.
-      if (node?.id) {
+      if (movedIds.size) {
         setRoutedEdgePoints((prev) => {
           if (Object.keys(prev).length === 0) return prev;
           const incident = new Set(
@@ -1635,7 +1696,7 @@ function CanvasPageInner() {
               .filter((e: any) => {
                 const s = e.sourceId ?? e.source;
                 const t = e.targetId ?? e.target;
-                return s === node.id || t === node.id;
+                return movedIds.has(s) || movedIds.has(t);
               })
               .map((e: any) => e.id)
           );
@@ -1647,43 +1708,46 @@ function CanvasPageInner() {
           return next;
         });
       }
-      // Reuse same logic on drag stop to ensure final commit
-      if (node?.id && node?.position) {
-        if (node.type === 'metricCard') {
-          useCanvasStore.getState().updateNodePosition(node.id, node.position);
-        } else if (node.type === 'evidenceNode') {
-          updateEvidencePosition(node.id, node.position);
-        } else if (
-          [
-            'sourceNode',
-            'chartNode',
-            'operatorNode',
-            'commentNode',
-            'whiteboardNode',
-          ].includes(node.type)
-        ) {
-          // Persisted canvas nodes live in useCanvasNodesStore.
-          updateCanvasNodePosition(node.id, node.position);
-        } else if (
-          ['valueNode', 'actionNode', 'hypothesisNode', 'metricNode'].includes(
-            node.type
-          )
-        ) {
-          // PRD node types live in useNewNodeTypesStore.
-          updateNewNode(node.id, { position: node.position });
+      // Persist the final position of every moved node via the shared per-type
+      // routing (same helper undo/redo and selection-drag use), with the
+      // extraNodes fallback for unpersisted whiteboard-only types.
+      const storeBackedTypes = [
+        'metricCard',
+        'evidenceNode',
+        'sourceNode',
+        'chartNode',
+        'operatorNode',
+        'commentNode',
+        'whiteboardNode',
+        'valueNode',
+        'actionNode',
+        'hypothesisNode',
+        'metricNode',
+      ];
+      const extraMoved: any[] = [];
+      for (const n of moved) {
+        if (storeBackedTypes.includes(n.type)) {
+          applyNodePosition(n.type, n.id, n.position);
         } else {
-          const current = state.extraNodes || [];
-          const next = current.map((n: any) =>
-            n.id === node.id ? { ...n, position: node.position } : n
-          );
-          state.setExtraNodes(next);
+          extraMoved.push(n);
         }
+      }
+      if (extraMoved.length) {
+        const positionById: Record<string, { x: number; y: number }> = {};
+        for (const n of extraMoved) positionById[n.id] = n.position;
+        const current = state.extraNodes || [];
+        const next = current.map((n: any) =>
+          positionById[n.id] ? { ...n, position: positionById[n.id] } : n
+        );
+        state.setExtraNodes(next);
+      }
 
-        // Mirror the finished move to other sessions. Cards + persisted canvas
-        // nodes have local-apply paths in applyRemoteCanvasChange; evidence/PRD
-        // node families aren't synced yet.
+      // Mirror the finished moves to other sessions. Cards + persisted canvas
+      // nodes have local-apply paths in applyRemoteCanvasChange; evidence/PRD
+      // node families aren't synced yet.
+      for (const n of moved) {
         const moveFamily: 'card' | 'canvasNode' | null =
-          node.type === 'metricCard'
+          n.type === 'metricCard'
             ? 'card'
             : [
                   'sourceNode',
@@ -1691,15 +1755,15 @@ function CanvasPageInner() {
                   'operatorNode',
                   'commentNode',
                   'whiteboardNode',
-                ].includes(node.type)
+                ].includes(n.type)
               ? 'canvasNode'
               : null;
         if (moveFamily) {
           broadcastCanvasChange({
             t: 'node:move',
             family: moveFamily,
-            id: node.id,
-            position: node.position,
+            id: n.id,
+            position: n.position,
           });
         }
       }
@@ -1711,9 +1775,7 @@ function CanvasPageInner() {
       state,
       canvas?.edges,
       recordMoveUndo,
-      updateEvidencePosition,
-      updateCanvasNodePosition,
-      updateNewNode,
+      applyNodePosition,
       clearIntersections,
     ]
   );
@@ -1771,6 +1833,32 @@ function CanvasPageInner() {
       (state.extraEdges || []).length === 0
     ) {
       state.setExtraEdges(persisted);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasId, canvas?.id, canvas?.settings]);
+
+  // Re-arm evidence persistence on same-canvas remounts. The big load effect
+  // skips when the canvas store already holds this canvas, but
+  // evidenceHydratedFor is COMPONENT state — so navigating within the canvas
+  // (evidence full page → back, assets → back) left the debounced save gate
+  // permanently closed and silently dropped every pin/rename until a hard
+  // reload. Mirrors the extraEdges fix above; only fills an empty store, so
+  // live edits are never clobbered.
+  useEffect(() => {
+    if (!canvasId || canvas?.id !== canvasId) return;
+    // Only re-arm once a COMPLETED load owns this canvas — never mid-reload
+    // (the load effect nulls canvasLoadedFor before wiping stores, and re-arms
+    // the gate itself on hydration).
+    if (canvasLoadedFor !== canvasId) return;
+    if (evidenceHydratedFor.current === canvasId) return;
+    evidenceHydratedFor.current = canvasId;
+    const persisted = (canvas?.settings as any)?.evidence;
+    if (
+      Array.isArray(persisted) &&
+      persisted.length > 0 &&
+      (useEvidenceStore.getState().evidence || []).length === 0
+    ) {
+      useEvidenceStore.setState({ evidence: persisted });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasId, canvas?.id, canvas?.settings]);

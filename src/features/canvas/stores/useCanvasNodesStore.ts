@@ -126,10 +126,13 @@ export const useCanvasNodesStore = create<CanvasNodesState>()(
 
       // Update canvas node position (optimized for frequent updates)
       updateNodePosition: async (nodeId, position) => {
+        // Capture the pre-update position so we can revert on failure
+        const prevPosition = get().canvasNodes.find(node => node.id === nodeId)?.position;
+
         // Update local state immediately for smooth UX
         set(state => ({
           canvasNodes: state.canvasNodes.map(node =>
-            node.id === nodeId 
+            node.id === nodeId
               ? { ...node, position, updatedAt: new Date().toISOString() }
               : node
           )
@@ -143,11 +146,13 @@ export const useCanvasNodesStore = create<CanvasNodesState>()(
           console.error('❌ Error updating canvas node position:', error);
           // Revert local state on error
           set(state => ({
-            canvasNodes: state.canvasNodes.map(node =>
-              node.id === nodeId 
-                ? { ...node, position: node.position } // Revert to original position
-                : node
-            ),
+            canvasNodes: prevPosition
+              ? state.canvasNodes.map(node =>
+                  node.id === nodeId
+                    ? { ...node, position: prevPosition } // Revert to original position
+                    : node
+                )
+              : state.canvasNodes,
             error: error instanceof Error ? error.message : 'Failed to update node position'
           }));
         }

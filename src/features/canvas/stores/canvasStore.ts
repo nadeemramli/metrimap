@@ -40,9 +40,19 @@ import { evaluateAlertRules } from '@/features/canvas/utils/evaluateAlerts';
 
 const log = createLogger('canvas');
 
+// Autosave retry policy: retry failed saves on a delay, but stop after a few
+// consecutive failing passes instead of looping forever. A later user edit
+// (or the manual save affordance) restarts the cycle and resets the counter.
+const SAVE_RETRY_DELAY_MS = 5000;
+const MAX_SAVE_RETRY_ATTEMPTS = 5;
+let saveRetryAttempts = 0;
+
 interface CanvasStoreState extends CanvasState {
   // Auto-save state
   pendingChanges: Set<string>;
+  // Nodes that only exist locally (offline/failed create fallback) — the
+  // autosave pass INSERTs these instead of issuing a doomed UPDATE.
+  localOnlyNodeIds: Set<string>;
   isSaving: boolean;
   lastSaved: string | undefined;
 
@@ -167,6 +177,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
 
     // Auto-save state
     pendingChanges: new Set<string>(),
+    localOnlyNodeIds: new Set<string>(),
     isSaving: false,
     lastSaved: undefined as string | undefined,
 
@@ -345,9 +356,13 @@ export const useCanvasStore = create<CanvasStoreState>()(
                   updatedAt: new Date().toISOString(),
                 }
               : undefined,
+            localOnlyNodeIds: new Set([...state.localOnlyNodeIds, tempId]),
             error: 'Failed to save project. Node added locally.',
             isLoading: false,
           }));
+
+          // mark for auto-save retry (INSERTed once the save path can reach the DB)
+          get().addPendingChange(tempId);
 
           log.debug('✅ Node added locally (fallback):', tempId);
         }
@@ -406,11 +421,12 @@ export const useCanvasStore = create<CanvasStoreState>()(
                 updatedAt: new Date().toISOString(),
               }
             : undefined,
+          localOnlyNodeIds: new Set([...state.localOnlyNodeIds, tempId]),
           error:
             'Failed to persist node to server. Added locally; will save when possible.',
           isLoading: false,
         }));
-        // mark for auto-save retry
+        // mark for auto-save retry (INSERTed by the save path, not UPDATEd)
         get().addPendingChange(tempId);
       }
     },
@@ -694,121 +710,211 @@ export const useCanvasStore = create<CanvasStoreState>()(
       const client = getClientForEnvironment();
 
       try {
+        // Snapshot only the id LIST; node data is re-read from current state
+        // right before each write so mid-save edits (e.g. re-drags) persist
+        // their latest values instead of a stale pre-save snapshot.
+        const idsToSave = Array.from(state.pendingChanges);
+        // Ids handled this pass (saved, inserted, or unsaveable) — removed
+        // from pendingChanges. Genuinely failed saves stay pending for retry.
+        const removedIds = new Set<string>();
+        // DB ids that must be re-queued for a follow-up save — e.g. a local-only
+        // node re-dragged while its INSERT was in flight: the INSERT persisted an
+        // older position and the id was re-keyed, so the newest position needs a
+        // subsequent UPDATE under the new id.
+        const readdIds = new Set<string>();
         const failedNodes: string[] = [];
+        let savedCount = 0;
 
         log.debug(
-          `🔄 Starting bulletproof save for ${state.pendingChanges.size} changes...`
+          `🔄 Starting bulletproof save for ${idsToSave.length} changes...`
         );
 
         // BULLETPROOF SAVING: Save each node individually with error handling
-        for (const nodeId of state.pendingChanges) {
-          const node = state.canvas?.nodes.find((n) => n.id === nodeId);
-          if (node) {
-            // Validate that this is a proper UUID (database-backed node)
-            const isValidId =
-              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-                nodeId
-              );
+        for (const nodeId of idsToSave) {
+          const current = get();
+          const node = current.canvas?.nodes.find((n) => n.id === nodeId);
 
-            if (!isValidId) {
-              console.warn(
-                `⚠️ Skipping node ${nodeId} - invalid UUID format, likely a temporary local node`
-              );
-              failedNodes.push(nodeId); // Remove from pending changes
-              continue;
-            }
+          if (!node) {
+            console.warn(`⚠️ Node ${nodeId} not found in canvas state`);
+            removedIds.add(nodeId); // nothing left to save — drop it
+            continue;
+          }
 
+          // Local-only fallback nodes don't exist in the DB yet — INSERT them
+          // and re-key local state to the DB-issued id (an UPDATE would match
+          // 0 rows and fail forever).
+          if (current.localOnlyNodeIds.has(nodeId)) {
             try {
-              log.debug(`💾 Saving node ${nodeId}:`, {
-                position: node.position,
-                title: node.title?.substring(0, 20) + '...',
-              });
+              const { user } = useAppStore.getState();
+              if (!user) throw new Error('User not authenticated');
+              if (!current.canvas) throw new Error('No canvas loaded');
 
-              await updateMetricCardInSupabase(
-                nodeId,
-                {
-                  position: node.position,
-                  title: node.title,
-                  description: node.description,
-                  tags: node.tags,
-                  category: node.category,
-                  subCategory: node.subCategory,
-                  causalFactors: node.causalFactors,
-                  dimensions: node.dimensions,
-                  data: node.data,
-                  sourceType: node.sourceType,
-                  formula: node.formula,
-                  assignees: node.assignees,
-                },
+              const createdNode = await createMetricCard(
+                { ...node, id: '', owner: user.id },
+                current.canvas.id,
+                user.id,
                 client
               );
+              const newId = createdNode.id;
 
-              log.debug(`✅ Successfully saved node ${nodeId}`);
+              set((s) => {
+                const localOnly = new Set(s.localOnlyNodeIds);
+                localOnly.delete(nodeId);
+                return {
+                  localOnlyNodeIds: localOnly,
+                  selectedNodeIds: s.selectedNodeIds.map((id) =>
+                    id === nodeId ? newId : id
+                  ),
+                  canvas: s.canvas
+                    ? {
+                        ...s.canvas,
+                        nodes: s.canvas.nodes.map((n) =>
+                          n.id === nodeId ? { ...n, id: newId } : n
+                        ),
+                        edges: s.canvas.edges.map((e) => ({
+                          ...e,
+                          sourceId: e.sourceId === nodeId ? newId : e.sourceId,
+                          targetId: e.targetId === nodeId ? newId : e.targetId,
+                        })),
+                        groups: (s.canvas.groups || []).map((g) =>
+                          g.nodeIds.includes(nodeId)
+                            ? {
+                                ...g,
+                                nodeIds: g.nodeIds.map((id) =>
+                                  id === nodeId ? newId : id
+                                ),
+                              }
+                            : g
+                        ),
+                      }
+                    : undefined,
+                };
+              });
+
+              removedIds.add(nodeId);
+              savedCount++;
+              // If the node was re-dragged/edited while the INSERT was awaiting,
+              // its latest position now lives under newId but was not persisted.
+              // Re-queue newId so the next pass UPDATEs it with the current state.
+              const freshInserted = get().canvas?.nodes.find(
+                (n) => n.id === newId
+              );
+              if (
+                freshInserted &&
+                (freshInserted.position?.x !== node.position?.x ||
+                  freshInserted.position?.y !== node.position?.y)
+              ) {
+                readdIds.add(newId);
+              }
+              log.debug(`✅ Inserted local-only node ${nodeId} as ${newId}`);
+              broadcastCanvasChange({
+                t: 'node:create',
+                family: 'card',
+                node: { ...node, id: newId },
+              });
             } catch (nodeError) {
-              console.error(`❌ Failed to save node ${nodeId}:`, nodeError);
+              console.error(
+                `❌ Failed to insert local-only node ${nodeId}:`,
+                nodeError
+              );
               failedNodes.push(nodeId);
             }
-          } else {
-            console.warn(`⚠️ Node ${nodeId} not found in canvas state`);
+            continue;
+          }
+
+          // Validate that this is a proper UUID (database-backed node)
+          const isValidId =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+              nodeId
+            );
+
+          if (!isValidId) {
+            console.warn(
+              `⚠️ Skipping node ${nodeId} - invalid UUID format, likely a temporary local node`
+            );
+            removedIds.add(nodeId); // unsaveable — drop instead of retrying forever
+            continue;
+          }
+
+          try {
+            log.debug(`💾 Saving node ${nodeId}:`, {
+              position: node.position,
+              title: node.title?.substring(0, 20) + '...',
+            });
+
+            await updateMetricCardInSupabase(
+              nodeId,
+              {
+                position: node.position,
+                title: node.title,
+                description: node.description,
+                tags: node.tags,
+                category: node.category,
+                subCategory: node.subCategory,
+                causalFactors: node.causalFactors,
+                dimensions: node.dimensions,
+                data: node.data,
+                sourceType: node.sourceType,
+                formula: node.formula,
+                assignees: node.assignees,
+              },
+              client
+            );
+
+            removedIds.add(nodeId);
+            savedCount++;
+            log.debug(`✅ Successfully saved node ${nodeId}`);
+          } catch (nodeError) {
+            console.error(`❌ Failed to save node ${nodeId}:`, nodeError);
             failedNodes.push(nodeId);
           }
         }
 
-        // Update state: remove successfully saved nodes, keep failed ones for retry
-        const successfulSaves = Array.from(state.pendingChanges).filter(
-          (id) => !failedNodes.includes(id)
-        );
-        const remainingPendingChanges = new Set(failedNodes);
-
-        set({
-          pendingChanges: remainingPendingChanges,
-          lastSaved:
-            successfulSaves.length > 0
-              ? new Date().toISOString()
-              : state.lastSaved,
+        // Remove handled ids from the CURRENT pending set (functional update)
+        // so ids added while the save was in flight survive for the next pass
+        // instead of being clobbered by a wholesale replacement.
+        set((s) => ({
+          pendingChanges: new Set(
+            [...s.pendingChanges]
+              .filter((id) => !removedIds.has(id))
+              .concat([...readdIds])
+          ),
+          lastSaved: savedCount > 0 ? new Date().toISOString() : s.lastSaved,
           isSaving: false,
           error:
             failedNodes.length > 0
               ? `Failed to save ${failedNodes.length} items`
               : undefined,
-        });
+        }));
 
         log.debug(
-          `✅ Bulletproof save completed: ${successfulSaves.length} saved, ${failedNodes.length} failed`
+          `✅ Bulletproof save completed: ${savedCount} saved, ${failedNodes.length} failed`
         );
 
-        // Sync with projects store if we have successful saves
-        if (successfulSaves.length > 0) {
-          const currentCanvas = get().canvas;
-          if (currentCanvas) {
-            try {
-              // This part of the code was removed as per the new_code,
-              // as the projectsStore is no longer imported.
-              // The original code had this line:
-              // const projectsStore = useProjectsStore.getState();
-              // projectsStore.updateProject(currentCanvas.id, {
-              //   updatedAt: new Date().toISOString(),
-              // });
-            } catch (error) {
-              console.warn('Failed to sync with projects store:', error);
-            }
-          }
-        }
+        saveRetryAttempts =
+          failedNodes.length > 0 ? saveRetryAttempts + 1 : 0;
 
-        // Schedule retry for failed nodes
-        if (failedNodes.length > 0) {
-          log.debug(
-            `🔄 Scheduling retry for ${failedNodes.length} failed saves in 5 seconds...`
-          );
-          setTimeout(() => {
-            const currentState = get();
-            if (
-              currentState.pendingChanges.size > 0 &&
-              !currentState.isSaving
-            ) {
-              currentState.saveAllPendingChanges();
-            }
-          }, 5000);
+        // Follow-up pass: covers both failed saves and ids added mid-save.
+        const remaining = get().pendingChanges.size;
+        if (remaining > 0) {
+          if (saveRetryAttempts >= MAX_SAVE_RETRY_ATTEMPTS) {
+            log.debug(
+              `⛔ Stopping auto-retry after ${saveRetryAttempts} failed attempts; the manual save affordance can retry.`
+            );
+          } else {
+            log.debug(
+              `🔄 Scheduling follow-up save for ${remaining} pending changes in ${SAVE_RETRY_DELAY_MS / 1000} seconds...`
+            );
+            setTimeout(() => {
+              const currentState = get();
+              if (
+                currentState.pendingChanges.size > 0 &&
+                !currentState.isSaving
+              ) {
+                currentState.saveAllPendingChanges();
+              }
+            }, SAVE_RETRY_DELAY_MS);
+          }
         }
       } catch (error) {
         console.error('❌ Bulletproof save system failed:', error);
@@ -1522,14 +1628,20 @@ export const useCanvasStore = create<CanvasStoreState>()(
         }));
       };
 
-      // Create new dimension cards
+      // Persist first, then apply locally — a local-only slice vanishes on
+      // reload and poisons autosave with UPDATEs against nonexistent rows.
+      const { user } = useAppStore.getState();
+      if (!user) throw new Error('User not authenticated');
+      const client = getClientForEnvironment();
+
+      // Create new dimension cards (DB-issued ids — transformToInsert drops
+      // client-generated ids, so the returned rows are the source of truth
+      // for the parent formula and the relationships).
       const newCardIds: string[] = [];
       const newCards: MetricCard[] = [];
       const newRelationships: Relationship[] = [];
 
-      dimensions.forEach((dimension, index) => {
-        const newCardId = generateUUID();
-
+      for (const [index, dimension] of dimensions.entries()) {
         // Calculate data based on history option
         let cardData: any[] = [];
         if (historyOption === 'manual') {
@@ -1548,7 +1660,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
         }
 
         const newCard: MetricCard = {
-          id: newCardId,
+          id: '',
           title: `${parentCard.title} (${dimension})`,
           description: `${dimension} component of ${parentCard.title}${
             historyOption === 'proportional' && percentages
@@ -1568,24 +1680,31 @@ export const useCanvasStore = create<CanvasStoreState>()(
           },
           sourceType: historyOption === 'proportional' ? 'Manual' : 'Manual', // All start as manual, can be changed later
           data: cardData,
+          owner: user.id,
           assignees: parentCard.assignees,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: '',
+          updatedAt: '',
         };
 
-        newCards.push(newCard);
-        newCardIds.push(newCardId);
+        const createdCard = await createMetricCard(
+          newCard,
+          canvas.id,
+          user.id,
+          client
+        );
+
+        newCards.push(createdCard);
+        newCardIds.push(createdCard.id);
 
         // Create relationship from dimension card to parent
-        const relationshipId = generateUUID();
         const evidenceSummary =
           historyOption === 'proportional' && percentages
             ? `Created through dimension slice operation with proportional split (${percentages[index]}%). ${dimension} is a component of ${parentCard.title}.`
             : `Created through dimension slice operation. ${dimension} is a component of ${parentCard.title}.`;
 
         const newRelationship: Relationship = {
-          id: relationshipId,
-          sourceId: newCardId,
+          id: '',
+          sourceId: createdCard.id,
           targetId: parentCardId,
           type: 'Compositional', // As specified in PRD
           confidence: 'High',
@@ -1607,16 +1726,23 @@ export const useCanvasStore = create<CanvasStoreState>()(
               createdBy: 'system',
             },
           ],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: '',
+          updatedAt: '',
         };
 
-        newRelationships.push(newRelationship);
-      });
+        const createdRelationship = await createRelationship(
+          newRelationship,
+          canvas.id,
+          user.id,
+          client
+        );
 
-      // Generate formula for parent card
-      const formulaReferences = dimensions
-        .map((_, index) => `[${newCardIds[index]}].value`)
+        newRelationships.push(createdRelationship);
+      }
+
+      // Generate formula for parent card from the DB-issued card ids
+      const formulaReferences = newCardIds
+        .map((id) => `[${id}].value`)
         .join(' + ');
 
       // Update parent card data based on history option
@@ -1636,27 +1762,49 @@ export const useCanvasStore = create<CanvasStoreState>()(
         parentDescription += ' - Original data maintained';
       }
 
-      const updatedParentCard: MetricCard = {
-        ...parentCard,
+      // Persist the parent rewrite (sourceType/formula/description/data)
+      const parentUpdates: Partial<MetricCard> = {
         sourceType: 'Calculated',
         formula: formulaReferences,
         description: parentDescription,
         data: parentCardData,
+      };
+      await updateMetricCardInSupabase(parentCardId, parentUpdates, client);
+
+      const updatedParentCard: MetricCard = {
+        ...parentCard,
+        ...parentUpdates,
         updatedAt: new Date().toISOString(),
       };
 
-      // Update canvas state
-      set({
-        canvas: {
-          ...canvas,
-          nodes: [
-            ...canvas.nodes.filter((node) => node.id !== parentCardId),
-            updatedParentCard,
-            ...newCards,
-          ],
-          edges: [...canvas.edges, ...newRelationships],
-          updatedAt: new Date().toISOString(),
-        },
+      // Update canvas state (functional update: don't clobber concurrent edits)
+      set((s) => ({
+        canvas: s.canvas
+          ? {
+              ...s.canvas,
+              nodes: [
+                ...s.canvas.nodes.filter((node) => node.id !== parentCardId),
+                updatedParentCard,
+                ...newCards,
+              ],
+              edges: [...s.canvas.edges, ...newRelationships],
+              updatedAt: new Date().toISOString(),
+            }
+          : undefined,
+      }));
+
+      // Realtime peers: mirror the created cards/edges + parent rewrite
+      newCards.forEach((node) =>
+        broadcastCanvasChange({ t: 'node:create', family: 'card', node })
+      );
+      newRelationships.forEach((edge) =>
+        broadcastCanvasChange({ t: 'edge:create', edge })
+      );
+      broadcastCanvasChange({
+        t: 'node:update',
+        family: 'card',
+        id: parentCardId,
+        updates: parentUpdates,
       });
 
       return newCardIds;

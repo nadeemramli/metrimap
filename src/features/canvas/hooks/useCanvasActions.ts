@@ -285,6 +285,16 @@ export function useCanvasActions(
     async (items: ClipItem[]) => {
       console.log('🗑️ deleteItems:', items.map((i) => `${i.family}:${i.node.id}`));
       if (!items.length) return;
+      // Snapshot relationships incident to the doomed cards BEFORE deleting —
+      // persistNodeDelete drops them locally and in Supabase, and undo must
+      // restore both internal edges (both endpoints deleted) and boundary
+      // edges (one endpoint survives).
+      const doomedCardIds = new Set(
+        items.filter((i) => i.family === 'card').map((i) => i.node.id)
+      );
+      const savedEdges = (useCanvasStore.getState().canvas?.edges || []).filter(
+        (e) => doomedCardIds.has(e.sourceId) || doomedCardIds.has(e.targetId)
+      );
       // Per-item try/catch so one failure doesn't abort the rest of the batch.
       let deleted = 0;
       for (const item of items) {
@@ -297,20 +307,56 @@ export function useCanvasActions(
       }
       if (deleted === 0) return; // nothing removed — don't record a no-op undo
       let current: Ref[] = []; // alive copies (none after delete)
-      const recreate = async (): Promise<Ref[]> => {
+      let currentEdgeIds: string[] = [];
+      const recreate = async (): Promise<{ nodes: Ref[]; edgeIds: string[] }> => {
         const made: Ref[] = [];
         for (const item of items) {
           const c = await createCopy(item, 0);
           if (c) made.push(c);
         }
-        return made;
+        // old id → new id for the recreated nodes, plus identity mappings for
+        // surviving endpoints so boundary edges come back — remapEdges drops
+        // any edge whose endpoints aren't both in the map.
+        const idMap = new Map<string, string>();
+        for (const r of made) if (r.srcId) idMap.set(r.srcId, r.id);
+        const alive = new Set(
+          (useCanvasStore.getState().canvas?.nodes || []).map((n) => n.id)
+        );
+        for (const e of savedEdges) {
+          for (const endpoint of [e.sourceId, e.targetId]) {
+            if (!doomedCardIds.has(endpoint) && alive.has(endpoint))
+              idMap.set(endpoint, endpoint);
+          }
+        }
+        // Recreate the edges (cascaded evidence/tags/history can't be restored).
+        const edgeIds: string[] = [];
+        for (const data of remapEdges(savedEdges, idMap)) {
+          try {
+            const before = new Set(
+              (useCanvasStore.getState().canvas?.edges || []).map((e) => e.id)
+            );
+            await useCanvasStore.getState().createEdge(data);
+            const created = (
+              useCanvasStore.getState().canvas?.edges || []
+            ).find((e) => !before.has(e.id));
+            if (created) edgeIds.push(created.id);
+          } catch (e) {
+            console.error('🗑️ undo edge recreate failed:', e);
+          }
+        }
+        return { nodes: made, edgeIds };
       };
       useCanvasHistoryStore.getState().push({
         label: `Delete ${items.length}`,
         undo: async () => {
-          current = await recreate();
+          const r = await recreate();
+          current = r.nodes;
+          currentEdgeIds = r.edgeIds;
         },
         redo: async () => {
+          for (const id of currentEdgeIds)
+            await useCanvasStore.getState().persistEdgeDelete(id);
+          currentEdgeIds = [];
           for (const r of current) await deleteOne(r.family, r.id);
           current = [];
         },

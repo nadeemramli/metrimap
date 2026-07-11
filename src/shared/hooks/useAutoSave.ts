@@ -41,11 +41,21 @@ export function useAutoSave({ delay = 2000, enabled = true }: UseAutoSaveOptions
         if (!canvas?.id) return;
         if (!pendingChanges || pendingChanges.size === 0) return;
         if (isSaving) return;
-        void Promise.resolve(saveAllPendingChanges()).catch((err) => {
-          // saveAllPendingChanges already records errors in store state; this
-          // is a last-resort guard so a rejected promise never bubbles up.
-          console.error('Autosave flush failed:', err);
-        });
+        void Promise.resolve(saveAllPendingChanges())
+          .then(() => {
+            // Changes queued while the save was in flight get a fresh
+            // debounce pass. Skip when the save errored — the store schedules
+            // its own capped retry for failures.
+            const s = useCanvasStore.getState();
+            if (s.pendingChanges.size > 0 && !s.isSaving && !s.error) {
+              scheduleFlush();
+            }
+          })
+          .catch((err) => {
+            // saveAllPendingChanges already records errors in store state; this
+            // is a last-resort guard so a rejected promise never bubbles up.
+            console.error('Autosave flush failed:', err);
+          });
       } catch (err) {
         console.error('Autosave flush threw:', err);
       }
@@ -59,14 +69,26 @@ export function useAutoSave({ delay = 2000, enabled = true }: UseAutoSaveOptions
       }, delay);
     };
 
-    // Debounced save whenever the set of pending changes grows.
+    // Debounced save whenever a genuinely NEW id is queued. We must compare
+    // contents against the previous set rather than just reacting to a reference
+    // change: every save pass replaces `pendingChanges` with a fresh Set (even
+    // when a permanently-failing node stays in it), so reacting to the reference
+    // alone would re-trigger a save immediately and defeat the store's capped
+    // failure retry. Only fresh work (an id not previously pending) re-arms us.
     const unsubscribe = useCanvasStore.subscribe(
       (state) => state.pendingChanges,
-      (pendingChanges) => {
+      (pendingChanges, previous) => {
         if (!enabledRef.current) return;
-        if (pendingChanges && pendingChanges.size > 0) {
-          scheduleFlush();
+        if (!pendingChanges || pendingChanges.size === 0) return;
+        const prev = previous ?? new Set<string>();
+        let hasNewId = false;
+        for (const id of pendingChanges) {
+          if (!prev.has(id)) {
+            hasNewId = true;
+            break;
+          }
         }
+        if (hasNewId) scheduleFlush();
       }
     );
 
