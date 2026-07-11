@@ -70,6 +70,32 @@ describe('evaluateImpact', () => {
     expect(e.suggestedResult).toBe('inconclusive');
   });
 
+  it('open-ended window (start only, no end) uses the latest point from start onward', () => {
+    // Points only AFTER the start period — must still count as in-window data.
+    const series = { 'tracked:tm_cvr': [mv('2026-04', 100), mv('2026-06', 105), mv('2026-07', 110)] };
+    const e = evaluateImpact(
+      contract({ baselineStart: '2026-04', baselineEnd: '2026-04', measureStart: '2026-05', measureEnd: null }),
+      [tLink],
+      series
+    );
+    expect(e.target?.hasData).toBe(true);
+    expect(e.target?.windowValue).toBe(110);
+    expect(e.target?.pctDelta).toBeCloseTo(10);
+    expect(e.met).toBe('met');
+  });
+
+  it('open-ended window with a point at the start still returns the latest point', () => {
+    const series = {
+      'tracked:tm_cvr': [mv('2026-04', 100), mv('2026-05', 102), mv('2026-06', 105), mv('2026-07', 110)],
+    };
+    const e = evaluateImpact(
+      contract({ baselineStart: '2026-04', baselineEnd: '2026-04', measureStart: '2026-05', measureEnd: null }),
+      [tLink],
+      series
+    );
+    expect(e.target?.windowValue).toBe(110);
+  });
+
   it('target misses the expected delta → lost', () => {
     const series = { 'tracked:tm_cvr': [mv('2026-05', 100), mv('2026-07', 102)] }; // +2% < +5%
     const e = evaluateImpact(contract(), [tLink], series);
@@ -122,5 +148,20 @@ describe('buildSeriesByKey / measuredByNode', () => {
     expect(measured['act'].deltaText).toBe('+7.0%');
     expect(measured['act'].met).toBe('met');
     expect(measured['act'].hasData).toBe(true);
+  });
+
+  it('a card-linked metric absent from the passed card list yields no series and hasData=false (visibility masking)', () => {
+    // Callers pass visibleCards; a hide_value card filtered out of that list
+    // must not leak its series into measured deltas.
+    const hidden = card('card_cvr', { data: [mv('2026-05', 100), mv('2026-07', 112)] });
+    const entries = [{ contract: contract(), links: [cardTarget] }];
+
+    const withCard = buildSeriesByKey([cardTarget], [hidden], {});
+    expect(withCard['card:card_cvr']).toHaveLength(2);
+    const withoutCard = buildSeriesByKey([cardTarget], [], {});
+    expect(withoutCard['card:card_cvr'] ?? []).toHaveLength(0);
+
+    const measured = measuredByNode(entries, [], {});
+    expect(measured['act'].hasData).toBe(false);
   });
 });

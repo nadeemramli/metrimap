@@ -50,14 +50,15 @@ const DEFAULT_GUARDRAIL_TOLERANCE_PCT = 5;
  * inside [start, end]. Requiring an in-window point (rather than the last point
  * before it) is what lets us report "no data in the measurement window" instead
  * of silently reusing the baseline value. When only `end` is set we fall back to
- * "as of end" (last point at/before it). Assumes the series is period-ascending.
+ * "as of end" (last point at/before it); when only `start` is set the window is
+ * open-ended, [start, +∞) — every point from start onward counts. Assumes the
+ * series is period-ascending.
  */
 function windowValue(series: MetricValue[] | undefined, start: string | null, end: string | null): number | null {
   if (!Array.isArray(series) || series.length === 0) return null;
-  const hi = end ?? start;
-  if (!hi) return null;
+  if (!start && !end) return null;
   const inWindow = series.filter(
-    (d) => d.period <= hi && (start ? d.period >= start : true)
+    (d) => (!start || d.period >= start) && (!end || d.period <= end)
   );
   return inWindow.length ? inWindow[inWindow.length - 1].value : null;
 }

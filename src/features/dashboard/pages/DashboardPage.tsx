@@ -105,7 +105,10 @@ export default function DashboardPage() {
 
   // Server state via TanStack Query (CVS-70): cached + stale-while-revalidate, so
   // revisiting the dashboard is instant instead of refetching behind a spinner.
-  const { data: dashboardData, isLoading } = useDashboardData(canvasId);
+  // isPending (not isLoading): a disabled query — e.g. while the Clerk client is
+  // still initializing — has isLoading=false but no data, which would flash the
+  // empty state; isPending stays true until data actually exists.
+  const { data: dashboardData, isPending } = useDashboardData(canvasId);
   const trackedNames = dashboardData?.trackedNames ?? EMPTY_NAMES;
   // Persisted nodes + groups for this canvas (drives the group dashboards).
   const loadedCards = dashboardData?.cards ?? EMPTY_CARDS;
@@ -133,11 +136,11 @@ export default function DashboardPage() {
   // data resolves — not on the loading spinner or on every re-render).
   const trackedDashboardView = useRef<string | null>(null);
   useEffect(() => {
-    if (!isLoading && canvasId && trackedDashboardView.current !== canvasId) {
+    if (!isPending && canvasId && trackedDashboardView.current !== canvasId) {
       trackedDashboardView.current = canvasId;
       track('dashboard_viewed', { dashboard_id: canvasId });
     }
-  }, [isLoading, canvasId]);
+  }, [isPending, canvasId]);
 
   const [editMode, setEditMode] = useState(false);
   // One-shot dashboard-editing tip on first Edit (CVS-114 slice 4).
@@ -160,6 +163,7 @@ export default function DashboardPage() {
   const [traceNodeId, setTraceNodeId] = useState<string | null>(null);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingLayout = useRef<Layout[] | null>(null);
 
   // Prefer the live in-canvas store when it matches this canvas (fresher, holds
   // unsaved edits); otherwise fall back to what we persisted from the DB.
@@ -185,22 +189,25 @@ export default function DashboardPage() {
     [cards, restrictedSet]
   );
   const restrictedCount = cards.length - visibleCards.length;
+  // Trust the live store's list outright when it matches (including an empty
+  // one, so deleting the last group doesn't resurrect it from the stale query).
   const groups: GroupNode[] = useMemo(
-    () =>
-      storeMatches && (storeCanvas?.groups?.length ?? 0) > 0
-        ? (storeCanvas?.groups ?? [])
-        : loadedGroups,
+    () => (storeMatches ? (storeCanvas?.groups ?? []) : loadedGroups),
     [storeMatches, storeCanvas?.groups, loadedGroups]
   );
 
   // Default to the first group's dashboard when groups exist, else Custom.
+  // One-shot per canvas: later groups-array identity changes (e.g. a
+  // collaborator's edit updating the store) must not yank the user off Custom.
+  const defaultViewApplied = useRef<string | null>(null);
   useEffect(() => {
-    if (groups.length > 0) {
+    if (groups.length > 0 && canvasId && defaultViewApplied.current !== canvasId) {
+      defaultViewApplied.current = canvasId;
       setView((prev) =>
         prev === CUSTOM_VIEW && groups[0] ? groups[0].id : prev
       );
     }
-  }, [groups]);
+  }, [groups, canvasId]);
 
   const activeGroup = useMemo(
     () => groups.find((g) => g.id === view) ?? null,
@@ -248,19 +255,21 @@ export default function DashboardPage() {
   );
 
   // Linked Strategy bets per widget (CVS-172). currentPeriod drives review-ready.
+  // Both maps use visibleCards (like `sources`) so hide_value cards never leak
+  // their series into impact badges or strategy-link matching (CVS-123).
   const currentPeriod = useMemo(() => new Date().toISOString().slice(0, 7), []);
   const strategyLinksByWidget = useMemo(() => {
     const map: Record<string, WidgetStrategyLink[]> = {};
     for (const w of widgets) {
-      map[w.id] = linkedStrategyForWidget(w, impactEntries, cards);
+      map[w.id] = linkedStrategyForWidget(w, impactEntries, visibleCards);
     }
     return map;
-  }, [widgets, impactEntries, cards]);
+  }, [widgets, impactEntries, visibleCards]);
 
   // Measured deltas per strategy node (CVS-176), for the badge overlay.
   const measuredMap = useMemo(
-    () => measuredByNode(impactEntries, cards, trackedValues),
-    [impactEntries, cards, trackedValues]
+    () => measuredByNode(impactEntries, visibleCards, trackedValues),
+    [impactEntries, visibleCards, trackedValues]
   );
 
   const openStrategyItem = useMemo(
@@ -297,6 +306,25 @@ export default function DashboardPage() {
     [viewWidgets]
   );
 
+  // Persist whatever layout is pending right now (debounce flush). Kept
+  // separate from the timer so a view switch can flush instead of discard.
+  const flushLayoutSave = () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    const layout = pendingLayout.current;
+    pendingLayout.current = null;
+    if (!layout || !client) return;
+    updateLayouts(
+      layout.map((l) => ({
+        id: l.i,
+        layout: { x: l.x, y: l.y, w: l.w, h: l.h },
+      })),
+      client
+    ).catch(() => toast.error('Failed to save layout'));
+  };
+
   const handleLayoutChange = (layout: Layout[]) => {
     if (!editMode) return;
     // Update local positions immediately, debounce the persistence.
@@ -306,17 +334,20 @@ export default function DashboardPage() {
         return l ? { ...w, layout: { x: l.x, y: l.y, w: l.w, h: l.h } } : w;
       })
     );
+    // react-grid-layout also fires onLayoutChange when the layout prop swaps
+    // (e.g. switching view pills). If a save is still pending for a different
+    // widget set, flush it first so the previous view's drag isn't lost.
+    const pending = pendingLayout.current;
+    if (pending) {
+      const pendingIds = new Set(pending.map((l) => l.i));
+      const sameSet =
+        pendingIds.size === layout.length &&
+        layout.every((l) => pendingIds.has(l.i));
+      if (!sameSet) flushLayoutSave();
+    }
+    pendingLayout.current = layout;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      if (!client) return;
-      updateLayouts(
-        layout.map((l) => ({
-          id: l.i,
-          layout: { x: l.x, y: l.y, w: l.w, h: l.h },
-        })),
-        client
-      ).catch(() => toast.error('Failed to save layout'));
-    }, 700);
+    saveTimer.current = setTimeout(flushLayoutSave, 700);
   };
 
   const openAdd = () => {
@@ -475,7 +506,7 @@ export default function DashboardPage() {
     description: 'Operational metrics for this canvas',
   });
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (

@@ -10,14 +10,21 @@ import { CalendarDays } from 'lucide-react';
 // Due-date column: shows the date (red when overdue) with a native date input
 // in a popover to change it. Read-only text when disabled.
 
-function isOverdue(iso: string): boolean {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return new Date(iso) < today;
+// Parse 'YYYY-MM-DD' as local midnight (new Date(iso) would parse as UTC and
+// shift the date back a day in timezones west of UTC).
+export function parseLocalDate(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
 }
 
-function fmt(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+export function isOverdue(iso: string): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return parseLocalDate(iso) < today;
+}
+
+export function fmt(iso: string): string {
+  return parseLocalDate(iso).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
   });

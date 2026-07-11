@@ -4,6 +4,7 @@ import { Card } from '@/shared/components/ui/card';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
+import { useVisibilityStore } from '@/shared/stores/useVisibilityStore';
 import { useProjectMembers } from '@/features/canvas/hooks/useProjectMembers';
 import { useCanvasPermission } from '@/features/canvas/hooks/useCanvasPermission';
 import { usePagePanel } from '@/features/canvas/stores/useCanvasPanelStore';
@@ -173,6 +174,20 @@ export default function StrategyPage() {
     return [...merged, ...extras].filter((c) => !deletedIds.has(c.id));
   }, [baseCards, extraCards, cardOverrides, deletedIds]);
 
+  // Node-level visibility (CVS-123): hide_value cards must not feed measured
+  // deltas shown to restricted viewers. Same resolver as the dashboard page.
+  const ensureVisibility = useVisibilityStore((s) => s.ensureLoaded);
+  const restrictedSet = useVisibilityStore(
+    (s) => s.restrictedByProject[canvasId ?? '']
+  );
+  useEffect(() => {
+    if (client && canvasId) ensureVisibility(canvasId, client);
+  }, [client, canvasId, ensureVisibility]);
+  const visibleCards: MetricCard[] = useMemo(
+    () => (restrictedSet ? cards.filter((c) => !restrictedSet.has(c.id)) : cards),
+    [cards, restrictedSet]
+  );
+
   useEffect(() => {
     if (!client || !canvasId) return;
     setLoading(true);
@@ -268,8 +283,8 @@ export default function StrategyPage() {
   }, [client, impactTrackedKey]);
 
   const measuredMap = useMemo(
-    () => measuredByNode(impactEntries, cards, impactTrackedValues),
-    [impactEntries, cards, impactTrackedValues]
+    () => measuredByNode(impactEntries, visibleCards, impactTrackedValues),
+    [impactEntries, visibleCards, impactTrackedValues]
   );
 
   // Members carry avatars too — merge so a just-assigned person resolves before
@@ -336,6 +351,7 @@ export default function StrategyPage() {
   };
 
   const handleStatusChange = (cardId: string, status: WorkflowStatus) => {
+    if (!canEdit) return;
     const card = cards.find((c) => c.id === cardId);
     if (!card || (card.status ?? 'backlog') === status) return;
     applyPatch(cardId, { status });
@@ -579,6 +595,7 @@ export default function StrategyPage() {
       {viewMode === 'board' ? (
         <StrategyBoard
           board={board}
+          canEdit={canEdit}
           onStatusChange={handleStatusChange}
           onCardClick={setSettingsCardId}
           impactSummaries={impactSummaries}

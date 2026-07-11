@@ -87,7 +87,9 @@ export default function FeedPage() {
         title: n.title || n.type,
         description: n.description ?? undefined,
         timestamp: n.created_at,
-        projectId: (n.metadata as any)?.projectId ?? (n.metadata as any)?.cardId,
+        // No cardId fallback: legacy alert metadata lacks projectId, and a card
+        // id is not a canvas id — better a non-clickable row than a broken URL.
+        projectId: (n.metadata as any)?.projectId,
       }));
       setItems(
         [...sys, ...ppl].sort(

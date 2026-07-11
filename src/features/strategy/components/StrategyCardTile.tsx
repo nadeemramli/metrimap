@@ -12,25 +12,33 @@ import { CalendarDays, FlaskConical, Hammer } from 'lucide-react';
 
 interface StrategyCardTileProps {
   card: MetricCard;
+  canEdit: boolean;
   onClick?: (cardId: string) => void;
   impact?: ImpactSummary;
   measured?: MeasuredImpact;
 }
 
-export function StrategyCardTile({ card, onClick, impact, measured }: StrategyCardTileProps) {
+export function StrategyCardTile({ card, canEdit, onClick, impact, measured }: StrategyCardTileProps) {
   const isHypothesis = card.category === 'Ideas/Hypothesis';
   const workflow = card.workflow ?? {};
   const KindIcon = isHypothesis ? FlaskConical : Hammer;
 
   return (
     <div
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData('text/plain', card.id);
-        e.dataTransfer.effectAllowed = 'move';
-      }}
+      draggable={canEdit}
+      onDragStart={
+        canEdit
+          ? (e) => {
+              e.dataTransfer.setData('text/plain', card.id);
+              e.dataTransfer.effectAllowed = 'move';
+            }
+          : undefined
+      }
       onClick={() => onClick?.(card.id)}
-      className="cursor-grab space-y-2 rounded-lg border bg-card p-3 shadow-sm transition-all duration-150 ease-out hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:translate-y-0 active:cursor-grabbing active:shadow-sm"
+      className={cn(
+        'space-y-2 rounded-lg border bg-card p-3 shadow-sm transition-all duration-150 ease-out hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:translate-y-0 active:shadow-sm',
+        canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+      )}
       title="Click to open"
     >
       <div className="flex items-start justify-between gap-2">

@@ -52,7 +52,13 @@ export async function evaluateAlertRules(
         rule.id,
         `Alert: ${label}`,
         `${label} ${describeRule(rule)} — now ${latest.value} (${latest.period})`,
-        { cardId: card.id, ruleId: rule.id, period: latest.period, value: latest.value },
+        {
+          projectId: rule.project_id,
+          cardId: card.id,
+          ruleId: rule.id,
+          period: latest.period,
+          value: latest.value,
+        },
         client as never
       );
       await updateAlertRule(

@@ -11,6 +11,7 @@ import { useState } from 'react';
 
 interface StrategyBoardProps {
   board: StrategyBoardData;
+  canEdit: boolean;
   onStatusChange: (cardId: string, status: WorkflowStatus) => void;
   onCardClick?: (cardId: string) => void;
   impactSummaries?: Record<string, ImpactSummary>;
@@ -19,6 +20,7 @@ interface StrategyBoardProps {
 
 export function StrategyBoard({
   board,
+  canEdit,
   onStatusChange,
   onCardClick,
   impactSummaries,
@@ -31,18 +33,30 @@ export function StrategyBoard({
       {board.columns.map((column) => (
         <div
           key={column.status}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            setDragOver(column.status);
-          }}
-          onDragLeave={() => setDragOver((s) => (s === column.status ? null : s))}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(null);
-            const cardId = e.dataTransfer.getData('text/plain');
-            if (cardId) onStatusChange(cardId, column.status);
-          }}
+          onDragOver={
+            canEdit
+              ? (e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  setDragOver(column.status);
+                }
+              : undefined
+          }
+          onDragLeave={
+            canEdit
+              ? () => setDragOver((s) => (s === column.status ? null : s))
+              : undefined
+          }
+          onDrop={
+            canEdit
+              ? (e) => {
+                  e.preventDefault();
+                  setDragOver(null);
+                  const cardId = e.dataTransfer.getData('text/plain');
+                  if (cardId) onStatusChange(cardId, column.status);
+                }
+              : undefined
+          }
           className={cn(
             'flex min-h-[240px] flex-col rounded-xl border bg-muted/30 transition-colors',
             dragOver === column.status && 'border-primary bg-primary/5'
@@ -61,6 +75,7 @@ export function StrategyBoard({
               <StrategyCardTile
                 key={card.id}
                 card={card}
+                canEdit={canEdit}
                 onClick={onCardClick}
                 impact={impactSummaries?.[card.id]}
                 measured={measuredMap?.[card.id]}
