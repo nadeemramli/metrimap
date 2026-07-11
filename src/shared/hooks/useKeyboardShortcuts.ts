@@ -44,13 +44,25 @@ export function createShortcut(
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[] = []) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      // Ignore shortcuts while the user is typing in an editable element
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
       const matchingShortcut = shortcuts.find((shortcut) => {
         if (shortcut.key.toLowerCase() !== event.key.toLowerCase())
           return false;
-        if (shortcut.ctrl && !event.ctrlKey) return false;
-        if (shortcut.shift && !event.shiftKey) return false;
-        if (shortcut.alt && !event.altKey) return false;
-        if (shortcut.meta && !event.metaKey) return false;
+        if (!!shortcut.ctrl !== event.ctrlKey) return false;
+        if (!!shortcut.shift !== event.shiftKey) return false;
+        if (!!shortcut.alt !== event.altKey) return false;
+        if (!!shortcut.meta !== event.metaKey) return false;
 
         return true;
       });

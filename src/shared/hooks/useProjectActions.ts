@@ -1,11 +1,13 @@
 import { useProjectsStore } from '@/features/projects/stores/useProjectsStore';
 import { useAppStore } from '@/lib/stores';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function useProjectActions() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [isCreatingCanvas, setIsCreatingCanvas] = useState(false);
   const {
     addProject,
@@ -39,13 +41,23 @@ export function useProjectActions() {
 
   const deleteProject = useCallback(
     async (projectId: string) => {
+      const ok = await confirm({
+        title: 'Delete canvas?',
+        description:
+          'This permanently deletes the canvas and all of its nodes, relationships, groups, comments, dashboards and evidence links. This cannot be undone.',
+        destructive: true,
+        actionLabel: 'Delete canvas',
+      });
+      if (!ok) return;
       try {
         await deleteProjectStore(projectId);
+        toast.success('Canvas deleted');
       } catch (error) {
         console.error('Failed to delete project:', error);
+        toast.error('Failed to delete canvas');
       }
     },
-    [deleteProjectStore]
+    [confirm, deleteProjectStore]
   );
 
   const shareProject = useCallback(async (projectId: string) => {
@@ -108,8 +120,8 @@ export function useProjectActions() {
   );
 
   const handleDeleteProject = useCallback(
-    (projectId: string) => {
-      deleteProject(projectId);
+    async (projectId: string) => {
+      await deleteProject(projectId);
     },
     [deleteProject]
   );

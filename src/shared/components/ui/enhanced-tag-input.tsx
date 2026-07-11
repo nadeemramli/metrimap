@@ -140,23 +140,24 @@ export function EnhancedTagInput({
     console.log("handleCreateTag called with:", tagName);
     if (!canvasId || tags.includes(tagName) || tags.length >= maxTags) return;
 
-    // Always add to local state first
-    console.log("Calling onAdd with:", tagName);
-    onAdd(tagName);
+    // Clear the input immediately for responsiveness
     setInputValue("");
     setIsOpen(false);
     setSelectedIndex(-1);
     inputRef.current?.focus();
 
-    // Try to create the tag in the database (but don't block the UI)
+    // Create the tag in the database BEFORE notifying consumers — onAdd
+    // handlers persist junction rows right away and need the tags row to exist
     try {
       await createProjectTag(canvasId, { name: tagName });
       console.log("Tag created in database successfully");
     } catch (error) {
       console.error("Failed to create tag in database:", error);
-      console.log("Tag added to local state only - database creation failed");
-      // The tag is already added to local state, so we don't need to do anything else
+      console.log("Adding tag to local state only - database creation failed");
+      // Still notify consumers so purely-local usage keeps working
     }
+    console.log("Calling onAdd with:", tagName);
+    onAdd(tagName);
   };
 
   const handleRemoveTag = (tagToRemove: string) => {

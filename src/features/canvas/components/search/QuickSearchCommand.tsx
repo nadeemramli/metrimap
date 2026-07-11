@@ -51,6 +51,7 @@ export default function QuickSearchCommand({
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<QuickSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   // Reset state each time the palette closes so it opens fresh.
   useEffect(() => {
@@ -58,6 +59,7 @@ export default function QuickSearchCommand({
       setTerm('');
       setResults([]);
       setLoading(false);
+      setFailed(false);
     }
   }, [isOpen]);
 
@@ -69,10 +71,12 @@ export default function QuickSearchCommand({
     if (q.length < 2) {
       setResults([]);
       setLoading(false);
+      setFailed(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
+    setFailed(false);
     const handle = setTimeout(async () => {
       try {
         const found = await searchAcrossCanvases(q, client ?? undefined);
@@ -88,7 +92,10 @@ export default function QuickSearchCommand({
         );
       } catch (err) {
         console.error('Global search failed:', err);
-        if (!cancelled) setResults([]);
+        if (!cancelled) {
+          setResults([]);
+          setFailed(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -125,6 +132,8 @@ export default function QuickSearchCommand({
               </CommandEmpty>
             ) : loading ? (
               <CommandEmpty>Searching…</CommandEmpty>
+            ) : failed ? (
+              <CommandEmpty>Search failed — try again.</CommandEmpty>
             ) : results.length === 0 ? (
               <CommandEmpty>No matches for “{trimmed}”.</CommandEmpty>
             ) : (

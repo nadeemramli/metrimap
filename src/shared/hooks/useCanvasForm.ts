@@ -16,7 +16,7 @@ export function useCanvasForm({ currentProject }: UseCanvasFormProps) {
     if (currentProject) {
       const name = currentProject.name || '';
       const description = currentProject.description || '';
-      const tags = currentProject.tags || [];
+      const tags = [...(currentProject.tags || [])];
 
       setCanvasName(name);
       setCanvasDescription(description);
@@ -33,8 +33,8 @@ export function useCanvasForm({ currentProject }: UseCanvasFormProps) {
     if (!currentProject) return false;
 
     const tagsChanged =
-      JSON.stringify(tags.sort()) !==
-      JSON.stringify((currentProject.tags || []).sort());
+      JSON.stringify([...tags].sort()) !==
+      JSON.stringify([...(currentProject.tags || [])].sort());
 
     return (
       name !== (currentProject.name || '') ||

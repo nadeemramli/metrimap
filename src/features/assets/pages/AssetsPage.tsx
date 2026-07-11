@@ -125,6 +125,7 @@ export default function AssetsPage() {
     relationshipTypes,
     confidenceLevels,
     getNodeById,
+    setProject,
     setMetricTags,
     setRelationshipTags,
   } = useAssetsData();
@@ -504,14 +505,12 @@ export default function AssetsPage() {
               for (const metricId of selectedItems) {
                 // The tags were already added to the database, so we can update our local state
                 // This will trigger a re-render and the useAssetsData hook will handle the rest
-                if (updatedMetricTags[metricId]) {
-                  // Keep existing tags and add new ones if they're not already there
-                  const existingTags = updatedMetricTags[metricId] || [];
-                  const newTags = selectedTags.filter(
-                    (tag) => !existingTags.includes(tag)
-                  );
-                  updatedMetricTags[metricId] = [...existingTags, ...newTags];
-                }
+                // Keep existing tags and add new ones if they're not already there
+                const existingTags = updatedMetricTags[metricId] || [];
+                const newTags = selectedTags.filter(
+                  (tag) => !existingTags.includes(tag)
+                );
+                updatedMetricTags[metricId] = [...existingTags, ...newTags];
               }
               setMetricTags(updatedMetricTags);
             } else {
@@ -588,7 +587,9 @@ export default function AssetsPage() {
       return;
     }
 
-    // Create CSV content
+    // Create CSV content (RFC 4180: double embedded quotes inside quoted fields)
+    const csvField = (v: unknown) =>
+      '"' + String(v ?? '').replace(/"/g, '""') + '"';
     let csvContent = '';
 
     if (activeTab === 'metrics') {
@@ -606,13 +607,17 @@ export default function AssetsPage() {
 
       filteredMetrics.forEach((metric) => {
         const row = [
-          `"${metric.title}"`,
-          `"${metric.category}"`,
-          `"${metric.description || ''}"`,
-          `"${metric.data && metric.data.length > 0 ? metric.data[0].value : ''}"`,
+          csvField(metric.title),
+          csvField(metric.category),
+          csvField(metric.description || ''),
+          csvField(
+            metric.data && metric.data.length > 0
+              ? metric.data[metric.data.length - 1].value
+              : ''
+          ),
           `${relationships.filter((r: Relationship) => r.sourceId === metric.id || r.targetId === metric.id).length}`,
-          `"${formatDate(metric.updatedAt)}"`,
-          `"${(metric.tags || []).join('; ')}"`,
+          csvField(formatDate(metric.updatedAt)),
+          csvField((metric.tags || []).join('; ')),
         ];
         csvContent += row.join(',') + '\n';
       });
@@ -632,12 +637,12 @@ export default function AssetsPage() {
         const sourceNode = getNodeById(rel.sourceId);
         const targetNode = getNodeById(rel.targetId);
         const row = [
-          `"${sourceNode?.title || 'Unknown'}"`,
-          `"${targetNode?.title || 'Unknown'}"`,
-          `"${rel.type}"`,
-          `"${rel.confidence}"`,
+          csvField(sourceNode?.title || 'Unknown'),
+          csvField(targetNode?.title || 'Unknown'),
+          csvField(rel.type),
+          csvField(rel.confidence),
           `${rel.weight || 0}`,
-          `"${formatDate(rel.updatedAt)}"`,
+          csvField(formatDate(rel.updatedAt)),
         ];
         csvContent += row.join(',') + '\n';
       });
@@ -706,7 +711,7 @@ export default function AssetsPage() {
       return;
     }
     try {
-      await promoteCardToTrackedMetric(
+      const trackedId = await promoteCardToTrackedMetric(
         {
           cardId: metric.id,
           projectId: canvasId,
@@ -715,6 +720,22 @@ export default function AssetsPage() {
           source_kind: metric.sourceType ?? null,
         },
         supabaseClient
+      );
+      // Mirror the promote in local state so the row's "Promote to tracked"
+      // action disables immediately (canvas store when hydrated, project
+      // fallback otherwise) — otherwise a second click double-promotes.
+      useCanvasStore.getState().updateNode(metric.id, {
+        trackedMetricId: trackedId,
+      } as Partial<MetricCard>);
+      setProject((p: any) =>
+        p
+          ? {
+              ...p,
+              nodes: p.nodes.map((n: MetricCard) =>
+                n.id === metric.id ? { ...n, trackedMetricId: trackedId } : n
+              ),
+            }
+          : p
       );
       toast.success(`"${metric.title}" catalogued as a tracked metric`);
     } catch {
@@ -1294,12 +1315,12 @@ export default function AssetsPage() {
                                     <div className="min-h-[2.5rem] flex flex-col justify-center">
                                       <div className="text-sm font-medium">
                                         {metric.data && metric.data.length > 0
-                                          ? `${metric.data[0].value}`
+                                          ? `${metric.data[metric.data.length - 1].value}`
                                           : 'No data'}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
                                         {metric.data && metric.data.length > 0
-                                          ? `Period: ${metric.data[0].period}`
+                                          ? `Period: ${metric.data[metric.data.length - 1].period}`
                                           : ''}
                                       </div>
                                     </div>

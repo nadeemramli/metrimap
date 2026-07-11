@@ -22,6 +22,9 @@ export function useAssetsData() {
   >({});
   const [isLoadingTags, setIsLoadingTags] = useState(false);
 
+  // Monotonic token so only the latest tag-load run commits its results
+  const tagLoadSeq = useRef(0);
+
   // Track if we've already loaded tags for the current data to prevent unnecessary reloads
   const loadedTagsRef = useRef<{
     canvasId: string | undefined;
@@ -45,8 +48,10 @@ export function useAssetsData() {
 
   // Load project data from database
   useEffect(() => {
+    let cancelled = false;
+
     const loadProjectData = async () => {
-      if (canvasId && !isLoadingProject) {
+      if (canvasId) {
         setIsLoadingProject(true);
         try {
           // console.log('🔄 Loading project data from database for:', canvasId);
@@ -55,26 +60,49 @@ export function useAssetsData() {
           //   nodes: projectData?.nodes?.length || 0,
           //   edges: projectData?.edges?.length || 0,
           // });
-          setProject(projectData);
+          if (!cancelled) {
+            setProject(projectData);
+          }
         } catch (error) {
           console.error('❌ Failed to load project data:', error);
         } finally {
-          setIsLoadingProject(false);
+          if (!cancelled) {
+            setIsLoadingProject(false);
+          }
         }
       }
     };
 
     loadProjectData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [canvasId, supabaseClient]);
+
+  // Stable identity of the id sets so equal-length replacements still re-fire the effect
+  const metricIdsKey = useMemo(
+    () =>
+      metrics
+        .map((m: MetricCard) => m.id)
+        .sort()
+        .join(','),
+    [metrics]
+  );
+  const relationshipIdsKey = useMemo(
+    () =>
+      relationships
+        .map((r: Relationship) => r.id)
+        .sort()
+        .join(','),
+    [relationships]
+  );
 
   // Load tags for metrics and relationships
   useEffect(() => {
     const loadTags = async () => {
       if (!canvasId || (metrics.length === 0 && relationships.length === 0))
         return;
-
-      // Prevent multiple simultaneous tag loading operations
-      if (isLoadingTags) return;
 
       // Check if we've already loaded tags for this exact data
       const currentMetricIds = new Set(metrics.map((m: MetricCard) => m.id));
@@ -98,6 +126,7 @@ export function useAssetsData() {
         return;
       }
 
+      const seq = ++tagLoadSeq.current;
       setIsLoadingTags(true);
       try {
         // Load tags for metrics
@@ -152,24 +181,30 @@ export function useAssetsData() {
           {} as Record<string, string[]>
         );
 
-        setMetricTags(metricTagsRecord);
-        setRelationshipTags(relationshipTagsRecord);
+        // Only the latest run commits — a superseded run must not overwrite newer data
+        if (seq === tagLoadSeq.current) {
+          setMetricTags(metricTagsRecord);
+          setRelationshipTags(relationshipTagsRecord);
 
-        // Update the ref to track what we've loaded
-        loadedTagsRef.current = {
-          canvasId,
-          metricIds: new Set(currentMetricIds) as Set<string>,
-          relationshipIds: new Set(currentRelationshipIds) as Set<string>,
-        };
+          // Update the ref to track what we've loaded
+          loadedTagsRef.current = {
+            canvasId,
+            metricIds: new Set(currentMetricIds) as Set<string>,
+            relationshipIds: new Set(currentRelationshipIds) as Set<string>,
+          };
+        }
       } catch (error) {
         console.error('Failed to load tags:', error);
       } finally {
-        setIsLoadingTags(false);
+        if (seq === tagLoadSeq.current) {
+          setIsLoadingTags(false);
+        }
       }
     };
 
     loadTags();
-  }, [canvasId, metrics.length, relationships.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasId, metricIdsKey, relationshipIdsKey]);
 
   // Get derived data
   const metricCategories = useMemo(() => {
