@@ -1,7 +1,18 @@
 // Custom EditorJS block: /hypothesis — a structured hypothesis (CVS-34 slice 4.5).
 // Statement + prediction + status. Plain DOM; no external refs.
 
+import DOMPurify from 'dompurify';
+
 type HStatus = 'proposed' | 'validated' | 'invalidated';
+
+// Stored content is untrusted (jsonb writable by any editor / MCP client) and
+// EditorJS only sanitizes on save() — so strip scripts/handlers at render time.
+function sanitizeFieldHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['br', 'b', 'i'],
+    ALLOWED_ATTR: [],
+  });
+}
 
 interface HypothesisData {
   statement: string;
@@ -62,7 +73,7 @@ export default class HypothesisBlock {
     const v = document.createElement('div');
     v.className = cls;
     v.contentEditable = this.readOnly ? 'false' : 'true';
-    v.innerHTML = html;
+    v.innerHTML = sanitizeFieldHtml(html);
     v.dataset.placeholder = placeholder;
     v.style.cssText = 'outline:none;color:#374151;line-height:1.5;';
     box.appendChild(v);

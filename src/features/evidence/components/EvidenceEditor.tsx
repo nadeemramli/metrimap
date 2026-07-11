@@ -142,7 +142,9 @@ export default function EvidenceEditor({
           link: metadata.link || '',
           hypothesis: metadata.hypothesis || '',
           impactOnConfidence: metadata.impactOnConfidence || '',
-          summary: metadata.title || '',
+          // Preserve the user-entered summary; fall back to the title only for
+          // brand-new items that never had one.
+          summary: evidence?.summary ?? (metadata.title || ''),
           createdBy: user?.id || 'anonymous-user',
           createdAt: evidence?.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -270,7 +272,9 @@ export default function EvidenceEditor({
         link: formData.link || '',
         hypothesis: formData.hypothesis || '',
         impactOnConfidence: formData.impactOnConfidence || '',
-        summary: formData.title || '',
+        // Preserve the user-entered summary; fall back to the title only for
+        // brand-new items that never had one.
+        summary: evidence?.summary ?? (formData.title || ''),
         createdBy: user?.id || 'anonymous-user',
         createdAt: evidence?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),

@@ -62,7 +62,13 @@ export const useEvidenceStore = create<EvidenceState>()(
 
       addEvidence: (evidence: EvidenceItem) =>
         set((state) => ({
-          evidence: [...state.evidence, evidence],
+          // Replace-by-id instead of blind append so repeated adds (e.g.
+          // auto-save re-creates) never accumulate duplicate entries.
+          evidence: state.evidence.some((item) => item.id === evidence.id)
+            ? state.evidence.map((item) =>
+                item.id === evidence.id ? evidence : item
+              )
+            : [...state.evidence, evidence],
         })),
 
       updateEvidence: (id: string, updates: Partial<EvidenceItem>) =>

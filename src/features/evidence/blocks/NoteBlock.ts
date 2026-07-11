@@ -3,7 +3,19 @@
 // DOM (no React) so it's robust inside EditorJS's DOM-based rendering and works
 // identically in the editor and the read-only preview/renderer.
 
+import DOMPurify from 'dompurify';
+
 type NoteVariant = 'note' | 'decision' | 'insight';
+
+// Stored content is untrusted (jsonb writable by any editor / MCP client) and
+// EditorJS only sanitizes on save() — so strip scripts/handlers at render time.
+export function sanitizeNoteHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['br', 'b', 'i', 'u', 'a'],
+    ALLOWED_ATTR: ['href'],
+    ALLOWED_URI_REGEXP: /^https?:/i,
+  });
+}
 
 interface NoteData {
   text: string;
@@ -37,7 +49,10 @@ export default class NoteBlock {
   }
 
   static get sanitize() {
-    return { text: { br: true, b: true, i: true, u: true, a: true }, variant: false };
+    return {
+      text: { br: true, b: true, i: true, u: true, a: { href: true } },
+      variant: false,
+    };
   }
 
   private data: NoteData;
@@ -101,7 +116,7 @@ export default class NoteBlock {
     const text = document.createElement('div');
     text.className = 'cm-note-text';
     text.contentEditable = this.readOnly ? 'false' : 'true';
-    text.innerHTML = this.data.text;
+    text.innerHTML = sanitizeNoteHtml(this.data.text);
     text.dataset.placeholder = 'Write a note, decision or insight…';
     text.style.cssText = 'outline:none;color:#374151;line-height:1.55;';
     wrapper.appendChild(text);

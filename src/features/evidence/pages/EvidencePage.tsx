@@ -72,7 +72,10 @@ export default function EvidencePage() {
       let ev: EvidenceItem | null = getEvidenceById(evidenceId) ?? null;
       try {
         const dbEv = await getEvidenceItemById(evidenceId, client);
-        if (dbEv) ev = ev ? { ...ev, ...dbEv } : dbEv;
+        // Merge content explicitly so an empty DB content doesn't clobber
+        // locally persisted notebook content.
+        if (dbEv)
+          ev = ev ? { ...ev, ...dbEv, content: dbEv.content ?? ev.content } : dbEv;
       } catch (e) {
         console.warn('Evidence DB load failed; using local store', e);
       }
@@ -113,7 +116,9 @@ export default function EvidencePage() {
         link: formData.link || '',
         hypothesis: formData.hypothesis || '',
         impactOnConfidence: formData.impactOnConfidence || '',
-        summary: formData.title || '',
+        // Preserve the user-entered summary; fall back to the title only for
+        // brand-new items where no summary was ever entered.
+        summary: initialEvidence?.summary ?? (formData.title || ''),
         createdBy: initialEvidence?.createdBy || user?.id || 'anonymous-user',
         createdAt: initialEvidence?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -126,14 +131,39 @@ export default function EvidencePage() {
         comments: initialEvidence?.comments || [],
       };
 
+      // Track DB-sync failures so we don't show a success toast for a save
+      // that only landed in the local store (the DB wins the merge on reload).
+      let dbSyncFailed = false;
+
       if (initialEvidence) {
         updateEvidence(initialEvidence.id, updated); // in-memory store
-        if (client) {
+        const isLocalOnlyId = initialEvidence.id.startsWith('evidence_');
+        if (client && isLocalOnlyId && canvasId && user?.id) {
+          // Store-only ids aren't valid uuids — create a real DB row and adopt
+          // its id so this notebook survives reload and later saves are updates.
+          try {
+            const created = await createProjectEvidence(
+              updated,
+              canvasId,
+              user.id,
+              client
+            );
+            updateEvidence(initialEvidence.id, created);
+            setInitialEvidence(created);
+            navigate(`/canvas/${canvasId}/evidence/${created.id}`, {
+              replace: true,
+            });
+          } catch (e) {
+            dbSyncFailed = true;
+            console.error('Failed to create evidence in DB; stored locally', e);
+          }
+        } else if (client && !isLocalOnlyId) {
           // Persist the notebook (incl. content) to the DB so it survives reload.
           // Don't let a DB failure discard the save — the store already has it.
           try {
             await updateEvidenceItem(initialEvidence.id, updated, client);
           } catch (e) {
+            dbSyncFailed = true;
             console.error('Failed to persist evidence to DB', e);
           }
         }
@@ -155,13 +185,20 @@ export default function EvidencePage() {
               replace: true,
             });
           } catch (e) {
+            dbSyncFailed = true;
             console.error('Failed to create evidence in DB; storing locally', e);
           }
         }
         addEvidence(created);
       }
 
-      toast.success('Evidence saved successfully');
+      if (dbSyncFailed) {
+        toast.warning(
+          'Saved locally, but syncing to the server failed — changes may not survive reload'
+        );
+      } else {
+        toast.success('Evidence saved successfully');
+      }
     } catch (error) {
       console.error('Error saving evidence:', error);
       toast.error('Failed to save evidence');

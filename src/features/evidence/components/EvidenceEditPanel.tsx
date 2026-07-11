@@ -18,7 +18,7 @@ import {
 import {
   createEditorJSInstance,
   validateAndMigrateEditorData,
-} from '@/shared/lib/editorjs-config';
+} from '@/lib/editorjs-config';
 import type { EvidenceItem } from '@/shared/types';
 import type EditorJS from '@editorjs/editorjs';
 import EvidenceLinkChips from './EvidenceLinkChips';

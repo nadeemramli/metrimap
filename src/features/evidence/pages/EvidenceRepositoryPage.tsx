@@ -234,6 +234,9 @@ export default function EvidenceRepositoryPage() {
         }
       }
       addEvidence(created);
+      // Adopt the created item so subsequent auto-saves take the update branch
+      // instead of inserting a duplicate row/store entry on every tick.
+      setSelectedEvidence(created);
     }
 
     // Only close dialog on manual save, not auto-save
