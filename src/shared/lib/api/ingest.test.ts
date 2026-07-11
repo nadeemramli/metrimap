@@ -59,6 +59,24 @@ describe('parseCsv', () => {
   it('returns empty for empty input', () => {
     expect(parseCsv('')).toEqual({ columns: [], rows: [] });
   });
+  it('keeps newlines inside quoted fields (RFC 4180)', () => {
+    expect(parseCsv('period,value\n"Q1\n2024",10\n2026-02,20')).toEqual({
+      columns: ['period', 'value'],
+      rows: [
+        { period: 'Q1\n2024', value: '10' },
+        { period: '2026-02', value: '20' },
+      ],
+    });
+  });
+  it('keeps CRLF inside quoted fields while splitting records on CRLF', () => {
+    const { columns, rows } = parseCsv('period,note\r\n"Q1\r\n2024","line1\r\nline2"\r\n');
+    expect(columns).toEqual(['period', 'note']);
+    expect(rows).toEqual([{ period: 'Q1\r\n2024', note: 'line1\r\nline2' }]);
+  });
+  it('handles embedded newlines together with escaped quotes', () => {
+    const { rows } = parseCsv('name,note\n"Doe, Jane","said ""hi""\nthen left"');
+    expect(rows[0]).toEqual({ name: 'Doe, Jane', note: 'said "hi"\nthen left' });
+  });
 });
 
 describe('stageSeries', () => {
@@ -134,6 +152,53 @@ describe('materialize', () => {
     await expect(ingest.materialize({ batchId: BATCH, mapping: { cardId: CARD } })).rejects.toThrow(
       /periodColumn/
     );
+  });
+
+  it('skips rows with empty values instead of materializing 0', async () => {
+    const client = makeClient([
+      { data: { id: BATCH, kind: 'csv', status: 'staged' } },
+      { data: [{ data: { month: '2026-01', mrr: '' } }, { data: { month: '2026-02', mrr: '5' } }] },
+      { data: { tracked_metric_id: null } },
+      { error: null },
+    ]);
+    const ingest = createIngest(client, 'u1');
+    const report = await ingest.materialize({
+      batchId: BATCH,
+      mapping: { cardId: CARD, periodColumn: 'month', valueColumn: 'mrr' },
+    });
+    expect(cards.updateMetricCard).toHaveBeenCalledWith(
+      CARD,
+      { data: [{ period: '2026-02', value: 5, change_percent: 0, trend: 'neutral' }] },
+      client
+    );
+    expect(report).toMatchObject({ materialized: 1, skipped: 1 });
+  });
+
+  it('reports materialized: 0 when the card write fails', async () => {
+    vi.mocked(cards.updateMetricCard).mockRejectedValueOnce(new Error('RLS denied'));
+    const client = makeClient([
+      { data: { id: BATCH, kind: 'series', status: 'staged' } },
+      { data: [{ data: { period: '2026-01', value: 10 } }] },
+      { error: null }, // import_batches status → 'failed'
+    ]);
+    const ingest = createIngest(client, 'u1');
+    const report = await ingest.materialize({ batchId: BATCH, mapping: { cardId: CARD } });
+    expect(report.materialized).toBe(0);
+    expect(report.errors).toEqual(['RLS denied']);
+  });
+
+  it('still reports the card write when only the catalog sync fails', async () => {
+    vi.mocked(tracked.syncCardValuesToCatalog).mockRejectedValueOnce(new Error('sync down'));
+    const client = makeClient([
+      { data: { id: BATCH, kind: 'series', status: 'staged' } },
+      { data: [{ data: { period: '2026-01', value: 10 } }] },
+      { data: { tracked_metric_id: 'tm1' } },
+      { error: null }, // import_batches status → 'failed'
+    ]);
+    const ingest = createIngest(client, 'u1');
+    const report = await ingest.materialize({ batchId: BATCH, mapping: { cardId: CARD } });
+    expect(report.materialized).toBe(1);
+    expect(report.errors).toEqual(['sync down']);
   });
 
   it('throws when the batch is missing/expired', async () => {

@@ -131,6 +131,22 @@ describe('registry metadata', () => {
     expect(hint('update_node').destructiveHint).toBe(true);
     expect(hint('list_canvases').readOnlyHint).toBe(true);
   });
+  it('every update_* tool publishes a flat shape with patch fields (not just id)', () => {
+    // The deployed server (mcp-server/server.ts) extracts inputSchema.shape and
+    // the MCP SDK rebuilds z.object(shape) in strip mode — a .passthrough() or
+    // .refine() schema collapses the advertised schema to {id} and strips every
+    // patch field, making the tool unusable. Guard against regressing to that.
+    const updateTools = TOOLS.filter((t) => t.name.startsWith('update_'));
+    expect(updateTools.length).toBeGreaterThan(0);
+    for (const t of updateTools) {
+      const shape = (t.inputSchema as { shape?: Record<string, unknown> }).shape;
+      expect(shape, `${t.name} inputSchema must expose .shape`).toBeDefined();
+      expect(
+        Object.keys(shape!).length,
+        `${t.name} schema must advertise patch fields beyond id`
+      ).toBeGreaterThan(1);
+    }
+  });
 });
 
 describe('dispatchTool', () => {

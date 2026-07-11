@@ -1,5 +1,9 @@
 # Automatic HTTPS (Let's Encrypt) once DNS points MCP_DOMAIN at this server.
 # MCP_DOMAIN is substituted by deploy.sh (defaults to mcp.canvasm.app).
 {$MCP_DOMAIN} {
+	# Reject oversized bodies at the proxy — matches the 4MB cap in server.ts.
+	request_body {
+		max_size 4MB
+	}
 	reverse_proxy mcp:8787
 }

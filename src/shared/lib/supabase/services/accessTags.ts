@@ -18,6 +18,23 @@ function db(client?: SupabaseClient<Database>) {
   return client || supabase();
 }
 
+/**
+ * True when an RPC error means the function isn't in the DB yet (unapplied
+ * migration): PostgREST 404 (PGRST202) or Postgres "does not exist" (42883).
+ * Lets the callers below fall back to the legacy delete-then-insert path so the
+ * deployed app keeps working until the atomic RPCs are applied to prod.
+ */
+function isMissingRpc(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST202' || error.code === '42883') return true;
+  const msg = (error.message ?? '').toLowerCase();
+  return (
+    msg.includes('does not exist') ||
+    (msg.includes('function') && msg.includes('not found')) ||
+    msg.includes('could not find the function')
+  );
+}
+
 /** Flag/unflag a tag as an access tag and set its redaction mode. */
 export async function setTagAccess(
   tagId: string,
@@ -57,6 +74,16 @@ export async function setTagAudience(
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<void> {
   const client = db(authenticatedClient);
+  // Preferred: atomic DELETE+INSERT via SECURITY DEFINER RPC (single txn) so a
+  // failed insert can't leave an empty audience. Fall back to the legacy
+  // delete-then-insert only when the RPC isn't in the DB yet (unapplied migration).
+  const { error: rpcErr } = await client.rpc('set_tag_audience' as never, {
+    p_tag_id: tagId,
+    p_group_ids: groupIds,
+  } as never);
+  if (!rpcErr) return;
+  if (!isMissingRpc(rpcErr as { code?: string; message?: string })) throw rpcErr;
+
   const { error: delErr } = await client
     .from('tag_audiences')
     .delete()
@@ -89,6 +116,15 @@ export async function setNodeAccessGrants(
   authenticatedClient?: SupabaseClient<Database>
 ): Promise<void> {
   const client = db(authenticatedClient);
+  // Atomic DELETE+INSERT via RPC (see setTagAudience) with a legacy fallback for
+  // the unapplied-migration state.
+  const { error: rpcErr } = await client.rpc('set_node_access_grants' as never, {
+    p_card_id: metricCardId,
+    p_group_ids: groupIds,
+  } as never);
+  if (!rpcErr) return;
+  if (!isMissingRpc(rpcErr as { code?: string; message?: string })) throw rpcErr;
+
   const { error: delErr } = await client
     .from('node_access_grants')
     .delete()

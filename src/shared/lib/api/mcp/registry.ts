@@ -23,7 +23,11 @@ import {
   PushValuesInput,
   StageSeriesInput,
   TagCardInput,
+  UpdateCanvasFields,
+  UpdateEvidenceFields,
   UpdateGroupFields,
+  UpdateNodeFields,
+  UpdateRelationshipFields,
   UploadCsvInput,
 } from '../schemas';
 import type { McpAuthContext, McpScope } from './authContext';
@@ -90,7 +94,6 @@ const api = (ctx: McpAuthContext) => createMetrimapApi(ctx.client, ctx.userId);
 
 const idInput = z.object({ id: z.string().uuid() });
 const projectIdInput = z.object({ projectId: z.string().uuid() });
-const updateInput = z.object({ id: z.string().uuid() }).passthrough();
 
 export const TOOLS: McpTool[] = [
   // --- Read ---
@@ -151,7 +154,7 @@ export const TOOLS: McpTool[] = [
     description: 'Update a canvas (name, description, isPublic).',
     scope: 'write',
     annotations: DESTRUCTIVE,
-    inputSchema: updateInput,
+    inputSchema: z.object({ id: z.string().uuid() }).merge(UpdateCanvasFields),
     handler: ({ id, ...patch }, ctx) => api(ctx).canvases.update(id, patch),
   }),
   defineTool({
@@ -220,7 +223,7 @@ export const TOOLS: McpTool[] = [
     description: 'Update a metric card (title, description, category, formula, position).',
     scope: 'write',
     annotations: DESTRUCTIVE,
-    inputSchema: updateInput,
+    inputSchema: z.object({ id: z.string().uuid() }).merge(UpdateNodeFields),
     handler: ({ id, ...patch }, ctx) => api(ctx).nodes.update(id, patch),
   }),
   defineTool({
@@ -255,7 +258,7 @@ export const TOOLS: McpTool[] = [
       'Update a relationship (type, confidence High/Medium/Low, weight 0–1, notes).',
     scope: 'write',
     annotations: DESTRUCTIVE,
-    inputSchema: updateInput,
+    inputSchema: z.object({ id: z.string().uuid() }).merge(UpdateRelationshipFields),
     handler: ({ id, ...patch }, ctx) => api(ctx).relationships.update(id, patch),
   }),
   defineTool({
@@ -300,7 +303,7 @@ export const TOOLS: McpTool[] = [
       'Update an evidence item (title, type, summary, date, owner, hypothesis, link, content).',
     scope: 'write',
     annotations: DESTRUCTIVE,
-    inputSchema: updateInput,
+    inputSchema: z.object({ id: z.string().uuid() }).merge(UpdateEvidenceFields),
     handler: ({ id, ...patch }, ctx) => api(ctx).evidence.update(id, patch),
   }),
   // --- Tags ---

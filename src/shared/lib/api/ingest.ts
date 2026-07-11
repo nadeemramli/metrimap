@@ -16,42 +16,55 @@ import {
 
 type Client = SupabaseClient<Database>;
 
-/** Minimal CSV parser: handles quoted fields, escaped quotes ("") and CRLF. */
+/**
+ * Minimal RFC 4180 CSV parser: handles quoted fields, escaped quotes (""),
+ * CRLF, and newlines embedded inside quoted fields (a single scan over the
+ * whole text tracks quote state across line breaks).
+ */
 export function parseCsv(text: string): {
   columns: string[];
   rows: Array<Record<string, string>>;
 } {
-  const parseLine = (line: string): string[] => {
-    const out: string[] = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"') {
-          if (line[i + 1] === '"') {
-            cur += '"';
-            i++;
-          } else inQuotes = false;
-        } else cur += ch;
-      } else if (ch === '"') inQuotes = true;
-      else if (ch === ',') {
-        out.push(cur);
-        cur = '';
-      } else cur += ch;
-    }
-    out.push(cur);
-    return out.map((c) => c.trim());
+  const records: string[][] = [];
+  let record: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  const endField = () => {
+    record.push(cur.trim());
+    cur = '';
   };
+  const endRecord = () => {
+    endField();
+    // Skip records that are entirely empty (blank lines).
+    if (record.length === 1 && record[0] === '') {
+      record = [];
+      return;
+    }
+    records.push(record);
+    record = [];
+  };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else inQuotes = false;
+      } else cur += ch; // includes \n / \r inside quoted fields
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',') endField();
+    else if (ch === '\n') endRecord();
+    else if (ch === '\r') {
+      if (text[i + 1] === '\n') i++;
+      endRecord();
+    } else cur += ch;
+  }
+  if (cur.length > 0 || record.length > 0) endRecord();
 
-  const lines = text
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .filter((l) => l.length > 0);
-  if (lines.length === 0) return { columns: [], rows: [] };
-  const columns = parseLine(lines[0]);
-  const rows = lines.slice(1).map((line) => {
-    const cells = parseLine(line);
+  if (records.length === 0) return { columns: [], rows: [] };
+  const columns = records[0];
+  const rows = records.slice(1).map((cells) => {
     const row: Record<string, string> = {};
     columns.forEach((col, i) => {
       row[col] = cells[i] ?? '';
@@ -169,7 +182,8 @@ export function createIngest(client: Client, userId: string) {
         const rawValue =
           batch.kind === 'csv' ? data[valueColumn ?? 'value'] : data.value;
         const value = Number(rawValue);
-        if (!period || Number.isNaN(value)) {
+        // Missing/empty cells are skipped, not coerced (Number('') === 0).
+        if (!period || rawValue == null || rawValue === '' || Number.isNaN(value)) {
           skipped++;
           continue;
         }
@@ -185,9 +199,13 @@ export function createIngest(client: Client, userId: string) {
         throw new Error('CSV materialize requires mapping.periodColumn and mapping.valueColumn');
       }
 
+      let materialized = 0;
       try {
         // card.data drives the canvas; catalogued cards also sync to metric_values.
         await updateMetricCard(cardId, { data: series }, client);
+        // The card write is the materialization; a later catalog-sync failure
+        // still reports what actually landed on the card.
+        materialized = series.length;
         const { data: card } = await client
           .from('metric_cards')
           .select('tracked_metric_id')
@@ -212,7 +230,7 @@ export function createIngest(client: Client, userId: string) {
           .eq('id', v.batchId);
       }
 
-      return { batchId: v.batchId, cardId, materialized: series.length, skipped, errors };
+      return { batchId: v.batchId, cardId, materialized, skipped, errors };
     },
   };
 }

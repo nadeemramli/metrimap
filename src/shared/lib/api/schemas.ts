@@ -39,15 +39,18 @@ export const CreateCanvasInput = z.object({
   isPublic: z.boolean().optional(),
 });
 
-export const UpdateCanvasInput = z
-  .object({
-    name: z.string().min(1).max(200).optional(),
-    description: z.string().max(2000).optional(),
-    isPublic: z.boolean().optional(),
-  })
-  .refine((o) => Object.keys(o).length > 0, {
-    message: 'Provide at least one field to update',
-  });
+// Exported un-refined so the MCP tool schema can publish a flat shape
+// (ZodEffects have no .shape).
+export const UpdateCanvasFields = z.object({
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
+  isPublic: z.boolean().optional(),
+});
+
+export const UpdateCanvasInput = UpdateCanvasFields.refine(
+  (o) => Object.keys(o).length > 0,
+  { message: 'Provide at least one field to update' }
+);
 
 // --- Nodes (metric_cards) ---
 export const CreateNodeInput = z.object({
@@ -66,19 +69,22 @@ export const CreateNodeInput = z.object({
 // Convenience inputs where the category is implied by the method.
 export const CreateTypedNodeInput = CreateNodeInput.omit({ category: true });
 
-export const UpdateNodeInput = z
-  .object({
-    title: z.string().min(1).max(200).optional(),
-    description: z.string().max(4000).optional(),
-    category: z.enum(CARD_CATEGORIES).optional(),
-    subCategory: z.string().max(100).optional(),
-    formula: z.string().max(2000).optional(),
-    position: zPosition.optional(),
-    assignees: z.array(z.string()).max(50).optional(),
-  })
-  .refine((o) => Object.keys(o).length > 0, {
-    message: 'Provide at least one field to update',
-  });
+// Exported un-refined so the MCP tool schema can publish a flat shape
+// (ZodEffects have no .shape).
+export const UpdateNodeFields = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(4000).optional(),
+  category: z.enum(CARD_CATEGORIES).optional(),
+  subCategory: z.string().max(100).optional(),
+  formula: z.string().max(2000).optional(),
+  position: zPosition.optional(),
+  assignees: z.array(z.string()).max(50).optional(),
+});
+
+export const UpdateNodeInput = UpdateNodeFields.refine(
+  (o) => Object.keys(o).length > 0,
+  { message: 'Provide at least one field to update' }
+);
 
 // --- Relationships ---
 export const CreateRelationshipInput = z.object({
@@ -91,16 +97,19 @@ export const CreateRelationshipInput = z.object({
   notes: z.string().max(2000).optional(),
 });
 
-export const UpdateRelationshipInput = z
-  .object({
-    type: z.enum(RELATIONSHIP_TYPES).optional(),
-    confidence: z.enum(CONFIDENCE_LEVELS).optional(),
-    weight: z.number().min(0).max(1).optional(),
-    notes: z.string().max(2000).optional(),
-  })
-  .refine((o) => Object.keys(o).length > 0, {
-    message: 'Provide at least one field to update',
-  });
+// Exported un-refined so the MCP tool schema can publish a flat shape
+// (ZodEffects have no .shape).
+export const UpdateRelationshipFields = z.object({
+  type: z.enum(RELATIONSHIP_TYPES).optional(),
+  confidence: z.enum(CONFIDENCE_LEVELS).optional(),
+  weight: z.number().min(0).max(1).optional(),
+  notes: z.string().max(2000).optional(),
+});
+
+export const UpdateRelationshipInput = UpdateRelationshipFields.refine(
+  (o) => Object.keys(o).length > 0,
+  { message: 'Provide at least one field to update' }
+);
 
 // --- Groups (canvas grouping — each group also drives a group dashboard) ---
 const zSize = z.object({
@@ -171,20 +180,23 @@ export const ListEvidenceInput = z.object({
   cardId: z.string().uuid().optional(),
 });
 
-export const UpdateEvidenceInput = z
-  .object({
-    title: z.string().min(1).max(200).optional(),
-    type: z.enum(EVIDENCE_TYPES).optional(),
-    summary: z.string().min(1).max(5000).optional(),
-    date: z.string().optional(),
-    owner: z.string().max(200).optional(),
-    hypothesis: z.string().max(2000).optional(),
-    link: z.string().url().max(500).optional(),
-    content: z.unknown().optional(),
-  })
-  .refine((o) => Object.keys(o).length > 0, {
-    message: 'Provide at least one field to update',
-  });
+// Exported un-refined so the MCP tool schema can publish a flat shape
+// (ZodEffects have no .shape).
+export const UpdateEvidenceFields = z.object({
+  title: z.string().min(1).max(200).optional(),
+  type: z.enum(EVIDENCE_TYPES).optional(),
+  summary: z.string().min(1).max(5000).optional(),
+  date: z.string().optional(),
+  owner: z.string().max(200).optional(),
+  hypothesis: z.string().max(2000).optional(),
+  link: z.string().url().max(500).optional(),
+  content: z.unknown().optional(),
+});
+
+export const UpdateEvidenceInput = UpdateEvidenceFields.refine(
+  (o) => Object.keys(o).length > 0,
+  { message: 'Provide at least one field to update' }
+);
 
 // --- Tags ---
 export const CreateTagInput = z.object({

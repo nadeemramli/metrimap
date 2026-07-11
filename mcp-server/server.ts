@@ -15,6 +15,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createClient } from '@supabase/supabase-js';
+import { createClerkClient } from '@clerk/backend';
 import {
   generateClerkProtectedResourceMetadata,
   corsHeaders,
@@ -82,9 +83,46 @@ const mcpCorsHeaders = {
     'authorization, content-type, mcp-session-id, mcp-protocol-version',
   'access-control-max-age': '86400',
 };
+// Browsers also need these headers on the actual POST /mcp response (405/401/
+// transport/500 paths), not just the preflight — otherwise the response is
+// blocked after a successful preflight. setHeader survives later writeHead
+// merges, and the SDK transport sets no Access-Control headers of its own.
+const applyMcpCors = (res: ServerResponse) => {
+  for (const [k, v] of Object.entries(mcpCorsHeaders)) res.setHeader(k, v);
+};
 
 // One anon client for key lookups; the resolver mints a per-user JWT + client.
 const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Re-check, at API-key resolve time, that the key owner is still a member of the
+// key's workspace org (the api_keys row captured workspace_id once at creation).
+// A definitive non-membership degrades the minted JWT to personal scope; a Clerk
+// API error FAILS OPEN (returns true) so an outage can't lock out every key.
+// Results are cached ~60s so this isn't a Clerk round-trip per request.
+const clerkBackend = createClerkClient({
+  secretKey: CLERK_SECRET_KEY,
+  publishableKey: CLERK_PUBLISHABLE_KEY,
+});
+const MEMBERSHIP_TTL_MS = 60_000;
+const membershipCache = new Map<string, { value: boolean; expires: number }>();
+async function verifyOrgMembership(userId: string, orgId: string): Promise<boolean> {
+  const cacheKey = `${userId}:${orgId}`;
+  const hit = membershipCache.get(cacheKey);
+  if (hit && hit.expires > Date.now()) return hit.value;
+  let value = true; // fail open on error / pass-through
+  try {
+    const memberships = await clerkBackend.users.getOrganizationMembershipList({
+      userId,
+    });
+    // Definitive answer from Clerk: member iff the org id appears in the list.
+    value = memberships.data.some((m) => m.organization.id === orgId);
+  } catch (e) {
+    console.warn('verifyOrgMembership: Clerk lookup failed, passing through', e);
+    value = true;
+  }
+  membershipCache.set(cacheKey, { value, expires: Date.now() + MEMBERSHIP_TTL_MS });
+  return value;
+}
 // Two auth paths behind one endpoint: `mk_live_…` personal API keys (CLI) and
 // Clerk OAuth access tokens (claude.ai / Desktop connectors). Both resolve to
 // the same RLS-scoped McpAuthContext.
@@ -93,6 +131,7 @@ const resolveApiKey = createApiKeyAuthResolver({
   supabaseUrl: SUPABASE_URL,
   anonKey: SUPABASE_ANON_KEY,
   lookupKey: supabaseApiKeyLookup(anon),
+  verifyOrgMembership,
 });
 const resolveOAuth = createOAuthAuthResolver({
   jwtSecret: SUPABASE_JWT_SECRET,
@@ -121,11 +160,33 @@ function headersOf(req: IncomingMessage): Record<string, string | undefined> {
   return out;
 }
 
-function readJson(req: IncomingMessage): Promise<unknown> {
+// Cap buffered request bodies before JSON.parse — 4MB leaves headroom above the
+// 2MB per-tool payload guard (DEFAULT_MAX_PAYLOAD_BYTES) that runs post-parse.
+// Without this an authenticated client could OOM the process with one giant POST.
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
+
+function readJson(req: IncomingMessage, res: ServerResponse): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', (c) => (data += c));
+    let bytes = 0;
+    let tooLarge = false;
+    req.on('data', (c: Buffer | string) => {
+      if (tooLarge) return;
+      bytes += Buffer.byteLength(c);
+      if (bytes > MAX_BODY_BYTES) {
+        tooLarge = true;
+        if (!res.headersSent) {
+          res.writeHead(413, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Payload too large' }));
+        }
+        req.destroy();
+        reject(new Error(`Request body exceeds ${MAX_BODY_BYTES} bytes`));
+        return;
+      }
+      data += c;
+    });
     req.on('end', () => {
+      if (tooLarge) return;
       try {
         resolve(data ? JSON.parse(data) : undefined);
       } catch (e) {
@@ -230,6 +291,11 @@ const http = createServer(async (req: IncomingMessage, res: ServerResponse) => {
       return;
     }
 
+    // Everything past the metadata routes is the MCP endpoint proper — apply
+    // the MCP CORS headers to all its responses (preflight, 405, 401, transport
+    // success, and the 500 catch below).
+    applyMcpCors(res);
+
     // CORS preflight for browser-based MCP clients hitting POST /mcp.
     if (req.method === 'OPTIONS') {
       res.writeHead(204, mcpCorsHeaders);
@@ -263,7 +329,7 @@ const http = createServer(async (req: IncomingMessage, res: ServerResponse) => {
       throw e;
     }
 
-    const body = await readJson(req);
+    const body = await readJson(req, res);
     const server = buildMcpServer(authed);
     // Stateless: one transport per request (sessionIdGenerator: undefined).
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });

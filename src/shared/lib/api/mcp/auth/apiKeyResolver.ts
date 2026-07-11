@@ -56,6 +56,17 @@ export interface ApiKeyAuthOptions {
   scopes?: McpScope[];
   /** Override the scoped-client factory (tests). */
   scopedClientFactory?: (jwt: string) => SupabaseClient<Database>;
+  /**
+   * Optional live re-check that the key owner is still a member of the key's
+   * workspace org. The api_keys row captures workspace_id once at creation time,
+   * so without this a removed member keeps org-wide access. When provided and it
+   * returns false (a DEFINITIVE non-membership), the minted JWT is degraded to
+   * personal scope (orgId: null) instead of throwing, so the key still works for
+   * the user's own data. Implementations should FAIL OPEN (return true) on a
+   * transient provider error so an outage can't lock out every legitimate key.
+   * Undefined = no re-check (backward compatible).
+   */
+  verifyOrgMembership?: (userId: string, orgId: string) => Promise<boolean>;
 }
 
 function extractApiKey(headers: Record<string, string | undefined>): string | null {
@@ -91,8 +102,17 @@ export function createApiKeyAuthResolver(
     if (!found) {
       throw new McpToolError('unauthenticated', 'Invalid or revoked API key.');
     }
+    // Re-verify the owner is still a member of the key's workspace org. A
+    // definitive non-membership degrades to personal scope (orgId: null) rather
+    // than granting stale workspace-wide access; the verifier fails open on a
+    // provider error so a Clerk outage can't lock out legitimate keys.
+    let orgId = found.orgId;
+    if (orgId && opts.verifyOrgMembership) {
+      const stillMember = await opts.verifyOrgMembership(found.userId, orgId);
+      if (!stillMember) orgId = null;
+    }
     const jwt = await mintSupabaseJwt(
-      { sub: found.userId, orgId: found.orgId },
+      { sub: found.userId, orgId },
       opts.jwtSecret,
       opts.tokenTtlSec
     );

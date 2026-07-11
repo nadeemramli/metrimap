@@ -414,6 +414,32 @@ export async function notifyCardAssigned(
   }
 }
 
+/**
+ * Emit a 'mention' notification to each @mentioned user (P1-12 / RLS fix).
+ * Cross-user notifications are RLS-blocked for clients (a user may only insert
+ * notifications for themselves), so this goes through the `notify_comment_mention`
+ * SECURITY DEFINER RPC, which verifies the caller's project access and skips the
+ * caller. Safe against an unapplied migration: PostgREST returns a
+ * function-not-found error (42883 / PGRST202) which the postComment caller
+ * already swallows to a console.warn, matching today's silently-dropped behavior.
+ */
+export async function notifyCommentMention(
+  commentId: string,
+  userIds: string[],
+  authenticatedClient?: SupabaseClient<Database>
+): Promise<void> {
+  if (!userIds || userIds.length === 0) return;
+  const client = resolveClient(authenticatedClient);
+  const { error } = await client.rpc('notify_comment_mention' as never, {
+    p_comment_id: commentId,
+    p_user_ids: userIds,
+  } as never);
+  if (error) {
+    console.error('Error emitting mention notification:', error);
+    throw error;
+  }
+}
+
 export interface NotificationFilter {
   unreadOnly?: boolean;
   // Restrict to these notification types (e.g. ['mention'], ['assigned']).

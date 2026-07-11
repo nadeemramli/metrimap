@@ -40,6 +40,9 @@ export function CommentComposer({
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  // Members explicitly picked from the @-picker (id → name), so submit() can
+  // resolve mention ids exactly instead of guessing from the text.
+  const pickedRef = React.useRef(new Map<string, string>());
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -54,6 +57,7 @@ export function CommentComposer({
   };
 
   const insertMention = (member: ProjectMember) => {
+    pickedRef.current.set(member.id, member.name);
     setContent((prev) => prev.replace(TRAILING_MENTION, `@${member.name} `));
     setPickerOpen(false);
     // Return focus to the textarea after picking.
@@ -72,8 +76,19 @@ export function CommentComposer({
   const submit = async () => {
     const trimmed = content.trim();
     if (!trimmed) return;
-    const mentionedIds = resolveMentionIds(trimmed, members);
+    // Resolve against the picker-selected members when any were picked (still
+    // verifying their "@Name" survives in the text, in case the user deleted
+    // a mention); fall back to the full member list for hand-typed mentions.
+    const picked = Array.from(pickedRef.current, ([id, name]) => ({
+      id,
+      name,
+    }));
+    const mentionedIds = resolveMentionIds(
+      trimmed,
+      picked.length > 0 ? picked : members
+    );
     await onPost(trimmed, mentionedIds);
+    pickedRef.current.clear();
     setContent('');
     setPickerOpen(false);
   };
