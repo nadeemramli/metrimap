@@ -14,6 +14,7 @@ import {
   useNodesState,
   useReactFlow,
   type Connection,
+  type Edge,
   type NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -417,6 +418,14 @@ function CanvasPageInner() {
             Array.isArray(persistedDataFlowEdges) ? persistedDataFlowEdges : []
           );
 
+          // Hydrate the layout direction from settings so re-applying a layout
+          // (and edge anchoring) starts from the persisted direction, not TB.
+          const persistedDirection = (projectData as any).settings?.autoLayout
+            ?.algorithm;
+          if (['TB', 'BT', 'LR', 'RL'].includes(persistedDirection)) {
+            state.setCurrentLayoutDirection(persistedDirection);
+          }
+
           // Evidence persistence: hydrate this project's evidence from
           // projects.settings.evidence (jsonb) into the evidence store, scoping
           // it to the current project. Gates the debounced save below.
@@ -620,7 +629,23 @@ function CanvasPageInner() {
           { direction: layoutDirection }
         );
 
-        setRoutedEdgePoints(edgePoints);
+        // Pinned edges (CVS-335) keep their user-chosen handles, so the ELK
+        // polyline (routed for the direction handles) would detach from them —
+        // drop their routes and let them draw smoothstep from their pins.
+        const pinnedIds = new Set<string>();
+        for (const e of useCanvasStore.getState().canvas?.edges || []) {
+          if (e.sourceHandle != null || e.targetHandle != null) {
+            pinnedIds.add(e.id);
+          }
+        }
+        for (const e of (state.extraEdges || []) as any[]) {
+          if (e?.pinned) pinnedIds.add(e.id);
+        }
+        setRoutedEdgePoints(
+          Object.fromEntries(
+            Object.entries(edgePoints).filter(([id]) => !pinnedIds.has(id))
+          )
+        );
         // Ease nodes into their new layout positions (CVS-39).
         animateLayout();
         setNodes(layoutedFlow);
@@ -649,6 +674,13 @@ function CanvasPageInner() {
         }
 
         state.setCurrentLayoutDirection(layoutDirection);
+        // Persist the direction (projects.settings.autoLayout) so un-pinned
+        // edges re-anchor to the SAME sides after a reload — previously the
+        // direction lived only in page state and reloads reverted to TB while
+        // the node positions stayed BT/LR, breaking the tree (CVS-335).
+        useCanvasStore.getState().updateCanvasSettings({
+          autoLayout: { algorithm: layoutDirection, enabled: true },
+        });
         setTimeout(() => {
           fitView({ padding: 50, duration: 800 });
         }, 100);
@@ -1218,8 +1250,13 @@ function CanvasPageInner() {
     const canvasEdges = canvas?.edges || [];
     const extraEdges = state.extraEdges || [];
 
+    // Persisted direction first (survives reload), then the in-session page
+    // state, then TB. All layout controls write settings.autoLayout, so every
+    // control and the memo agree on the anchoring direction (CVS-335).
     const layoutDirection =
-      (state.currentLayoutDirection as LayoutDirection) || 'TB';
+      (canvas?.settings?.autoLayout?.algorithm as LayoutDirection) ||
+      (state.currentLayoutDirection as LayoutDirection) ||
+      'TB';
     const convertedCanvasEdges = canvasEdges.map((relationship) =>
       convertToEdge(
         relationship,
@@ -1233,12 +1270,17 @@ function CanvasPageInner() {
     // Anchor data-flow (operative/reference) edges to the same direction-aware
     // handles relationship edges use, so source/operator/chart connections enter
     // and leave from the layout-appropriate side instead of one fixed handle.
+    // Pinned edges (CVS-335) keep their user-chosen handles instead.
     const dirHandles = handlesForDirection(layoutDirection);
-    const extraEdgesAnchored = extraEdges.map((e: any) => ({
-      ...e,
-      sourceHandle: dirHandles.sourceHandle ?? e.sourceHandle,
-      targetHandle: dirHandles.targetHandle ?? e.targetHandle,
-    }));
+    const extraEdgesAnchored = extraEdges.map((e: any) =>
+      e.pinned
+        ? e
+        : {
+            ...e,
+            sourceHandle: dirHandles.sourceHandle ?? e.sourceHandle,
+            targetHandle: dirHandles.targetHandle ?? e.targetHandle,
+          }
+    );
 
     // Attach the ELK-routed polyline (from the last auto-layout) so DynamicEdge
     // draws the no-overlap orthogonal channel instead of a handle-to-handle
@@ -1278,6 +1320,7 @@ function CanvasPageInner() {
     state.extraEdges,
     state.isRelationshipSheetOpen,
     state.currentLayoutDirection,
+    canvas?.settings?.autoLayout?.algorithm,
     events.handleOpenRelationshipSheet,
     events.handleSwitchToRelationship,
   ]);
@@ -2092,11 +2135,21 @@ function CanvasPageInner() {
     (connection: Connection) => {
       log.debug('🔗 Enhanced connection handler triggered:', connection);
 
+      // CVS-335: in 'custom' endpoint mode the dragged handles are saved as a
+      // permanent pin; in 'auto' (default) they're stripped so the edge follows
+      // the layout direction.
+      const pinEndpoints =
+        useCanvasStore.getState().canvas?.settings?.edgeAnchorMode === 'custom';
+
       // Use enhanced connection handler
       const result = handleNodeConnection(connection, {
         nodes: getNodes(),
         existingEdges,
         onCreateRelationship: async (relationshipData) => {
+          if (!pinEndpoints) {
+            delete (relationshipData as any).sourceHandle;
+            delete (relationshipData as any).targetHandle;
+          }
           try {
             const idsOf = () =>
               new Set(
@@ -2129,6 +2182,12 @@ function CanvasPageInner() {
           }
         },
         onCreateDataFlow: (edgeData) => {
+          if (pinEndpoints) {
+            edgeData.pinned = true;
+          } else {
+            delete edgeData.sourceHandle;
+            delete edgeData.targetHandle;
+          }
           const prevEdges = state.extraEdges || [];
           const nextEdges = [...prevEdges, edgeData];
           state.setExtraEdges(nextEdges);
@@ -2141,6 +2200,12 @@ function CanvasPageInner() {
           log.debug('✅ Data flow edge created + persisted');
         },
         onCreateReference: (edgeData) => {
+          if (pinEndpoints) {
+            edgeData.pinned = true;
+          } else {
+            delete edgeData.sourceHandle;
+            delete edgeData.targetHandle;
+          }
           const nextEdges = [...(state.extraEdges || []), edgeData];
           state.setExtraEdges(nextEdges);
           persistDataFlowEdges(nextEdges);
@@ -2184,6 +2249,53 @@ function CanvasPageInner() {
       }
     },
     [getNodes, existingEdges, state, persistDataFlowEdges, bindOperatorInput]
+  );
+
+  // CVS-335: dragging an existing edge's endpoint onto a different handle PINS
+  // it there — an explicit user choice that survives reloads and re-layouts.
+  // Only same-node endpoint changes are accepted (retargeting to another node
+  // would bypass connection validation/cycle checks — just drop it).
+  const handleReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      if (
+        newConnection.source !== oldEdge.source ||
+        newConnection.target !== oldEdge.target
+      ) {
+        toast.info('Drop the endpoint on another handle of the same card');
+        return;
+      }
+      const isRelationship = (
+        useCanvasStore.getState().canvas?.edges || []
+      ).some((e) => e.id === oldEdge.id);
+      if (isRelationship) {
+        void useCanvasStore.getState().persistEdgeUpdate(oldEdge.id, {
+          sourceHandle: newConnection.sourceHandle ?? null,
+          targetHandle: newConnection.targetHandle ?? null,
+        });
+      } else {
+        const next = (state.extraEdges || []).map((e: any) =>
+          e.id === oldEdge.id
+            ? {
+                ...e,
+                sourceHandle: newConnection.sourceHandle ?? undefined,
+                targetHandle: newConnection.targetHandle ?? undefined,
+                pinned: true,
+              }
+            : e
+        );
+        state.setExtraEdges(next);
+        persistDataFlowEdges(next);
+      }
+      // Drop any ELK-routed polyline for this edge — it was routed for the old
+      // handles and would visually detach from the new pin.
+      setRoutedEdgePoints((prev) => {
+        if (!prev[oldEdge.id]) return prev;
+        const { [oldEdge.id]: _removed, ...rest } = prev;
+        return rest;
+      });
+      log.debug('📌 Edge endpoints pinned:', oldEdge.id);
+    },
+    [state, persistDataFlowEdges]
   );
 
   // Persist a finished freehand stroke as a whiteboardNode (replaces the old
@@ -2830,6 +2942,7 @@ function CanvasPageInner() {
               events.handleOpenRelationshipSheet(edge.id);
             }}
             onConnect={handleConnect}
+            onReconnect={handleReconnect}
             isValidConnection={isValidConnection}
             onNodesDelete={(deleted) =>
               void canvasActions.deleteByIds(deleted.map((n) => n.id))

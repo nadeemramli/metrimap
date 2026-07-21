@@ -9,6 +9,7 @@ import {
   createGroup,
   createProject as createProjectInSupabase,
   deleteGroup as deleteGroupInSupabase,
+  mergeProjectSettings,
   updateGroup as updateGroupInSupabase,
 } from '../../../shared/lib/supabase/services/projects';
 import {
@@ -1670,7 +1671,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
     toggleControls: () =>
       set((state) => ({ showControls: !state.showControls })),
 
-    updateCanvasSettings: (settings: Partial<CanvasSettings>) =>
+    updateCanvasSettings: (settings: Partial<CanvasSettings>) => {
       set((state) => ({
         canvas: state.canvas
           ? {
@@ -1679,7 +1680,26 @@ export const useCanvasStore = create<CanvasStoreState>()(
               updatedAt: new Date().toISOString(),
             }
           : undefined,
-      })),
+      }));
+      // Persist to projects.settings (jsonb merge) so layout direction /
+      // endpoint mode survive reload (CVS-335). Best-effort: local state is
+      // already updated and a later settings change re-persists.
+      const canvasId = get().canvas?.id;
+      if (canvasId) {
+        try {
+          const client = getClientForEnvironment();
+          void mergeProjectSettings(
+            canvasId,
+            settings as Record<string, unknown>,
+            client
+          ).catch((error) =>
+            console.error('❌ Failed to persist canvas settings:', error)
+          );
+        } catch (error) {
+          console.error('❌ Failed to persist canvas settings:', error);
+        }
+      }
+    },
 
     // Utility functions
     getNodeById: (nodeId: string) => {

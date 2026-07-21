@@ -169,6 +169,12 @@ export interface Relationship {
   // its validated/refuted status, persisted so it surfaces on the edge (CVS-165).
   causalMetadata?: CausalMetadata;
 
+  // Pinned endpoints (CVS-335): user-chosen React Flow handle ids. When set they
+  // override the auto-layout direction and survive both reloads and re-layouts;
+  // null/undefined means "follow the current layout direction".
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+
   // History for influence drift analysis
   history?: RelationshipHistoryEntry[];
 
@@ -284,6 +290,10 @@ export interface CanvasSettings {
     algorithm: 'TB' | 'BT' | 'LR' | 'RL';
     enabled: boolean;
   };
+  // CVS-335: how NEW connections pick their endpoints. 'auto' (default) snaps
+  // to the layout direction's handles; 'custom' pins the handles the user
+  // dragged between. Pinned edges always keep their handles either way.
+  edgeAnchorMode?: 'auto' | 'custom';
   viewport?: {
     zoom: number;
     center: { x: number; y: number };

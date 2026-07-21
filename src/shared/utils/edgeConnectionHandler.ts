@@ -168,6 +168,11 @@ function handleRelationshipEdge(
     confidence: 'Medium' as const,
     evidence: [],
     notes: `Connection between ${getNodeTitle(sourceNode)} and ${getNodeTitle(targetNode)}`,
+    // The handles the user actually dragged between. The caller decides whether
+    // to keep them as a pin (custom endpoint mode) or strip them so the edge
+    // follows the auto-layout (CVS-335).
+    sourceHandle: connection.sourceHandle ?? undefined,
+    targetHandle: connection.targetHandle ?? undefined,
   };
 
   if (onCreateRelationship) {
@@ -198,6 +203,9 @@ function handleDataFlowEdge(
     id: `${connection.source}-${connection.target}`,
     source: connection.source!,
     target: connection.target!,
+    // Dragged handles — kept as a pin or stripped by the caller (CVS-335).
+    sourceHandle: connection.sourceHandle ?? undefined,
+    targetHandle: connection.targetHandle ?? undefined,
     type: 'operativeEdge', // Use operativeEdge type to match existing system
     data: {
       label: getDataFlowLabel(sourceNode, targetNode),
@@ -235,6 +243,9 @@ function handleReferenceEdge(
     id: `${connection.source}-${connection.target}`,
     source: connection.source!,
     target: connection.target!,
+    // Dragged handles — kept as a pin or stripped by the caller (CVS-335).
+    sourceHandle: connection.sourceHandle ?? undefined,
+    targetHandle: connection.targetHandle ?? undefined,
     type: 'referenceEdge', // Simple edge type
     data: {
       label: getReferenceLabel(sourceNode, targetNode),

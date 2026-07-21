@@ -44,6 +44,8 @@ function transformRelationship(
     notes: rel.description || undefined,
     evidence: evidence.map(transformEvidenceItem),
     causalMetadata: (rel.causal_metadata as Relationship['causalMetadata']) ?? undefined,
+    sourceHandle: rel.source_handle ?? undefined,
+    targetHandle: rel.target_handle ?? undefined,
     createdAt: rel.created_at || new Date().toISOString(),
     updatedAt: rel.updated_at || new Date().toISOString(),
   };
@@ -99,6 +101,15 @@ export async function createRelationship(
     console.error('Validation error creating relationship:', error);
     throw error;
   }
+  // Pinned endpoints (CVS-335) are set AFTER validation — the strict generated
+  // schema predates these columns and would reject them (same as evidence
+  // date/content); the Postgres text columns accept them directly.
+  if (relationship.sourceHandle !== undefined) {
+    insertData.source_handle = relationship.sourceHandle ?? null;
+  }
+  if (relationship.targetHandle !== undefined) {
+    insertData.target_handle = relationship.targetHandle ?? null;
+  }
   const client = resolveClient(authenticatedClient);
 
   const { data, error } = await client
@@ -138,6 +149,15 @@ export async function updateRelationship(
   } catch (error) {
     console.error('Validation error updating relationship:', error);
     throw error;
+  }
+  // Pinned endpoints (CVS-335) — set AFTER validation, like evidence
+  // date/content: the strict generated schema doesn't know these columns.
+  // Explicit null un-pins (edge goes back to following the layout).
+  if (updates.sourceHandle !== undefined) {
+    updateData.source_handle = updates.sourceHandle ?? null;
+  }
+  if (updates.targetHandle !== undefined) {
+    updateData.target_handle = updates.targetHandle ?? null;
   }
   const { data, error } = await client
     .from('relationships')

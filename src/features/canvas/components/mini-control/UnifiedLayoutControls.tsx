@@ -188,6 +188,28 @@ export default function UnifiedLayoutControls() {
               onCheckedChange={handleToggleAuto}
             />
           </div>
+          {/* CVS-335: custom endpoint mode — new connections pin the handles
+              the user drags between instead of snapping to the layout. */}
+          <div
+            className="flex items-center justify-between px-2 py-1.5"
+            title="When on, new connections keep the exact endpoints you drag between — permanently, even through auto-layouts. When off, connections follow the layout direction."
+          >
+            <Label htmlFor="custom-endpoints-toggle-unified" className="text-sm">
+              Custom endpoints
+            </Label>
+            <Switch
+              id="custom-endpoints-toggle-unified"
+              checked={
+                ((canvas?.settings as any)?.edgeAnchorMode || 'auto') ===
+                'custom'
+              }
+              onCheckedChange={(checked) =>
+                updateCanvasSettings({
+                  edgeAnchorMode: checked ? 'custom' : 'auto',
+                } as any)
+              }
+            />
+          </div>
         </DropdownMenuContent>
       </DropdownMenu>
 

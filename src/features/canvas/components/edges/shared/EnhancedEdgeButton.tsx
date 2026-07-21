@@ -18,6 +18,7 @@ import {
   Tag,
   Link2,
   GitBranch,
+  Unlink,
 } from 'lucide-react';
 import {
   getRelationshipEdgeStyle,
@@ -81,7 +82,10 @@ interface EnhancedEdgeButtonProps {
   onCopy?: () => void;
   onShare?: () => void;
   onAddTag?: () => void;
-  
+  /** CVS-335: un-pin custom endpoints so the edge follows the layout again.
+      Only passed when the edge actually has pinned handles. */
+  onResetAnchors?: () => void;
+
   // Customization
   showToolbar?: boolean;
   customLabel?: string;
@@ -152,6 +156,7 @@ export default function EnhancedEdgeButton({
   onCopy,
   onShare,
   onAddTag,
+  onResetAnchors,
   showToolbar = true,
   customLabel,
   customIcon,
@@ -217,6 +222,13 @@ export default function EnhancedEdgeButton({
       onClick: onAddTag,
       show: !!onAddTag,
       className: 'hover:bg-yellow-50 hover:text-yellow-600',
+    },
+    {
+      icon: Unlink,
+      label: 'Reset endpoints',
+      onClick: onResetAnchors,
+      show: !!onResetAnchors,
+      className: 'hover:bg-orange-50 hover:text-orange-600',
     },
     {
       icon: Trash2,

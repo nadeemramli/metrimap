@@ -13,6 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
+import { Label } from '@/shared/components/ui/label';
+import { Switch } from '@/shared/components/ui/switch';
 import { cn } from '@/shared/utils';
 import type { LayoutDirection, LayoutOptions } from '@/shared/utils/autoLayout';
 import {
@@ -268,6 +270,28 @@ export default function LayoutDropdownButton() {
             </DropdownMenuItem>
           );
         })}
+        <DropdownMenuSeparator />
+        {/* CVS-335: custom endpoint mode — new connections pin the handles the
+            user drags between instead of snapping to the layout's sides. */}
+        <div
+          className="flex items-center justify-between px-2 py-1.5"
+          title="When on, new connections keep the exact endpoints you drag between — permanently, even through auto-layouts. When off, connections follow the layout direction."
+        >
+          <Label htmlFor="custom-endpoints-toggle" className="text-sm">
+            Custom endpoints
+          </Label>
+          <Switch
+            id="custom-endpoints-toggle"
+            checked={
+              ((canvas?.settings as any)?.edgeAnchorMode || 'auto') === 'custom'
+            }
+            onCheckedChange={(checked) =>
+              updateCanvasSettings({
+                edgeAnchorMode: checked ? 'custom' : 'auto',
+              } as any)
+            }
+          />
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => {

@@ -3,6 +3,7 @@
 // was enabled. See docs/architecture/TYPE_CHECK_DEBT.md. Fix the errors and remove
 // this directive — do not add new code here assuming it is type-checked.
 import { useConfirm } from '@/shared/components/ConfirmDialog';
+import { useCanvasStore } from '@/lib/stores';
 import { Badge } from '@/shared/components/ui/badge';
 import type {
   ConfidenceLevel,
@@ -402,6 +403,18 @@ export default function DynamicEdge({
           onCopy={handleCopy}
           onShare={handleShare}
           onAddTag={handleAddTag}
+          // CVS-335: only pinned edges offer "Reset endpoints" (un-pin → the
+          // edge follows the auto-layout direction again).
+          onResetAnchors={
+            relationship.sourceHandle != null ||
+            relationship.targetHandle != null
+              ? () =>
+                  void useCanvasStore.getState().persistEdgeUpdate(
+                    relationship.id,
+                    { sourceHandle: null, targetHandle: null }
+                  )
+              : undefined
+          }
           customLabel={typeConfig.buttonValue}
         />
       )}

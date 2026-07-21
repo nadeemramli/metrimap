@@ -58,28 +58,10 @@ export const convertToNode = (
   // Let React Flow handle layering naturally
 });
 
-// Anchor an edge to the direction-appropriate handle on each side so the tree
-// reads with clear parent→child flow instead of every edge funnelling through
-// one handle. Every node type now exposes all four handles (top-target /
-// bottom-source / left-target / right-source) and connectionMode is loose, so
-// all four layout directions anchor cleanly — the edge leaves the parent's
-// "downstream" side and enters the child's "upstream" side.
-export const handlesForDirection = (
-  dir: LayoutDirection
-): { sourceHandle?: string; targetHandle?: string } => {
-  switch (dir) {
-    case 'TB':
-      return { sourceHandle: 'bottom-source', targetHandle: 'top-target' };
-    case 'BT':
-      return { sourceHandle: 'top-target', targetHandle: 'bottom-source' };
-    case 'LR':
-      return { sourceHandle: 'right-source', targetHandle: 'left-target' };
-    case 'RL':
-      return { sourceHandle: 'left-target', targetHandle: 'right-source' };
-    default:
-      return {};
-  }
-};
+// Direction→handle mapping + the CVS-335 pinned-endpoint hierarchy live in
+// edgeAnchors.ts (pure, unit-tested); re-exported here for existing importers.
+export { handlesForDirection } from '@/shared/utils/edgeAnchors';
+import { resolveEdgeHandles } from '@/shared/utils/edgeAnchors';
 
 // Arrowhead color mirrors DynamicEdge's stroke logic — the single edge-style
 // source of truth (green positive / red negative / amber weak / gray neutral).
@@ -119,7 +101,12 @@ export const convertToEdge = (
     }
   };
 
-  const { sourceHandle, targetHandle } = handlesForDirection(layoutDirection);
+  // Pinned endpoints (CVS-335) beat the layout direction; un-pinned sides
+  // follow the current layout as before.
+  const { sourceHandle, targetHandle } = resolveEdgeHandles(
+    relationship,
+    layoutDirection
+  );
 
   return {
     id: relationship.id,

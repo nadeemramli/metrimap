@@ -1888,6 +1888,8 @@ export type Database = {
           weight: number | null
           causal_metadata: Json | null
           description: string | null
+          source_handle: string | null
+          target_handle: string | null
           project_id: string
           created_at: string | null
           updated_at: string | null
@@ -1903,6 +1905,8 @@ export type Database = {
           weight?: number | null
           causal_metadata?: Json | null
           description?: string | null
+          source_handle?: string | null
+          target_handle?: string | null
           project_id: string
           created_at?: string | null
           updated_at?: string | null
@@ -1918,6 +1922,8 @@ export type Database = {
           weight?: number | null
           causal_metadata?: Json | null
           description?: string | null
+          source_handle?: string | null
+          target_handle?: string | null
           project_id?: string
           created_at?: string | null
           updated_at?: string | null
