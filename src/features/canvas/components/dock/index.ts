@@ -5,3 +5,9 @@ export {
   type DockPanelShellProps,
 } from './DockPanelShell';
 export { DockRow, DockSection } from './DockSection';
+export {
+  clampDockWidth,
+  dockMaxWidth,
+  loadDockWidth,
+  saveDockWidth,
+} from './dockWidth';
