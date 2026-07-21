@@ -660,12 +660,18 @@ export default function MetricCard({ data, selected }: NodeProps) {
       })}
       tabIndex={0}
     >
-      {/* Enhanced Handles for Touch Device & Handle Connections - Proper source/target mix */}
+      {/* Enhanced Handles for Touch Device & Handle Connections. ALL handles
+          are type="source" (CVS-335): React Flow resolves an edge's
+          sourceHandle only among source-type handles even in loose mode, so a
+          target-type handle on the source side (BT/RL layouts, pinned
+          endpoints) made the edge unrenderable. Loose mode allows
+          source→source, so this keeps every drag AND every anchor working.
+          Ids keep their historic -target/-source suffixes (stored edges). */}
       {!isPreview && (
         <>
-          {/* Top Side - Target (can receive connections) */}
+          {/* Top Side */}
           <Handle
-            type="target"
+            type="source"
             position={Position.Top}
             className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
             style={{
@@ -697,9 +703,9 @@ export default function MetricCard({ data, selected }: NodeProps) {
             id="bottom-source"
           />
 
-          {/* Left Side - Target (can receive connections) */}
+          {/* Left Side */}
           <Handle
-            type="target"
+            type="source"
             position={Position.Left}
             className="handle-neutral hover:scale-105 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg"
             style={{

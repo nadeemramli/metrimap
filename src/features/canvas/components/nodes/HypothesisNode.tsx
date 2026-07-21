@@ -106,24 +106,28 @@ const HypothesisNode = memo(
 
         {/* Connection Handles */}
         <Handle
-          type="target"
+          id="top-target"
+          type="source"
           position={Position.Top}
           className="w-3 h-3 !bg-purple-500 !border-2 !border-white"
           isConnectable={isConnectable}
         />
         <Handle
+          id="bottom-source"
           type="source"
           position={Position.Bottom}
           className="w-3 h-3 !bg-purple-500 !border-2 !border-white"
           isConnectable={isConnectable}
         />
         <Handle
-          type="target"
+          id="left-target"
+          type="source"
           position={Position.Left}
           className="w-3 h-3 !bg-purple-500 !border-2 !border-white"
           isConnectable={isConnectable}
         />
         <Handle
+          id="right-source"
           type="source"
           position={Position.Right}
           className="w-3 h-3 !bg-purple-500 !border-2 !border-white"
