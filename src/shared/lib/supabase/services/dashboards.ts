@@ -4,7 +4,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveClient } from '@/shared/utils/authenticatedClient';
-import type { Database, Json } from '../types';
+import type { Database, Json, TablesUpdate } from '../types';
 import type {
   DashboardWidget,
   WidgetConfig,
@@ -101,12 +101,14 @@ export async function updateWidget(
   client?: Client
 ): Promise<void> {
   const c = resolveClient(client);
-  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const row: TablesUpdate<'dashboard_widgets'> = {
+    updated_at: new Date().toISOString(),
+  };
   if (patch.groupId !== undefined) row.group_id = patch.groupId;
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.widgetType !== undefined) row.widget_type = patch.widgetType;
-  if (patch.config !== undefined) row.config = patch.config;
-  if (patch.layout !== undefined) row.layout = patch.layout;
+  if (patch.config !== undefined) row.config = patch.config as unknown as Json;
+  if (patch.layout !== undefined) row.layout = patch.layout as unknown as Json;
   if (patch.sortIndex !== undefined) row.sort_index = patch.sortIndex;
   const { error } = await c
     .from('dashboard_widgets')

@@ -6,7 +6,7 @@
 // the server env `CONNECTOR_SECRET_KEY` before they are stored, and decrypted only
 // here. Callers: the OAuth-callback edge function and the fetch runtime (CVS-142+).
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/shared/lib/supabase/types';
+import type { Database, TablesUpdate } from '@/shared/lib/supabase/types';
 import { decryptSecret, encryptSecret, importSecretKey } from './crypto';
 
 type ServiceClient = SupabaseClient<Database>;
@@ -54,7 +54,7 @@ export async function storeAccountSecret(
     .upsert(row, { onConflict: 'account_id' });
   if (secErr) throw new Error(secErr.message);
 
-  const patch: Record<string, unknown> = {
+  const patch: TablesUpdate<'connected_accounts'> = {
     status: 'connected',
     status_detail: null,
     last_synced_at: new Date().toISOString(),
