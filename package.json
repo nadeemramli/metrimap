@@ -115,7 +115,7 @@
     "react-day-picker": "^9.8.1",
     "react-dom": "^19.1.0",
     "react-grid-layout": "^1.5.3",
-    "react-resizable-panels": "^3.0.4",
+    "react-resizable-panels": "^4.12.2",
     "react-router": "^7.7.1",
     "react-router-dom": "^7.18.1",
     "reactflow": "^11.11.4",
