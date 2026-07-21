@@ -16,6 +16,8 @@ export const tagsOrderByWithAggregationInputObjectSchema: z.ZodType<Prisma.tagsO
   created_by: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   created_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   updated_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  is_access: SortOrderSchema.optional(),
+  redaction_mode: SortOrderSchema.optional(),
   _count: z.lazy(() => tagsCountOrderByAggregateInputObjectSchema).optional(),
   _max: z.lazy(() => tagsMaxOrderByAggregateInputObjectSchema).optional(),
   _min: z.lazy(() => tagsMinOrderByAggregateInputObjectSchema).optional()
@@ -29,6 +31,8 @@ export const tagsOrderByWithAggregationInputObjectZodSchema = z.object({
   created_by: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   created_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   updated_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  is_access: SortOrderSchema.optional(),
+  redaction_mode: SortOrderSchema.optional(),
   _count: z.lazy(() => tagsCountOrderByAggregateInputObjectSchema).optional(),
   _max: z.lazy(() => tagsMaxOrderByAggregateInputObjectSchema).optional(),
   _min: z.lazy(() => tagsMinOrderByAggregateInputObjectSchema).optional()

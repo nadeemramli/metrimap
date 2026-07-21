@@ -5,7 +5,7 @@ import { UuidWithAggregatesFilterObjectSchema } from './UuidWithAggregatesFilter
 import { StringWithAggregatesFilterObjectSchema } from './StringWithAggregatesFilter.schema';
 import { JsonNullableWithAggregatesFilterObjectSchema } from './JsonNullableWithAggregatesFilter.schema';
 import { BoolWithAggregatesFilterObjectSchema } from './BoolWithAggregatesFilter.schema';
-import { UuidNullableWithAggregatesFilterObjectSchema } from './UuidNullableWithAggregatesFilter.schema';
+import { StringNullableWithAggregatesFilterObjectSchema } from './StringNullableWithAggregatesFilter.schema';
 import { DateTimeWithAggregatesFilterObjectSchema } from './DateTimeWithAggregatesFilter.schema'
 
 export const comment_threadsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Prisma.comment_threadsScalarWhereWithAggregatesInput, Prisma.comment_threadsScalarWhereWithAggregatesInput> = z.object({
@@ -16,7 +16,7 @@ export const comment_threadsScalarWhereWithAggregatesInputObjectSchema: z.ZodTyp
   source: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   context: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
   is_resolved: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
-  created_by: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  created_by: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
   updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();
@@ -28,7 +28,7 @@ export const comment_threadsScalarWhereWithAggregatesInputObjectZodSchema = z.ob
   source: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   context: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
   is_resolved: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
-  created_by: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  created_by: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
   updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional()
 }).strict();

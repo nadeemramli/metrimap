@@ -11,7 +11,9 @@ export const tagsMinOrderByAggregateInputObjectSchema: z.ZodType<Prisma.tagsMinO
   project_id: SortOrderSchema.optional(),
   created_by: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
-  updated_at: SortOrderSchema.optional()
+  updated_at: SortOrderSchema.optional(),
+  is_access: SortOrderSchema.optional(),
+  redaction_mode: SortOrderSchema.optional()
 }).strict();
 export const tagsMinOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -21,5 +23,7 @@ export const tagsMinOrderByAggregateInputObjectZodSchema = z.object({
   project_id: SortOrderSchema.optional(),
   created_by: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
-  updated_at: SortOrderSchema.optional()
+  updated_at: SortOrderSchema.optional(),
+  is_access: SortOrderSchema.optional(),
+  redaction_mode: SortOrderSchema.optional()
 }).strict();

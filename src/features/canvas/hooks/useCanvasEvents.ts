@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
+import { createEvidenceSynced } from '@/features/evidence/services/evidenceSync';
 import { useCanvasStore } from '@/lib/stores';
 import { useAppStore } from '@/shared/stores/useAppStore';
+import { generateUUID } from '@/shared/utils/validation';
 import { getViewportCenterPosition } from '@/features/canvas/utils/viewportCenter';
 import { useReactFlow } from '@xyflow/react';
 import { toast } from 'sonner';
@@ -85,11 +87,9 @@ export function useCanvasEvents({
     // evidence node appears on the canvas (it renders from the evidence store).
     const { user } = useAppStore.getState();
     const now = new Date().toISOString();
-    const id =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `evidence_${Date.now()}`;
-    useEvidenceStore.getState().addEvidence({
+    const id = generateUUID();
+    const projectId = useCanvasStore.getState().canvas?.id;
+    createEvidenceSynced({
       id,
       title: 'New Evidence',
       type: 'Analysis',
@@ -113,7 +113,7 @@ export function useCanvasEvents({
       isExpanded: true,
       comments: [],
       context: { type: 'general' },
-    } as any);
+    } as any, projectId || '');
     useEvidenceStore.getState().setJustCreatedEvidenceId(id);
     // Also call the legacy hook if a page ever provides it.
     state.addEvidenceAtCenter?.();

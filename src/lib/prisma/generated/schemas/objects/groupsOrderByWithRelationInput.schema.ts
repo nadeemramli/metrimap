@@ -2,7 +2,9 @@
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { SortOrderSchema } from '../enums/SortOrder.schema';
-import { SortOrderInputObjectSchema } from './SortOrderInput.schema'
+import { SortOrderInputObjectSchema } from './SortOrderInput.schema';
+import { usersOrderByWithRelationInputObjectSchema } from './usersOrderByWithRelationInput.schema';
+import { projectsOrderByWithRelationInputObjectSchema } from './projectsOrderByWithRelationInput.schema'
 
 export const groupsOrderByWithRelationInputObjectSchema: z.ZodType<Prisma.groupsOrderByWithRelationInput, Prisma.groupsOrderByWithRelationInput> = z.object({
   id: SortOrderSchema.optional(),
@@ -17,7 +19,9 @@ export const groupsOrderByWithRelationInputObjectSchema: z.ZodType<Prisma.groups
   node_ids: SortOrderSchema.optional(),
   created_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   updated_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  users: z.lazy(() => usersOrderByWithRelationInputObjectSchema).optional(),
+  projects: z.lazy(() => projectsOrderByWithRelationInputObjectSchema).optional()
 }).strict();
 export const groupsOrderByWithRelationInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -32,5 +36,7 @@ export const groupsOrderByWithRelationInputObjectZodSchema = z.object({
   node_ids: SortOrderSchema.optional(),
   created_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   updated_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  users: z.lazy(() => usersOrderByWithRelationInputObjectSchema).optional(),
+  projects: z.lazy(() => projectsOrderByWithRelationInputObjectSchema).optional()
 }).strict();

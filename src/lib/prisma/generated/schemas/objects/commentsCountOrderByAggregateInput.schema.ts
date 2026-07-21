@@ -10,7 +10,8 @@ export const commentsCountOrderByAggregateInputObjectSchema: z.ZodType<Prisma.co
   content: SortOrderSchema.optional(),
   resolved: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
-  updated_at: SortOrderSchema.optional()
+  updated_at: SortOrderSchema.optional(),
+  parent_id: SortOrderSchema.optional()
 }).strict();
 export const commentsCountOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -19,5 +20,6 @@ export const commentsCountOrderByAggregateInputObjectZodSchema = z.object({
   content: SortOrderSchema.optional(),
   resolved: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
-  updated_at: SortOrderSchema.optional()
+  updated_at: SortOrderSchema.optional(),
+  parent_id: SortOrderSchema.optional()
 }).strict();

@@ -17,6 +17,10 @@ export const Evidence_itemsCountAggregateInputObjectSchema: z.ZodType<Prisma.Evi
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
   created_by: z.literal(true).optional(),
+  card_id: z.literal(true).optional(),
+  project_id: z.literal(true).optional(),
+  content: z.literal(true).optional(),
+  is_public: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();
 export const Evidence_itemsCountAggregateInputObjectZodSchema = z.object({
@@ -33,5 +37,9 @@ export const Evidence_itemsCountAggregateInputObjectZodSchema = z.object({
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
   created_by: z.literal(true).optional(),
+  card_id: z.literal(true).optional(),
+  project_id: z.literal(true).optional(),
+  content: z.literal(true).optional(),
+  is_public: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();

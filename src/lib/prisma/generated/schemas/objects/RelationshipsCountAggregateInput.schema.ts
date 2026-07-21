@@ -14,6 +14,10 @@ export const RelationshipsCountAggregateInputObjectSchema: z.ZodType<Prisma.Rela
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
   created_by: z.literal(true).optional(),
+  causal_metadata: z.literal(true).optional(),
+  description: z.literal(true).optional(),
+  source_handle: z.literal(true).optional(),
+  target_handle: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();
 export const RelationshipsCountAggregateInputObjectZodSchema = z.object({
@@ -27,5 +31,9 @@ export const RelationshipsCountAggregateInputObjectZodSchema = z.object({
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
   created_by: z.literal(true).optional(),
+  causal_metadata: z.literal(true).optional(),
+  description: z.literal(true).optional(),
+  source_handle: z.literal(true).optional(),
+  target_handle: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();

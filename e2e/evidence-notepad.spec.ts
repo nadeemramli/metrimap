@@ -82,6 +82,10 @@ test('CVS-336 evidence notepad: full block menu, drag-resizable dock, width pers
   await panel.getByRole('button', { name: 'Close panel' }).click();
   await page.waitForTimeout(600);
   await expect(page.locator('[role="complementary"]')).toHaveCount(0);
+  // Clear node selection — the bulk-ops toolbar (bottom center) can overlap
+  // the card's footer buttons while the evidence node is selected.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
   await evidenceCard.getByRole('button', { name: 'Edit' }).first().click();
   await page.waitForTimeout(800);
   const widthReopened = (await host.boundingBox())?.width ?? 0;

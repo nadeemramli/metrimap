@@ -16,7 +16,10 @@ export const evidence_itemsMinOrderByAggregateInputObjectSchema: z.ZodType<Prism
   impact_on_confidence: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  card_id: SortOrderSchema.optional(),
+  project_id: SortOrderSchema.optional(),
+  is_public: SortOrderSchema.optional()
 }).strict();
 export const evidence_itemsMinOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -31,5 +34,8 @@ export const evidence_itemsMinOrderByAggregateInputObjectZodSchema = z.object({
   impact_on_confidence: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  card_id: SortOrderSchema.optional(),
+  project_id: SortOrderSchema.optional(),
+  is_public: SortOrderSchema.optional()
 }).strict();

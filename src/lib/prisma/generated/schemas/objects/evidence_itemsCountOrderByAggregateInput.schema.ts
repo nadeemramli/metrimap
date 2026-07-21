@@ -16,7 +16,11 @@ export const evidence_itemsCountOrderByAggregateInputObjectSchema: z.ZodType<Pri
   impact_on_confidence: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  card_id: SortOrderSchema.optional(),
+  project_id: SortOrderSchema.optional(),
+  content: SortOrderSchema.optional(),
+  is_public: SortOrderSchema.optional()
 }).strict();
 export const evidence_itemsCountOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -31,5 +35,9 @@ export const evidence_itemsCountOrderByAggregateInputObjectZodSchema = z.object(
   impact_on_confidence: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  card_id: SortOrderSchema.optional(),
+  project_id: SortOrderSchema.optional(),
+  content: SortOrderSchema.optional(),
+  is_public: SortOrderSchema.optional()
 }).strict();

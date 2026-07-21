@@ -12,6 +12,8 @@ export const TagsCountAggregateInputObjectSchema: z.ZodType<Prisma.TagsCountAggr
   created_by: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
+  is_access: z.literal(true).optional(),
+  redaction_mode: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();
 export const TagsCountAggregateInputObjectZodSchema = z.object({
@@ -23,5 +25,7 @@ export const TagsCountAggregateInputObjectZodSchema = z.object({
   created_by: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
+  is_access: z.literal(true).optional(),
+  redaction_mode: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();

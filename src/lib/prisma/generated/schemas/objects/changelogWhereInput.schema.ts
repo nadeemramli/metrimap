@@ -5,7 +5,11 @@ import { UuidNullableFilterObjectSchema } from './UuidNullableFilter.schema';
 import { StringNullableFilterObjectSchema } from './StringNullableFilter.schema';
 import { StringFilterObjectSchema } from './StringFilter.schema';
 import { JsonNullableFilterObjectSchema } from './JsonNullableFilter.schema';
-import { DateTimeNullableFilterObjectSchema } from './DateTimeNullableFilter.schema'
+import { DateTimeNullableFilterObjectSchema } from './DateTimeNullableFilter.schema';
+import { ProjectsNullableScalarRelationFilterObjectSchema } from './ProjectsNullableScalarRelationFilter.schema';
+import { projectsWhereInputObjectSchema } from './projectsWhereInput.schema';
+import { UsersNullableScalarRelationFilterObjectSchema } from './UsersNullableScalarRelationFilter.schema';
+import { usersWhereInputObjectSchema } from './usersWhereInput.schema'
 
 export const changelogWhereInputObjectSchema: z.ZodType<Prisma.changelogWhereInput, Prisma.changelogWhereInput> = z.object({
   AND: z.union([z.lazy(() => changelogWhereInputObjectSchema), z.lazy(() => changelogWhereInputObjectSchema).array()]).optional(),
@@ -19,7 +23,9 @@ export const changelogWhereInputObjectSchema: z.ZodType<Prisma.changelogWhereInp
   target_name: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   description: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   metadata: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  timestamp: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  timestamp: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  projects: z.union([z.lazy(() => ProjectsNullableScalarRelationFilterObjectSchema), z.lazy(() => projectsWhereInputObjectSchema)]).optional().nullable(),
+  users: z.union([z.lazy(() => UsersNullableScalarRelationFilterObjectSchema), z.lazy(() => usersWhereInputObjectSchema)]).optional().nullable()
 }).strict();
 export const changelogWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => changelogWhereInputObjectSchema), z.lazy(() => changelogWhereInputObjectSchema).array()]).optional(),
@@ -33,5 +39,7 @@ export const changelogWhereInputObjectZodSchema = z.object({
   target_name: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   description: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   metadata: z.lazy(() => JsonNullableFilterObjectSchema).optional(),
-  timestamp: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  timestamp: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  projects: z.union([z.lazy(() => ProjectsNullableScalarRelationFilterObjectSchema), z.lazy(() => projectsWhereInputObjectSchema)]).optional().nullable(),
+  users: z.union([z.lazy(() => UsersNullableScalarRelationFilterObjectSchema), z.lazy(() => usersWhereInputObjectSchema)]).optional().nullable()
 }).strict();

@@ -5,7 +5,8 @@ import { StringFieldUpdateOperationsInputObjectSchema } from './StringFieldUpdat
 import { NullableJsonNullValueInputSchema } from '../enums/NullableJsonNullValueInput.schema';
 import { BoolFieldUpdateOperationsInputObjectSchema } from './BoolFieldUpdateOperationsInput.schema';
 import { NullableStringFieldUpdateOperationsInputObjectSchema } from './NullableStringFieldUpdateOperationsInput.schema';
-import { DateTimeFieldUpdateOperationsInputObjectSchema } from './DateTimeFieldUpdateOperationsInput.schema'
+import { DateTimeFieldUpdateOperationsInputObjectSchema } from './DateTimeFieldUpdateOperationsInput.schema';
+import { commentsUncheckedUpdateManyWithoutComment_threadsNestedInputObjectSchema } from './commentsUncheckedUpdateManyWithoutComment_threadsNestedInput.schema'
 
 
 const literalSchema = z.union([z.string(), z.number(), z.boolean()]);
@@ -20,7 +21,8 @@ export const comment_threadsUncheckedUpdateInputObjectSchema: z.ZodType<Prisma.c
   is_resolved: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputObjectSchema)]).optional(),
   created_by: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   created_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional(),
-  updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional()
+  updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional(),
+  comments: z.lazy(() => commentsUncheckedUpdateManyWithoutComment_threadsNestedInputObjectSchema).optional()
 }).strict();
 export const comment_threadsUncheckedUpdateInputObjectZodSchema = z.object({
   project_id: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
@@ -29,5 +31,6 @@ export const comment_threadsUncheckedUpdateInputObjectZodSchema = z.object({
   is_resolved: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputObjectSchema)]).optional(),
   created_by: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   created_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional(),
-  updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional()
+  updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional(),
+  comments: z.lazy(() => commentsUncheckedUpdateManyWithoutComment_threadsNestedInputObjectSchema).optional()
 }).strict();

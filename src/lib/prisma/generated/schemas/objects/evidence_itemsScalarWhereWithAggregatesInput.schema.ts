@@ -5,7 +5,9 @@ import { UuidNullableWithAggregatesFilterObjectSchema } from './UuidNullableWith
 import { StringWithAggregatesFilterObjectSchema } from './StringWithAggregatesFilter.schema';
 import { DateTimeWithAggregatesFilterObjectSchema } from './DateTimeWithAggregatesFilter.schema';
 import { StringNullableWithAggregatesFilterObjectSchema } from './StringNullableWithAggregatesFilter.schema';
-import { DateTimeNullableWithAggregatesFilterObjectSchema } from './DateTimeNullableWithAggregatesFilter.schema'
+import { DateTimeNullableWithAggregatesFilterObjectSchema } from './DateTimeNullableWithAggregatesFilter.schema';
+import { JsonNullableWithAggregatesFilterObjectSchema } from './JsonNullableWithAggregatesFilter.schema';
+import { BoolWithAggregatesFilterObjectSchema } from './BoolWithAggregatesFilter.schema'
 
 export const evidence_itemsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Prisma.evidence_itemsScalarWhereWithAggregatesInput, Prisma.evidence_itemsScalarWhereWithAggregatesInput> = z.object({
   AND: z.union([z.lazy(() => evidence_itemsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => evidence_itemsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -22,7 +24,11 @@ export const evidence_itemsScalarWhereWithAggregatesInputObjectSchema: z.ZodType
   impact_on_confidence: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
+  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
+  card_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  project_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  content: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
+  is_public: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional()
 }).strict();
 export const evidence_itemsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => evidence_itemsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => evidence_itemsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -39,5 +45,9 @@ export const evidence_itemsScalarWhereWithAggregatesInputObjectZodSchema = z.obj
   impact_on_confidence: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
+  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
+  card_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  project_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  content: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
+  is_public: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional()
 }).strict();

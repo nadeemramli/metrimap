@@ -12,7 +12,9 @@ export const canvas_nodesMaxOrderByAggregateInputObjectSchema: z.ZodType<Prisma.
   position_y: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  updated_by: SortOrderSchema.optional(),
+  z_index: SortOrderSchema.optional()
 }).strict();
 export const canvas_nodesMaxOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -23,5 +25,7 @@ export const canvas_nodesMaxOrderByAggregateInputObjectZodSchema = z.object({
   position_y: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  updated_by: SortOrderSchema.optional(),
+  z_index: SortOrderSchema.optional()
 }).strict();

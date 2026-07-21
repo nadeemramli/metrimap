@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-
+import { projectsArgsObjectSchema } from './projectsArgs.schema';
+import { usersArgsObjectSchema } from './usersArgs.schema'
 
 export const changelogSelectObjectSchema: z.ZodType<Prisma.changelogSelect, Prisma.changelogSelect> = z.object({
   id: z.boolean().optional(),
@@ -13,7 +14,9 @@ export const changelogSelectObjectSchema: z.ZodType<Prisma.changelogSelect, Pris
   target_name: z.boolean().optional(),
   description: z.boolean().optional(),
   metadata: z.boolean().optional(),
-  timestamp: z.boolean().optional()
+  timestamp: z.boolean().optional(),
+  projects: z.union([z.boolean(), z.lazy(() => projectsArgsObjectSchema)]).optional(),
+  users: z.union([z.boolean(), z.lazy(() => usersArgsObjectSchema)]).optional()
 }).strict();
 export const changelogSelectObjectZodSchema = z.object({
   id: z.boolean().optional(),
@@ -25,5 +28,7 @@ export const changelogSelectObjectZodSchema = z.object({
   target_name: z.boolean().optional(),
   description: z.boolean().optional(),
   metadata: z.boolean().optional(),
-  timestamp: z.boolean().optional()
+  timestamp: z.boolean().optional(),
+  projects: z.union([z.boolean(), z.lazy(() => projectsArgsObjectSchema)]).optional(),
+  users: z.union([z.boolean(), z.lazy(() => usersArgsObjectSchema)]).optional()
 }).strict();

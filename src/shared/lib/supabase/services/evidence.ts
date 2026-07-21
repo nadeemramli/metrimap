@@ -19,7 +19,24 @@ export function evidenceOwnerId(owner?: string | null): string | null {
   return owner && /^user_[A-Za-z0-9]+$/.test(owner) ? owner : null;
 }
 
-function rowToEvidence(row: Tables<'evidence_items'>): EvidenceItem {
+/** Client-generated ids are UUIDs; legacy store items may carry `evidence_...`
+ *  fallback ids that can't be inserted into the uuid PK. */
+export function isEvidenceUuid(id: string | undefined | null): boolean {
+  return (
+    !!id &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  );
+}
+
+/** card_id/relationship_id are the DB truth for scope — map them back to the
+ *  domain `context` so store filters (getGeneralEvidence & co.) keep working
+ *  on hydrated rows. */
+export function rowToEvidence(row: Tables<'evidence_items'>): EvidenceItem {
+  const context: EvidenceItem['context'] = row.card_id
+    ? { type: 'card', targetId: row.card_id }
+    : row.relationship_id
+      ? { type: 'relationship', targetId: row.relationship_id }
+      : { type: 'general' };
   return {
     id: row.id,
     title: row.title,
@@ -32,6 +49,10 @@ function rowToEvidence(row: Tables<'evidence_items'>): EvidenceItem {
     impactOnConfidence: row.impact_on_confidence || undefined,
     isPublic: row.is_public ?? false,
     content: (row.content as EvidenceItem['content']) ?? undefined,
+    context,
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined,
+    createdBy: row.created_by,
   };
 }
 
@@ -110,6 +131,9 @@ export async function createCardEvidence(
   const { data, error } = await c
     .from('evidence_items')
     .insert({
+      // Keep the client-generated UUID so canvas nodes / edges / panels that
+      // already reference the item never need an id swap.
+      ...(isEvidenceUuid(evidence.id) ? { id: evidence.id } : {}),
       card_id: cardId,
       project_id: projectId,
       title: evidence.title,
@@ -143,6 +167,7 @@ export async function createProjectEvidence(
   const { data, error } = await c
     .from('evidence_items')
     .insert({
+      ...(isEvidenceUuid(evidence.id) ? { id: evidence.id } : {}),
       project_id: projectId,
       title: evidence.title,
       type: evidence.type,
@@ -160,4 +185,44 @@ export async function createProjectEvidence(
   if (error) throw new Error(error.message);
   track('evidence_created', { scope: 'project', evidence_type: evidence.type });
   return rowToEvidence(data);
+}
+
+/** Bulk insert for the legacy settings-blob → evidence_items migration.
+ *  UUID ids are preserved; non-UUID (legacy `evidence_...`) ids get fresh
+ *  DB-generated ids — callers must remap references via the returned rows
+ *  (same array order as the input). */
+export async function insertProjectEvidenceBatch(
+  items: EvidenceItem[],
+  projectId: string,
+  userId: string,
+  client?: Client
+): Promise<EvidenceItem[]> {
+  if (!items.length) return [];
+  const c = resolveClient(client);
+  const rows = items.map((e) => ({
+    ...(isEvidenceUuid(e.id) ? { id: e.id } : {}),
+    project_id: projectId,
+    card_id: e.context?.type === 'card' ? (e.context.targetId ?? null) : null,
+    relationship_id:
+      e.context?.type === 'relationship' ? (e.context.targetId ?? null) : null,
+    title: e.title,
+    type: e.type,
+    date: e.date,
+    owner_id: evidenceOwnerId(e.owner),
+    link: e.link ?? null,
+    hypothesis: e.hypothesis ?? null,
+    summary: e.summary || e.title,
+    impact_on_confidence: e.impactOnConfidence ?? null,
+    content: (e.content ?? null) as Json,
+    // created_by must be a real user id — legacy items may carry 'unknown'.
+    created_by: /^user_[A-Za-z0-9]+$/.test(e.createdBy ?? '')
+      ? (e.createdBy as string)
+      : userId,
+  }));
+  const { data, error } = await c
+    .from('evidence_items')
+    .insert(rows)
+    .select('*');
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(rowToEvidence);
 }

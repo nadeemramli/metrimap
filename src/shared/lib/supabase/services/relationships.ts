@@ -51,8 +51,14 @@ function transformRelationship(
   };
 }
 
-// Transform database row to EvidenceItem
+// Transform database row to EvidenceItem. card_id/relationship_id are the DB
+// truth for scope — mapped to `context` so store filters keep working.
 function transformEvidenceItem(evidence: EvidenceItemRow): EvidenceItem {
+  const context: EvidenceItem['context'] = evidence.card_id
+    ? { type: 'card', targetId: evidence.card_id }
+    : evidence.relationship_id
+      ? { type: 'relationship', targetId: evidence.relationship_id }
+      : { type: 'general' };
   return {
     id: evidence.id,
     title: evidence.title,
@@ -64,6 +70,10 @@ function transformEvidenceItem(evidence: EvidenceItemRow): EvidenceItem {
     summary: evidence.summary,
     impactOnConfidence: evidence.impact_on_confidence || undefined,
     content: (evidence.content as EvidenceItem['content']) ?? undefined,
+    context,
+    createdAt: evidence.created_at ?? undefined,
+    updatedAt: evidence.updated_at ?? undefined,
+    createdBy: evidence.created_by,
   };
 }
 
@@ -80,7 +90,8 @@ function transformToInsert(
     type: rel.type,
     confidence: rel.confidence,
     weight: rel.weight,
-    causal_metadata: (rel.causalMetadata ?? null) as Json,
+    // causal_metadata is set post-validation in createRelationship — the
+    // generated Json schema rejects raw null (wants DbNull/JsonNull sentinels).
     // Notes live in the `description` column (domain calls it `notes`).
     description: rel.notes ?? null,
     created_by: userId,
@@ -104,6 +115,8 @@ export async function createRelationship(
   // Pinned endpoints (CVS-335) are set AFTER validation — the strict generated
   // schema predates these columns and would reject them (same as evidence
   // date/content); the Postgres text columns accept them directly.
+  // causal_metadata too: the generated Json union rejects raw null.
+  insertData.causal_metadata = (relationship.causalMetadata ?? null) as Json;
   if (relationship.sourceHandle !== undefined) {
     insertData.source_handle = relationship.sourceHandle ?? null;
   }
@@ -138,8 +151,6 @@ export async function updateRelationship(
   if (updates.confidence !== undefined)
     updateData.confidence = updates.confidence;
   if (updates.weight !== undefined) updateData.weight = updates.weight;
-  if (updates.causalMetadata !== undefined)
-    updateData.causal_metadata = (updates.causalMetadata ?? null) as Json;
   // Notes live in the `description` column (domain calls it `notes`).
   if (updates.notes !== undefined) updateData.description = updates.notes ?? null;
 
@@ -153,6 +164,10 @@ export async function updateRelationship(
   // Pinned endpoints (CVS-335) — set AFTER validation, like evidence
   // date/content: the strict generated schema doesn't know these columns.
   // Explicit null un-pins (edge goes back to following the layout).
+  // causal_metadata post-validation too (Json schema rejects raw null).
+  if (updates.causalMetadata !== undefined) {
+    updateData.causal_metadata = (updates.causalMetadata ?? null) as Json;
+  }
   if (updates.sourceHandle !== undefined) {
     updateData.source_handle = updates.sourceHandle ?? null;
   }
@@ -250,7 +265,8 @@ export async function createEvidenceItem(
     relationship_id: relationshipId,
     title: evidence.title,
     type: evidence.type,
-    owner_id: evidence.owner || null,
+    // owner_id is a users(id) FK — a display name here fails the insert (CVS-279).
+    owner_id: evidenceOwnerId(evidence.owner),
     link: evidence.link,
     hypothesis: evidence.hypothesis,
     summary: evidence.summary,
@@ -322,6 +338,15 @@ export async function updateEvidenceItem(
   }
   if (updates.content !== undefined) {
     updateData.content = (updates.content ?? null) as Json;
+  }
+  // Context is stored as scope columns; the stale generated schema doesn't
+  // know card_id/relationship_id either, so these are also post-validation.
+  if (updates.context !== undefined) {
+    const ctx = updates.context;
+    updateData.card_id =
+      ctx?.type === 'card' ? (ctx.targetId ?? null) : null;
+    updateData.relationship_id =
+      ctx?.type === 'relationship' ? (ctx.targetId ?? null) : null;
   }
   const { data, error } = await client
     .from('evidence_items')

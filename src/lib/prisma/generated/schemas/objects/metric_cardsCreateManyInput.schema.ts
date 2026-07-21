@@ -4,7 +4,8 @@ import type { Prisma } from '@prisma/client';
 import { NullableJsonNullValueInputSchema } from '../enums/NullableJsonNullValueInput.schema';
 import { metric_cardsCreatecausal_factorsInputObjectSchema } from './metric_cardsCreatecausal_factorsInput.schema';
 import { metric_cardsCreatedimensionsInputObjectSchema } from './metric_cardsCreatedimensionsInput.schema';
-import { metric_cardsCreateassigneesInputObjectSchema } from './metric_cardsCreateassigneesInput.schema'
+import { metric_cardsCreateassigneesInputObjectSchema } from './metric_cardsCreateassigneesInput.schema';
+import { JsonNullValueInputSchema } from '../enums/JsonNullValueInput.schema'
 
 
 const literalSchema = z.union([z.string(), z.number(), z.boolean()]);
@@ -30,7 +31,12 @@ export const metric_cardsCreateManyInputObjectSchema: z.ZodType<Prisma.metric_ca
   assignees: z.union([z.lazy(() => metric_cardsCreateassigneesInputObjectSchema), z.string().array()]).optional(),
   created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
-  created_by: z.string()
+  created_by: z.string(),
+  tracked_metric_id: z.string().optional().nullable(),
+  updated_by: z.string().optional().nullable(),
+  status: z.string().optional().nullable(),
+  workflow: z.union([JsonNullValueInputSchema, jsonSchema]).optional(),
+  z_index: z.number().int().optional().nullable()
 }).strict();
 export const metric_cardsCreateManyInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -50,5 +56,10 @@ export const metric_cardsCreateManyInputObjectZodSchema = z.object({
   assignees: z.union([z.lazy(() => metric_cardsCreateassigneesInputObjectSchema), z.string().array()]).optional(),
   created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
-  created_by: z.string()
+  created_by: z.string(),
+  tracked_metric_id: z.string().optional().nullable(),
+  updated_by: z.string().optional().nullable(),
+  status: z.string().optional().nullable(),
+  workflow: z.union([JsonNullValueInputSchema, jsonSchema]).optional(),
+  z_index: z.number().int().optional().nullable()
 }).strict();

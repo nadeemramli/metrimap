@@ -16,7 +16,10 @@ export const Evidence_itemsMinAggregateInputObjectSchema: z.ZodType<Prisma.Evide
   impact_on_confidence: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
-  created_by: z.literal(true).optional()
+  created_by: z.literal(true).optional(),
+  card_id: z.literal(true).optional(),
+  project_id: z.literal(true).optional(),
+  is_public: z.literal(true).optional()
 }).strict();
 export const Evidence_itemsMinAggregateInputObjectZodSchema = z.object({
   id: z.literal(true).optional(),
@@ -31,5 +34,8 @@ export const Evidence_itemsMinAggregateInputObjectZodSchema = z.object({
   impact_on_confidence: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
-  created_by: z.literal(true).optional()
+  created_by: z.literal(true).optional(),
+  card_id: z.literal(true).optional(),
+  project_id: z.literal(true).optional(),
+  is_public: z.literal(true).optional()
 }).strict();

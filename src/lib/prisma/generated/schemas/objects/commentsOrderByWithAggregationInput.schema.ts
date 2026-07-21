@@ -15,6 +15,7 @@ export const commentsOrderByWithAggregationInputObjectSchema: z.ZodType<Prisma.c
   resolved: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
+  parent_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   _count: z.lazy(() => commentsCountOrderByAggregateInputObjectSchema).optional(),
   _max: z.lazy(() => commentsMaxOrderByAggregateInputObjectSchema).optional(),
   _min: z.lazy(() => commentsMinOrderByAggregateInputObjectSchema).optional()
@@ -27,6 +28,7 @@ export const commentsOrderByWithAggregationInputObjectZodSchema = z.object({
   resolved: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
+  parent_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   _count: z.lazy(() => commentsCountOrderByAggregateInputObjectSchema).optional(),
   _max: z.lazy(() => commentsMaxOrderByAggregateInputObjectSchema).optional(),
   _min: z.lazy(() => commentsMinOrderByAggregateInputObjectSchema).optional()

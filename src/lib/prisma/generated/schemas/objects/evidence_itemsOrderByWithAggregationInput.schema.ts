@@ -21,6 +21,10 @@ export const evidence_itemsOrderByWithAggregationInputObjectSchema: z.ZodType<Pr
   created_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   updated_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   created_by: SortOrderSchema.optional(),
+  card_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  project_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  content: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  is_public: SortOrderSchema.optional(),
   _count: z.lazy(() => evidence_itemsCountOrderByAggregateInputObjectSchema).optional(),
   _max: z.lazy(() => evidence_itemsMaxOrderByAggregateInputObjectSchema).optional(),
   _min: z.lazy(() => evidence_itemsMinOrderByAggregateInputObjectSchema).optional()
@@ -39,6 +43,10 @@ export const evidence_itemsOrderByWithAggregationInputObjectZodSchema = z.object
   created_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   updated_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   created_by: SortOrderSchema.optional(),
+  card_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  project_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  content: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  is_public: SortOrderSchema.optional(),
   _count: z.lazy(() => evidence_itemsCountOrderByAggregateInputObjectSchema).optional(),
   _max: z.lazy(() => evidence_itemsMaxOrderByAggregateInputObjectSchema).optional(),
   _min: z.lazy(() => evidence_itemsMinOrderByAggregateInputObjectSchema).optional()

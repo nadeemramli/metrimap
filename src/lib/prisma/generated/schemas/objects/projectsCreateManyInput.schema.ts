@@ -22,7 +22,9 @@ export const projectsCreateManyInputObjectSchema: z.ZodType<Prisma.projectsCreat
   created_by: z.string(),
   is_public: z.boolean().optional(),
   is_starred: z.boolean().optional(),
-  archived_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
+  archived_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  space_id: z.string().optional().nullable(),
+  workspace_id: z.string().optional().nullable()
 }).strict();
 export const projectsCreateManyInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -36,5 +38,7 @@ export const projectsCreateManyInputObjectZodSchema = z.object({
   created_by: z.string(),
   is_public: z.boolean().optional(),
   is_starred: z.boolean().optional(),
-  archived_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
+  archived_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  space_id: z.string().optional().nullable(),
+  workspace_id: z.string().optional().nullable()
 }).strict();

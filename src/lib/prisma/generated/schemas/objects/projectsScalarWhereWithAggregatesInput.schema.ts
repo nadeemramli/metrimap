@@ -6,7 +6,8 @@ import { StringNullableWithAggregatesFilterObjectSchema } from './StringNullable
 import { StringNullableListFilterObjectSchema } from './StringNullableListFilter.schema';
 import { JsonNullableWithAggregatesFilterObjectSchema } from './JsonNullableWithAggregatesFilter.schema';
 import { DateTimeNullableWithAggregatesFilterObjectSchema } from './DateTimeNullableWithAggregatesFilter.schema';
-import { BoolWithAggregatesFilterObjectSchema } from './BoolWithAggregatesFilter.schema'
+import { BoolWithAggregatesFilterObjectSchema } from './BoolWithAggregatesFilter.schema';
+import { UuidNullableWithAggregatesFilterObjectSchema } from './UuidNullableWithAggregatesFilter.schema'
 
 export const projectsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Prisma.projectsScalarWhereWithAggregatesInput, Prisma.projectsScalarWhereWithAggregatesInput> = z.object({
   AND: z.union([z.lazy(() => projectsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => projectsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -22,7 +23,9 @@ export const projectsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Prism
   created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   is_public: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
   is_starred: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
-  archived_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  archived_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  space_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  workspace_id: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable()
 }).strict();
 export const projectsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => projectsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => projectsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -38,5 +41,7 @@ export const projectsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   is_public: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
   is_starred: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
-  archived_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  archived_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  space_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  workspace_id: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable()
 }).strict();
