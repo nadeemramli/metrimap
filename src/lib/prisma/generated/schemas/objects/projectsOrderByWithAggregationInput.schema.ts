@@ -20,6 +20,8 @@ export const projectsOrderByWithAggregationInputObjectSchema: z.ZodType<Prisma.p
   is_public: SortOrderSchema.optional(),
   is_starred: SortOrderSchema.optional(),
   archived_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  space_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  workspace_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   _count: z.lazy(() => projectsCountOrderByAggregateInputObjectSchema).optional(),
   _max: z.lazy(() => projectsMaxOrderByAggregateInputObjectSchema).optional(),
   _min: z.lazy(() => projectsMinOrderByAggregateInputObjectSchema).optional()
@@ -37,6 +39,8 @@ export const projectsOrderByWithAggregationInputObjectZodSchema = z.object({
   is_public: SortOrderSchema.optional(),
   is_starred: SortOrderSchema.optional(),
   archived_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  space_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  workspace_id: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
   _count: z.lazy(() => projectsCountOrderByAggregateInputObjectSchema).optional(),
   _max: z.lazy(() => projectsMaxOrderByAggregateInputObjectSchema).optional(),
   _min: z.lazy(() => projectsMinOrderByAggregateInputObjectSchema).optional()

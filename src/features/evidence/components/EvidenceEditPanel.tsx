@@ -5,6 +5,10 @@
 // "View full" remains for the immersive full-page notebook.
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
 import {
+  flushEvidenceSync,
+  updateEvidenceSynced,
+} from '@/features/evidence/services/evidenceSync';
+import {
   DockPanel,
   clampDockWidth,
   dockMaxWidth,
@@ -80,7 +84,8 @@ function countWords(data: OutputData | undefined): number {
 }
 
 function persistContent(evidenceId: string, data: OutputData) {
-  useEvidenceStore.getState().updateEvidence(evidenceId, {
+  // Write-through: store immediately, evidence_items row via debounced sync.
+  updateEvidenceSynced(evidenceId, {
     content: data,
     updatedAt: new Date().toISOString(),
   } as Partial<EvidenceItem>);
@@ -100,7 +105,6 @@ export function EvidenceEditPanel({
   const evidence = useEvidenceStore((s) =>
     s.evidence.find((e) => e.id === evidenceId)
   );
-  const updateEvidence = useEvidenceStore((s) => s.updateEvidence);
 
   const editorRef = useRef<EditorJS | null>(null);
   const holderRef = useRef<HTMLDivElement>(null);
@@ -116,7 +120,7 @@ export function EvidenceEditPanel({
 
   const save = (updates: Partial<EvidenceItem>) => {
     if (!evidence) return;
-    updateEvidence(evidence.id, {
+    updateEvidenceSynced(evidence.id, {
       ...updates,
       updatedAt: new Date().toISOString(),
     } as Partial<EvidenceItem>);
@@ -188,6 +192,8 @@ export function EvidenceEditPanel({
         } catch {
           /* already torn down */
         }
+        // Don't leave the row 800ms behind the store on close.
+        flushEvidenceSync(itemId);
       })();
     };
     // Re-init only per item/panel-open — content changes flow through the editor.

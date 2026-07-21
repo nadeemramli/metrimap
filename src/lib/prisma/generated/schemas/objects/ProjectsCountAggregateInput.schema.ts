@@ -16,6 +16,8 @@ export const ProjectsCountAggregateInputObjectSchema: z.ZodType<Prisma.ProjectsC
   is_public: z.literal(true).optional(),
   is_starred: z.literal(true).optional(),
   archived_at: z.literal(true).optional(),
+  space_id: z.literal(true).optional(),
+  workspace_id: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();
 export const ProjectsCountAggregateInputObjectZodSchema = z.object({
@@ -31,5 +33,7 @@ export const ProjectsCountAggregateInputObjectZodSchema = z.object({
   is_public: z.literal(true).optional(),
   is_starred: z.literal(true).optional(),
   archived_at: z.literal(true).optional(),
+  space_id: z.literal(true).optional(),
+  workspace_id: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();

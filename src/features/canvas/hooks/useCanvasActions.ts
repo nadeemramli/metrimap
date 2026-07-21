@@ -21,6 +21,10 @@ import { internalEdges, remapEdges } from '@/features/canvas/utils/clipboard';
 import { useCanvasStore } from '@/lib/stores';
 import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStore';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
+import {
+  createEvidenceSynced,
+  deleteEvidenceSynced,
+} from '@/features/evidence/services/evidenceSync';
 import { useCanvasHistoryStore } from '@/features/canvas/stores/useCanvasHistoryStore';
 import { generateUUID } from '@/shared/utils/validation';
 import { linkCardToMetric } from '@/shared/lib/supabase/services/trackedMetrics';
@@ -120,11 +124,14 @@ export function useCanvasActions(
         if (item.family === 'evidence') {
           const newId = generateUUID();
           const pos = item.node.position || { x: 100, y: 100 };
-          useEvidenceStore.getState().addEvidence({
-            ...item.node,
-            id: newId,
-            position: { x: pos.x + d, y: pos.y + d },
-          } as EvidenceItem);
+          createEvidenceSynced(
+            {
+              ...item.node,
+              id: newId,
+              position: { x: pos.x + d, y: pos.y + d },
+            } as EvidenceItem,
+            projectId || (item.node as any).projectId || ''
+          );
           return { family: 'evidence', id: newId, srcId: item.node.id };
         }
         const created = await useCanvasNodesStore.getState().createNode({
@@ -160,8 +167,7 @@ export function useCanvasActions(
     try {
       if (family === 'card')
         await useCanvasStore.getState().persistNodeDelete(id);
-      else if (family === 'evidence')
-        useEvidenceStore.getState().deleteEvidence(id);
+      else if (family === 'evidence') deleteEvidenceSynced(id);
       else await useCanvasNodesStore.getState().deleteNode(id);
       console.log('🗑️ deleted:', family, id);
     } catch (e) {

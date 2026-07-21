@@ -13,7 +13,10 @@ export const relationshipsMaxOrderByAggregateInputObjectSchema: z.ZodType<Prisma
   weight: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  description: SortOrderSchema.optional(),
+  source_handle: SortOrderSchema.optional(),
+  target_handle: SortOrderSchema.optional()
 }).strict();
 export const relationshipsMaxOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -25,5 +28,8 @@ export const relationshipsMaxOrderByAggregateInputObjectZodSchema = z.object({
   weight: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  description: SortOrderSchema.optional(),
+  source_handle: SortOrderSchema.optional(),
+  target_handle: SortOrderSchema.optional()
 }).strict();

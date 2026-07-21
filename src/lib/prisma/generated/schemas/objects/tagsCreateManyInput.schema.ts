@@ -11,7 +11,9 @@ export const tagsCreateManyInputObjectSchema: z.ZodType<Prisma.tagsCreateManyInp
   project_id: z.string().optional().nullable(),
   created_by: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  is_access: z.boolean().optional(),
+  redaction_mode: z.string().optional()
 }).strict();
 export const tagsCreateManyInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -21,5 +23,7 @@ export const tagsCreateManyInputObjectZodSchema = z.object({
   project_id: z.string().optional().nullable(),
   created_by: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable()
+  updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
+  is_access: z.boolean().optional(),
+  redaction_mode: z.string().optional()
 }).strict();

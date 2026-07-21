@@ -6,7 +6,11 @@ import { StringFilterObjectSchema } from './StringFilter.schema';
 import { StringNullableFilterObjectSchema } from './StringNullableFilter.schema';
 import { FloatFilterObjectSchema } from './FloatFilter.schema';
 import { StringNullableListFilterObjectSchema } from './StringNullableListFilter.schema';
-import { DateTimeNullableFilterObjectSchema } from './DateTimeNullableFilter.schema'
+import { DateTimeNullableFilterObjectSchema } from './DateTimeNullableFilter.schema';
+import { UsersScalarRelationFilterObjectSchema } from './UsersScalarRelationFilter.schema';
+import { usersWhereInputObjectSchema } from './usersWhereInput.schema';
+import { ProjectsNullableScalarRelationFilterObjectSchema } from './ProjectsNullableScalarRelationFilter.schema';
+import { projectsWhereInputObjectSchema } from './projectsWhereInput.schema'
 
 export const groupsWhereInputObjectSchema: z.ZodType<Prisma.groupsWhereInput, Prisma.groupsWhereInput> = z.object({
   AND: z.union([z.lazy(() => groupsWhereInputObjectSchema), z.lazy(() => groupsWhereInputObjectSchema).array()]).optional(),
@@ -23,7 +27,9 @@ export const groupsWhereInputObjectSchema: z.ZodType<Prisma.groupsWhereInput, Pr
   node_ids: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
+  created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
+  users: z.union([z.lazy(() => UsersScalarRelationFilterObjectSchema), z.lazy(() => usersWhereInputObjectSchema)]).optional(),
+  projects: z.union([z.lazy(() => ProjectsNullableScalarRelationFilterObjectSchema), z.lazy(() => projectsWhereInputObjectSchema)]).optional().nullable()
 }).strict();
 export const groupsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => groupsWhereInputObjectSchema), z.lazy(() => groupsWhereInputObjectSchema).array()]).optional(),
@@ -40,5 +46,7 @@ export const groupsWhereInputObjectZodSchema = z.object({
   node_ids: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   updated_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional()
+  created_by: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
+  users: z.union([z.lazy(() => UsersScalarRelationFilterObjectSchema), z.lazy(() => usersWhereInputObjectSchema)]).optional(),
+  projects: z.union([z.lazy(() => ProjectsNullableScalarRelationFilterObjectSchema), z.lazy(() => projectsWhereInputObjectSchema)]).optional().nullable()
 }).strict();

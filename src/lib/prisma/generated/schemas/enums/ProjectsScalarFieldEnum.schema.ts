@@ -1,4 +1,4 @@
 // @ts-nocheck
 import { z } from 'zod';
 
-export const ProjectsScalarFieldEnumSchema = z.enum(['id', 'name', 'description', 'tags', 'settings', 'created_at', 'updated_at', 'last_modified_by', 'created_by', 'is_public', 'is_starred', 'archived_at'])
+export const ProjectsScalarFieldEnumSchema = z.enum(['id', 'name', 'description', 'tags', 'settings', 'created_at', 'updated_at', 'last_modified_by', 'created_by', 'is_public', 'is_starred', 'archived_at', 'space_id', 'workspace_id'])

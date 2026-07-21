@@ -13,130 +13,403 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// NOTE: Schema mirrors Supabase for type-safety only. No relations to avoid ORM overhead.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model alert_rules {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id           String       @db.Uuid
+  card_id              String       @db.Uuid
+  name                 String?
+  rule_type            String
+  config               Json         @default("{}")
+  enabled              Boolean      @default(true)
+  created_by           String       @default(dbgenerated("requesting_user_id()"))
+  last_triggered_at    DateTime?    @db.Timestamptz(6)
+  last_triggered_value Float?
+  created_at           DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime     @default(now()) @db.Timestamptz(6)
+  metric_cards         metric_cards @relation(fields: [card_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  projects             projects     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-model users {
-  id         String    @id @default(dbgenerated("gen_random_uuid()"))
-  email      String    @unique
-  name       String
-  avatar_url String?
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
-
-  @@map("users")
+  @@index([card_id], map: "idx_alert_rules_card")
 }
 
-model projects {
-  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name             String
-  description      String?
-  tags             String[]  @default([])
-  settings         Json?     @default("{}")
-  created_at       DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
-  last_modified_by String?
-  created_by       String
-  is_public        Boolean   @default(false)
-  is_starred       Boolean   @default(false)
-  archived_at      DateTime? @db.Timestamptz(6)
-
-  @@map("projects")
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model api_keys {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id String?   @default(dbgenerated("requesting_org_id()"))
+  created_by   String    @default(dbgenerated("requesting_user_id()"))
+  name         String
+  key_prefix   String
+  key_hash     String    @unique
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  last_used_at DateTime? @db.Timestamptz(6)
 }
 
-model metric_cards {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  project_id      String?   @db.Uuid
-  title           String
-  description     String?
-  category        String
-  sub_category    String?
-  position_x      Float     @default(0)
-  position_y      Float     @default(0)
-  z_index         Int?
-  data            Json?     @default("[]")
-  source_type     String?
-  formula         String?
-  causal_factors  String[]  @default([])
-  dimensions      String[]  @default([])
-  owner_id        String?
-  assignees       String[]  @default([])
-  status          String?
-  workflow        Json      @default("{}")
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
-  created_by      String
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model canvas_nodes {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id String   @db.Uuid
+  node_type  String
+  title      String?
+  position_x Float    @default(0)
+  position_y Float    @default(0)
+  data       Json?    @default("{}")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  created_by String
+  updated_by String?
+  z_index    Int?
+  projects   projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@map("metric_cards")
+  @@index([created_at], map: "idx_canvas_nodes_created_at")
+  @@index([node_type], map: "idx_canvas_nodes_node_type")
+  @@index([project_id], map: "idx_canvas_nodes_project_id")
 }
 
-model relationships {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  project_id      String?   @db.Uuid
-  source_id       String?   @db.Uuid
-  target_id       String?   @db.Uuid
-  type            String
-  confidence      String    @default("Medium")
-  weight          Float?
-  causal_metadata Json?
-  description     String?
-  source_handle   String?
-  target_handle   String?
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
-  created_by      String
-
-  @@map("relationships")
-}
-
-model evidence_items {
-  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  relationship_id      String?   @db.Uuid
-  title                String
-  type                 String
-  date                 DateTime  @db.Date
-  owner_id             String?
-  link                 String?
-  hypothesis           String?
-  summary              String
-  impact_on_confidence String?
-  created_at           DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime? @default(now()) @db.Timestamptz(6)
-  created_by           String
-
-  @@map("evidence_items")
-}
-
-model tags {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  color       String?
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model canvas_snapshots {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  canvas_id   String   @db.Uuid
+  version     Int
+  title       String
   description String?
+  nodes       Json     @default("[]")
+  edges       Json     @default("[]")
+  groups      Json     @default("[]")
+  metadata    Json     @default("{}")
+  created_by  String   @default(dbgenerated("requesting_user_id()"))
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  projects    projects @relation(fields: [canvas_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([canvas_id, version(sort: Desc)], map: "idx_canvas_snapshots_canvas")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model changelog {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   project_id  String?   @db.Uuid
+  user_id     String?
+  action      String
+  target      String
+  target_id   String?   @db.Uuid
+  target_name String
+  description String
+  metadata    Json?     @default("{}")
+  timestamp   DateTime? @default(now()) @db.Timestamptz(6)
+  projects    projects? @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([project_id], map: "idx_changelog_project_id")
+  @@index([user_id], map: "idx_changelog_user_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model comment_likes {
+  comment_id String   @db.Uuid
+  user_id    String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  comments   comments @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([comment_id, user_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model comment_mentions {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  comment_id        String   @db.Uuid
+  mentioned_user_id String
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  comments          comments @relation(fields: [comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([mentioned_user_id], map: "idx_comment_mentions_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model comment_threads {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id  String     @db.Uuid
+  source      String
+  context     Json?
+  is_resolved Boolean    @default(false)
   created_by  String?
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  created_at  DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime   @default(now()) @db.Timestamptz(6)
+  projects    projects   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  comments    comments[]
 
-  @@map("tags")
+  @@index([project_id], map: "idx_comment_threads_project")
 }
 
-model metric_card_tags {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  metric_card_id String?   @db.Uuid
-  tag_id         String?   @db.Uuid
-  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model comments {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  thread_id        String             @db.Uuid
+  author_id        String?
+  content          String
+  resolved         Boolean            @default(false)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @db.Timestamptz(6)
+  parent_id        String?            @db.Uuid
+  comment_likes    comment_likes[]
+  comment_mentions comment_mentions[]
+  comments         comments?          @relation("commentsTocomments", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_comments   comments[]         @relation("commentsTocomments")
+  comment_threads  comment_threads    @relation(fields: [thread_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@map("metric_card_tags")
+  @@index([parent_id], map: "idx_comments_parent_id")
+  @@index([thread_id], map: "idx_comments_thread")
 }
 
-model relationship_tags {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  relationship_id String?   @db.Uuid
-  tag_id          String?   @db.Uuid
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
-
-  @@map("relationship_tags")
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model connected_account_secrets {
+  account_id         String             @id @db.Uuid
+  access_token       String?
+  refresh_token      String?
+  api_key            String?
+  token_type         String?
+  expires_at         DateTime?          @db.Timestamptz(6)
+  updated_at         DateTime           @default(now()) @db.Timestamptz(6)
+  connected_accounts connected_accounts @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model connected_accounts {
+  id                        String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_by                String                     @default(dbgenerated("requesting_user_id()"))
+  workspace_id              String?                    @default(dbgenerated("requesting_org_id()"))
+  connector_id              String
+  auth_type                 String
+  source_account_id         String?
+  source_account_label      String?
+  granted_scopes            String[]                   @default([])
+  status                    String                     @default("pending")
+  status_detail             String?
+  last_synced_at            DateTime?                  @db.Timestamptz(6)
+  last_query_at             DateTime?                  @db.Timestamptz(6)
+  revoked_at                DateTime?                  @db.Timestamptz(6)
+  created_at                DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime                   @default(now()) @db.Timestamptz(6)
+  connected_account_secrets connected_account_secrets?
+  connector_cursors         connector_cursors[]
+  connector_runs            connector_runs[]
+  metric_bindings           metric_bindings[]
+
+  @@unique([workspace_id, connector_id, source_account_id])
+  @@index([workspace_id, connector_id], map: "idx_connected_accounts_connector")
+  @@index([workspace_id], map: "idx_connected_accounts_workspace_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model connector_cursors {
+  connected_account_id String             @db.Uuid
+  connector_id         String
+  stream               String
+  cursor               String
+  workspace_id         String?
+  created_by           String?
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  connected_accounts   connected_accounts @relation(fields: [connected_account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([connected_account_id, stream])
+  @@index([workspace_id], map: "idx_connector_cursors_workspace_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model connector_runs {
+  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_by           String              @default(dbgenerated("requesting_user_id()"))
+  workspace_id         String?             @default(dbgenerated("requesting_org_id()"))
+  connected_account_id String?             @db.Uuid
+  connector_id         String
+  stream               String?
+  event                String
+  status               String              @default("success")
+  sync_mode            String?
+  pages                Int                 @default(0)
+  fetched              Int                 @default(0)
+  accepted             Int                 @default(0)
+  skipped              Int                 @default(0)
+  rejected             Int                 @default(0)
+  materialized         Int                 @default(0)
+  cursor               String?
+  error_class          String?
+  error_message        String?
+  resumable            Boolean             @default(false)
+  duration_ms          Int?
+  started_at           DateTime?           @db.Timestamptz(6)
+  finished_at          DateTime?           @db.Timestamptz(6)
+  created_at           DateTime            @default(now()) @db.Timestamptz(6)
+  connected_accounts   connected_accounts? @relation(fields: [connected_account_id], references: [id], onUpdate: NoAction)
+
+  @@index([connected_account_id, stream, created_at(sort: Desc)], map: "idx_connector_runs_account_recent")
+  @@index([workspace_id], map: "idx_connector_runs_workspace_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model dashboard_widgets {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id  String   @db.Uuid
+  title       String?
+  widget_type String   @default("line")
+  config      Json     @default("{}")
+  layout      Json     @default("{}")
+  sort_index  Int      @default(0)
+  created_by  String   @default(dbgenerated("requesting_user_id()"))
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  group_id    String?
+  projects    projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([project_id, group_id], map: "dashboard_widgets_group_idx")
+  @@index([project_id], map: "idx_dashboard_widgets_project_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model error_report_groups {
+  fingerprint             String    @id
+  title                   String?
+  first_seen_at           DateTime  @default(now()) @db.Timestamptz(6)
+  last_seen_at            DateTime  @default(now()) @db.Timestamptz(6)
+  occurrence_count        Int       @default(0)
+  last_synced_count       Int       @default(0)
+  severity                String    @default("medium")
+  sample_report_id        String?   @db.Uuid
+  linear_issue_id         String?
+  linear_issue_identifier String?
+  linear_issue_url        String?
+  sync_status             String    @default("pending")
+  sync_error              String?
+  linear_synced_at        DateTime? @db.Timestamptz(6)
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([sync_status], map: "idx_error_report_groups_sync_status")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model error_reports {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerk_user_id    String?   @default(dbgenerated("requesting_user_id()"))
+  reporter_user_id String?
+  reporter_email   String?
+  message          String?
+  error_stack      String?
+  component_stack  String?
+  note             String?
+  url              String?
+  user_agent       String?
+  client_time      DateTime? @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  fingerprint      String?
+
+  @@index([created_at(sort: Desc)], map: "idx_error_reports_created_at")
+  @@index([fingerprint], map: "idx_error_reports_fingerprint")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model event_definitions {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_by        String             @default(dbgenerated("requesting_user_id()"))
+  name              String
+  key               String
+  category          String?
+  description       String?
+  lifecycle_state   String             @default("proposed")
+  source_kind       String?
+  owner_label       String?
+  tracked_metric_id String?            @db.Uuid
+  created_at        DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime           @default(now()) @db.Timestamptz(6)
+  tracked_metrics   tracked_metrics?   @relation(fields: [tracked_metric_id], references: [id], onUpdate: NoAction)
+  event_properties  event_properties[]
+
+  @@unique([created_by, key])
+  @@index([created_by], map: "idx_event_definitions_created_by")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model event_properties {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_id          String            @db.Uuid
+  name              String
+  key               String
+  data_type         String            @default("string")
+  required          Boolean           @default(false)
+  allowed_values    Json?
+  example_value     String?
+  description       String?
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+  event_definitions event_definitions @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([event_id, key])
+  @@index([event_id], map: "idx_event_properties_event_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model evidence_items {
+  id                                     String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  relationship_id                        String?        @db.Uuid
+  title                                  String
+  type                                   String
+  date                                   DateTime       @db.Date
+  owner_id                               String?
+  link                                   String?
+  hypothesis                             String?
+  summary                                String
+  impact_on_confidence                   String?
+  created_at                             DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at                             DateTime?      @default(now()) @db.Timestamptz(6)
+  created_by                             String
+  card_id                                String?        @db.Uuid
+  project_id                             String?        @db.Uuid
+  content                                Json?
+  is_public                              Boolean        @default(false)
+  metric_cards                           metric_cards?  @relation(fields: [card_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_evidence_items_created_byTousers users          @relation("evidence_items_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_evidence_items_owner_idTousers   users?         @relation("evidence_items_owner_idTousers", fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projects                               projects?      @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  relationships                          relationships? @relation(fields: [relationship_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_by], map: "idx_evidence_items_created_by")
+  @@index([owner_id], map: "idx_evidence_items_owner_id")
+  @@index([relationship_id], map: "idx_evidence_items_relationship_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model feed_bookmarks {
+  user_id    String   @default(dbgenerated("requesting_user_id()"))
+  item_key   String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([user_id, item_key])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model group_members {
+  group_id         String           @db.Uuid
+  user_id          String
+  added_by         String           @default(dbgenerated("requesting_user_id()"))
+  added_at         DateTime         @default(now()) @db.Timestamptz(6)
+  workspace_groups workspace_groups @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([group_id, user_id])
+  @@index([user_id], map: "idx_group_members_user")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model groups {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   project_id  String?   @db.Uuid
@@ -151,10 +424,142 @@ model groups {
   created_at  DateTime? @default(now()) @db.Timestamptz(6)
   updated_at  DateTime? @default(now()) @db.Timestamptz(6)
   created_by  String
+  users       users     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projects    projects? @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@map("groups")
+  @@index([created_by], map: "idx_groups_created_by")
+  @@index([project_id], map: "idx_groups_project_id")
 }
 
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model metric_bindings {
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_by           String             @default(dbgenerated("requesting_user_id()"))
+  workspace_id         String?            @default(dbgenerated("requesting_org_id()"))
+  connected_account_id String             @db.Uuid
+  connector_id         String
+  stream               String
+  canonical_schema     String
+  recipe               Json
+  tracked_metric_id    String             @db.Uuid
+  enabled              Boolean            @default(true)
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @default(now()) @db.Timestamptz(6)
+  connected_accounts   connected_accounts @relation(fields: [connected_account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracked_metrics      tracked_metrics    @relation(fields: [tracked_metric_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([connected_account_id, stream, tracked_metric_id])
+  @@index([connected_account_id, stream], map: "idx_metric_bindings_account_stream")
+  @@index([workspace_id], map: "idx_metric_bindings_workspace_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model metric_card_tags {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  metric_card_id String?       @db.Uuid
+  tag_id         String?       @db.Uuid
+  created_at     DateTime?     @default(now()) @db.Timestamptz(6)
+  metric_cards   metric_cards? @relation(fields: [metric_card_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tags           tags?         @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([metric_card_id, tag_id])
+  @@index([metric_card_id], map: "idx_metric_card_tags_metric_card_id")
+  @@index([tag_id], map: "idx_metric_card_tags_tag_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model metric_cards {
+  id                                                  String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id                                          String?                    @db.Uuid
+  title                                               String
+  description                                         String?
+  category                                            String
+  sub_category                                        String?
+  position_x                                          Float                      @default(0)
+  position_y                                          Float                      @default(0)
+  data                                                Json?                      @default("[]")
+  source_type                                         String?
+  formula                                             String?
+  causal_factors                                      String[]                   @default([])
+  dimensions                                          String[]                   @default([])
+  owner_id                                            String?
+  assignees                                           String[]                   @default([])
+  created_at                                          DateTime?                  @default(now()) @db.Timestamptz(6)
+  updated_at                                          DateTime?                  @default(now()) @db.Timestamptz(6)
+  created_by                                          String
+  tracked_metric_id                                   String?                    @db.Uuid
+  updated_by                                          String?
+  status                                              String?
+  workflow                                            Json                       @default("{}")
+  z_index                                             Int?
+  alert_rules                                         alert_rules[]
+  evidence_items                                      evidence_items[]
+  metric_card_tags                                    metric_card_tags[]
+  users_metric_cards_created_byTousers                users                      @relation("metric_cards_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_metric_cards_owner_idTousers                  users?                     @relation("metric_cards_owner_idTousers", fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projects                                            projects?                  @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracked_metrics                                     tracked_metrics?           @relation(fields: [tracked_metric_id], references: [id], onUpdate: NoAction)
+  node_access_grants                                  node_access_grants[]
+  relationships_relationships_source_idTometric_cards relationships[]            @relation("relationships_source_idTometric_cards")
+  relationships_relationships_target_idTometric_cards relationships[]            @relation("relationships_target_idTometric_cards")
+  strategy_impact_contracts                           strategy_impact_contracts?
+  strategy_metric_links                               strategy_metric_links[]
+
+  @@index([created_by], map: "idx_metric_cards_created_by")
+  @@index([owner_id], map: "idx_metric_cards_owner_id")
+  @@index([project_id], map: "idx_metric_cards_project_id")
+  @@index([tracked_metric_id], map: "idx_metric_cards_tracked_metric_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model metric_values {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tracked_metric_id String          @db.Uuid
+  period            String
+  value             Float
+  change_percent    Float?
+  trend             String?
+  source            String?
+  created_by        String          @default(dbgenerated("requesting_user_id()"))
+  updated_at        DateTime        @default(now()) @db.Timestamptz(6)
+  workspace_id      String?         @default(dbgenerated("requesting_org_id()"))
+  tracked_metrics   tracked_metrics @relation(fields: [tracked_metric_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tracked_metric_id, period])
+  @@index([tracked_metric_id], map: "idx_metric_values_tracked_metric_id")
+  @@index([workspace_id], map: "idx_metric_values_workspace_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model node_access_grants {
+  metric_card_id   String           @db.Uuid
+  group_id         String           @db.Uuid
+  workspace_groups workspace_groups @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  metric_cards     metric_cards     @relation(fields: [metric_card_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([metric_card_id, group_id])
+  @@index([group_id], map: "idx_node_access_grants_group")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model notifications {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String
+  type        String
+  title       String?
+  description String?
+  read        Boolean  @default(false)
+  metadata    Json?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_notifications_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model project_collaborators {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   project_id  String?   @db.Uuid
@@ -163,83 +568,310 @@ model project_collaborators {
   permissions String[]  @default(["read"])
   invited_at  DateTime? @default(now()) @db.Timestamptz(6)
   joined_at   DateTime? @db.Timestamptz(6)
+  projects    projects? @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@map("project_collaborators")
+  @@unique([project_id, user_id])
+  @@index([project_id], map: "idx_project_collaborators_project_id")
 }
 
-model changelog {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  project_id  String?   @db.Uuid
-  user_id     String?
-  action      String
-  target      String
-  target_id   String?   @db.Uuid
-  target_name String
-  description String
-  metadata    Json?     @default("{}")
-  timestamp   DateTime? @default(now()) @db.Timestamptz(6)
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model projects {
+  id                                     String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                                   String
+  description                            String?
+  tags                                   String[]                    @default([])
+  settings                               Json?                       @default("{}")
+  created_at                             DateTime?                   @default(now()) @db.Timestamptz(6)
+  updated_at                             DateTime?                   @default(now()) @db.Timestamptz(6)
+  last_modified_by                       String?
+  created_by                             String
+  is_public                              Boolean                     @default(false)
+  is_starred                             Boolean                     @default(false)
+  archived_at                            DateTime?                   @db.Timestamptz(6)
+  space_id                               String?                     @db.Uuid
+  workspace_id                           String?                     @default(dbgenerated("requesting_org_id()"))
+  alert_rules                            alert_rules[]
+  canvas_nodes                           canvas_nodes[]
+  canvas_snapshots                       canvas_snapshots[]
+  changelog                              changelog[]
+  comment_threads                        comment_threads[]
+  dashboard_widgets                      dashboard_widgets[]
+  evidence_items                         evidence_items[]
+  groups                                 groups[]
+  metric_cards                           metric_cards[]
+  project_collaborators                  project_collaborators[]
+  users_projects_created_byTousers       users                       @relation("projects_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_projects_last_modified_byTousers users?                      @relation("projects_last_modified_byTousers", fields: [last_modified_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  spaces                                 spaces?                     @relation(fields: [space_id], references: [id], onUpdate: NoAction)
+  relationship_history                   relationship_history[]
+  relationships                          relationships[]
+  strategy_impact_contracts              strategy_impact_contracts[]
+  // Renamed from `tags` — collides with the scalar tags String[] column above.
+  // Re-apply this rename after every `prisma db pull` (introspection recreates it).
+  tag_records                            tags[]
 
-  @@map("changelog")
+  @@index([created_by], map: "idx_projects_created_by")
+  @@index([last_modified_by], map: "idx_projects_last_modified_by")
+  @@index([space_id], map: "idx_projects_space_id")
+  @@index([workspace_id], map: "idx_projects_workspace_id")
 }
 
-model comments {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  thread_id  String   @db.Uuid
-  author_id  String?  @db.Uuid
-  content    String
-  resolved   Boolean  @default(false)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model relationship_history {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  relationship_id String        @db.Uuid
+  project_id      String?       @db.Uuid
+  type            String?
+  confidence      String?
+  weight          Float?
+  changed_by      String        @default(dbgenerated("requesting_user_id()"))
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  projects        projects?     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  relationships   relationships @relation(fields: [relationship_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@map("comments")
+  @@index([relationship_id, created_at], map: "idx_relationship_history_rel")
 }
 
-model comment_threads {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  project_id  String   @db.Uuid
-  source      String
-  context     Json?
-  is_resolved Boolean  @default(false)
-  created_by  String?  @db.Uuid
-  created_at  DateTime @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model relationship_tags {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  relationship_id String?        @db.Uuid
+  tag_id          String?        @db.Uuid
+  created_at      DateTime?      @default(now()) @db.Timestamptz(6)
+  relationships   relationships? @relation(fields: [relationship_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tags            tags?          @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@map("comment_threads")
+  @@unique([relationship_id, tag_id])
+  @@index([relationship_id], map: "idx_relationship_tags_relationship_id")
+  @@index([tag_id], map: "idx_relationship_tags_tag_id")
 }
 
-model comment_mentions {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  comment_id        String   @db.Uuid
-  mentioned_user_id String   @db.Uuid
-  created_at        DateTime @default(now()) @db.Timestamptz(6)
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model relationships {
+  id                                                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id                                         String?                @db.Uuid
+  source_id                                          String?                @db.Uuid
+  target_id                                          String?                @db.Uuid
+  type                                               String
+  confidence                                         String                 @default("Medium")
+  weight                                             Float?
+  created_at                                         DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at                                         DateTime?              @default(now()) @db.Timestamptz(6)
+  created_by                                         String
+  causal_metadata                                    Json?
+  description                                        String?
+  source_handle                                      String?
+  target_handle                                      String?
+  evidence_items                                     evidence_items[]
+  relationship_history                               relationship_history[]
+  relationship_tags                                  relationship_tags[]
+  users                                              users                  @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projects                                           projects?              @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  metric_cards_relationships_source_idTometric_cards metric_cards?          @relation("relationships_source_idTometric_cards", fields: [source_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  metric_cards_relationships_target_idTometric_cards metric_cards?          @relation("relationships_target_idTometric_cards", fields: [target_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@map("comment_mentions")
+  @@unique([source_id, target_id])
+  @@index([created_by], map: "idx_relationships_created_by")
+  @@index([project_id], map: "idx_relationships_project_id")
+  @@index([source_id], map: "idx_relationships_source_id")
+  @@index([target_id], map: "idx_relationships_target_id")
 }
 
-model canvas_nodes {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  project_id String    @db.Uuid
-  node_type  String
-  title      String?
-  position_x Float     @default(0)
-  position_y Float     @default(0)
-  data       Json?     @default("{}")
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
-  created_by String
-
-  @@map("canvas_nodes")
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model source_connection_secrets {
+  connection_id      String             @id @db.Uuid
+  password           String
+  updated_at         DateTime           @default(now()) @db.Timestamptz(6)
+  source_connections source_connections @relation(fields: [connection_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-model notifications {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id     String   @db.Uuid
-  type        String
-  title       String?
-  description String?
-  read        Boolean  @default(false)
-  metadata    Json?
-  created_at  DateTime @default(now()) @db.Timestamptz(6)
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model source_connections {
+  id                        String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_by                String                     @default(dbgenerated("requesting_user_id()"))
+  name                      String
+  warehouse_type            String                     @default("postgres")
+  host                      String
+  port                      Int                        @default(5432)
+  database                  String
+  username                  String
+  ssl                       Boolean                    @default(true)
+  created_at                DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime                   @default(now()) @db.Timestamptz(6)
+  workspace_id              String?                    @default(dbgenerated("requesting_org_id()"))
+  source_connection_secrets source_connection_secrets?
 
-  @@map("notifications")
+  @@index([workspace_id], map: "idx_source_connections_workspace_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model spaces {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_by   String     @default(dbgenerated("requesting_user_id()"))
+  name         String
+  color        String?
+  sort_order   Int        @default(0)
+  created_at   DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime   @default(now()) @db.Timestamptz(6)
+  workspace_id String?    @default(dbgenerated("requesting_org_id()"))
+  projects     projects[]
+
+  @@index([workspace_id], map: "idx_spaces_workspace_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model strategy_impact_contracts {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id          String?                 @default(dbgenerated("requesting_org_id()"))
+  project_id            String?                 @db.Uuid
+  strategy_node_id      String                  @unique @db.Uuid
+  expected_direction    String?
+  expected_delta_value  Float?
+  expected_delta_unit   String?
+  baseline_start        String?
+  baseline_end          String?
+  measure_start         String?
+  measure_end           String?
+  baseline_is_manual    Boolean                 @default(false)
+  confidence            String?
+  impact_status         String                  @default("draft")
+  owner_label           String?
+  result_note           String?
+  created_by            String                  @default(dbgenerated("requesting_user_id()"))
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  projects              projects?               @relation(fields: [project_id], references: [id], onUpdate: NoAction)
+  metric_cards          metric_cards            @relation(fields: [strategy_node_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  strategy_metric_links strategy_metric_links[]
+
+  @@index([strategy_node_id], map: "idx_strategy_impact_contracts_node")
+  @@index([project_id], map: "idx_strategy_impact_contracts_project")
+  @@index([workspace_id], map: "idx_strategy_impact_contracts_workspace")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model strategy_metric_links {
+  id                        String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contract_id               String                    @db.Uuid
+  workspace_id              String?                   @default(dbgenerated("requesting_org_id()"))
+  role                      String
+  ref_source                String
+  tracked_metric_id         String?                   @db.Uuid
+  card_id                   String?                   @db.Uuid
+  created_by                String                    @default(dbgenerated("requesting_user_id()"))
+  created_at                DateTime                  @default(now()) @db.Timestamptz(6)
+  metric_cards              metric_cards?             @relation(fields: [card_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  strategy_impact_contracts strategy_impact_contracts @relation(fields: [contract_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tracked_metrics           tracked_metrics?          @relation(fields: [tracked_metric_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([card_id], map: "idx_strategy_metric_links_card")
+  @@index([contract_id], map: "idx_strategy_metric_links_contract")
+  @@index([tracked_metric_id], map: "idx_strategy_metric_links_tracked")
+  @@index([workspace_id], map: "idx_strategy_metric_links_workspace")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tag_audiences {
+  tag_id           String           @db.Uuid
+  group_id         String           @db.Uuid
+  workspace_groups workspace_groups @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tags             tags             @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([tag_id, group_id])
+  @@index([group_id], map: "idx_tag_audiences_group")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tags {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String
+  color             String?
+  description       String?
+  project_id        String?             @db.Uuid
+  created_by        String?
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  is_access         Boolean             @default(false)
+  redaction_mode    String              @default("hide_value")
+  metric_card_tags  metric_card_tags[]
+  relationship_tags relationship_tags[]
+  tag_audiences     tag_audiences[]
+  users             users?              @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projects          projects?           @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([name], map: "idx_tags_name")
+  @@index([project_id], map: "idx_tags_project_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tracked_metrics {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_by            String                  @default(dbgenerated("requesting_user_id()"))
+  name                  String
+  unit                  String?
+  formula               String?
+  owner_label           String?
+  state                 String                  @default("tracked")
+  origin_card_id        String?                 @db.Uuid
+  origin_project_id     String?                 @db.Uuid
+  source_kind           String?
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  workspace_id          String?                 @default(dbgenerated("requesting_org_id()"))
+  event_definitions     event_definitions[]
+  metric_bindings       metric_bindings[]
+  metric_cards          metric_cards[]
+  metric_values         metric_values[]
+  strategy_metric_links strategy_metric_links[]
+
+  @@index([workspace_id], map: "idx_tracked_metrics_workspace_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  id                                              String                  @id @default(dbgenerated("gen_random_uuid()"))
+  email                                           String                  @unique
+  name                                            String
+  avatar_url                                      String?
+  created_at                                      DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at                                      DateTime?               @default(now()) @db.Timestamptz(6)
+  changelog                                       changelog[]
+  evidence_items_evidence_items_created_byTousers evidence_items[]        @relation("evidence_items_created_byTousers")
+  evidence_items_evidence_items_owner_idTousers   evidence_items[]        @relation("evidence_items_owner_idTousers")
+  groups                                          groups[]
+  metric_cards_metric_cards_created_byTousers     metric_cards[]          @relation("metric_cards_created_byTousers")
+  metric_cards_metric_cards_owner_idTousers       metric_cards[]          @relation("metric_cards_owner_idTousers")
+  project_collaborators                           project_collaborators[]
+  projects_projects_created_byTousers             projects[]              @relation("projects_created_byTousers")
+  projects_projects_last_modified_byTousers       projects[]              @relation("projects_last_modified_byTousers")
+  relationships                                   relationships[]
+  tags                                            tags[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workspace_groups {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspace_id       String               @default(dbgenerated("requesting_org_id()"))
+  name               String
+  description        String?
+  color              String?
+  created_by         String               @default(dbgenerated("requesting_user_id()"))
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  group_members      group_members[]
+  node_access_grants node_access_grants[]
+  tag_audiences      tag_audiences[]
+
+  @@unique([workspace_id, name])
+  @@index([workspace_id], map: "idx_workspace_groups_ws")
 }

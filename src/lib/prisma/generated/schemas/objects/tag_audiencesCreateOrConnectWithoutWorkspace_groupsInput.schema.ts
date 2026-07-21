@@ -1,0 +1,15 @@
+// @ts-nocheck
+import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+import { tag_audiencesWhereUniqueInputObjectSchema } from './tag_audiencesWhereUniqueInput.schema';
+import { tag_audiencesCreateWithoutWorkspace_groupsInputObjectSchema } from './tag_audiencesCreateWithoutWorkspace_groupsInput.schema';
+import { tag_audiencesUncheckedCreateWithoutWorkspace_groupsInputObjectSchema } from './tag_audiencesUncheckedCreateWithoutWorkspace_groupsInput.schema'
+
+export const tag_audiencesCreateOrConnectWithoutWorkspace_groupsInputObjectSchema: z.ZodType<Prisma.tag_audiencesCreateOrConnectWithoutWorkspace_groupsInput, Prisma.tag_audiencesCreateOrConnectWithoutWorkspace_groupsInput> = z.object({
+  where: z.lazy(() => tag_audiencesWhereUniqueInputObjectSchema),
+  create: z.union([z.lazy(() => tag_audiencesCreateWithoutWorkspace_groupsInputObjectSchema), z.lazy(() => tag_audiencesUncheckedCreateWithoutWorkspace_groupsInputObjectSchema)])
+}).strict();
+export const tag_audiencesCreateOrConnectWithoutWorkspace_groupsInputObjectZodSchema = z.object({
+  where: z.lazy(() => tag_audiencesWhereUniqueInputObjectSchema),
+  create: z.union([z.lazy(() => tag_audiencesCreateWithoutWorkspace_groupsInputObjectSchema), z.lazy(() => tag_audiencesUncheckedCreateWithoutWorkspace_groupsInputObjectSchema)])
+}).strict();

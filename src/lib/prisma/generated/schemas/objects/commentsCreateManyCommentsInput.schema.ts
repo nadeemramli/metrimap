@@ -1,0 +1,23 @@
+// @ts-nocheck
+import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+
+
+export const commentsCreateManyCommentsInputObjectSchema: z.ZodType<Prisma.commentsCreateManyCommentsInput, Prisma.commentsCreateManyCommentsInput> = z.object({
+  id: z.string().optional(),
+  thread_id: z.string(),
+  author_id: z.string().optional().nullable(),
+  content: z.string(),
+  resolved: z.boolean().optional(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+}).strict();
+export const commentsCreateManyCommentsInputObjectZodSchema = z.object({
+  id: z.string().optional(),
+  thread_id: z.string(),
+  author_id: z.string().optional().nullable(),
+  content: z.string(),
+  resolved: z.boolean().optional(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+}).strict();

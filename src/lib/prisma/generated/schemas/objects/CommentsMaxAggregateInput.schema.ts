@@ -10,7 +10,8 @@ export const CommentsMaxAggregateInputObjectSchema: z.ZodType<Prisma.CommentsMax
   content: z.literal(true).optional(),
   resolved: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
-  updated_at: z.literal(true).optional()
+  updated_at: z.literal(true).optional(),
+  parent_id: z.literal(true).optional()
 }).strict();
 export const CommentsMaxAggregateInputObjectZodSchema = z.object({
   id: z.literal(true).optional(),
@@ -19,5 +20,6 @@ export const CommentsMaxAggregateInputObjectZodSchema = z.object({
   content: z.literal(true).optional(),
   resolved: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
-  updated_at: z.literal(true).optional()
+  updated_at: z.literal(true).optional(),
+  parent_id: z.literal(true).optional()
 }).strict();

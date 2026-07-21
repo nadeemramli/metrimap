@@ -2,7 +2,9 @@
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { SortOrderSchema } from '../enums/SortOrder.schema';
-import { SortOrderInputObjectSchema } from './SortOrderInput.schema'
+import { SortOrderInputObjectSchema } from './SortOrderInput.schema';
+import { projectsOrderByWithRelationInputObjectSchema } from './projectsOrderByWithRelationInput.schema';
+import { usersOrderByWithRelationInputObjectSchema } from './usersOrderByWithRelationInput.schema'
 
 export const project_collaboratorsOrderByWithRelationInputObjectSchema: z.ZodType<Prisma.project_collaboratorsOrderByWithRelationInput, Prisma.project_collaboratorsOrderByWithRelationInput> = z.object({
   id: SortOrderSchema.optional(),
@@ -11,7 +13,9 @@ export const project_collaboratorsOrderByWithRelationInputObjectSchema: z.ZodTyp
   role: SortOrderSchema.optional(),
   permissions: SortOrderSchema.optional(),
   invited_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
-  joined_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional()
+  joined_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  projects: z.lazy(() => projectsOrderByWithRelationInputObjectSchema).optional(),
+  users: z.lazy(() => usersOrderByWithRelationInputObjectSchema).optional()
 }).strict();
 export const project_collaboratorsOrderByWithRelationInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -20,5 +24,7 @@ export const project_collaboratorsOrderByWithRelationInputObjectZodSchema = z.ob
   role: SortOrderSchema.optional(),
   permissions: SortOrderSchema.optional(),
   invited_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
-  joined_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional()
+  joined_at: z.union([SortOrderSchema, z.lazy(() => SortOrderInputObjectSchema)]).optional(),
+  projects: z.lazy(() => projectsOrderByWithRelationInputObjectSchema).optional(),
+  users: z.lazy(() => usersOrderByWithRelationInputObjectSchema).optional()
 }).strict();

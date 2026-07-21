@@ -1,0 +1,32 @@
+// @ts-nocheck
+import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+import { comment_likesCreateNestedManyWithoutCommentsInputObjectSchema } from './comment_likesCreateNestedManyWithoutCommentsInput.schema';
+import { comment_mentionsCreateNestedManyWithoutCommentsInputObjectSchema } from './comment_mentionsCreateNestedManyWithoutCommentsInput.schema';
+import { commentsCreateNestedOneWithoutOther_commentsInputObjectSchema } from './commentsCreateNestedOneWithoutOther_commentsInput.schema';
+import { commentsCreateNestedManyWithoutCommentsInputObjectSchema } from './commentsCreateNestedManyWithoutCommentsInput.schema'
+
+export const commentsCreateWithoutComment_threadsInputObjectSchema: z.ZodType<Prisma.commentsCreateWithoutComment_threadsInput, Prisma.commentsCreateWithoutComment_threadsInput> = z.object({
+  id: z.string().optional(),
+  author_id: z.string().optional().nullable(),
+  content: z.string(),
+  resolved: z.boolean().optional(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional(),
+  comment_likes: z.lazy(() => comment_likesCreateNestedManyWithoutCommentsInputObjectSchema).optional(),
+  comment_mentions: z.lazy(() => comment_mentionsCreateNestedManyWithoutCommentsInputObjectSchema).optional(),
+  comments: z.lazy(() => commentsCreateNestedOneWithoutOther_commentsInputObjectSchema).optional(),
+  other_comments: z.lazy(() => commentsCreateNestedManyWithoutCommentsInputObjectSchema).optional()
+}).strict();
+export const commentsCreateWithoutComment_threadsInputObjectZodSchema = z.object({
+  id: z.string().optional(),
+  author_id: z.string().optional().nullable(),
+  content: z.string(),
+  resolved: z.boolean().optional(),
+  created_at: z.union([z.date(), z.string().datetime()]).optional(),
+  updated_at: z.union([z.date(), z.string().datetime()]).optional(),
+  comment_likes: z.lazy(() => comment_likesCreateNestedManyWithoutCommentsInputObjectSchema).optional(),
+  comment_mentions: z.lazy(() => comment_mentionsCreateNestedManyWithoutCommentsInputObjectSchema).optional(),
+  comments: z.lazy(() => commentsCreateNestedOneWithoutOther_commentsInputObjectSchema).optional(),
+  other_comments: z.lazy(() => commentsCreateNestedManyWithoutCommentsInputObjectSchema).optional()
+}).strict();

@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import { NullableJsonNullValueInputSchema } from '../enums/NullableJsonNullValueInput.schema'
+import { NullableJsonNullValueInputSchema } from '../enums/NullableJsonNullValueInput.schema';
+import { commentsUncheckedCreateNestedManyWithoutComment_threadsInputObjectSchema } from './commentsUncheckedCreateNestedManyWithoutComment_threadsInput.schema'
 
 
 const literalSchema = z.union([z.string(), z.number(), z.boolean()]);
@@ -17,7 +18,8 @@ export const comment_threadsUncheckedCreateInputObjectSchema: z.ZodType<Prisma.c
   is_resolved: z.boolean().optional(),
   created_by: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+  updated_at: z.union([z.date(), z.string().datetime()]).optional(),
+  comments: z.lazy(() => commentsUncheckedCreateNestedManyWithoutComment_threadsInputObjectSchema).optional()
 }).strict();
 export const comment_threadsUncheckedCreateInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -27,5 +29,6 @@ export const comment_threadsUncheckedCreateInputObjectZodSchema = z.object({
   is_resolved: z.boolean().optional(),
   created_by: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+  updated_at: z.union([z.date(), z.string().datetime()]).optional(),
+  comments: z.lazy(() => commentsUncheckedCreateNestedManyWithoutComment_threadsInputObjectSchema).optional()
 }).strict();

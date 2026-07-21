@@ -1,6 +1,15 @@
 import type { EvidenceComment, EvidenceItem } from '@/shared/types';
+import { generateUUID } from '@/shared/utils/validation';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+
+// CVS-337: this store is no longer localStorage-persisted — evidence_items
+// rows (content) + projects.settings.evidenceLayout (canvas layout) are the
+// sources of truth, hydrated per canvas. Drop the stale pre-migration cache.
+try {
+  localStorage.removeItem('metrimap-evidence-store');
+} catch {
+  /* storage unavailable */
+}
 
 interface EvidenceState {
   evidence: EvidenceItem[];
@@ -51,10 +60,8 @@ interface EvidenceState {
   duplicateEvidence: (id: string) => EvidenceItem | null;
 }
 
-export const useEvidenceStore = create<EvidenceState>()(
-  persist(
-    (set, get) => ({
-      evidence: [],
+export const useEvidenceStore = create<EvidenceState>()((set, get) => ({
+  evidence: [],
 
       justCreatedEvidenceId: null,
       setJustCreatedEvidenceId: (id: string | null) =>
@@ -250,7 +257,8 @@ export const useEvidenceStore = create<EvidenceState>()(
 
         const duplicate: EvidenceItem = {
           ...original,
-          id: `evidence_${Date.now()}`,
+          // UUID so the copy can be inserted into evidence_items (uuid PK).
+          id: generateUUID(),
           title: `${original.title} (Copy)`,
           createdAt: new Date().toISOString(),
           // Reset canvas-specific properties
@@ -271,11 +279,4 @@ export const useEvidenceStore = create<EvidenceState>()(
 
         return duplicate;
       },
-    }),
-    {
-      name: 'metrimap-evidence-store',
-      // Persist only the data; transient UI flags stay session-local.
-      partialize: (s) => ({ evidence: s.evidence }),
-    }
-  )
-);
+}));

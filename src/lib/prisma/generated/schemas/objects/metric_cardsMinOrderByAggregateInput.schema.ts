@@ -17,7 +17,11 @@ export const metric_cardsMinOrderByAggregateInputObjectSchema: z.ZodType<Prisma.
   owner_id: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  tracked_metric_id: SortOrderSchema.optional(),
+  updated_by: SortOrderSchema.optional(),
+  status: SortOrderSchema.optional(),
+  z_index: SortOrderSchema.optional()
 }).strict();
 export const metric_cardsMinOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -33,5 +37,9 @@ export const metric_cardsMinOrderByAggregateInputObjectZodSchema = z.object({
   owner_id: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  tracked_metric_id: SortOrderSchema.optional(),
+  updated_by: SortOrderSchema.optional(),
+  status: SortOrderSchema.optional(),
+  z_index: SortOrderSchema.optional()
 }).strict();

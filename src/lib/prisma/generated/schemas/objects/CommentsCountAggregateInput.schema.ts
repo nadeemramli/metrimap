@@ -11,6 +11,7 @@ export const CommentsCountAggregateInputObjectSchema: z.ZodType<Prisma.CommentsC
   resolved: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
+  parent_id: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();
 export const CommentsCountAggregateInputObjectZodSchema = z.object({
@@ -21,5 +22,6 @@ export const CommentsCountAggregateInputObjectZodSchema = z.object({
   resolved: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
+  parent_id: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();

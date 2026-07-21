@@ -13,7 +13,11 @@ export const relationshipsCountOrderByAggregateInputObjectSchema: z.ZodType<Pris
   weight: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  causal_metadata: SortOrderSchema.optional(),
+  description: SortOrderSchema.optional(),
+  source_handle: SortOrderSchema.optional(),
+  target_handle: SortOrderSchema.optional()
 }).strict();
 export const relationshipsCountOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -25,5 +29,9 @@ export const relationshipsCountOrderByAggregateInputObjectZodSchema = z.object({
   weight: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  causal_metadata: SortOrderSchema.optional(),
+  description: SortOrderSchema.optional(),
+  source_handle: SortOrderSchema.optional(),
+  target_handle: SortOrderSchema.optional()
 }).strict();

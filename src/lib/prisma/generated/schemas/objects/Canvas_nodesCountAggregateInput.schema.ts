@@ -14,6 +14,8 @@ export const Canvas_nodesCountAggregateInputObjectSchema: z.ZodType<Prisma.Canva
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
   created_by: z.literal(true).optional(),
+  updated_by: z.literal(true).optional(),
+  z_index: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();
 export const Canvas_nodesCountAggregateInputObjectZodSchema = z.object({
@@ -27,5 +29,7 @@ export const Canvas_nodesCountAggregateInputObjectZodSchema = z.object({
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
   created_by: z.literal(true).optional(),
+  updated_by: z.literal(true).optional(),
+  z_index: z.literal(true).optional(),
   _all: z.literal(true).optional()
 }).strict();
