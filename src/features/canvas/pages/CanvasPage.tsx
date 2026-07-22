@@ -231,6 +231,9 @@ function CanvasPageInner() {
     legacy: EvidenceItem[];
     settings: Record<string, unknown>;
   } | null>(null);
+  // Bumped when hydration (async) arms pendingEvidenceMigration — a ref write
+  // alone can't re-fire the migration effect if canEdit resolved first.
+  const [evidenceMigrationArm, setEvidenceMigrationArm] = useState(0);
 
   // Initialize canvas stores and data
   const {
@@ -474,6 +477,9 @@ function CanvasPageInner() {
                   >,
                 }
               : null;
+            if (hydrated.pendingLegacy.length) {
+              setEvidenceMigrationArm((n) => n + 1);
+            }
           } catch (e) {
             console.error('❌ Evidence hydration failed:', e);
             useEvidenceStore.setState({ evidence: [] });
@@ -1468,7 +1474,7 @@ function CanvasPageInner() {
         console.error('❌ Legacy evidence migration failed:', err);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canEdit, canvasId, supabaseClient]);
+  }, [canEdit, canvasId, supabaseClient, evidenceMigrationArm]);
 
   // Keyboard: Esc clears selection; Ctrl/Cmd + C / V / D / Z (ignored while
   // typing in a field).
