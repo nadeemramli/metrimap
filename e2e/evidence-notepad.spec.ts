@@ -133,6 +133,18 @@ test('CVS-336 evidence notepad: full block menu, drag-resizable dock, width pers
     hasText: title,
   });
   await expect(reloadedCard).toBeVisible({ timeout: 15_000 });
+  // Notepad page (CVS-342): the card itself renders the FULL notebook content
+  // at page size — the writing is readable directly on the canvas.
+  await expect(
+    reloadedCard.getByText('FLUSH-TAIL', { exact: false }).first()
+  ).toBeVisible({ timeout: 10_000 });
+  // Exactly ONE rendered copy — re-init races used to duplicate the notebook DOM.
+  await expect(
+    reloadedCard.getByText('FLUSH-TAIL', { exact: false })
+  ).toHaveCount(1);
+  const cardBox = await reloadedCard.boundingBox();
+  expect(cardBox!.width).toBeGreaterThan(400); // portrait page, not the old w-80
+  await shot(page, 'cvs342-notepad-page');
   await reloadedCard.getByRole('button', { name: 'Edit' }).first().click();
   await page.waitForTimeout(1200);
   await expect(
