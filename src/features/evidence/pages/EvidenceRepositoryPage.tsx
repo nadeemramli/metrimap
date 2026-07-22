@@ -1,5 +1,10 @@
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
-import { deleteEvidenceSynced } from '@/features/evidence/services/evidenceSync';
+import {
+  deleteEvidenceSynced,
+  ensureEvidenceRowSynced,
+  flushEvidenceSync,
+  updateEvidenceSynced,
+} from '@/features/evidence/services/evidenceSync';
 import { useCanvasStore } from '@/lib/stores';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
@@ -48,7 +53,7 @@ import {
   User,
   Users,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import EvidenceEditor from '../components/EvidenceEditor';
 import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
@@ -58,7 +63,6 @@ import {
   getProjectEvidence,
   setEvidencePublic,
 } from '@/shared/lib/supabase/services/evidence';
-import { updateEvidenceItem } from '@/shared/lib/supabase/services/relationships';
 import { toast } from 'sonner';
 
 const evidenceTypeOptions = [
@@ -117,12 +121,7 @@ export default function EvidenceRepositoryPage() {
   const { user } = useAppStore();
   const { canvas } = useCanvasStore();
   const confirm = useConfirm();
-  const {
-    evidence,
-    addEvidence,
-    updateEvidence,
-    duplicateEvidence,
-  } = useEvidenceStore();
+  const { evidence, addEvidence, duplicateEvidence } = useEvidenceStore();
 
   // DB hydration (CVS-337): the evidence store is no longer localStorage-
   // persisted, so on a direct load/reload of this route the store is empty.
@@ -158,6 +157,8 @@ export default function EvidenceRepositoryPage() {
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(
     null
   );
+  // Serializes the editor's create path — see handleSaveEvidence.
+  const createInFlight = useRef(false);
 
   // Combine standalone evidence with relationship evidence
   const allEvidence = useMemo(() => {
@@ -234,33 +235,38 @@ export default function EvidenceRepositoryPage() {
     options?: { autoSave?: boolean }
   ) => {
     if (selectedEvidence) {
-      // Update existing evidence (store + DB)
-      updateEvidence(selectedEvidence.id, evidence);
-      if (client) {
-        try {
-          await updateEvidenceItem(selectedEvidence.id, evidence, client);
-        } catch (e) {
-          console.error('Failed to persist evidence edit to DB', e);
-        }
-      }
+      // One write path with the canvas/panel editors (CVS-338): store now,
+      // row via evidenceSync; flush immediately on manual save.
+      updateEvidenceSynced(selectedEvidence.id, evidence, canvasId);
+      if (!options?.autoSave) flushEvidenceSync(selectedEvidence.id);
     } else {
       // Create new evidence — persist to the DB (project-scoped) when we have a
       // canvas/project context, so it's DB-backed rather than store-only and
       // resolvable by id across surfaces (CVS-34 slice 3).
-      let created = evidence;
-      if (canvasId && client && user?.id) {
-        try {
-          created = await createProjectEvidence(
-            evidence,
-            canvasId,
-            user.id,
-            client
-          );
-        } catch (e) {
-          console.error('Failed to create evidence in DB; storing locally', e);
+      // Guard the double-create (CVS-338): autosave + manual Save both landed
+      // here with selectedEvidence still null, inserting two rows. Serialize
+      // the first create and adopt the created item for subsequent saves.
+      if (createInFlight.current) return;
+      createInFlight.current = true;
+      try {
+        let created = evidence;
+        if (canvasId && client && user?.id) {
+          try {
+            created = await createProjectEvidence(
+              evidence,
+              canvasId,
+              user.id,
+              client
+            );
+          } catch (e) {
+            console.error('Failed to create evidence in DB; storing locally', e);
+          }
         }
+        addEvidence(created);
+        setSelectedEvidence(created); // later saves are updates, not inserts
+      } finally {
+        createInFlight.current = false;
       }
-      addEvidence(created);
     }
 
     // Only close dialog on manual save, not auto-save
@@ -297,6 +303,8 @@ export default function EvidenceRepositoryPage() {
   const handleDuplicateEvidence = (evidenceItem: EvidenceItem) => {
     const duplicate = duplicateEvidence(evidenceItem.id);
     if (duplicate) {
+      // The copy is a real evidence_items row, not a store-only ghost (CVS-338).
+      if (canvasId) ensureEvidenceRowSynced(duplicate.id, canvasId);
       setSelectedEvidence(duplicate);
       setIsEditorOpen(true);
     }

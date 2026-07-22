@@ -110,6 +110,14 @@ export function createEvidenceSynced(
   runCreate(item.id);
 }
 
+/** Ensure a DB row exists for an item already in the store (e.g. a
+ *  store-side duplicate that minted a fresh UUID). */
+export function ensureEvidenceRowSynced(id: string, projectId: string): void {
+  projectOf.set(id, projectId);
+  needsCreate.add(id);
+  runCreate(id);
+}
+
 /** Optimistic store update; content-ish fields debounce into the row. */
 export function updateEvidenceSynced(
   id: string,

@@ -19,7 +19,10 @@ import {
   createProjectEvidence,
   getEvidenceItemById,
 } from '@/shared/lib/supabase/services/evidence';
-import { updateEvidenceItem } from '@/shared/lib/supabase/services/relationships';
+import {
+  flushEvidenceSync,
+  updateEvidenceSynced,
+} from '@/features/evidence/services/evidenceSync';
 import type { EvidenceItem } from '@/shared/types';
 import EditorJS from '@editorjs/editorjs';
 import EvidenceLinkChips from '@/features/evidence/components/EvidenceLinkChips';
@@ -32,7 +35,7 @@ export default function EvidencePage() {
   const { evidenceId, canvasId } = useParams();
   const navigate = useNavigate();
   const client = useClerkSupabase();
-  const { getEvidenceById, addEvidence, updateEvidence } = useEvidenceStore();
+  const { getEvidenceById, addEvidence } = useEvidenceStore();
   const { user } = useAppStore();
 
   const editorRef = useRef<EditorJS | null>(null);
@@ -127,16 +130,11 @@ export default function EvidencePage() {
       };
 
       if (initialEvidence) {
-        updateEvidence(initialEvidence.id, updated); // in-memory store
-        if (client) {
-          // Persist the notebook (incl. content) to the DB so it survives reload.
-          // Don't let a DB failure discard the save — the store already has it.
-          try {
-            await updateEvidenceItem(initialEvidence.id, updated, client);
-          } catch (e) {
-            console.error('Failed to persist evidence to DB', e);
-          }
-        }
+        // One write path with the docked panel (CVS-338): store immediately,
+        // row via evidenceSync's per-id chain; flush right away — this is a
+        // manual save, not a keystroke.
+        updateEvidenceSynced(initialEvidence.id, updated);
+        flushEvidenceSync(initialEvidence.id);
       } else {
         // Brand-new evidence: persist to the DB (project-scoped) when in a canvas
         // context so it isn't store-only, then adopt the DB id so reload works
@@ -173,7 +171,6 @@ export default function EvidencePage() {
     formData,
     initialEvidence,
     addEvidence,
-    updateEvidence,
     client,
     user?.id,
     canvasId,
