@@ -31,6 +31,9 @@ interface CanvasPanelState {
   /** Widths declared by the currently open panel (px). */
   rightWidth: number;
   leftWidth: number;
+  /** localStorage key (dockWidth.ts) of the open panel, when it opted into
+      width persistence — lets the DockHost drag handle persist resizes. */
+  rightWidthStorageKey: string | null;
   /** How many DockPanels are actually rendering content into each host.
       The hosts size themselves by THIS, not by rightPanel/leftPanel — if the
       owning page unmounts (route change), the column collapses instead of
@@ -43,6 +46,7 @@ interface CanvasPanelState {
   closeLeft: () => void;
   setHostEl: (side: DockSide, el: HTMLElement | null) => void;
   setPanelWidth: (side: DockSide, width: number) => void;
+  setRightWidthStorageKey: (key: string | null) => void;
   registerContent: (side: DockSide) => void;
   unregisterContent: (side: DockSide) => void;
   reset: () => void;
@@ -55,6 +59,7 @@ export const useCanvasPanelStore = create<CanvasPanelState>((set) => ({
   leftHostEl: null,
   rightWidth: 420,
   leftWidth: 280,
+  rightWidthStorageKey: null,
   rightContentCount: 0,
   leftContentCount: 0,
   openRight: (panel) => set({ rightPanel: panel }),
@@ -66,6 +71,7 @@ export const useCanvasPanelStore = create<CanvasPanelState>((set) => ({
     set(side === 'right' ? { rightHostEl: el } : { leftHostEl: el }),
   setPanelWidth: (side, width) =>
     set(side === 'right' ? { rightWidth: width } : { leftWidth: width }),
+  setRightWidthStorageKey: (key) => set({ rightWidthStorageKey: key }),
   registerContent: (side) =>
     set((s) =>
       side === 'right'

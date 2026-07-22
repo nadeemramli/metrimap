@@ -325,10 +325,7 @@ export const createEditorJSTools = () => {
 
 // Data validation function that knows about ALL our tools
 export function validateAndMigrateEditorData(data: any): any {
-  console.log("🔍 Validating comprehensive editor data:", data);
-  
   if (!data || !data.blocks) {
-    console.log("📝 No data or blocks found, creating default content");
     return {
       time: Date.now(),
       blocks: [
@@ -343,24 +340,17 @@ export function validateAndMigrateEditorData(data: any): any {
     };
   }
 
-  console.log("📊 Original blocks count:", data.blocks.length);
-  console.log("📋 Valid block types:", VALID_BLOCK_TYPES);
-
   // Filter out invalid blocks and migrate data
   const validBlocks = data.blocks.filter((block: any) => {
     if (!VALID_BLOCK_TYPES.includes(block.type as ValidBlockType)) {
-      console.warn(`⚠️ Skipping invalid block type: ${block.type}`);
+      console.warn(`⚠️ Evidence notebook: skipping invalid block type: ${block.type}`);
       return false;
     }
-    console.log(`✅ Keeping valid block: ${block.type}`);
     return true;
   });
 
-  console.log("📊 Valid blocks count:", validBlocks.length);
-
   // If no valid blocks remain, create a default paragraph
   if (validBlocks.length === 0) {
-    console.log("📝 No valid blocks found, creating default paragraph");
     validBlocks.push({
       type: "paragraph",
       data: {
@@ -369,14 +359,11 @@ export function validateAndMigrateEditorData(data: any): any {
     });
   }
 
-  const result = {
+  return {
     time: data.time || Date.now(),
     blocks: validBlocks,
     version: "2.30.8",
   };
-
-  console.log("✅ Final validated data:", result);
-  return result;
 }
 
 // Create EditorJS instance with comprehensive configuration
@@ -389,7 +376,6 @@ export function createEditorJSInstance(options: EditorJSConfigOptions): EditorJS
     minHeight: options.minHeight || 200,
     onChange: options.onChange,
     onReady: () => {
-      console.log("🎉 EditorJS ready with comprehensive tools");
       if (options.onReady) options.onReady();
     },
     onError: (error: any) => {
@@ -411,7 +397,6 @@ export function createReadOnlyEditorJSInstance(options: EditorJSConfigOptions): 
     data: options.data ? validateAndMigrateEditorData(options.data) : undefined,
     readOnly: true,
     onReady: () => {
-      console.log("🎉 ReadOnly EditorJS ready");
       if (options.onReady) options.onReady();
     },
     onError: (error: any) => {
