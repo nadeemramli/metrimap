@@ -264,6 +264,13 @@ export interface EvidenceItem {
     y: number;
   };
 
+  /** Notepad-page size on canvas (NodeResizer, CVS-342) — client-side,
+      persisted in settings.evidenceLayout like position. */
+  size?: {
+    width: number;
+    height: number;
+  };
+
   // UI state for canvas evidence cards
   isVisible?: boolean;
   isExpanded?: boolean;

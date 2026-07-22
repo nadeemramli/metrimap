@@ -16,37 +16,47 @@ export default function EvidenceContentRenderer({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (containerRef.current && evidence.content && !editorRef.current) {
-      try {
-        console.log("🔍 Rendering evidence content with stable tools...");
+    const holder = containerRef.current;
+    if (!holder || !evidence.content) return;
 
-        const editor = createReadOnlyEditorJSInstance({
-          holder: containerRef.current,
-          data: evidence.content,
-          onReady: () => {
-            console.log("🎨 ReadOnly EditorJS ready with stable toolkit");
-          },
-          onError: (error) => {
-            console.warn("⚠️ ReadOnly EditorJS error:", error);
-          },
-        });
-
-        editorRef.current = editor;
-      } catch (error) {
-        console.error("❌ Failed to initialize readonly editor:", error);
-      }
+    // One instance per effect run, each in its OWN child mount: content
+    // identity changes on every autosave, and re-init races (incl. StrictMode
+    // double-effects) either duplicated the notebook DOM or let a late
+    // destroy() wipe the successor's. A private mount node makes teardown
+    // touch only its own subtree.
+    holder.innerHTML = "";
+    const mount = document.createElement("div");
+    holder.appendChild(mount);
+    let editor: EditorJS | null = null;
+    try {
+      editor = createReadOnlyEditorJSInstance({
+        holder: mount,
+        data: evidence.content,
+        onError: (error) => {
+          console.warn("⚠️ ReadOnly EditorJS error:", error);
+        },
+      });
+      editorRef.current = editor;
+    } catch (error) {
+      console.error("❌ Failed to initialize readonly editor:", error);
     }
 
     return () => {
-      if (editorRef.current) {
+      editorRef.current = null;
+      const closing = editor;
+      void (async () => {
         try {
-          editorRef.current.destroy();
-          editorRef.current = null;
-        } catch (error) {
-          console.warn("Error destroying readonly editor:", error);
-          editorRef.current = null;
+          await closing?.isReady;
+        } catch {
+          /* init failed — nothing mounted */
         }
-      }
+        try {
+          closing?.destroy();
+        } catch {
+          /* pre-ready destroy can throw */
+        }
+        mount.remove(); // only our own subtree, never the successor's
+      })();
     };
   }, [evidence.content]);
 

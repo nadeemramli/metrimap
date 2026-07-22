@@ -10,6 +10,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
 import type { EvidenceItem } from '@/shared/types';
+import { NodeResizer } from '@xyflow/react';
 import type { Node, NodeProps } from '@xyflow/react';
 import {
   BookOpen,
@@ -53,7 +54,10 @@ const TYPE_META: Record<
   'User Interview': { icon: Users, chip: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
 };
 
-export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
+export default function EvidenceNode({
+  data,
+  selected,
+}: NodeProps<EvidenceFlowNode>) {
   const onUpdateEvidence = data?.onUpdateEvidence;
   const onDeleteEvidence = data?.onDeleteEvidence;
   const evidence = data?.evidence ?? ({} as EvidenceItem);
@@ -196,15 +200,34 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
     );
   }
 
+  // Notepad page (CVS-342): a portrait paper default, per-pin resizable;
+  // size is client-side layout, persisted via settings.evidenceLayout.
+  const pageSize = evidence.size ?? { width: 440, height: 560 };
+
   return (
     <div className="relative select-none cursor-move">
+      <NodeResizer
+        minWidth={320}
+        minHeight={280}
+        isVisible={!!selected}
+        lineClassName="border-primary"
+        handleClassName="h-2.5 w-2.5 bg-primary border-2 border-background rounded-sm z-20"
+        onResize={(_, params) => {
+          onUpdateEvidence?.(evidence.id, {
+            size: { width: params.width, height: params.height },
+          });
+        }}
+      />
       <FourSideHandles />
       {/* Card-only bubble, NOT counter-scaled: the expanded card is a
           first-class node with connection handles, and scaling its visuals
           detaches them from the layout box the handles sit on. Zoom
           invariance is for the collapsed pin only. */}
       <div>
-        <Card className="w-80 rounded-xl rounded-tl-sm border bg-card/95 p-3 shadow-md backdrop-blur-sm">
+        <Card
+          className="flex flex-col gap-0 overflow-hidden rounded-xl rounded-tl-sm border bg-card/95 p-3 shadow-lg backdrop-blur-sm"
+          style={{ width: pageSize.width, height: pageSize.height }}
+        >
           {/* Header: type chip + inline-editable title + actions */}
           <div className="flex items-start gap-2">
             <span
@@ -266,10 +289,31 @@ export default function EvidenceNode({ data }: NodeProps<EvidenceFlowNode>) {
             </Button>
           </div>
 
-          {/* Content preview */}
-          <div className="relative mt-2 max-h-32 overflow-hidden rounded-md">
-            <EvidenceContentRenderer evidence={evidence} className="text-sm" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-card to-transparent" />
+          {/* Notepad body: the FULL notebook, scrollable on the canvas.
+              nodrag/nowheel: scrolling and text selection stay inside the
+              page (drag the card by its header); clicking opens the docked
+              editor — reading happens here, writing in the dock (CVS-342). */}
+          <div
+            className="nodrag nowheel relative mt-2 min-h-0 flex-1 cursor-text overflow-y-auto rounded-md"
+            title="Click to write in the side panel"
+            onClick={() => {
+              if (window.getSelection()?.toString()) return; // selecting ≠ editing
+              setEditOpen(true);
+            }}
+          >
+            {evidence.content ||
+            evidence.summary?.trim() ||
+            evidence.hypothesis?.trim() ||
+            evidence.impactOnConfidence?.trim() ? (
+              <EvidenceContentRenderer
+                evidence={evidence}
+                className="text-sm"
+              />
+            ) : (
+              <div className="flex h-full min-h-24 items-center justify-center text-sm italic text-muted-foreground">
+                Click to start writing…
+              </div>
+            )}
           </div>
 
           {/* Linked targets (drag an edge to a node, or via the relationship

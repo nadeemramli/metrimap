@@ -18,6 +18,7 @@ type Client = SupabaseClient<Database>;
 
 export interface EvidenceLayoutEntry {
   position?: { x: number; y: number };
+  size?: { width: number; height: number };
   isExpanded?: boolean;
   isVisible?: boolean;
   zIndex?: number | null;
@@ -30,6 +31,7 @@ export interface EvidenceLayoutEntry {
 
 const LAYOUT_KEYS = [
   'position',
+  'size',
   'isExpanded',
   'isVisible',
   'zIndex',
