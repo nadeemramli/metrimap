@@ -13,7 +13,10 @@ export const RelationshipsMinAggregateInputObjectSchema: z.ZodType<Prisma.Relati
   weight: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
-  created_by: z.literal(true).optional()
+  created_by: z.literal(true).optional(),
+  description: z.literal(true).optional(),
+  source_handle: z.literal(true).optional(),
+  target_handle: z.literal(true).optional()
 }).strict();
 export const RelationshipsMinAggregateInputObjectZodSchema = z.object({
   id: z.literal(true).optional(),
@@ -25,5 +28,8 @@ export const RelationshipsMinAggregateInputObjectZodSchema = z.object({
   weight: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
-  created_by: z.literal(true).optional()
+  created_by: z.literal(true).optional(),
+  description: z.literal(true).optional(),
+  source_handle: z.literal(true).optional(),
+  target_handle: z.literal(true).optional()
 }).strict();

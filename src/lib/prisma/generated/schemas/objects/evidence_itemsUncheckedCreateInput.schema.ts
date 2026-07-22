@@ -1,7 +1,13 @@
 // @ts-nocheck
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
+import { NullableJsonNullValueInputSchema } from '../enums/NullableJsonNullValueInput.schema'
 
+
+const literalSchema = z.union([z.string(), z.number(), z.boolean()]);
+const jsonSchema = z.lazy(() =>
+  z.union([literalSchema, z.array(jsonSchema.nullable()), z.record(z.string(), jsonSchema.nullable())])
+);
 
 export const evidence_itemsUncheckedCreateInputObjectSchema: z.ZodType<Prisma.evidence_itemsUncheckedCreateInput, Prisma.evidence_itemsUncheckedCreateInput> = z.object({
   id: z.string().optional(),
@@ -16,7 +22,11 @@ export const evidence_itemsUncheckedCreateInputObjectSchema: z.ZodType<Prisma.ev
   impact_on_confidence: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
-  created_by: z.string()
+  created_by: z.string(),
+  card_id: z.string().optional().nullable(),
+  project_id: z.string().optional().nullable(),
+  content: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
+  is_public: z.boolean().optional()
 }).strict();
 export const evidence_itemsUncheckedCreateInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -31,5 +41,9 @@ export const evidence_itemsUncheckedCreateInputObjectZodSchema = z.object({
   impact_on_confidence: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
   updated_at: z.union([z.date(), z.string().datetime()]).optional().nullable(),
-  created_by: z.string()
+  created_by: z.string(),
+  card_id: z.string().optional().nullable(),
+  project_id: z.string().optional().nullable(),
+  content: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
+  is_public: z.boolean().optional()
 }).strict();

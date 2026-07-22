@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import { UuidFilterObjectSchema } from './UuidFilter.schema';
 import { StringFilterObjectSchema } from './StringFilter.schema';
 import { StringNullableFilterObjectSchema } from './StringNullableFilter.schema';
 import { BoolFilterObjectSchema } from './BoolFilter.schema';
@@ -12,7 +11,7 @@ export const notificationsWhereInputObjectSchema: z.ZodType<Prisma.notifications
   AND: z.union([z.lazy(() => notificationsWhereInputObjectSchema), z.lazy(() => notificationsWhereInputObjectSchema).array()]).optional(),
   OR: z.lazy(() => notificationsWhereInputObjectSchema).array().optional(),
   NOT: z.union([z.lazy(() => notificationsWhereInputObjectSchema), z.lazy(() => notificationsWhereInputObjectSchema).array()]).optional(),
-  user_id: z.union([z.lazy(() => UuidFilterObjectSchema), z.string()]).optional(),
+  user_id: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   type: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   title: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   description: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
@@ -24,7 +23,7 @@ export const notificationsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => notificationsWhereInputObjectSchema), z.lazy(() => notificationsWhereInputObjectSchema).array()]).optional(),
   OR: z.lazy(() => notificationsWhereInputObjectSchema).array().optional(),
   NOT: z.union([z.lazy(() => notificationsWhereInputObjectSchema), z.lazy(() => notificationsWhereInputObjectSchema).array()]).optional(),
-  user_id: z.union([z.lazy(() => UuidFilterObjectSchema), z.string()]).optional(),
+  user_id: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   type: z.union([z.lazy(() => StringFilterObjectSchema), z.string()]).optional(),
   title: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),
   description: z.union([z.lazy(() => StringNullableFilterObjectSchema), z.string()]).optional().nullable(),

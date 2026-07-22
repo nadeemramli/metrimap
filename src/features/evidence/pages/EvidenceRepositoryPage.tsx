@@ -1,4 +1,5 @@
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
+import { deleteEvidenceSynced } from '@/features/evidence/services/evidenceSync';
 import { useCanvasStore } from '@/lib/stores';
 import { usePageHeader } from '@/shared/hooks/usePageHeader';
 import { useConfirm } from '@/shared/components/ConfirmDialog';
@@ -54,6 +55,7 @@ import { useClerkSupabase } from '@/shared/hooks/useClerkSupabase';
 import { useAppStore } from '@/shared/stores/useAppStore';
 import {
   createProjectEvidence,
+  getProjectEvidence,
   setEvidencePublic,
 } from '@/shared/lib/supabase/services/evidence';
 import { updateEvidenceItem } from '@/shared/lib/supabase/services/relationships';
@@ -119,9 +121,34 @@ export default function EvidenceRepositoryPage() {
     evidence,
     addEvidence,
     updateEvidence,
-    deleteEvidence,
     duplicateEvidence,
   } = useEvidenceStore();
+
+  // DB hydration (CVS-337): the evidence store is no longer localStorage-
+  // persisted, so on a direct load/reload of this route the store is empty.
+  // Pull this project's evidence_items rows and merge in anything missing
+  // (store-first — items coming from the canvas carry layout fields).
+  useEffect(() => {
+    if (!canvasId || !client) return;
+    let cancelled = false;
+    void getProjectEvidence(canvasId, client)
+      .then((rows) => {
+        if (cancelled || !rows.length) return;
+        useEvidenceStore.setState((s) => {
+          const have = new Set(s.evidence.map((e) => e.id));
+          const missing = rows.filter((r) => !have.has(r.id));
+          return missing.length
+            ? { evidence: [...s.evidence, ...missing] }
+            : s;
+        });
+      })
+      .catch((e) =>
+        console.error('🧾 Evidence repository hydration failed:', e)
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [canvasId, client]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -262,8 +289,8 @@ export default function EvidenceRepositoryPage() {
       destructive: true,
     });
     if (confirmed) {
-      deleteEvidence(evidenceId);
-      // TODO: Also remove from relationships if needed
+      // Store + evidence_items row (CVS-337); no-op DB-side for never-synced ids.
+      deleteEvidenceSynced(evidenceId);
     }
   };
 

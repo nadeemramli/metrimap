@@ -46,7 +46,9 @@ describe('service insert payloads vs strict Prisma-Zod mirrors', () => {
       type: 'Causal',
       confidence: 'Medium',
       weight: undefined,
-      causal_metadata: null,
+      // causal_metadata is set post-validation (the generated Json union
+      // rejects raw null — wants DbNull/JsonNull sentinels), so it is NOT
+      // part of the parsed shape anymore (CVS-337).
       created_by: 'user_x',
     });
     expect(r.error?.issues ?? []).toEqual([]);

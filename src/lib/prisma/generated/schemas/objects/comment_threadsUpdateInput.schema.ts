@@ -5,7 +5,9 @@ import { StringFieldUpdateOperationsInputObjectSchema } from './StringFieldUpdat
 import { NullableJsonNullValueInputSchema } from '../enums/NullableJsonNullValueInput.schema';
 import { BoolFieldUpdateOperationsInputObjectSchema } from './BoolFieldUpdateOperationsInput.schema';
 import { NullableStringFieldUpdateOperationsInputObjectSchema } from './NullableStringFieldUpdateOperationsInput.schema';
-import { DateTimeFieldUpdateOperationsInputObjectSchema } from './DateTimeFieldUpdateOperationsInput.schema'
+import { DateTimeFieldUpdateOperationsInputObjectSchema } from './DateTimeFieldUpdateOperationsInput.schema';
+import { projectsUpdateOneRequiredWithoutComment_threadsNestedInputObjectSchema } from './projectsUpdateOneRequiredWithoutComment_threadsNestedInput.schema';
+import { commentsUpdateManyWithoutComment_threadsNestedInputObjectSchema } from './commentsUpdateManyWithoutComment_threadsNestedInput.schema'
 
 
 const literalSchema = z.union([z.string(), z.number(), z.boolean()]);
@@ -14,20 +16,22 @@ const jsonSchema = z.lazy(() =>
 );
 
 export const comment_threadsUpdateInputObjectSchema: z.ZodType<Prisma.comment_threadsUpdateInput, Prisma.comment_threadsUpdateInput> = z.object({
-  project_id: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   source: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputObjectSchema)]).optional(),
   created_by: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   created_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional(),
-  updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional()
+  updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional(),
+  projects: z.lazy(() => projectsUpdateOneRequiredWithoutComment_threadsNestedInputObjectSchema).optional(),
+  comments: z.lazy(() => commentsUpdateManyWithoutComment_threadsNestedInputObjectSchema).optional()
 }).strict();
 export const comment_threadsUpdateInputObjectZodSchema = z.object({
-  project_id: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   source: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputObjectSchema)]).optional(),
   created_by: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   created_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional(),
-  updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional()
+  updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional(),
+  projects: z.lazy(() => projectsUpdateOneRequiredWithoutComment_threadsNestedInputObjectSchema).optional(),
+  comments: z.lazy(() => commentsUpdateManyWithoutComment_threadsNestedInputObjectSchema).optional()
 }).strict();

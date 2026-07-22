@@ -13,7 +13,9 @@ export const ProjectsMinAggregateInputObjectSchema: z.ZodType<Prisma.ProjectsMin
   created_by: z.literal(true).optional(),
   is_public: z.literal(true).optional(),
   is_starred: z.literal(true).optional(),
-  archived_at: z.literal(true).optional()
+  archived_at: z.literal(true).optional(),
+  space_id: z.literal(true).optional(),
+  workspace_id: z.literal(true).optional()
 }).strict();
 export const ProjectsMinAggregateInputObjectZodSchema = z.object({
   id: z.literal(true).optional(),
@@ -25,5 +27,7 @@ export const ProjectsMinAggregateInputObjectZodSchema = z.object({
   created_by: z.literal(true).optional(),
   is_public: z.literal(true).optional(),
   is_starred: z.literal(true).optional(),
-  archived_at: z.literal(true).optional()
+  archived_at: z.literal(true).optional(),
+  space_id: z.literal(true).optional(),
+  workspace_id: z.literal(true).optional()
 }).strict();

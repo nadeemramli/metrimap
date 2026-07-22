@@ -6,7 +6,8 @@ import { StringWithAggregatesFilterObjectSchema } from './StringWithAggregatesFi
 import { StringNullableWithAggregatesFilterObjectSchema } from './StringNullableWithAggregatesFilter.schema';
 import { FloatWithAggregatesFilterObjectSchema } from './FloatWithAggregatesFilter.schema';
 import { JsonNullableWithAggregatesFilterObjectSchema } from './JsonNullableWithAggregatesFilter.schema';
-import { DateTimeNullableWithAggregatesFilterObjectSchema } from './DateTimeNullableWithAggregatesFilter.schema'
+import { DateTimeWithAggregatesFilterObjectSchema } from './DateTimeWithAggregatesFilter.schema';
+import { IntNullableWithAggregatesFilterObjectSchema } from './IntNullableWithAggregatesFilter.schema'
 
 export const canvas_nodesScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Prisma.canvas_nodesScalarWhereWithAggregatesInput, Prisma.canvas_nodesScalarWhereWithAggregatesInput> = z.object({
   AND: z.union([z.lazy(() => canvas_nodesScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => canvas_nodesScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -18,9 +19,11 @@ export const canvas_nodesScalarWhereWithAggregatesInputObjectSchema: z.ZodType<P
   position_x: z.union([z.lazy(() => FloatWithAggregatesFilterObjectSchema), z.number()]).optional(),
   position_y: z.union([z.lazy(() => FloatWithAggregatesFilterObjectSchema), z.number()]).optional(),
   data: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
+  updated_by: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  z_index: z.union([z.lazy(() => IntNullableWithAggregatesFilterObjectSchema), z.number().int()]).optional().nullable()
 }).strict();
 export const canvas_nodesScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => canvas_nodesScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => canvas_nodesScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -32,7 +35,9 @@ export const canvas_nodesScalarWhereWithAggregatesInputObjectZodSchema = z.objec
   position_x: z.union([z.lazy(() => FloatWithAggregatesFilterObjectSchema), z.number()]).optional(),
   position_y: z.union([z.lazy(() => FloatWithAggregatesFilterObjectSchema), z.number()]).optional(),
   data: z.lazy(() => JsonNullableWithAggregatesFilterObjectSchema).optional(),
-  created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
+  created_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  updated_at: z.union([z.lazy(() => DateTimeWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional(),
+  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
+  updated_by: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  z_index: z.union([z.lazy(() => IntNullableWithAggregatesFilterObjectSchema), z.number().int()]).optional().nullable()
 }).strict();

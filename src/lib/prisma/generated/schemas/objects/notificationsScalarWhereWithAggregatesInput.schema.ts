@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import { UuidWithAggregatesFilterObjectSchema } from './UuidWithAggregatesFilter.schema';
 import { StringWithAggregatesFilterObjectSchema } from './StringWithAggregatesFilter.schema';
 import { StringNullableWithAggregatesFilterObjectSchema } from './StringNullableWithAggregatesFilter.schema';
 import { BoolWithAggregatesFilterObjectSchema } from './BoolWithAggregatesFilter.schema';
@@ -12,7 +11,7 @@ export const notificationsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<
   AND: z.union([z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
   OR: z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema).array().optional(),
   NOT: z.union([z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
-  user_id: z.union([z.lazy(() => UuidWithAggregatesFilterObjectSchema), z.string()]).optional(),
+  user_id: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   type: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   title: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   description: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
@@ -24,7 +23,7 @@ export const notificationsScalarWhereWithAggregatesInputObjectZodSchema = z.obje
   AND: z.union([z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
   OR: z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema).array().optional(),
   NOT: z.union([z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => notificationsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
-  user_id: z.union([z.lazy(() => UuidWithAggregatesFilterObjectSchema), z.string()]).optional(),
+  user_id: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   type: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
   title: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   description: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),

@@ -10,7 +10,8 @@ export const commentsCreateManyInputObjectSchema: z.ZodType<Prisma.commentsCreat
   content: z.string(),
   resolved: z.boolean().optional(),
   created_at: z.union([z.date(), z.string().datetime()]).optional(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+  updated_at: z.union([z.date(), z.string().datetime()]).optional(),
+  parent_id: z.string().optional().nullable()
 }).strict();
 export const commentsCreateManyInputObjectZodSchema = z.object({
   id: z.string().optional(),
@@ -19,5 +20,6 @@ export const commentsCreateManyInputObjectZodSchema = z.object({
   content: z.string(),
   resolved: z.boolean().optional(),
   created_at: z.union([z.date(), z.string().datetime()]).optional(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+  updated_at: z.union([z.date(), z.string().datetime()]).optional(),
+  parent_id: z.string().optional().nullable()
 }).strict();

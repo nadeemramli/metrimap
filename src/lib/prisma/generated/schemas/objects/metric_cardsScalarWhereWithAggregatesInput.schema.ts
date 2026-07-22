@@ -7,7 +7,9 @@ import { StringNullableWithAggregatesFilterObjectSchema } from './StringNullable
 import { FloatWithAggregatesFilterObjectSchema } from './FloatWithAggregatesFilter.schema';
 import { JsonNullableWithAggregatesFilterObjectSchema } from './JsonNullableWithAggregatesFilter.schema';
 import { StringNullableListFilterObjectSchema } from './StringNullableListFilter.schema';
-import { DateTimeNullableWithAggregatesFilterObjectSchema } from './DateTimeNullableWithAggregatesFilter.schema'
+import { DateTimeNullableWithAggregatesFilterObjectSchema } from './DateTimeNullableWithAggregatesFilter.schema';
+import { JsonWithAggregatesFilterObjectSchema } from './JsonWithAggregatesFilter.schema';
+import { IntNullableWithAggregatesFilterObjectSchema } from './IntNullableWithAggregatesFilter.schema'
 
 export const metric_cardsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Prisma.metric_cardsScalarWhereWithAggregatesInput, Prisma.metric_cardsScalarWhereWithAggregatesInput> = z.object({
   AND: z.union([z.lazy(() => metric_cardsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => metric_cardsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -29,7 +31,12 @@ export const metric_cardsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<P
   assignees: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
+  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
+  tracked_metric_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  updated_by: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  status: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  workflow: z.lazy(() => JsonWithAggregatesFilterObjectSchema).optional(),
+  z_index: z.union([z.lazy(() => IntNullableWithAggregatesFilterObjectSchema), z.number().int()]).optional().nullable()
 }).strict();
 export const metric_cardsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => metric_cardsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => metric_cardsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -51,5 +58,10 @@ export const metric_cardsScalarWhereWithAggregatesInputObjectZodSchema = z.objec
   assignees: z.lazy(() => StringNullableListFilterObjectSchema).optional(),
   created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
   updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
+  created_by: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional(),
+  tracked_metric_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  updated_by: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  status: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
+  workflow: z.lazy(() => JsonWithAggregatesFilterObjectSchema).optional(),
+  z_index: z.union([z.lazy(() => IntNullableWithAggregatesFilterObjectSchema), z.number().int()]).optional().nullable()
 }).strict();

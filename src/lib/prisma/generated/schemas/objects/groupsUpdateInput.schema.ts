@@ -1,14 +1,15 @@
 // @ts-nocheck
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import { NullableStringFieldUpdateOperationsInputObjectSchema } from './NullableStringFieldUpdateOperationsInput.schema';
 import { StringFieldUpdateOperationsInputObjectSchema } from './StringFieldUpdateOperationsInput.schema';
+import { NullableStringFieldUpdateOperationsInputObjectSchema } from './NullableStringFieldUpdateOperationsInput.schema';
 import { FloatFieldUpdateOperationsInputObjectSchema } from './FloatFieldUpdateOperationsInput.schema';
 import { groupsUpdatenode_idsInputObjectSchema } from './groupsUpdatenode_idsInput.schema';
-import { NullableDateTimeFieldUpdateOperationsInputObjectSchema } from './NullableDateTimeFieldUpdateOperationsInput.schema'
+import { NullableDateTimeFieldUpdateOperationsInputObjectSchema } from './NullableDateTimeFieldUpdateOperationsInput.schema';
+import { usersUpdateOneRequiredWithoutGroupsNestedInputObjectSchema } from './usersUpdateOneRequiredWithoutGroupsNestedInput.schema';
+import { projectsUpdateOneWithoutGroupsNestedInputObjectSchema } from './projectsUpdateOneWithoutGroupsNestedInput.schema'
 
 export const groupsUpdateInputObjectSchema: z.ZodType<Prisma.groupsUpdateInput, Prisma.groupsUpdateInput> = z.object({
-  project_id: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   name: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   description: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   color: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
@@ -19,10 +20,10 @@ export const groupsUpdateInputObjectSchema: z.ZodType<Prisma.groupsUpdateInput, 
   node_ids: z.union([z.lazy(() => groupsUpdatenode_idsInputObjectSchema), z.string().array()]).optional(),
   created_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
-  created_by: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional()
+  users: z.lazy(() => usersUpdateOneRequiredWithoutGroupsNestedInputObjectSchema).optional(),
+  projects: z.lazy(() => projectsUpdateOneWithoutGroupsNestedInputObjectSchema).optional()
 }).strict();
 export const groupsUpdateInputObjectZodSchema = z.object({
-  project_id: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   name: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   description: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   color: z.union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
@@ -33,5 +34,6 @@ export const groupsUpdateInputObjectZodSchema = z.object({
   node_ids: z.union([z.lazy(() => groupsUpdatenode_idsInputObjectSchema), z.string().array()]).optional(),
   created_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
   updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputObjectSchema)]).optional().nullable(),
-  created_by: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional()
+  users: z.lazy(() => usersUpdateOneRequiredWithoutGroupsNestedInputObjectSchema).optional(),
+  projects: z.lazy(() => projectsUpdateOneWithoutGroupsNestedInputObjectSchema).optional()
 }).strict();

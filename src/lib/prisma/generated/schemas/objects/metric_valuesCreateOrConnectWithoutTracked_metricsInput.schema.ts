@@ -1,0 +1,15 @@
+// @ts-nocheck
+import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+import { metric_valuesWhereUniqueInputObjectSchema } from './metric_valuesWhereUniqueInput.schema';
+import { metric_valuesCreateWithoutTracked_metricsInputObjectSchema } from './metric_valuesCreateWithoutTracked_metricsInput.schema';
+import { metric_valuesUncheckedCreateWithoutTracked_metricsInputObjectSchema } from './metric_valuesUncheckedCreateWithoutTracked_metricsInput.schema'
+
+export const metric_valuesCreateOrConnectWithoutTracked_metricsInputObjectSchema: z.ZodType<Prisma.metric_valuesCreateOrConnectWithoutTracked_metricsInput, Prisma.metric_valuesCreateOrConnectWithoutTracked_metricsInput> = z.object({
+  where: z.lazy(() => metric_valuesWhereUniqueInputObjectSchema),
+  create: z.union([z.lazy(() => metric_valuesCreateWithoutTracked_metricsInputObjectSchema), z.lazy(() => metric_valuesUncheckedCreateWithoutTracked_metricsInputObjectSchema)])
+}).strict();
+export const metric_valuesCreateOrConnectWithoutTracked_metricsInputObjectZodSchema = z.object({
+  where: z.lazy(() => metric_valuesWhereUniqueInputObjectSchema),
+  create: z.union([z.lazy(() => metric_valuesCreateWithoutTracked_metricsInputObjectSchema), z.lazy(() => metric_valuesUncheckedCreateWithoutTracked_metricsInputObjectSchema)])
+}).strict();

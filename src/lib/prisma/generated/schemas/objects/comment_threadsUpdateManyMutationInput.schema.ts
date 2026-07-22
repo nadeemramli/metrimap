@@ -14,7 +14,6 @@ const jsonSchema = z.lazy(() =>
 );
 
 export const comment_threadsUpdateManyMutationInputObjectSchema: z.ZodType<Prisma.comment_threadsUpdateManyMutationInput, Prisma.comment_threadsUpdateManyMutationInput> = z.object({
-  project_id: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   source: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputObjectSchema)]).optional(),
@@ -23,7 +22,6 @@ export const comment_threadsUpdateManyMutationInputObjectSchema: z.ZodType<Prism
   updated_at: z.union([z.union([z.date(), z.string().datetime()]), z.lazy(() => DateTimeFieldUpdateOperationsInputObjectSchema)]).optional()
 }).strict();
 export const comment_threadsUpdateManyMutationInputObjectZodSchema = z.object({
-  project_id: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   source: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputObjectSchema)]).optional(),
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputObjectSchema)]).optional(),

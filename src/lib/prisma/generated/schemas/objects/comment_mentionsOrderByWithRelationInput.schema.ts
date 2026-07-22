@@ -1,17 +1,20 @@
 // @ts-nocheck
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import { SortOrderSchema } from '../enums/SortOrder.schema'
+import { SortOrderSchema } from '../enums/SortOrder.schema';
+import { commentsOrderByWithRelationInputObjectSchema } from './commentsOrderByWithRelationInput.schema'
 
 export const comment_mentionsOrderByWithRelationInputObjectSchema: z.ZodType<Prisma.comment_mentionsOrderByWithRelationInput, Prisma.comment_mentionsOrderByWithRelationInput> = z.object({
   id: SortOrderSchema.optional(),
   comment_id: SortOrderSchema.optional(),
   mentioned_user_id: SortOrderSchema.optional(),
-  created_at: SortOrderSchema.optional()
+  created_at: SortOrderSchema.optional(),
+  comments: z.lazy(() => commentsOrderByWithRelationInputObjectSchema).optional()
 }).strict();
 export const comment_mentionsOrderByWithRelationInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
   comment_id: SortOrderSchema.optional(),
   mentioned_user_id: SortOrderSchema.optional(),
-  created_at: SortOrderSchema.optional()
+  created_at: SortOrderSchema.optional(),
+  comments: z.lazy(() => commentsOrderByWithRelationInputObjectSchema).optional()
 }).strict();

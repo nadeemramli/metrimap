@@ -4,7 +4,8 @@ import type { Prisma } from '@prisma/client';
 import { StringWithAggregatesFilterObjectSchema } from './StringWithAggregatesFilter.schema';
 import { StringNullableWithAggregatesFilterObjectSchema } from './StringNullableWithAggregatesFilter.schema';
 import { UuidNullableWithAggregatesFilterObjectSchema } from './UuidNullableWithAggregatesFilter.schema';
-import { DateTimeNullableWithAggregatesFilterObjectSchema } from './DateTimeNullableWithAggregatesFilter.schema'
+import { DateTimeNullableWithAggregatesFilterObjectSchema } from './DateTimeNullableWithAggregatesFilter.schema';
+import { BoolWithAggregatesFilterObjectSchema } from './BoolWithAggregatesFilter.schema'
 
 export const tagsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Prisma.tagsScalarWhereWithAggregatesInput, Prisma.tagsScalarWhereWithAggregatesInput> = z.object({
   AND: z.union([z.lazy(() => tagsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => tagsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -16,7 +17,9 @@ export const tagsScalarWhereWithAggregatesInputObjectSchema: z.ZodType<Prisma.ta
   project_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  is_access: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
+  redaction_mode: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
 }).strict();
 export const tagsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => tagsScalarWhereWithAggregatesInputObjectSchema), z.lazy(() => tagsScalarWhereWithAggregatesInputObjectSchema).array()]).optional(),
@@ -28,5 +31,7 @@ export const tagsScalarWhereWithAggregatesInputObjectZodSchema = z.object({
   project_id: z.union([z.lazy(() => UuidNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   created_by: z.union([z.lazy(() => StringNullableWithAggregatesFilterObjectSchema), z.string()]).optional().nullable(),
   created_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
-  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  updated_at: z.union([z.lazy(() => DateTimeNullableWithAggregatesFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  is_access: z.union([z.lazy(() => BoolWithAggregatesFilterObjectSchema), z.boolean()]).optional(),
+  redaction_mode: z.union([z.lazy(() => StringWithAggregatesFilterObjectSchema), z.string()]).optional()
 }).strict();

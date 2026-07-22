@@ -2,7 +2,11 @@
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { UuidNullableFilterObjectSchema } from './UuidNullableFilter.schema';
-import { DateTimeNullableFilterObjectSchema } from './DateTimeNullableFilter.schema'
+import { DateTimeNullableFilterObjectSchema } from './DateTimeNullableFilter.schema';
+import { RelationshipsNullableScalarRelationFilterObjectSchema } from './RelationshipsNullableScalarRelationFilter.schema';
+import { relationshipsWhereInputObjectSchema } from './relationshipsWhereInput.schema';
+import { TagsNullableScalarRelationFilterObjectSchema } from './TagsNullableScalarRelationFilter.schema';
+import { tagsWhereInputObjectSchema } from './tagsWhereInput.schema'
 
 export const relationship_tagsWhereInputObjectSchema: z.ZodType<Prisma.relationship_tagsWhereInput, Prisma.relationship_tagsWhereInput> = z.object({
   AND: z.union([z.lazy(() => relationship_tagsWhereInputObjectSchema), z.lazy(() => relationship_tagsWhereInputObjectSchema).array()]).optional(),
@@ -10,7 +14,9 @@ export const relationship_tagsWhereInputObjectSchema: z.ZodType<Prisma.relations
   NOT: z.union([z.lazy(() => relationship_tagsWhereInputObjectSchema), z.lazy(() => relationship_tagsWhereInputObjectSchema).array()]).optional(),
   relationship_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   tag_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  relationships: z.union([z.lazy(() => RelationshipsNullableScalarRelationFilterObjectSchema), z.lazy(() => relationshipsWhereInputObjectSchema)]).optional().nullable(),
+  tags: z.union([z.lazy(() => TagsNullableScalarRelationFilterObjectSchema), z.lazy(() => tagsWhereInputObjectSchema)]).optional().nullable()
 }).strict();
 export const relationship_tagsWhereInputObjectZodSchema = z.object({
   AND: z.union([z.lazy(() => relationship_tagsWhereInputObjectSchema), z.lazy(() => relationship_tagsWhereInputObjectSchema).array()]).optional(),
@@ -18,5 +24,7 @@ export const relationship_tagsWhereInputObjectZodSchema = z.object({
   NOT: z.union([z.lazy(() => relationship_tagsWhereInputObjectSchema), z.lazy(() => relationship_tagsWhereInputObjectSchema).array()]).optional(),
   relationship_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
   tag_id: z.union([z.lazy(() => UuidNullableFilterObjectSchema), z.string()]).optional().nullable(),
-  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable()
+  created_at: z.union([z.lazy(() => DateTimeNullableFilterObjectSchema), z.union([z.date(), z.string().datetime()])]).optional().nullable(),
+  relationships: z.union([z.lazy(() => RelationshipsNullableScalarRelationFilterObjectSchema), z.lazy(() => relationshipsWhereInputObjectSchema)]).optional().nullable(),
+  tags: z.union([z.lazy(() => TagsNullableScalarRelationFilterObjectSchema), z.lazy(() => tagsWhereInputObjectSchema)]).optional().nullable()
 }).strict();

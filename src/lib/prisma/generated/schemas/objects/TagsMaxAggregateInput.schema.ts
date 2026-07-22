@@ -11,7 +11,9 @@ export const TagsMaxAggregateInputObjectSchema: z.ZodType<Prisma.TagsMaxAggregat
   project_id: z.literal(true).optional(),
   created_by: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
-  updated_at: z.literal(true).optional()
+  updated_at: z.literal(true).optional(),
+  is_access: z.literal(true).optional(),
+  redaction_mode: z.literal(true).optional()
 }).strict();
 export const TagsMaxAggregateInputObjectZodSchema = z.object({
   id: z.literal(true).optional(),
@@ -21,5 +23,7 @@ export const TagsMaxAggregateInputObjectZodSchema = z.object({
   project_id: z.literal(true).optional(),
   created_by: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
-  updated_at: z.literal(true).optional()
+  updated_at: z.literal(true).optional(),
+  is_access: z.literal(true).optional(),
+  redaction_mode: z.literal(true).optional()
 }).strict();

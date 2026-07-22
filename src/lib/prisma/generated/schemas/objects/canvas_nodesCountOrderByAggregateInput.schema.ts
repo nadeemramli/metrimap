@@ -13,7 +13,9 @@ export const canvas_nodesCountOrderByAggregateInputObjectSchema: z.ZodType<Prism
   data: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  updated_by: SortOrderSchema.optional(),
+  z_index: SortOrderSchema.optional()
 }).strict();
 export const canvas_nodesCountOrderByAggregateInputObjectZodSchema = z.object({
   id: SortOrderSchema.optional(),
@@ -25,5 +27,7 @@ export const canvas_nodesCountOrderByAggregateInputObjectZodSchema = z.object({
   data: SortOrderSchema.optional(),
   created_at: SortOrderSchema.optional(),
   updated_at: SortOrderSchema.optional(),
-  created_by: SortOrderSchema.optional()
+  created_by: SortOrderSchema.optional(),
+  updated_by: SortOrderSchema.optional(),
+  z_index: SortOrderSchema.optional()
 }).strict();

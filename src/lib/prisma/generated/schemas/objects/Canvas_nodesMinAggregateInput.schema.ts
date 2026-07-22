@@ -12,7 +12,9 @@ export const Canvas_nodesMinAggregateInputObjectSchema: z.ZodType<Prisma.Canvas_
   position_y: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
-  created_by: z.literal(true).optional()
+  created_by: z.literal(true).optional(),
+  updated_by: z.literal(true).optional(),
+  z_index: z.literal(true).optional()
 }).strict();
 export const Canvas_nodesMinAggregateInputObjectZodSchema = z.object({
   id: z.literal(true).optional(),
@@ -23,5 +25,7 @@ export const Canvas_nodesMinAggregateInputObjectZodSchema = z.object({
   position_y: z.literal(true).optional(),
   created_at: z.literal(true).optional(),
   updated_at: z.literal(true).optional(),
-  created_by: z.literal(true).optional()
+  created_by: z.literal(true).optional(),
+  updated_by: z.literal(true).optional(),
+  z_index: z.literal(true).optional()
 }).strict();

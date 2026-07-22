@@ -1,7 +1,9 @@
 // @ts-nocheck
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import { NullableJsonNullValueInputSchema } from '../enums/NullableJsonNullValueInput.schema'
+import { NullableJsonNullValueInputSchema } from '../enums/NullableJsonNullValueInput.schema';
+import { projectsCreateNestedOneWithoutComment_threadsInputObjectSchema } from './projectsCreateNestedOneWithoutComment_threadsInput.schema';
+import { commentsCreateNestedManyWithoutComment_threadsInputObjectSchema } from './commentsCreateNestedManyWithoutComment_threadsInput.schema'
 
 
 const literalSchema = z.union([z.string(), z.number(), z.boolean()]);
@@ -11,21 +13,23 @@ const jsonSchema = z.lazy(() =>
 
 export const comment_threadsCreateInputObjectSchema: z.ZodType<Prisma.comment_threadsCreateInput, Prisma.comment_threadsCreateInput> = z.object({
   id: z.string().optional(),
-  project_id: z.string(),
   source: z.string(),
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.boolean().optional(),
   created_by: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+  updated_at: z.union([z.date(), z.string().datetime()]).optional(),
+  projects: z.lazy(() => projectsCreateNestedOneWithoutComment_threadsInputObjectSchema),
+  comments: z.lazy(() => commentsCreateNestedManyWithoutComment_threadsInputObjectSchema).optional()
 }).strict();
 export const comment_threadsCreateInputObjectZodSchema = z.object({
   id: z.string().optional(),
-  project_id: z.string(),
   source: z.string(),
   context: z.union([NullableJsonNullValueInputSchema, jsonSchema]).optional(),
   is_resolved: z.boolean().optional(),
   created_by: z.string().optional().nullable(),
   created_at: z.union([z.date(), z.string().datetime()]).optional(),
-  updated_at: z.union([z.date(), z.string().datetime()]).optional()
+  updated_at: z.union([z.date(), z.string().datetime()]).optional(),
+  projects: z.lazy(() => projectsCreateNestedOneWithoutComment_threadsInputObjectSchema),
+  comments: z.lazy(() => commentsCreateNestedManyWithoutComment_threadsInputObjectSchema).optional()
 }).strict();

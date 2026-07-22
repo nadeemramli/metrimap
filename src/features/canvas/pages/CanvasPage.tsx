@@ -27,6 +27,17 @@ import { useCanvasNodesStore } from '@/features/canvas/stores/useCanvasNodesStor
 import { useNewNodeTypesStore } from '@/features/canvas/stores/useNewNodeTypesStore';
 import { useCanvasNodeSources } from '@/features/canvas/hooks/useCanvasNodeSources';
 import { useEvidenceStore } from '@/features/evidence/stores/useEvidenceStore';
+import {
+  createEvidenceSynced,
+  deleteEvidenceSynced,
+  resetEvidenceSync,
+  updateEvidenceSynced,
+} from '@/features/evidence/services/evidenceSync';
+import {
+  buildEvidenceLayoutMap,
+  hydrateProjectEvidence,
+  migrateLegacyEvidence,
+} from '@/features/evidence/services/hydrateProjectEvidence';
 import { useAppStore, useCanvasStore } from '@/lib/stores';
 import { useCanvasHeader } from '@/shared/contexts/CanvasHeaderContext';
 import { PortalContainerProvider } from '@/shared/contexts/PortalContainerContext';
@@ -39,7 +50,7 @@ import {
   getMetricValuesByMetricIds,
   getTrackedMetricsByIds,
 } from '@/shared/lib/supabase/services/trackedMetrics';
-import type { MetricCard } from '@/shared/types';
+import type { EvidenceItem, MetricCard } from '@/shared/types';
 import { listConnections } from '@/shared/lib/supabase/services/sourceConnections';
 import { track } from '@/shared/lib/analytics';
 import { findOrphanedSourceBindings } from '@/features/canvas/utils/sourceResolver';
@@ -210,9 +221,19 @@ function CanvasPageInner() {
   const [routedEdgePoints, setRoutedEdgePoints] = useState<
     Record<string, { x: number; y: number }[]>
   >({});
-  // Guards the evidence → settings save so it only runs after this canvas's
-  // evidence has been hydrated (never persists stale localStorage evidence).
+  // Guards the evidence-layout → settings save so it only runs after this
+  // canvas's evidence has been hydrated (never persists a pre-load store).
   const evidenceHydratedFor = useRef<string | null>(null);
+  // Legacy settings.evidence blob awaiting one-time migration to
+  // evidence_items rows — consumed by the migration effect once canEdit.
+  const pendingEvidenceMigration = useRef<{
+    projectId: string;
+    legacy: EvidenceItem[];
+    settings: Record<string, unknown>;
+  } | null>(null);
+  // Bumped when hydration (async) arms pendingEvidenceMigration — a ref write
+  // alone can't re-fire the migration effect if canEdit resolved first.
+  const [evidenceMigrationArm, setEvidenceMigrationArm] = useState(0);
 
   // Initialize canvas stores and data
   const {
@@ -229,8 +250,17 @@ function CanvasPageInner() {
   const updateEvidencePosition = useEvidenceStore(
     (s) => s.updateEvidencePosition
   );
-  const updateEvidence = useEvidenceStore((s) => s.updateEvidence);
-  const deleteEvidence = useEvidenceStore((s) => s.deleteEvidence);
+  // Write-through (CVS-337): evidence node edits/deletes go through
+  // evidenceSync so content fields land in evidence_items, not just the store.
+  const updateEvidence = useCallback(
+    (id: string, updates: Partial<EvidenceItem>) =>
+      updateEvidenceSynced(id, updates, canvasId),
+    [canvasId]
+  );
+  const deleteEvidence = useCallback(
+    (id: string) => deleteEvidenceSynced(id),
+    []
+  );
 
   // Canvas nodes store for extra nodes (comment, source, chart, operator, whiteboard)
   const {
@@ -355,11 +385,11 @@ function CanvasPageInner() {
       // canvas (these stores are global/persisted, not scoped per project).
       clearCanvasNodes();
       clearNewNodes();
-      useEvidenceStore.setState((s) => ({
-        evidence: s.evidence.map((e) =>
-          e.position ? { ...e, position: undefined } : e
-        ),
-      }));
+      // Evidence is hydrated per project (DB rows + settings.evidenceLayout);
+      // clear the global store and drop any in-flight sync from the previous
+      // canvas so nothing bleeds across projects.
+      resetEvidenceSync();
+      useEvidenceStore.setState({ evidence: [] });
 
       try {
         log.debug('🔄 Loading canvas data for:', canvasId);
@@ -426,13 +456,34 @@ function CanvasPageInner() {
             state.setCurrentLayoutDirection(persistedDirection);
           }
 
-          // Evidence persistence: hydrate this project's evidence from
-          // projects.settings.evidence (jsonb) into the evidence store, scoping
-          // it to the current project. Gates the debounced save below.
-          const persistedEvidence = (projectData as any).settings?.evidence;
-          useEvidenceStore.setState({
-            evidence: Array.isArray(persistedEvidence) ? persistedEvidence : [],
-          });
+          // Evidence persistence (CVS-337): hydrate from evidence_items rows
+          // overlaid with settings.evidenceLayout. Pre-migration blob items
+          // are merged in read-only; the one-time blob→DB migration runs in a
+          // separate effect once this user is known to be an editor.
+          try {
+            const hydrated = await hydrateProjectEvidence(
+              canvasId,
+              (projectData as any).settings,
+              client
+            );
+            useEvidenceStore.setState({ evidence: hydrated.evidence });
+            pendingEvidenceMigration.current = hydrated.pendingLegacy.length
+              ? {
+                  projectId: canvasId,
+                  legacy: hydrated.pendingLegacy,
+                  settings: ((projectData as any).settings ?? {}) as Record<
+                    string,
+                    unknown
+                  >,
+                }
+              : null;
+            if (hydrated.pendingLegacy.length) {
+              setEvidenceMigrationArm((n) => n + 1);
+            }
+          } catch (e) {
+            console.error('❌ Evidence hydration failed:', e);
+            useEvidenceStore.setState({ evidence: [] });
+          }
           evidenceHydratedFor.current = canvasId;
 
           // Read-share: cards that reference a catalogued Tracked Metric read
@@ -1363,11 +1414,13 @@ function CanvasPageInner() {
     useCanvasHistoryStore.getState().clear();
   }, [canvasId]);
 
-  // Evidence persistence: debounce-save this project's evidence to
-  // projects.settings.evidence. Gated on hydration so it never clobbers the
-  // stored evidence with stale (pre-load) localStorage state.
+  // Evidence layout persistence (CVS-337): debounce-save canvas presentation
+  // (position/expansion/links/comments) to projects.settings.evidenceLayout.
+  // Content fields sync to evidence_items via evidenceSync. Gated on
+  // hydration so it never clobbers the stored layout with a pre-load store.
   useEffect(() => {
-    if (!canvasId || evidenceHydratedFor.current !== canvasId) return;
+    if (!canvasId || evidenceHydratedFor.current !== canvasId || !canEdit)
+      return;
     const t = setTimeout(() => {
       // Skip (not throw) if the authed client isn't ready yet — the next
       // evidence change re-fires this debounced save.
@@ -1375,14 +1428,53 @@ function CanvasPageInner() {
       if (!client) return;
       void mergeProjectSettings(
         canvasId,
-        { evidence: evidenceList },
+        { evidenceLayout: buildEvidenceLayoutMap(evidenceList) },
         client
       ).catch((err) =>
-        console.error('❌ Failed to persist evidence:', err)
+        console.error('❌ Failed to persist evidence layout:', err)
       );
     }, 600);
     return () => clearTimeout(t);
-  }, [evidenceList, canvasId, supabaseClient]);
+  }, [evidenceList, canvasId, supabaseClient, canEdit]);
+
+  // One-time legacy migration: settings.evidence blob → evidence_items rows.
+  // Runs only for editors (RLS rejects viewer inserts) and only until the
+  // evidenceMigratedAt stamp lands; non-UUID ids are remapped across the
+  // store and reference edges.
+  useEffect(() => {
+    const pending = pendingEvidenceMigration.current;
+    if (!canEdit || !pending || pending.projectId !== canvasId) return;
+    pendingEvidenceMigration.current = null;
+    const client = supabaseClient || getAuthenticatedClient() || undefined;
+    void migrateLegacyEvidence({
+      projectId: pending.projectId,
+      userId: useAppStore.getState().user?.id || 'unknown',
+      legacy: pending.legacy,
+      settings: pending.settings,
+      client,
+    })
+      .then(({ idRemap, dataFlowEdges }) => {
+        if (Object.keys(idRemap).length) {
+          // Swap remapped ids in the store so pins keep working seamlessly.
+          useEvidenceStore.setState((s) => ({
+            evidence: s.evidence.map((e) =>
+              idRemap[e.id] ? { ...e, id: idRemap[e.id] } : e
+            ),
+          }));
+          if (dataFlowEdges) state.setExtraEdges(dataFlowEdges);
+        }
+        log.debug('🧾 Legacy evidence migrated', {
+          count: pending.legacy.length,
+          remapped: Object.keys(idRemap).length,
+        });
+      })
+      .catch((err) => {
+        // Re-arm so a transient failure retries on the next canvas load.
+        pendingEvidenceMigration.current = pending;
+        console.error('❌ Legacy evidence migration failed:', err);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit, canvasId, supabaseClient, evidenceMigrationArm]);
 
   // Keyboard: Esc clears selection; Ctrl/Cmd + C / V / D / Z (ignored while
   // typing in a field).
@@ -1921,10 +2013,7 @@ function CanvasPageInner() {
         const isNew = !ev;
         if (!ev) {
           const now = new Date().toISOString();
-          const id =
-            typeof crypto !== 'undefined' && crypto.randomUUID
-              ? crypto.randomUUID()
-              : `evidence_${Date.now()}`;
+          const id = generateUUID();
           ev = {
             id,
             title: `Evidence for ${targetName}`,
@@ -1950,22 +2039,26 @@ function CanvasPageInner() {
             context: { type: 'card', targetId: cardId, targetName },
             links: [{ targetId: cardId, targetName }],
           } as any;
-          store.addEvidence(ev as any);
+          createEvidenceSynced(ev as any, currentCanvas.id);
         } else {
           // Ensure it's positioned (visible as a pin) and linked to this card.
           const links = [
             ...(ev.links || []).filter((l) => l.targetId !== cardId),
             { targetId: cardId, targetName },
           ];
-          store.updateEvidence(ev.id, {
-            position:
-              ev.position ??
-              (card?.position
-                ? { x: card.position.x - 80, y: card.position.y + 240 }
-                : undefined),
-            context: { type: 'card', targetId: cardId, targetName },
-            links,
-          } as any);
+          updateEvidenceSynced(
+            ev.id,
+            {
+              position:
+                ev.position ??
+                (card?.position
+                  ? { x: card.position.x - 80, y: card.position.y + 240 }
+                  : undefined),
+              context: { type: 'card', targetId: cardId, targetName },
+              links,
+            } as any,
+            currentCanvas.id
+          );
         }
         // Reference edge — identical to what a hand-drawn connection produces.
         const edgeId = `ref-${ev!.id}-${cardId}`;
@@ -2230,14 +2323,18 @@ function CanvasPageInner() {
               ),
               { targetId: edgeData.target, targetName },
             ];
-            useEvidenceStore.getState().updateEvidence(ev.id, {
-              context: {
-                type: 'card',
-                targetId: edgeData.target,
-                targetName,
-              },
-              links,
-            } as any);
+            updateEvidenceSynced(
+              ev.id,
+              {
+                context: {
+                  type: 'card',
+                  targetId: edgeData.target,
+                  targetName,
+                },
+                links,
+              } as any,
+              canvasId
+            );
             toast.success(`Evidence linked to "${targetName}"`);
           }
         },
@@ -2571,12 +2668,16 @@ function CanvasPageInner() {
               (l) => l.targetId !== e.target
             );
             const last = links[links.length - 1];
-            useEvidenceStore.getState().updateEvidence(ev.id, {
-              links,
-              context: last
-                ? { type: 'card', targetId: last.targetId, targetName: last.targetName }
-                : { type: 'general' },
-            } as any);
+            updateEvidenceSynced(
+              ev.id,
+              {
+                links,
+                context: last
+                  ? { type: 'card', targetId: last.targetId, targetName: last.targetName }
+                  : { type: 'general' },
+              } as any,
+              canvasId
+            );
           }
         }
         // Drop the operator input bindings for any removed inbound-to-operator
