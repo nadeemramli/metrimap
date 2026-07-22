@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { generateUUID } from '@/shared/utils/validation';
 
 interface EvidenceEditorProps {
   evidence: EvidenceItem | null;
@@ -96,7 +97,7 @@ export default function EvidenceEditor({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [formData, setFormData] = useState<Partial<EvidenceItem>>({
-    id: evidence?.id || `evidence_${Date.now()}`,
+    id: evidence?.id || generateUUID(),
     title: evidence?.title || '',
     type: evidence?.type || 'Analysis',
     date: evidence?.date || new Date().toISOString().split('T')[0],
@@ -114,7 +115,7 @@ export default function EvidenceEditor({
   useEffect(() => {
     if (!isOpen) return;
     setFormData({
-      id: evidence?.id || `evidence_${Date.now()}`,
+      id: evidence?.id || generateUUID(),
       title: evidence?.title || '',
       type: evidence?.type || 'Analysis',
       date: evidence?.date || new Date().toISOString().split('T')[0],
@@ -134,7 +135,7 @@ export default function EvidenceEditor({
         setIsAutoSaving(true);
         const validatedContent = validateAndMigrateEditorData(content);
         const updated: EvidenceItem = {
-          id: evidence?.id || formData.id || `evidence_${Date.now()}`,
+          id: evidence?.id || formData.id || generateUUID(),
           title: metadata.title || '',
           type: metadata.type || 'Analysis',
           date: metadata.date || new Date().toISOString().split('T')[0],
@@ -262,7 +263,7 @@ export default function EvidenceEditor({
       const outputData = await editorRef.current.save();
       const validated = validateAndMigrateEditorData(outputData);
       const updated: EvidenceItem = {
-        id: evidence?.id || formData.id || `evidence_${Date.now()}`,
+        id: evidence?.id || formData.id || generateUUID(),
         title: formData.title || '',
         type: formData.type || 'Analysis',
         date: formData.date || new Date().toISOString().split('T')[0],

@@ -15,7 +15,7 @@ CVS). See the **Docs policy** in [`../AGENTS.md`](../AGENTS.md).
 - **[auth/](auth/)** — Clerk + Supabase authentication integration
 - **[database/](database/)** — Prisma + Zod, Supabase client singleton, RLS solution + testing, [security advisors triage](database/SECURITY_ADVISORS.md)
 - **[environment/](environment/)** — environment setup + secrets guide
-- **[state-management/](state-management/)** — XState patterns, [React #185 canvas fix + runbook](state-management/react-185-canvas-nodes.md)
+- **[state-management/](state-management/)** — XState patterns, [React #185 canvas fix + runbook](state-management/react-185-canvas-nodes.md), [evidence persistence model](state-management/evidence-persistence.md)
 - **[testing/](testing/)** — [E2E / visual-verification harness (Playwright + Clerk)](testing/e2e-visual-verification.md)
 - **features/ (infra only)** — [system-health-intake](features/system-health-intake.md),
   [linear-setup](features/linear-setup.md), [linear-initiatives](features/linear-initiatives.md),
